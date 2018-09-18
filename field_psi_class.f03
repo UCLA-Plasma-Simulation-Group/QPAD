@@ -4,10 +4,14 @@ use field_class
 use field_solver_class
 use ufield_class
 use param
+use system
 
 implicit none
 
 private
+
+character(len=20), parameter :: cls_name = "field_psi"
+integer, parameter :: cls_level = 1
 
 type, extends( field ) :: field_psi
 
@@ -45,6 +49,9 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
   integer :: dim, i, solver_type, precond_type
   integer, dimension(2) :: ndp, noff
   real :: tol
+  character(len=20), save :: sname = "init_field_psi"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   ndp = nd / nvp
   noff = (/0,0/)
@@ -82,6 +89,8 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
       precond_type, tol )
   enddo 
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine init_field_psi
 
 subroutine end_field_psi( this )
@@ -91,6 +100,9 @@ subroutine end_field_psi( this )
   class( field_psi ), intent(inout) :: this
 
   integer :: i
+  character(len=20), save :: sname = 'end_field_psi'
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%num_modes
     call this%solver(i)%del()
@@ -98,6 +110,8 @@ subroutine end_field_psi( this )
   deallocate( this%solver )
 
   call this%field%del()
+
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field_psi
 
@@ -110,6 +124,9 @@ subroutine sort_src( this, q )
 
   integer :: i, nd1p
   real, dimension(:,:), pointer :: f1 => null()
+  character(len=20), save :: sname = 'sort_src'
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   if ( .not. associated( this%buf ) ) then
     nd1p = q%get_ndp(1)
@@ -120,6 +137,8 @@ subroutine sort_src( this, q )
   do i = 1, nd1p
     this%buf(i) = f1(1,i)
   enddo
+
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
 
 end subroutine sort_src
 
@@ -132,6 +151,9 @@ subroutine sort_sol( this, mode, part )
 
   integer :: i, nd1p
   real, dimension(:,:), pointer :: f1 => null()
+  character(len=20), save :: sname = 'sort_sol'
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
   if ( part == p_real ) then
@@ -150,6 +172,8 @@ subroutine sort_sol( this, mode, part )
 
   endif
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine sort_sol
 
 subroutine solve_field_psi( this, q )
@@ -161,6 +185,9 @@ subroutine solve_field_psi( this, q )
 
   class( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
   integer :: i
+  character(len=20), save :: sname = 'solve_field_psi'
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -178,6 +205,8 @@ subroutine solve_field_psi( this, q )
     call this%sort_sol( i, part=p_imag )
 
   enddo
+
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_psi
 

@@ -2,6 +2,7 @@ module field_solver_class
 
 use mpi
 use param
+use system
 
 implicit none
 
@@ -9,6 +10,9 @@ private
 
 public :: field_solver
 public :: HYPRE_BUF
+
+character(len=20), parameter :: cls_name = "field_solver"
+integer, parameter :: cls_level = 2
 
 real, dimension(:), pointer :: HYPRE_BUF => null()
 
@@ -48,53 +52,6 @@ type :: field_solver ! class for HYPRE solver
 
 end type field_solver
 
-! abstract interface
-! subroutine set_hypre_grid( this, comm, noff, ndp )
-!   import field_solver
-!   implicit none
-!   class( field_solver ), intent(inout) :: this
-!   integer, intent(in) :: comm
-!   integer, intent(in), dimension(2) :: noff, ndp
-! end subroutine set_hypre_grid
-
-! subroutine set_hypre_stencil( this )
-!   import field_solver
-!   implicit none
-!   class( field_solver ), intent(inout) :: this
-! end subroutine set_hypre_stencil
-
-! subroutine set_hypre_matrix( this, comm, dr )
-!   import field_solver
-!   implicit none
-!   class( field_solver ), intent(inout) :: this
-!   integer, intent(in) :: comm
-!   real, intent(in) :: dr
-! end subroutine set_hypre_matrix
-! end interface
-
-! type, extends( field_solver ) :: field_solver_A
-
-!   private
-
-!   contains
-
-!   procedure, private :: set_hypre_grid => set_hypre_grid_AB
-!   procedure, private :: set_hypre_stencil => set_hypre_stencil_AB
-!   procedure, private :: set_hypre_matrix => set_hypre_matrix_A
-
-! end type field_solver_A
-
-! type, extends( field_solver ) :: field_solver_B
-
-!   private
-
-!   contains
-
-!   procedure, private :: set_hypre_grid => set_hypre_grid_AB
-!   procedure, private :: set_hypre_stencil => set_hypre_stencil_AB
-!   procedure, private :: set_hypre_matrix => set_hypre_matrix_B
-
-! end type field_solver_B
 
 contains
 
@@ -112,6 +69,9 @@ subroutine init_field_solver( this, ndp, noff, order, mode, dr, solver_type, pre
   real, intent(in) :: dr, tol
 
   integer :: i, j, ierr
+  character(len=20), save :: sname = "init_field_solver"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   this%order = order
   this%solver_type = solver_type
@@ -134,6 +94,8 @@ subroutine init_field_solver( this, ndp, noff, order, mode, dr, solver_type, pre
 
   call this%set_hypre_solver( MPI_COMM_WORLD )
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine init_field_solver
 
 subroutine end_field_solver( this )
@@ -143,6 +105,9 @@ subroutine end_field_solver( this )
   class( field_solver ), intent(inout) :: this
 
   integer :: ierr
+  character(len=20), save :: sname = "end_field_solver"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   if ( associated(HYPRE_BUF) ) deallocate( HYPRE_BUF )
 
@@ -175,6 +140,8 @@ subroutine end_field_solver( this )
 
   end select
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine end_field_solver
 
 subroutine set_hypre_solver( this, comm )
@@ -188,6 +155,9 @@ subroutine set_hypre_solver( this, comm )
   integer :: n_post = 1, n_pre = 1, maxiter = 1000
   integer :: i, ierr, precond_id
   real :: tol
+  character(len=20), save :: sname = "set_hypre_solver"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   b = this%b
   x = this%x
@@ -276,6 +246,8 @@ subroutine set_hypre_solver( this, comm )
 
   end select
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine set_hypre_solver
 
 subroutine solve_hypre_equation( this, src_sol )
@@ -286,6 +258,9 @@ subroutine solve_hypre_equation( this, src_sol )
   real, intent(inout), dimension(:), pointer :: src_sol
 
   integer :: ierr
+  character(len=20), save :: sname = "set_hypre_equation"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
 
@@ -300,6 +275,8 @@ subroutine solve_hypre_equation( this, src_sol )
 
   call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine solve_hypre_equation
 
 subroutine set_hypre_grid( this, comm, noff, ndp )
@@ -311,6 +288,9 @@ subroutine set_hypre_grid( this, comm, noff, ndp )
   integer, intent(in), dimension(2) :: noff, ndp
 
   integer :: ierr, dim = 1
+  character(len=20), save :: sname = "set_hypre_grid"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   call HYPRE_StructGridCreate( comm, dim, this%grid, ierr )
 
@@ -336,6 +316,8 @@ subroutine set_hypre_grid( this, comm, noff, ndp )
   call HYPRE_StructGridSetExtents( this%grid, this%ilower, this%iupper, ierr )
   call HYPRE_StructGridAssemble( this%grid, ierr )
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine set_hypre_grid
 
 subroutine set_hypre_stencil( this )
@@ -345,6 +327,9 @@ subroutine set_hypre_stencil( this )
   class( field_solver ), intent(inout) :: this
 
   integer :: i, ierr
+  character(len=20), save :: sname = "set_hypre_stencil"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%order )
   
@@ -408,6 +393,8 @@ subroutine set_hypre_stencil( this )
     call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
   enddo
 
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
+
 end subroutine set_hypre_stencil
 
 subroutine set_hypre_matrix( this, comm, dr )
@@ -420,6 +407,9 @@ subroutine set_hypre_matrix( this, comm, dr )
 
   integer :: i, k, ierr, local_vol
   real :: idr2, m, m2, k1, k2
+  character(len=20), save :: sname = "set_hypre_matrix"
+
+  call DEBUG( cls_name, sname, cls_level, 'starts' )
 
   idr2 = 1.0 / (dr*dr)
   m = this%mode
@@ -537,6 +527,8 @@ subroutine set_hypre_matrix( this, comm, dr )
   call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
     this%stencil_idx, HYPRE_BUF, ierr )
   call HYPRE_StructMatrixAssemble( this%A, ierr )
+
+  call DEBUG( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_hypre_matrix
 
