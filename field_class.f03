@@ -145,7 +145,7 @@ function get_rf_re_all( this )
   implicit none
 
   class( field ), intent(in) :: this
-  class( ufield ), dimension(:), pointer :: get_rf_re_all
+  type( ufield ), dimension(:), pointer :: get_rf_re_all
 
   get_rf_re_all => this%rf_re
 
@@ -157,7 +157,7 @@ function get_rf_re_mode( this, mode )
 
   class( field ), intent(in) :: this
   integer, intent(in) :: mode
-  class( ufield ), pointer :: get_rf_re_mode
+  type( ufield ), pointer :: get_rf_re_mode
 
   get_rf_re_mode => this%rf_re(mode)
 
@@ -168,7 +168,7 @@ function get_rf_im_all( this )
   implicit none
 
   class( field ), intent(in) :: this
-  class( ufield ), dimension(:), pointer :: get_rf_im_all
+  type( ufield ), dimension(:), pointer :: get_rf_im_all
 
   get_rf_im_all => this%rf_im
 
@@ -180,7 +180,7 @@ function get_rf_im_mode( this, mode )
 
   class( field ), intent(in) :: this
   integer, intent(in) :: mode
-  class( ufield ), pointer :: get_rf_im_mode
+  type( ufield ), pointer :: get_rf_im_mode
 
   get_rf_im_mode => this%rf_im(mode)
 

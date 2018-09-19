@@ -132,39 +132,31 @@ subroutine set_hypre_solver( this, comm )
   class( field_solver ), intent(inout) :: this
   integer, intent(in) :: comm
 
-  integer(HYPRE_TYPE) :: solver, A, b, x
   integer :: n_post = 1, n_pre = 1, maxiter = 1000
   integer :: i, ierr
-  real :: tol
   character(len=20), save :: sname = "set_hypre_solver"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  b = this%b
-  x = this%x
-  tol = this%tol
-
-  A = this%A
-  solver = this%solver
   select case ( this%solver_type )
 
   case ( p_hypre_cycred )
 
     print *, "Using Cyclic Reduction solver"
-    call HYPRE_StructCycRedCreate( comm, solver, ierr )
-    call HYPRE_StructCycRedSetup( solver, A, b, x, ierr )
+    call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
+    call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
 
   case ( p_hypre_pcg )
 
     print *, 'Using PCG solver'
-    call HYPRE_StructPCGCreate( comm, solver, ierr )
-    call HYPRE_StructPCGSetMaxIter( solver, maxiter, ierr )
-    call HYPRE_StructPCGSetTol( solver, tol, ierr )
+    call HYPRE_StructPCGCreate( comm, this%solver, ierr )
+    call HYPRE_StructPCGSetMaxIter( this%solver, maxiter, ierr )
+    call HYPRE_StructPCGSetTol( this%solver, this%tol, ierr )
     ! call HYPRE_StructPCGSetPrintLevel( solver, 2, ierr )
-    call HYPRE_StructPCGSetTwoNorm( solver, 1, ierr )
-    call HYPRE_StructPCGSetRelChange( solver, 0, ierr )
-    call HYPRE_StructPCGSetLogging( solver, 1, ierr )
-    call HYPRE_StructPCGSetup( solver, A, b, x, ierr )
+    call HYPRE_StructPCGSetTwoNorm( this%solver, 1, ierr )
+    call HYPRE_StructPCGSetRelChange( this%solver, 0, ierr )
+    call HYPRE_StructPCGSetLogging( this%solver, 1, ierr )
+    call HYPRE_StructPCGSetup( this%solver, this%A, this%b, this%x, ierr )
 
   end select
 
@@ -194,6 +186,8 @@ subroutine solve_hypre_equation( this, src_sol )
   end select
 
   call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
+
+  ! print *, "vector x = ", src_sol(this%ilower:this%iupper)
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

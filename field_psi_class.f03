@@ -17,7 +17,7 @@ public :: field_psi
 
 type, extends( field ) :: field_psi
 
-  private
+  ! private
 
   class( field_solver ), dimension(:), pointer :: solver => null()
 
@@ -129,8 +129,8 @@ subroutine sort_src( this, q )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  nd1p = q%get_ndp(1)
   if ( .not. associated( this%buf ) ) then
-    nd1p = q%get_ndp(1)
     allocate( this%buf( nd1p ) )
   endif
 
@@ -184,7 +184,7 @@ subroutine solve_field_psi( this, q )
   class( field_psi ), intent(inout) :: this
   class( field ), intent(in) :: q
 
-  class( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
+  type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
   integer :: i
   character(len=20), save :: sname = 'solve_field_psi'
 

@@ -11,7 +11,7 @@ HYPRE_LIB = -L/usr/local/hypre/lib -lHYPRE
 
 # Objects list
 OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
-			field_psi_class.o system.o dtimer.o
+			field_psi_class.o system.o dtimer.o debug_tool.o
 OBJS_MAIN = main.o  
 
 # Linkage rule
@@ -34,6 +34,9 @@ dtimer.o : dtimer.c
 system.o : system.f03 dtimer.o
 	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} system.f03 -o system.o
 
+debug_tool.o : debug_tool.f03
+	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} debug_tool.f03 -o debug_tool.o
+
 param.o : param.f03
 	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} param.f03 -o param.o
 
@@ -53,5 +56,5 @@ field_psi_class.o : field_psi_class.f03 param.o field_class.o field_solver_class
 TEST_ufield.o : TEST_ufield.f03 ufield_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
 
-TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o system.o param.o
+TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o system.o param.o ufield_class.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o
