@@ -4,7 +4,9 @@ implicit none
 
 private
 
-integer, save :: class_moniter = 0
+public :: init_errors, end_errors, write_err, write_wrn, write_dbg
+
+integer, save :: class_monitor = 0
 integer, save :: fid
 integer, dimension(4), save :: itime
 double precision, save :: dtime
@@ -14,33 +16,32 @@ interface init_errors
 end interface
 
 interface end_errors
+  module procedure end_errors
 end interface
 
-interface ERROR
+interface write_err
   module procedure write_err
 end interface
 
-interface WARNING
+interface write_wrn
   module procedure write_wrn
-end interface WARNING
+end interface
 
-interface DEBUG
+interface write_dbg
   module procedure write_dbg
 end interface
 
-public :: init_errors, end_errors, ERROR, WARNING, DEBUG
-
 contains
 
-subroutine init_errors( eunit, moniter )
+subroutine init_errors( eunit, monitor )
 
   implicit none
 
   ! class( parallel ), intent(in), pointer :: prl
-  integer, intent(in) :: eunit, moniter
+  integer, intent(in) :: eunit, monitor
 
   fid = eunit
-  class_moniter = moniter
+  class_monitor = monitor
 
   call system( 'mkdir ./ELOG' )
 
@@ -89,25 +90,29 @@ subroutine write_dbg( clsname, sname, level, msg )
   integer, intent(in) :: level
   character(len=*), intent(in), optional :: msg
 
-  character(len=32) :: prefix = ''
-  character(len=128) :: str
+  character(len=32) , save :: prefix
+  character(len=128), save :: str
+  integer :: i
 
   call dtimer( dtime, itime, 1 )
 
-  if ( level <= class_moniter ) then
+  if ( level <= class_monitor ) then
 
-    if ( level == 0 ) then
-      prefix = trim(prefix)
-    elseif ( level == 1 ) then
-      prefix = '|--'
-      prefix = trim(prefix) // ' '
-    elseif ( level > 1 ) then
-      prefix( (level-1)*3+1:level ) = '|--'
-      prefix = trim(prefix) // ' '
+    if ( level >= 1 ) then
+      i = 1
+      prefix = ''
+      do while ( i < (level-1)*3 )
+        prefix( i:i+2 ) = '|  '
+        i = i + 3
+      enddo
+      prefix(i:i+2) = '|--'
+    else
+      prefix = ''
     endif
 
+    str = ''
     write( str, '(A, F12.3, A12, A, A, A, A)' ) &
-      't = ', dtime, ', [DEBUG] ', prefix, trim(clsname), ' -> ', trim(sname)
+      't = ', dtime, ', [DEBUG] ', trim(prefix), trim(clsname), ' -> ', trim(sname)
     if ( present(msg) ) then
       write( fid, * ) trim(str) // ': ' // trim(msg)
     else

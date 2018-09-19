@@ -65,7 +65,7 @@ subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num )
   integer :: i
   character(len=20), save :: sname = "init_field"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%num_modes = num_modes
   this%dr = dr
@@ -79,7 +79,7 @@ subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num )
     call this%rf_im(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
   enddo
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field
 
@@ -92,7 +92,7 @@ subroutine end_field( this )
   integer :: i
   character(len=20), save :: sname = "end_field"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%rf_re(0)%del()
   do i = 1, this%num_modes
@@ -103,7 +103,7 @@ subroutine end_field( this )
 
   if ( associated( this%buf ) ) deallocate( this%buf )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field
 

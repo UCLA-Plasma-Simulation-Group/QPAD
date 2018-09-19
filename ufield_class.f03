@@ -1,6 +1,7 @@
 module ufield_class
 
 use param
+use system
 
 implicit none
 
@@ -73,7 +74,7 @@ subroutine init_ufield( this, dim, nd, nvp, gc_num, has_2d )
 
   character(len=20), save :: sname = "init_ufield"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%nd = nd
   this%nvp = nvp
@@ -95,7 +96,7 @@ subroutine init_ufield( this, dim, nd, nvp, gc_num, has_2d )
     this%has_2d = .false.
   endif
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine
 
@@ -107,12 +108,12 @@ subroutine end_ufield( this )
 
   character(len=20), save :: sname = "end_ufield"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( associated( this%f1 ) ) deallocate( this%f1 )
   if ( associated( this%f2 ) ) deallocate( this%f2 )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
   
 end subroutine end_ufield
 
@@ -126,7 +127,7 @@ subroutine copy_slice( this, idx, dir )
   integer :: i, j, lb, ub
   character(len=20), save :: sname = "copy_slice"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   lb = 1-this%gc_num(p_lower,1)
   ub = this%ndp(1)+this%gc_num(p_upper,1)
@@ -156,7 +157,7 @@ subroutine copy_slice( this, idx, dir )
 
   end select
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
   
 end subroutine copy_slice
 

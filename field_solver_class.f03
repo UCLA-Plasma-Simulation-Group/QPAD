@@ -25,12 +25,11 @@ type :: field_solver ! class for HYPRE solver
   integer, dimension(:), pointer :: stencil_idx => null()
   integer :: num_stencil
   integer :: solver_type
-  integer :: precond_type
   integer :: kind
   integer :: mode
   real :: tol
 
-  integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver, precond
+  integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver
   integer :: iupper, ilower
   ! real, dimension(:), pointer :: hypre_buf => null()
 
@@ -43,9 +42,6 @@ type :: field_solver ! class for HYPRE solver
   procedure, private :: init_field_solver, end_field_solver
   procedure, private :: set_hypre_solver
   procedure, private :: solve_hypre_equation
-  ! procedure(set_hypre_grid), private, deferred :: set_hypre_grid
-  ! procedure(set_hypre_stencil), private, deferred :: set_hypre_stencil
-  ! procedure(set_hypre_matrix), private, deferred :: set_hypre_matrix
   procedure, private :: set_hypre_grid
   procedure, private :: set_hypre_stencil
   procedure, private :: set_hypre_matrix
@@ -59,42 +55,43 @@ contains
 ! Class field_solver implementation
 ! =====================================================================
 
-subroutine init_field_solver( this, ndp, noff, order, mode, dr, solver_type, precond_type, tol )
+subroutine init_field_solver( this, ndp, noff, order, kind, mode, dr, solver_type, tol )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
   integer, intent(in), dimension(2) :: ndp, noff
-  integer, intent(in) :: order, solver_type, precond_type, mode
+  integer, intent(in) :: order, kind, solver_type, mode
   real, intent(in) :: dr, tol
 
-  integer :: i, j, ierr
+  integer :: i, j, ierr, comm
   character(len=20), save :: sname = "init_field_solver"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%order = order
   this%solver_type = solver_type
-  this%precond_type = precond_type
   this%tol = tol
   this%mode = mode
+  this%kind = kind
 
   ! setup HYPRE grid
-  call this%set_hypre_grid( MPI_COMM_WORLD, noff, ndp )
+  comm = MPI_COMM_WORLD
+  call this%set_hypre_grid( comm, noff, ndp )
   
   call this%set_hypre_stencil()
   
-  call this%set_hypre_matrix( MPI_COMM_WORLD, dr )
+  call this%set_hypre_matrix( comm, dr )
 
-  call HYPRE_StructVectorCreate( MPI_COMM_WORLD, this%grid, this%b, ierr )
+  call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
   call HYPRE_StructVectorInitialize( this%b, ierr )
 
-  call HYPRE_StructVectorCreate( MPI_COMM_WORLD, this%grid, this%x, ierr )
+  call HYPRE_StructVectorCreate( comm, this%grid, this%x, ierr )
   call HYPRE_StructVectorInitialize( this%x, ierr )
 
-  call this%set_hypre_solver( MPI_COMM_WORLD )
+  call this%set_hypre_solver( comm )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_solver
 
@@ -107,7 +104,7 @@ subroutine end_field_solver( this )
   integer :: ierr
   character(len=20), save :: sname = "end_field_solver"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( associated(HYPRE_BUF) ) deallocate( HYPRE_BUF )
 
@@ -118,29 +115,13 @@ subroutine end_field_solver( this )
   call HYPRE_StructMatrixDestroy( this%A, ierr )
 
   select case ( this%solver_type )
-
-  case ( p_hypre_smg )
-
-    call HYPRE_StructSMGDestroy( this%solver, ierr )
-
-  case ( p_hypre_pfmg )
-
-    call HYPRE_StructPFMGDestroy( this%solver, ierr )
-
+  case ( p_hypre_cycred )
+    call HYPRE_StructCycRedDestroy( this%solver, ierr )
   case ( p_hypre_pcg )
-
     call HYPRE_StructPCGDestroy( this%solver, ierr )
-
-    select case ( this%precond_type )
-    case ( p_hypre_smg )
-      call HYPRE_StructSMGDestroy( this%precond, ierr )
-    case ( p_hypre_pfmg )
-      call HYPRE_StructPFMGDestroy( this%precond, ierr )
-    end select
-
   end select
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field_solver
 
@@ -151,13 +132,13 @@ subroutine set_hypre_solver( this, comm )
   class( field_solver ), intent(inout) :: this
   integer, intent(in) :: comm
 
-  integer(HYPRE_TYPE) :: solver, precond, A, b, x
+  integer(HYPRE_TYPE) :: solver, A, b, x
   integer :: n_post = 1, n_pre = 1, maxiter = 1000
-  integer :: i, ierr, precond_id
+  integer :: i, ierr
   real :: tol
   character(len=20), save :: sname = "set_hypre_solver"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   b = this%b
   x = this%x
@@ -167,34 +148,11 @@ subroutine set_hypre_solver( this, comm )
   solver = this%solver
   select case ( this%solver_type )
 
-  case ( p_hypre_smg )
+  case ( p_hypre_cycred )
 
-    print *, "Using SMG solver"
-    call HYPRE_StructSMGCreate( comm, solver, ierr )
-    call HYPRE_StructSMGSetMemoryUse( solver, 0, ierr )
-    call HYPRE_StructSMGSetMaxIter( solver, maxiter, ierr )
-    call HYPRE_StructSMGSetTol( solver, tol, ierr )
-    ! call HYPRE_StructSMGSetPrintLevel( solver, 2, ierr )
-    call HYPRE_StructSMGSetRelChange( solver, 0, ierr )
-    call HYPRE_StructSMGSetNumPreRelax( solver, n_pre, ierr )
-    call HYPRE_StructSMGSetNumPostRelax( solver, n_post, ierr )
-    call HYPRE_StructSMGSetLogging( solver, 1, ierr )
-    call HYPRE_StructSMGSetup( solver, A, b, x, ierr )
-
-  case ( p_hypre_pfmg )
-
-    print *, 'Using PFMG solver'
-    call HYPRE_StructPFMGCreate( comm, solver, ierr )
-    call HYPRE_StructPFMGSetMaxIter( solver, maxiter, ierr )
-    call HYPRE_StructPFMGSetTol( solver, tol, ierr )
-    ! call HYPRE_StructPFMGSetPrintLevel( solver, 2, ierr )
-    call HYPRE_StructPFMGSetRelChange( solver, 0, ierr )
-    ! weighted Jacobi = 1; red-black GS = 2
-    call HYPRE_StructPFMGSetRelaxType( solver, 1, ierr )
-    call HYPRE_StructPFMGSetNumPreRelax( solver, n_pre, ierr )
-    call HYPRE_StructPFMGSetNumPostRelax( solver, n_post, ierr )
-    call HYPRE_StructPFMGSetLogging( solver, 1, ierr )
-    call HYPRE_StructPFMGSetup( solver, A, b, x, ierr )
+    print *, "Using Cyclic Reduction solver"
+    call HYPRE_StructCycRedCreate( comm, solver, ierr )
+    call HYPRE_StructCycRedSetup( solver, A, b, x, ierr )
 
   case ( p_hypre_pcg )
 
@@ -206,47 +164,11 @@ subroutine set_hypre_solver( this, comm )
     call HYPRE_StructPCGSetTwoNorm( solver, 1, ierr )
     call HYPRE_StructPCGSetRelChange( solver, 0, ierr )
     call HYPRE_StructPCGSetLogging( solver, 1, ierr )
-
-    ! set up preconditioner
-    precond = this%precond
-    select case ( this%precond_type )
-
-    case ( p_hypre_smg )
-
-      precond_id = 0
-      call HYPRE_StructSMGCreate( comm, precond, ierr )
-      call HYPRE_StructSMGSetMemoryUse( precond, 0, ierr )
-      call HYPRE_StructSMGSetMaxIter( precond, maxiter, ierr )
-      call HYPRE_StructSMGSetTol( precond, tol, ierr )
-      call HYPRE_StructSMGSetNumPreRelax( precond, n_pre, ierr )
-      call HYPRE_StructSMGSetNumPostRelax( precond, n_post, ierr )
-      call HYPRE_StructSMGSetLogging( precond, 0, ierr )
-
-    case ( p_hypre_pfmg )
-
-      precond_id = 1
-      call HYPRE_StructPFMGCreate( comm, precond, ierr )
-      call HYPRE_StructPFMGSetMaxIter( precond, maxiter, ierr )
-      call HYPRE_StructPFMGSetTol( precond, tol, ierr )
-      ! 1 - Jacobi, 2 - red-black GS
-      call HYPRE_StructPFMGSetRelaxType( precond, 1, ierr )
-      call HYPRE_StructPFMGSetNumPreRelax( precond, n_pre, ierr )
-      call HYPRE_StructPFMGSetNumPostRelax( precond, n_post, ierr )
-      call HYPRE_StructPFMGSetLogging( precond, 0, ierr )
-
-    case default
-
-      print *, "Preconditioner must be set up for PCG solver"
-      stop
-
-    end select
-    call HYPRE_StructPCGSetPrecond( solver, precond_id, precond, ierr )
-
     call HYPRE_StructPCGSetup( solver, A, b, x, ierr )
 
   end select
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_hypre_solver
 
@@ -260,22 +182,20 @@ subroutine solve_hypre_equation( this, src_sol )
   integer :: ierr
   character(len=20), save :: sname = "set_hypre_equation"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
 
   select case ( this%solver_type )
-  case ( p_hypre_smg )
-    call HYPRE_StructSMGSolve( this%solver, this%A, this%b, this%x, ierr )
-  case ( p_hypre_pfmg )
-    call HYPRE_StructPFMGSolve( this%solver, this%A, this%b, this%x, ierr )
+  case ( p_hypre_cycred )
+    call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
   case ( p_hypre_pcg )
     call HYPRE_StructPCGSolve( this%solver, this%A, this%b, this%x, ierr )
   end select
 
   call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_hypre_equation
 
@@ -290,7 +210,7 @@ subroutine set_hypre_grid( this, comm, noff, ndp )
   integer :: ierr, dim = 1
   character(len=20), save :: sname = "set_hypre_grid"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call HYPRE_StructGridCreate( comm, dim, this%grid, ierr )
 
@@ -316,7 +236,7 @@ subroutine set_hypre_grid( this, comm, noff, ndp )
   call HYPRE_StructGridSetExtents( this%grid, this%ilower, this%iupper, ierr )
   call HYPRE_StructGridAssemble( this%grid, ierr )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_hypre_grid
 
@@ -329,7 +249,7 @@ subroutine set_hypre_stencil( this )
   integer :: i, ierr
   character(len=20), save :: sname = "set_hypre_stencil"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%order )
   
@@ -393,7 +313,7 @@ subroutine set_hypre_stencil( this )
     call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
   enddo
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_hypre_stencil
 
@@ -409,7 +329,7 @@ subroutine set_hypre_matrix( this, comm, dr )
   real :: idr2, m, m2, k1, k2
   character(len=20), save :: sname = "set_hypre_matrix"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   idr2 = 1.0 / (dr*dr)
   m = this%mode
@@ -510,6 +430,8 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i+27)  = k / k1 * idr2
       enddo
 
+      ! boundary condition to be set
+
     end select
 
   case ( p_fs_4order )
@@ -528,7 +450,7 @@ subroutine set_hypre_matrix( this, comm, dr )
     this%stencil_idx, HYPRE_BUF, ierr )
   call HYPRE_StructMatrixAssemble( this%A, ierr )
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_hypre_matrix
 

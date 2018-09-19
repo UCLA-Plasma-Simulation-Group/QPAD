@@ -13,6 +13,8 @@ private
 character(len=20), parameter :: cls_name = "field_psi"
 integer, parameter :: cls_level = 1
 
+public :: field_psi
+
 type, extends( field ) :: field_psi
 
   private
@@ -46,17 +48,17 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
   integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, solver_type, precond_type
+  integer :: dim, i, solver_type, kind
   integer, dimension(2) :: ndp, noff
   real :: tol
   character(len=20), save :: sname = "init_field_psi"
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   ndp = nd / nvp
   noff = (/0,0/)
-  solver_type = p_hypre_pcg
-  precond_type = p_hypre_smg
+  solver_type = p_hypre_cycred
+  kind = p_fk_psi
   tol = 1.0d-6
 
   select case ( part_shape )
@@ -85,11 +87,10 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver(i)%new( ndp, noff, order, i, dr, solver_type, &
-      precond_type, tol )
+    call this%solver(i)%new( ndp, noff, order, kind, i, dr, solver_type, tol )
   enddo 
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_psi
 
@@ -102,7 +103,7 @@ subroutine end_field_psi( this )
   integer :: i
   character(len=20), save :: sname = 'end_field_psi'
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%num_modes
     call this%solver(i)%del()
@@ -111,7 +112,7 @@ subroutine end_field_psi( this )
 
   call this%field%del()
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field_psi
 
@@ -126,7 +127,7 @@ subroutine sort_src( this, q )
   real, dimension(:,:), pointer :: f1 => null()
   character(len=20), save :: sname = 'sort_src'
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( .not. associated( this%buf ) ) then
     nd1p = q%get_ndp(1)
@@ -138,7 +139,7 @@ subroutine sort_src( this, q )
     this%buf(i) = f1(1,i)
   enddo
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine sort_src
 
@@ -153,7 +154,7 @@ subroutine sort_sol( this, mode, part )
   real, dimension(:,:), pointer :: f1 => null()
   character(len=20), save :: sname = 'sort_sol'
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
   if ( part == p_real ) then
@@ -172,7 +173,7 @@ subroutine sort_sol( this, mode, part )
 
   endif
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine sort_sol
 
@@ -187,7 +188,7 @@ subroutine solve_field_psi( this, q )
   integer :: i
   character(len=20), save :: sname = 'solve_field_psi'
 
-  call DEBUG( cls_name, sname, cls_level, 'starts' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -206,7 +207,7 @@ subroutine solve_field_psi( this, q )
 
   enddo
 
-  call DEBUG( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_psi
 

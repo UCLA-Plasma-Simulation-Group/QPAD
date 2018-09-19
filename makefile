@@ -1,12 +1,17 @@
-FC = mpif90 -g -fdefault-real-8 -fdefault-double-8
+FC = mpif90
+# FC = gfortran
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8
 FORMAT_FREE = -ffree-form
+CC = gcc
+CC_OPTS = -O3 -std=c99
 LINKER = mpif90
+# LINKER = gfortran
 
 HYPRE_LIB = -L/usr/local/hypre/lib -lHYPRE
 
 # Objects list
-OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o field_psi_class.o system.o
-OBJS_TEST = TEST_ufield.o
+OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
+			field_psi_class.o system.o dtimer.o
 OBJS_MAIN = main.o  
 
 # Linkage rule
@@ -23,24 +28,30 @@ clean ::
 	rm *.o; rm *.mod; rm *.e
 
 # Module compilation rules
-system.o : system.f03
-	$(FC) -c ${FORMAT_FREE} system.f03 -o system.o
+dtimer.o : dtimer.c
+	$(CC) ${CC_OPTS} -O3 -std=c99 -c dtimer.c
+
+system.o : system.f03 dtimer.o
+	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} system.f03 -o system.o
 
 param.o : param.f03
-	$(FC) -c ${FORMAT_FREE} param.f03 -o param.o
+	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} param.f03 -o param.o
 
 ufield_class.o : ufield_class.f03 param.o system.o
-	${FC} -c ${FORMAT_FREE} ufield_class.f03 -o ufield_class.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} ufield_class.f03 -o ufield_class.o
 
 field_class.o : field_class.f03 param.o ufield_class.o system.o
-	${FC} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
 
 field_solver_class.o : field_solver_class.f03 param.o system.o
-	${FC} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
 
 field_psi_class.o : field_psi_class.f03 param.o field_class.o field_solver_class.o system.o
-	${FC} -c ${FORMAT_FREE} field_psi_class.f03 -o field_psi_class.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_psi_class.f03 -o field_psi_class.o
 
 # Unit test compilation rules
 TEST_ufield.o : TEST_ufield.f03 ufield_class.o
-	${FC} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
+
+TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o system.o param.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o

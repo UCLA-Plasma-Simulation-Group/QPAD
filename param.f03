@@ -36,7 +36,7 @@ integer, parameter :: p_fk_psi = 0, p_fk_ez = 1, p_fk_bz = 2, &
 ! HYPRE parameters
 ! ================================================================
 integer, parameter :: HYPRE_TYPE = 8
-integer, parameter :: p_hypre_smg = 1, p_hypre_pfmg = 2, p_hypre_pcg = 3
+integer, parameter :: p_hypre_cycred = 1, p_hypre_pcg = 2
 
 ! ================================================================
 ! copy field, used by ufield class
