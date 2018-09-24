@@ -20,6 +20,7 @@ type, extends( field ) :: field_psi
   ! private
 
   class( field_solver ), dimension(:), pointer :: solver => null()
+  real, dimension(:), pointer :: buf_re => null(), buf_im => null() ! buffer for source term
 
   contains
 
@@ -30,8 +31,8 @@ type, extends( field ) :: field_psi
 
   procedure, private :: init_field_psi
   procedure, private :: end_field_psi
-  procedure, private :: sort_src
-  procedure, private :: sort_sol
+  procedure, private :: set_source
+  procedure, private :: get_solution
   procedure, private :: solve_field_psi
 
 end type field_psi
@@ -70,13 +71,11 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
   
   case ( p_ps_quadratic )
 
-    print *, "Quadratic particle shape not implemented."
-    stop
+    call write_err( "Quadratic particle shape not implemented." )
 
   case default
 
-    print *, "Invalid particle shape."
-    stop
+    call write_err( "Invalid particle shape." )
 
   end select
 
@@ -110,72 +109,98 @@ subroutine end_field_psi( this )
   enddo
   deallocate( this%solver )
 
+  if ( associated( this%buf_re ) ) deallocate( this%buf_re )
+  if ( associated( this%buf_im ) ) deallocate( this%buf_im )
+
   call this%field%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field_psi
 
-subroutine sort_src( this, q )
+subroutine set_source( this, mode, q_re, q_im )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  class( ufield ), intent(in) :: q
+  class( ufield ), intent(in) :: q_re
+  class( ufield ), intent(in), optional :: q_im
+  integer, intent(in) :: mode
 
   integer :: i, nd1p
-  real, dimension(:,:), pointer :: f1 => null()
-  character(len=20), save :: sname = 'sort_src'
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'set_source'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = q%get_ndp(1)
-  if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nd1p ) )
+  nd1p = q_re%get_ndp(1)
+
+  f1_re => q_re%get_f1()
+  if ( .not. associated( this%buf_re ) ) then
+    allocate( this%buf_re( nd1p ) )
+  elseif ( size(this%buf_re) < nd1p ) then
+    deallocate( this%buf_re )
+    allocate( this%buf_re( nd1p ) )
   endif
 
-  f1 => q%get_f1()
-  do i = 1, nd1p
-    this%buf(i) = f1(1,i)
-  enddo
+  if ( present(q_im) ) then
+    f1_im => q_im%get_f1()
+    if ( .not. associated( this%buf_im ) ) then
+      allocate( this%buf_im( nd1p ) )
+    elseif ( size(this%buf_im) < nd1p ) then
+      deallocate( this%buf_im )
+      allocate( this%buf_im( nd1p ) )
+    endif
+  endif
+
+  if ( mode == 0 ) then
+    do i = 1, nd1p
+      this%buf_re(i) = f1_re(1,i)
+    enddo
+  elseif ( mode > 0 .and. present(q_im) ) then
+    do i = 1, nd1p
+      this%buf_re(i) = f1_re(1,i)
+      this%buf_im(i) = f1_im(1,i)
+    enddo
+  else
+    call write_err( 'Invalid input arguments!' )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine sort_src
+end subroutine set_source
 
-subroutine sort_sol( this, mode, part )
+subroutine get_solution( this, mode )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  integer, intent(in) :: mode, part
+  integer, intent(in) :: mode
 
   integer :: i, nd1p
-  real, dimension(:,:), pointer :: f1 => null()
-  character(len=20), save :: sname = 'sort_sol'
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
-  if ( part == p_real ) then
 
-    f1 => this%rf_re(mode)%get_f1()
+
+  f1_re => this%rf_re(mode)%get_f1()
+  do i = 1, nd1p
+    f1_re(1,i) = this%buf_re(i)
+  enddo
+
+  if ( mode > 0 ) then
+    f1_im => this%rf_im(mode)%get_f1()
     do i = 1, nd1p
-      f1(1,i) = this%buf(i)
+      f1_im(1,i) = this%buf_im(i)
     enddo
-
-  else
-
-    f1 => this%rf_im(mode)%get_f1()
-    do i = 1, nd1p
-      f1(1,i) = this%buf(i)
-    enddo
-
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine sort_sol
+end subroutine get_solution
 
 subroutine solve_field_psi( this, q )
 
@@ -195,15 +220,17 @@ subroutine solve_field_psi( this, q )
 
   do i = 0, this%num_modes
 
-    call this%sort_src( q_re(i) )
-    call this%solver(i)%solve( this%buf )
-    call this%sort_sol( i, part=p_real )
+    if ( i == 0 ) then
+      call this%set_source( i, q_re(i) )
+      call this%solver(i)%solve( this%buf_re )
+      call this%get_solution(i)
+      cycle
+    endif
 
-    if ( i == 0 ) cycle
-
-    call this%sort_src( q_im(i) )
-    call this%solver(i)%solve( this%buf )
-    call this%sort_sol( i, part=p_imag )
+    call this%set_source( i, q_re(i), q_im(i) )
+    call this%solver(i)%solve( this%buf_re )
+    call this%solver(i)%solve( this%buf_im )
+    call this%get_solution(i)
 
   enddo
 

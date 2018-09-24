@@ -358,28 +358,38 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i+2) = k / k1 * idr2
       enddo
 
+      ! lower boundary
       HYPRE_BUF(1) = 0.0
-      HYPRE_BUF(local_vol) = 0.0
-      if ( this%kind == p_fk_bz ) then
+
+      ! upper boundary
+      if ( this%kind == p_fk_ez .or. &
+        ( this%mode > 0 .and. this%kind == p_fk_psi ) ) then
+        HYPRE_BUF(local_vol) = 0.0
+      endif
+      if ( this%kind == p_fk_bz .or. &
+        ( this%mode == 0 .and. this%kind == p_fk_psi ) ) then
+
+        HYPRE_BUF(local_vol) = 0.0
+        HYPRE_BUF(local_vol-1) = 0.0 ! this is for eliminating the ambiguity of pure Neumann boundary
         HYPRE_BUF(local_vol-2) = 2.0 * idr2
       endif
 
-    case ( p_fk_br_iter, p_fk_bphi_iter )
+    ! case ( p_fk_br_iter, p_fk_bphi_iter )
 
-      do i = 1, local_vol, this%num_stencil
-        k = k + 1
-        k1 = k - 0.5
-        k2 = k - 1.0
-        HYPRE_BUF(i) = k2 / k1 * idr2
-        HYPRE_BUF(i+1) = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2 - 1.0
-        HYPRE_BUF(i+2) = k / k1 * idr2
-      enddo
+    !   do i = 1, local_vol, this%num_stencil
+    !     k = k + 1
+    !     k1 = k - 0.5
+    !     k2 = k - 1.0
+    !     HYPRE_BUF(i) = k2 / k1 * idr2
+    !     HYPRE_BUF(i+1) = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2 - 1.0
+    !     HYPRE_BUF(i+2) = k / k1 * idr2
+    !   enddo
 
-      HYPRE_BUF(1) = 0.0
-      HYPRE_BUF(local_vol) = 0.0
-      if ( this%kind == p_fk_bphi_iter ) then
-        HYPRE_BUF(local_vol-2) = 2.0 * idr2
-      endif
+    !   HYPRE_BUF(1) = 0.0
+    !   HYPRE_BUF(local_vol) = 0.0
+    !   if ( this%kind == p_fk_bphi_iter ) then
+    !     HYPRE_BUF(local_vol-2) = 2.0 * idr2
+    !   endif
 
     case ( p_fk_bperp )
 
@@ -391,7 +401,7 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i)    = k2 / k1 * idr2
         HYPRE_BUF(i+1)  = 0.0
         HYPRE_BUF(i+2)  = 0.0
-        HYPRE_BUF(i+3)  = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2
+        HYPRE_BUF(i+3)  = -idr2 * (2.0 + (m2+1.0) / k1**2)
         HYPRE_BUF(i+4)  = 0.0
         HYPRE_BUF(i+5)  = 2.0*m / k1**2 * idr2
         HYPRE_BUF(i+6)  = k / k1 * idr2
@@ -400,7 +410,7 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i+7)   = k2 / k1 * idr2
         HYPRE_BUF(i+8)   = 0.0
         HYPRE_BUF(i+9)   = 0.0
-        HYPRE_BUF(i+10)  = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2
+        HYPRE_BUF(i+10)  = -idr2 * (2.0 + (m2+1.0) / k1**2)
         HYPRE_BUF(i+11)  = -2.0*m / k1**2 * idr2
         HYPRE_BUF(i+12)  = 0.0
         HYPRE_BUF(i+13)  = k / k1 * idr2
@@ -409,7 +419,7 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i+14)  = k2 / k1 * idr2
         HYPRE_BUF(i+15)  = 0.0
         HYPRE_BUF(i+16)  = -2.0*m / k1**2 * idr2
-        HYPRE_BUF(i+17)  = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2
+        HYPRE_BUF(i+17)  = -idr2 * (2.0 + (m2+1.0) / k1**2)
         HYPRE_BUF(i+18)  = 0.0
         HYPRE_BUF(i+19)  = 0.0
         HYPRE_BUF(i+20)  = k / k1 * idr2
@@ -418,13 +428,66 @@ subroutine set_hypre_matrix( this, comm, dr )
         HYPRE_BUF(i+21)  = k2 / k1 * idr2
         HYPRE_BUF(i+22)  = 2.0*m / k1**2 * idr2
         HYPRE_BUF(i+23)  = 0.0
-        HYPRE_BUF(i+24)  = -1.0 * (2.0 + (m2+1.0) / k1**2) * idr2
+        HYPRE_BUF(i+24)  = -idr2 * (2.0 + (m2+1.0) / k1**2)
         HYPRE_BUF(i+25)  = 0.0
         HYPRE_BUF(i+26)  = 0.0
         HYPRE_BUF(i+27)  = k / k1 * idr2
       enddo
 
       ! boundary condition to be set
+
+    case ( p_fk_bperp_iter )
+
+      do i = 1, local_vol, this%num_stencil*4
+        k = k + 1
+        k1 = k - 0.5
+        k2 = k - 1.0
+        ! stencil for Re(Br)
+        HYPRE_BUF(i)    = k2 / k1 * idr2
+        HYPRE_BUF(i+1)  = 0.0
+        HYPRE_BUF(i+2)  = 0.0
+        HYPRE_BUF(i+3)  = -1.0 - idr2 * (2.0 + (m2+1.0) / k1**2)
+        HYPRE_BUF(i+4)  = 0.0
+        HYPRE_BUF(i+5)  = 2.0*m / k1**2 * idr2
+        HYPRE_BUF(i+6)  = k / k1 * idr2
+
+        ! stencil for Im(Br)
+        HYPRE_BUF(i+7)   = k2 / k1 * idr2
+        HYPRE_BUF(i+8)   = 0.0
+        HYPRE_BUF(i+9)   = 0.0
+        HYPRE_BUF(i+10)  = -1.0 - idr2 * (2.0 + (m2+1.0) / k1**2)
+        HYPRE_BUF(i+11)  = -2.0*m / k1**2 * idr2
+        HYPRE_BUF(i+12)  = 0.0
+        HYPRE_BUF(i+13)  = k / k1 * idr2
+
+        ! stencil for Re(Bphi)
+        HYPRE_BUF(i+14)  = k2 / k1 * idr2
+        HYPRE_BUF(i+15)  = 0.0
+        HYPRE_BUF(i+16)  = -2.0*m / k1**2 * idr2
+        HYPRE_BUF(i+17)  = -1.0 - idr2 * (2.0 + (m2+1.0) / k1**2)
+        HYPRE_BUF(i+18)  = 0.0
+        HYPRE_BUF(i+19)  = 0.0
+        HYPRE_BUF(i+20)  = k / k1 * idr2
+
+        ! stencil for Im(Bphi)
+        HYPRE_BUF(i+21)  = k2 / k1 * idr2
+        HYPRE_BUF(i+22)  = 2.0*m / k1**2 * idr2
+        HYPRE_BUF(i+23)  = 0.0
+        HYPRE_BUF(i+24)  = -1.0 - idr2 * (2.0 + (m2+1.0) / k1**2)
+        HYPRE_BUF(i+25)  = 0.0
+        HYPRE_BUF(i+26)  = 0.0
+        HYPRE_BUF(i+27)  = k / k1 * idr2
+      enddo
+
+      HYPRE_BUF(1) = 0.0
+      HYPRE_BUF(8) = 0.0
+      HYPRE_BUF(15) = 0.0
+      HYPRE_BUF(22) = 0.0
+
+      HYPRE_BUF(local_vol-21) = 0.0
+      HYPRE_BUF(local_vol-14) = 0.0
+      HYPRE_BUF(local_vol-7) = 0.0
+      HYPRE_BUF(local_vol) = 0.0
 
     end select
 

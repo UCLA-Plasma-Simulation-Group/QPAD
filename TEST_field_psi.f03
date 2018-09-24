@@ -16,7 +16,7 @@ type( field ) :: q
 integer :: num_modes = 2, dim = 1, order = p_fs_2order, part_shape = p_ps_linear
 integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
 integer, dimension(2,2) :: gc_num
-real :: dr = 1.0, dxi = 1.0
+real :: dr, dxi
 
 type( ufield ), dimension(:), pointer :: uq_re => null(), uq_im => null()
 type( ufield ), dimension(:), pointer :: upsi_re => null(), upsi_im => null()
@@ -28,6 +28,9 @@ call MPI_INIT( ierr )
 call init_errors( 2, 3 )
 
 call write_dbg( 'main', 'test_field_psi', 0, 'starts' )
+
+dr = 1.0 / (nd(1)-0.5)
+dxi = 1.0
 
 gc_num(:,1) = (/0,0/)
 gc_num(:,2) = (/0,0/)

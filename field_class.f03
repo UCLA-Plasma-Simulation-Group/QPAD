@@ -20,8 +20,6 @@ type :: field
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
 
-  real, dimension(:), pointer :: buf => null() ! buffer to store source term and solution for padding
-
   ! class( emf_solver ) :: solver
 
   real :: dr, dxi
@@ -100,8 +98,6 @@ subroutine end_field( this )
     call this%rf_im(i)%del()
   enddo
   deallocate( this%rf_re, this%rf_im )
-
-  if ( associated( this%buf ) ) deallocate( this%buf )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

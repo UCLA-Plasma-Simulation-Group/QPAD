@@ -30,7 +30,8 @@ integer, parameter :: p_fs_2order = 1, p_fs_4order = 2
 integer, parameter :: p_bnd_axial = 0, p_bnd_conduct = 1
 ! field kind
 integer, parameter :: p_fk_psi = 0, p_fk_ez = 1, p_fk_bz = 2, &
-                      p_fk_bperp = 3, p_fk_br_iter = 4, p_fk_bphi_iter = 5
+                      p_fk_bperp = 3, p_fk_br_iter = 4, p_fk_bphi_iter = 5, &
+                      p_fk_bperp_iter = 6
 
 ! ================================================================
 ! HYPRE parameters
