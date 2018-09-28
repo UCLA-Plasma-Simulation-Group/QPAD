@@ -3,6 +3,7 @@ module field_solver_class
 use mpi
 use param
 use system
+use debug_tool
 
 implicit none
 
@@ -208,14 +209,16 @@ subroutine set_hypre_grid( this, comm, noff, ndp )
 
   call HYPRE_StructGridCreate( comm, dim, this%grid, ierr )
 
+  print *, "solver kind = ", this%kind
+
   select case ( this%kind )
 
-  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_br_iter, p_fk_bphi_iter )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz )
   
     this%ilower = noff(1) + 1
     this%iupper = noff(1) + ndp(1)
 
-  case ( p_fk_bperp )
+  case ( p_fk_bperp, p_fk_bperp_iter )
 
     this%ilower = 4 * noff(1) + 1
     this%iupper = 4 * ( noff(1) + ndp(1) )
@@ -251,7 +254,7 @@ subroutine set_hypre_stencil( this )
 
     select case ( this%kind )
 
-    case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_br_iter, p_fk_bphi_iter )
+    case ( p_fk_psi, p_fk_ez, p_fk_bz )
 
       this%num_stencil = 3
       if ( .not. associated( this%offsets ) ) then
@@ -267,7 +270,7 @@ subroutine set_hypre_stencil( this )
 
       this%offsets = (/-1, 0, 1/)
 
-    case ( p_fk_bperp )
+    case ( p_fk_bperp, p_fk_bperp_iter )
 
       this%num_stencil = 7
       if ( .not. associated( this%offsets ) ) then
@@ -362,17 +365,18 @@ subroutine set_hypre_matrix( this, comm, dr )
       HYPRE_BUF(1) = 0.0
 
       ! upper boundary
-      if ( this%kind == p_fk_ez .or. &
-        ( this%mode > 0 .and. this%kind == p_fk_psi ) ) then
-        HYPRE_BUF(local_vol) = 0.0
-      endif
-      if ( this%kind == p_fk_bz .or. &
-        ( this%mode == 0 .and. this%kind == p_fk_psi ) ) then
+      ! if ( this%kind == p_fk_ez .or. &
+      !   ( this%mode > 0 .and. this%kind == p_fk_psi ) ) then
+      !   HYPRE_BUF(local_vol) = 0.0
+      ! endif
+      ! if ( this%kind == p_fk_bz .or. &
+      !   ( this%mode == 0 .and. this%kind == p_fk_psi ) ) then
 
-        HYPRE_BUF(local_vol) = 0.0
-        HYPRE_BUF(local_vol-1) = 0.0 ! this is for eliminating the ambiguity of pure Neumann boundary
-        HYPRE_BUF(local_vol-2) = 2.0 * idr2
-      endif
+      !   HYPRE_BUF(local_vol) = 0.0
+      !   HYPRE_BUF(local_vol-1) = 0.0 ! this is for eliminating the ambiguity of pure Neumann boundary
+      !   HYPRE_BUF(local_vol-2) = 2.0 * idr2
+      ! endif
+      HYPRE_BUF(local_vol) = 0.0
 
     ! case ( p_fk_br_iter, p_fk_bphi_iter )
 
@@ -506,6 +510,13 @@ subroutine set_hypre_matrix( this, comm, dr )
   call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
     this%stencil_idx, HYPRE_BUF, ierr )
   call HYPRE_StructMatrixAssemble( this%A, ierr )
+
+  if ( this%kind == p_fk_bperp_iter .and. this%mode == 2 ) then
+    HYPRE_BUF = 0.0
+    call HYPRE_StructMatrixGetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
+      this%stencil_idx, HYPRE_BUF, ierr )
+    call write_data( HYPRE_BUF, 'HYPRE_matrix.txt' )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

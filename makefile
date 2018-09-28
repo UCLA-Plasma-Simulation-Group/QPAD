@@ -55,7 +55,7 @@ ufield_class.o : ufield_class.f03 param.o system.o
 field_class.o : field_class.f03 param.o ufield_class.o system.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
 
-field_solver_class.o : field_solver_class.f03 param.o system.o
+field_solver_class.o : field_solver_class.f03 param.o system.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
 
 field_psi_class.o : ufield_class.o field_psi_class.f03 param.o field_class.o field_solver_class.o system.o

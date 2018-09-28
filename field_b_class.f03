@@ -69,7 +69,7 @@ subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
 
   ndp = nd / nvp
   noff = (/0,0/)
-  solver_type = p_hypre_cycred
+  solver_type = p_hypre_pcg
   tol = 1.0d-6
 
   select case ( part_shape )
@@ -284,7 +284,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     this%buf(4*nd1p-1) = f1_re(1,nd1p) - idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
     this%buf(4*nd1p)   = 0.0
 
-    ! call write_data( this%buf_re, 'bsource-re-0.txt' )
+    call write_data( this%buf, 'bsource-re-0.txt' )
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
     
@@ -377,6 +377,12 @@ subroutine get_solution_bperp_iter( this, mode )
       f1_im(1,i) = this%buf(4*i-2)
       f1_im(2,i) = this%buf(4*i)
     enddo
+  endif
+
+  if ( mode == 0 ) then
+    call write_data( this%buf, 'bsolution-re-0.txt' )
+    call write_data( f1_re, 'br_sol-re-0.txt', 1 )
+    call write_data( f1_re, 'bphi_sol-re-0.txt', 2 )
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

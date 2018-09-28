@@ -29,7 +29,7 @@ subroutine write_array( f, fname )
   ! i2 = ubound(f,2)
 
   write( num2str, * ) size(f)
-  write( fmtstr, * ) '(' // trim(num2str) // 'f16.8)'
+  write( fmtstr, * ) '(' // trim(num2str) // 'f20.8)'
   open( unit, file=trim(fname) )
 
   ! do i = i1, i2
@@ -56,7 +56,7 @@ subroutine write_data1d( f, fname, dim )
   ! i2 = ubound(f,2)
 
   write( num2str, * ) size(f,2)
-  write( fmtstr, * ) '(' // trim(num2str) // 'f16.8)'
+  write( fmtstr, * ) '(' // trim(num2str) // 'f20.8)'
   open( unit, file=trim(fname) )
 
   ! do i = i1, i2
@@ -83,7 +83,7 @@ subroutine write_data2d( f, fname, dim )
   i2 = ubound(f,2)
 
   write( num2str, * ) size(f,3)
-  write( fmtstr, * ) '(' // trim(num2str) // 'f16.4)'
+  write( fmtstr, * ) '(' // trim(num2str) // 'f20.8)'
   open( unit, file=trim(fname) )
 
   do i = i1, i2

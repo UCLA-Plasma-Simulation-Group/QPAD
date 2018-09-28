@@ -16,7 +16,7 @@ type( field ) :: q
 integer :: num_modes = 2, dim = 1, order = p_fs_2order, part_shape = p_ps_linear
 integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
 integer, dimension(2,2) :: gc_num
-real :: dr, dxi
+real :: dr, dxi, r
 
 type( ufield ), dimension(:), pointer :: uq_re => null(), uq_im => null()
 type( ufield ), dimension(:), pointer :: upsi_re => null(), upsi_im => null()
@@ -45,14 +45,16 @@ uq_im => q%get_rf_im()
 ! set the charge
 do mode = 0, num_modes
   
-  do i = 1, nd(1)/8
-    uq_re(mode)%f1(1,i) = 1.0
+  do i = 1, nd(1)
+    r = (i-0.5)*dr
+    uq_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
   if ( mode == 0 ) cycle
 
-  do i = 1, nd(1)/8
-    uq_im(mode)%f1(1,i) = 1.0
+  do i = 1, nd(1)
+    r = (i-0.5)*dr
+    uq_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
 enddo
@@ -75,6 +77,10 @@ p => upsi_re(1)%get_f1()
 call write_data( p, 'psi-re-1.txt', 1 )
 p => upsi_re(2)%get_f1()
 call write_data( p, 'psi-re-2.txt', 1 )
+p => upsi_im(1)%get_f1()
+call write_data( p, 'psi-im-1.txt', 1 )
+p => upsi_im(2)%get_f1()
+call write_data( p, 'psi-im-2.txt', 1 )
 
 
 

@@ -1,4 +1,4 @@
-program test_field_bz
+program test_field_bperp_iter
 
 use field_b_class
 use field_class
@@ -50,9 +50,9 @@ do mode = 0, num_modes
   
   do i = 1, nd(1)
     r = (i-0.5)*dr
-    ujay_re(mode)%f1(1,i) = exp( -((r-0.5)/0.05)**2 )
-    ujay_re(mode)%f1(2,i) = exp( -((r-0.5)/0.05)**2 )
-    ujay_re(mode)%f1(3,i) = exp( -((r-0.5)/0.05)**2 )
+    ujay_re(mode)%f1(1,i) = 0.0
+    ujay_re(mode)%f1(2,i) = 0.0
+    ujay_re(mode)%f1(3,i) = 0.0
     udjdxi_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
     udjdxi_re(mode)%f1(2,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
     udjdxi_re(mode)%f1(3,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
@@ -62,9 +62,9 @@ do mode = 0, num_modes
 
   do i = 1, nd(1)
     r = (i-0.5)*dr
-    ujay_im(mode)%f1(1,i) = exp( -((r-0.5)/0.05)**2 )
-    ujay_im(mode)%f1(2,i) = exp( -((r-0.5)/0.05)**2 )
-    ujay_im(mode)%f1(3,i) = exp( -((r-0.5)/0.05)**2 )
+    ujay_im(mode)%f1(1,i) = 0.0
+    ujay_im(mode)%f1(2,i) = 0.0
+    ujay_im(mode)%f1(3,i) = 0.0
     udjdxi_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
     udjdxi_im(mode)%f1(2,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
     udjdxi_im(mode)%f1(3,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
@@ -85,15 +85,20 @@ ub_re => b%get_rf_re()
 ub_im => b%get_rf_im()
 
 p => ub_re(0)%get_f1()
-call write_data( p, 'bperp_iter-re-0.txt', 3 )
+call write_data( p, 'br-re-0.txt', 1 )
+call write_data( p, 'bphi-re-0.txt', 2 )
 p => ub_re(1)%get_f1()
-call write_data( p, 'bperp_iter-re-1.txt', 3 )
+call write_data( p, 'br-re-1.txt', 1 )
+call write_data( p, 'bphi-re-1.txt', 2 )
 p => ub_re(2)%get_f1()
-call write_data( p, 'bperp_iter-re-2.txt', 3 )
+call write_data( p, 'br-re-2.txt', 1 )
+call write_data( p, 'bphi-re-2.txt', 2 )
 p => ub_im(1)%get_f1()
-call write_data( p, 'bperp_iter-im-1.txt', 3 )
+call write_data( p, 'br-im-1.txt', 1 )
+call write_data( p, 'bphi-im-1.txt', 2 )
 p => ub_im(2)%get_f1()
-call write_data( p, 'bperp_iter-im-2.txt', 3 )
+call write_data( p, 'br-im-2.txt', 1 )
+call write_data( p, 'bphi-im-2.txt', 2 )
 
 
 
@@ -106,4 +111,4 @@ call write_dbg( 'main', 'test_field_bperp_iter', 0, 'ends' )
 call end_errors()
 call MPI_FINALIZE( ierr )
 
-end program test_field_bz
+end program test_field_bperp_iter
