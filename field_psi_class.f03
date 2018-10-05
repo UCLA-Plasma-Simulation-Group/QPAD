@@ -39,12 +39,12 @@ end type field_psi
 
 contains
 
-subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
+subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  integer, intent(in) :: num_modes, order, part_shape
+  integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2) :: nd, nvp
 
@@ -86,7 +86,7 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, order, part_shape 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver(i)%new( ndp, noff, order, kind, i, dr, solver_type, tol )
+    call this%solver(i)%new( nd, ndp, noff, kind, i, dr, solver_type, tol )
   enddo 
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

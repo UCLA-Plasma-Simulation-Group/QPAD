@@ -50,17 +50,17 @@ end type field_b
 
 contains
 
-subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
+subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
-  integer, intent(in) :: num_modes, order, part_shape
+  integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, solver_type
+  integer :: dim, i
   integer, dimension(2) :: ndp, noff
   real :: tol
   character(len=20), save :: sname = "init_field_b"
@@ -69,7 +69,6 @@ subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
 
   ndp = nd / nvp
   noff = (/0,0/)
-  solver_type = p_hypre_pcg
   tol = 1.0d-6
 
   select case ( part_shape )
@@ -99,8 +98,8 @@ subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
   allocate( this%solver_bz( 0:num_modes ) )
   allocate( this%solver_bperp_iter( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver_bz(i)%new( ndp, noff, order, p_fk_bz, i, dr, solver_type, tol )
-    call this%solver_bperp_iter(i)%new( ndp, noff, order, p_fk_bperp_iter, i, dr, solver_type, tol )
+    call this%solver_bz(i)%new( nd, ndp, noff, p_fk_bz, i, dr, p_hypre_cycred, tol )
+    call this%solver_bperp_iter(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
   enddo 
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -261,14 +260,29 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     f3_im => this%rf_im(mode)%get_f1()
   endif
 
+  this%buf = 0.0
   if ( mode == 0 ) then
     
     do i = 2, nd1p-1
 
       ir = idr / (i-0.5)
+      ! ! source for Re(Br)
+      ! this%buf(i) = -f1_re(2,i) - f3_re(1,i)
+      ! ! source for Im(Bphi)
+      ! this%buf(i+nd1p) = 0.0
+      ! ! source for Im(Br)
+      ! this%buf(i+2*nd1p) = 0.0
+      ! ! source for Re(Bphi)
+      ! this%buf(i+3*nd1p) = f1_re(1,i) - idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+
+
+      ! Re(Br)
       this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
+      ! Im(Br)
       this%buf(4*i-2) = 0.0
-      this%buf(4*i-1) = f1_re(1,i) - idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+      ! Re(Bphi)
+      this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+      ! Im(Bphi)
       this%buf(4*i) = 0.0
 
     enddo
@@ -276,15 +290,15 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     ! calculate the derivatives at the boundary and axis
     this%buf(1) = -f1_re(2,1) - f3_re(1,1)
     this%buf(2) = 0.0
-    this%buf(3) = f1_re(1,1) - idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
+    this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
     this%buf(4) = 0.0
 
     this%buf(4*nd1p-3) = -f1_re(2,nd1p) - f3_re(1,nd1p)
     this%buf(4*nd1p-2) = 0.0
-    this%buf(4*nd1p-1) = f1_re(1,nd1p) - idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
+    this%buf(4*nd1p-1) = f1_re(1,nd1p) + idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
     this%buf(4*nd1p)   = 0.0
 
-    call write_data( this%buf, 'bsource-re-0.txt' )
+    ! call write_data( this%buf, 'bsource-re-0.txt' )
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
     
@@ -293,21 +307,21 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       ir = idr / (i-0.5)
       this%buf(4*i-3) = -f1_re(2,i) + mode * f2_im(3,i) * ir - f3_re(1,i)
       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i)
-      this%buf(4*i-1) = f1_re(1,i) - idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-      this%buf(4*i) = f1_im(1,i) - idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i)
-
+      this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+      this%buf(4*i)   = f1_im(1,i) + idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i)
+      
     enddo
 
     ! calculate the derivatives at the boundary and axis
     this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
     this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
-    this%buf(3) = f1_re(1,1) - idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
-    this%buf(4) = f1_im(1,1) - idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
+    this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
+    this%buf(4) = f1_im(1,1) + idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
 
     this%buf(4*nd1p-3) = -f1_re(2,nd1p) + mode * f2_im(3,nd1p) * ir - f3_re(1,nd1p)
     this%buf(4*nd1p-2) = -f1_im(2,nd1p) - mode * f2_re(3,nd1p) * ir - f3_im(1,nd1p)
-    this%buf(4*nd1p-1) = f1_re(1,nd1p) - idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
-    this%buf(4*nd1p)   = f1_im(1,nd1p) - idr * ( f2_im(3,nd1p)-f2_im(3,nd1p-1) ) - f3_im(2,nd1p)
+    this%buf(4*nd1p-1) = f1_re(1,nd1p) + idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
+    this%buf(4*nd1p)   = f1_im(1,nd1p) + idr * ( f2_im(3,nd1p)-f2_im(3,nd1p-1) ) - f3_im(2,nd1p)
 
   else
 
@@ -377,12 +391,6 @@ subroutine get_solution_bperp_iter( this, mode )
       f1_im(1,i) = this%buf(4*i-2)
       f1_im(2,i) = this%buf(4*i)
     enddo
-  endif
-
-  if ( mode == 0 ) then
-    call write_data( this%buf, 'bsolution-re-0.txt' )
-    call write_data( f1_re, 'br_sol-re-0.txt', 1 )
-    call write_data( f1_re, 'bphi_sol-re-0.txt', 2 )
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

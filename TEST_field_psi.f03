@@ -36,7 +36,7 @@ gc_num(:,1) = (/0,0/)
 gc_num(:,2) = (/0,0/)
 
 call q%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
-call psi%new( num_modes, dr, dxi, nd, nvp, order, part_shape )
+call psi%new( num_modes, dr, dxi, nd, nvp, part_shape )
 
 
 uq_re => q%get_rf_re()

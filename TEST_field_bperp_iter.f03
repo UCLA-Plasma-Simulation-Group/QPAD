@@ -13,16 +13,20 @@ implicit none
 type( field_b ) :: b
 type( field ) :: jay, djdxi
 
-integer :: num_modes = 2, dim = 3, order = p_fs_2order, part_shape = p_ps_linear
+integer :: num_modes = 2, dim = 3, part_shape = p_ps_linear
 integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
 integer, dimension(2,2) :: gc_num
 real :: dr, dxi, r
 
 type( ufield ), dimension(:), pointer :: ujay_re => null(), ujay_im => null()
 type( ufield ), dimension(:), pointer :: udjdxi_re => null(), udjdxi_im => null()
-type( ufield ), dimension(:), pointer :: ub_re => null(), ub_im => null()
+type( ufield ), dimension(:), pointer :: ub_re_new => null(), ub_im_new => null()
+type( ufield ), dimension(:), pointer :: ub_re_old => null(), ub_im_old => null()
+type( ufield ) :: ub_res
 real, dimension(:,:), pointer :: p
-integer :: ierr, i, mode
+integer :: ierr, i, mode, iter
+integer :: num_iter = 10
+real, dimension(:,:), pointer :: res => null()
 
 call MPI_INIT( ierr )
 call init_errors( 2, 3 )
@@ -37,7 +41,7 @@ gc_num(:,2) = (/0,0/)
 
 call jay%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
 call djdxi%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
-call b%new( num_modes, dr, dxi, nd, nvp, order, part_shape )
+call b%new( num_modes, dr, dxi, nd, nvp, part_shape )
 
 
 ujay_re => jay%get_rf_re()
@@ -79,32 +83,57 @@ enddo
 
 ! call HYPRE_StructVectorGetBoxValues( psi%solver(0)%b )
 
-call b%solve( djdxi, jay )
+allocate( res(num_iter, (2*num_modes+1)*2) )
+allocate( ub_re_old(0:num_modes), ub_im_old(num_modes) )
+call ub_res%new( dim, nd, nvp, gc_num, has_2d=.true. )
 
-ub_re => b%get_rf_re()
-ub_im => b%get_rf_im()
+do i = 0, num_modes
+  call ub_re_old(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+  if (i==0) cycle
+  call ub_im_old(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+enddo
 
-p => ub_re(0)%get_f1()
-call write_data( p, 'br-re-0.txt', 1 )
-call write_data( p, 'bphi-re-0.txt', 2 )
-p => ub_re(1)%get_f1()
-call write_data( p, 'br-re-1.txt', 1 )
-call write_data( p, 'bphi-re-1.txt', 2 )
-p => ub_re(2)%get_f1()
-call write_data( p, 'br-re-2.txt', 1 )
-call write_data( p, 'bphi-re-2.txt', 2 )
-p => ub_im(1)%get_f1()
-call write_data( p, 'br-im-1.txt', 1 )
-call write_data( p, 'bphi-im-1.txt', 2 )
-p => ub_im(2)%get_f1()
-call write_data( p, 'br-im-2.txt', 1 )
-call write_data( p, 'bphi-im-2.txt', 2 )
+do iter = 1, num_iter
 
+  print *, 'iter = ', iter
+
+  call b%solve( djdxi, jay )
+  ub_re_new => b%get_rf_re()
+  ub_im_new => b%get_rf_im()
+
+  do i = 0, num_modes
+    ub_res = ub_re_new(i) - ub_re_old(i)
+    ub_re_old(i) = ub_re_new(i)
+    p => ub_res%get_f1()
+    if (i==0) then
+      res(iter,1) = maxval(abs(p(1,:)))
+      res(iter,2) = maxval(abs(p(2,:)))
+      cycle
+    endif
+    res(iter,4*i-1) = maxval(abs(p(1,:)))
+    res(iter,4*i)   = maxval(abs(p(2,:)))
+
+    ub_res = ub_im_new(i) - ub_im_old(i)
+    ub_im_old(i) = ub_im_new(i)
+    p => ub_res%get_f1()
+    res(iter,4*i+1) = maxval(abs(p(1,:)))
+    res(iter,4*i+2) = maxval(abs(p(2,:)))
+  enddo
+
+enddo
+
+write(*,*) "Residue of each iteration"
+write(*, '(10A16)') "Re(Br0)","Re(Bp0)","Re(Br1)","Re(Bp1)",&
+"Im(Br1)","Im(Bp1)","Re(Br2)","Re(Bp2)","Im(Br2)","Im(Bp2)"
+do iter = 1, num_iter
+  write(*,'(10E16.4)') res(iter,:)
+enddo
 
 
 call jay%del()
 call djdxi%del()
 call b%del()
+deallocate( ub_re_old, ub_im_old )
 
 call write_dbg( 'main', 'test_field_bperp_iter', 0, 'ends' )
 
