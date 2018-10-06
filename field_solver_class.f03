@@ -436,7 +436,6 @@ subroutine set_struct_matrix( this, comm, nd, dr )
   m2 = m*m
   nr = this%iupper - this%ilower + 1
   local_vol = nr * this%num_stencil
-  if ( this%kind == p_fk_bperp .or. this%kind == p_fk_bperp_iter ) local_vol = local_vol*4
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )

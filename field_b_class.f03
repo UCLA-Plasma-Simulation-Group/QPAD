@@ -107,7 +107,7 @@ subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, part_shape, entity )
   case ( p_entity_beam )
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
-      call this%solver_bperp(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
+      call this%solver_bperp(i)%new( nd, ndp, noff, p_fk_bperp, i, dr, p_hypre_amg, tol )
     enddo
   case default
     call write_err( 'Invalid field entity type.' )
