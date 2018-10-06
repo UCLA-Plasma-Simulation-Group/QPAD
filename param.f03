@@ -34,6 +34,11 @@ integer, parameter :: p_fk_psi = 0, p_fk_ez = 1, p_fk_bz = 2, &
                       p_fk_bperp_iter = 6
 
 ! ================================================================
+! entity of electromagnetic field
+! ================================================================
+integer, parameter :: p_entity_none = 0, p_entity_beam = 1, p_entity_plasma = 2
+
+! ================================================================
 ! HYPRE parameters
 ! ================================================================
 integer, parameter :: HYPRE_TYPE = 8, HYPRE_PARCSR = 5555

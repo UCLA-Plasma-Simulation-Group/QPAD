@@ -1,6 +1,7 @@
 module field_b_class
 
 use field_class
+use field_src_class
 use field_solver_class
 use ufield_class
 use param
@@ -32,30 +33,30 @@ type, extends( field ) :: field_b
   generic :: new => init_field_b
   procedure :: del => end_field_b
   ! generic :: read_input => read_input_field_b
-  generic :: solve => solve_field_bz, solve_field_bperp_iter
+  generic :: solve => solve_field_bz, solve_field_bperp, solve_field_bperp_iter
 
   procedure, private :: init_field_b
   procedure, private :: end_field_b
   procedure, private :: set_source_bz
-  ! procedure, private :: set_source_bperp
+  procedure, private :: set_source_bperp
   procedure, private :: set_source_bperp_iter
   procedure, private :: get_solution_bz
-  ! procedure, private :: get_solution_bperp
+  procedure, private :: get_solution_bperp
   procedure, private :: get_solution_bperp_iter
   procedure, private :: solve_field_bz
-  ! procedure, private :: solve_field_bperp
+  procedure, private :: solve_field_bperp
   procedure, private :: solve_field_bperp_iter
 
 end type field_b
 
 contains
 
-subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, part_shape )
+subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, part_shape, entity )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
-  integer, intent(in) :: num_modes, part_shape
+  integer, intent(in) :: num_modes, part_shape, entity
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2) :: nd, nvp
 
@@ -92,15 +93,25 @@ subroutine init_field_b( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
 
   ! initialize solver
-  allocate( this%solver_bz( 0:num_modes ) )
-  allocate( this%solver_bperp_iter( 0:num_modes ) )
-  do i = 0, num_modes
-    call this%solver_bz(i)%new( nd, ndp, noff, p_fk_bz, i, dr, p_hypre_cycred, tol )
-    call this%solver_bperp_iter(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
-  enddo 
+  select case ( entity )
+  case ( p_entity_plasma )
+    allocate( this%solver_bz( 0:num_modes ) )
+    allocate( this%solver_bperp_iter( 0:num_modes ) )
+    do i = 0, num_modes
+      call this%solver_bz(i)%new( nd, ndp, noff, p_fk_bz, i, dr, p_hypre_cycred, tol )
+      call this%solver_bperp_iter(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
+    enddo 
+  case ( p_entity_beam )
+    allocate( this%solver_bperp( 0:num_modes ) )
+    do i = 0, num_modes
+      call this%solver_bperp(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
+    enddo
+  case default
+    call write_err( 'Invalid field entity type.' )
+  end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -117,12 +128,20 @@ subroutine end_field_b( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
-    call this%solver_bz(i)%del()
-    call this%solver_bperp_iter(i)%del()
-  enddo
-  deallocate( this%solver_bz )
-  deallocate( this%solver_bperp_iter )
+  select case ( this%entity )
+  case ( p_entity_plasma )
+    do i = 0, this%num_modes
+      call this%solver_bz(i)%del()
+      call this%solver_bperp_iter(i)%del()
+    enddo
+    deallocate( this%solver_bz )
+    deallocate( this%solver_bperp_iter )
+  case ( p_entity_beam )
+    do i = 0, this%num_modes
+      call this%solver_bperp(i)%del()
+    enddo
+    deallocate( this%solver_bperp )
+  end select
 
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
@@ -225,6 +244,100 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
 end subroutine set_source_bz
 
+subroutine set_source_bperp( this, mode, q_re, q_im )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( ufield ), intent(in) :: q_re
+  class( ufield ), intent(in), optional :: q_im
+  integer, intent(in) :: mode
+
+  integer :: i, nd1p
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real :: idrh, idr, a1, a2, a3, b, ir
+  character(len=20), save :: sname = 'set_source_bperp'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nd1p = q_re%get_ndp(1)
+  idr = 1.0 / this%dr
+  idrh = 0.5 * idr
+  
+  f1_re => q_re%get_f1()
+  if ( .not. associated( this%buf ) ) then
+    allocate( this%buf( nd1p*4 ) )
+  endif
+
+  if ( present(q_im) ) then
+    f1_im => q_im%get_f1()
+  endif
+
+  this%buf = 0.0
+  if ( mode == 0 ) then
+    
+    do i = 2, nd1p-1
+
+      ir = idr / (i-0.5)
+      ! Re(Br)
+      this%buf(4*i-3) = 0.0
+      ! Im(Br)
+      this%buf(4*i-2) = 0.0
+      ! Re(Bphi)
+      this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
+      ! Im(Bphi)
+      this%buf(4*i) = 0.0
+
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    this%buf(1) = 0.0
+    this%buf(2) = 0.0
+    this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+    this%buf(4) = 0.0
+
+    this%buf(4*nd1p-3) = 0.0
+    this%buf(4*nd1p-2) = 0.0
+    this%buf(4*nd1p-1) = idr * ( f1_re(1,nd1p)-f1_re(1,nd1p-1) )
+    this%buf(4*nd1p)   = 0.0
+
+    ! call write_data( this%buf, 'bsource-re-0.txt' )
+
+  elseif ( mode > 0 .and. present( q_im ) ) then
+    
+    do i = 2, nd1p-1
+
+      ir = idr / (i-0.5)
+      this%buf(4*i-3) =  mode * f1_im(1,i) * ir
+      this%buf(4*i-2) = -mode * f1_re(1,i) * ir
+      this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
+      this%buf(4*i)   = idrh * ( f1_im(1,i+1)-f1_im(1,i-1) )
+      
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    ir = 2.0 * idr
+    this%buf(1) =  mode * f1_im(1,1) * ir
+    this%buf(2) = -mode * f1_re(1,1) * ir
+    this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+    this%buf(4) = idr * ( f1_im(1,2)-f1_im(1,1) )
+
+    ir = idr / (nd1p-0.5)
+    this%buf(4*nd1p-3) =  mode * f1_im(1,nd1p) * ir
+    this%buf(4*nd1p-2) = -mode * f1_re(1,nd1p) * ir
+    this%buf(4*nd1p-1) = idr * ( f1_re(1,nd1p)-f1_re(1,nd1p-1) )
+    this%buf(4*nd1p)   = idr * ( f1_im(1,nd1p)-f1_im(1,nd1p-1) )
+
+  else
+
+    call write_err( 'Invalid input arguments!' )
+
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine set_source_bperp
+
 subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
   implicit none
@@ -266,16 +379,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     do i = 2, nd1p-1
 
       ir = idr / (i-0.5)
-      ! ! source for Re(Br)
-      ! this%buf(i) = -f1_re(2,i) - f3_re(1,i)
-      ! ! source for Im(Bphi)
-      ! this%buf(i+nd1p) = 0.0
-      ! ! source for Im(Br)
-      ! this%buf(i+2*nd1p) = 0.0
-      ! ! source for Re(Bphi)
-      ! this%buf(i+3*nd1p) = f1_re(1,i) - idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-
-
       ! Re(Br)
       this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
       ! Im(Br)
@@ -313,11 +416,13 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     enddo
 
     ! calculate the derivatives at the boundary and axis
+    ir = 2.0 * idr
     this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
     this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
     this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
     this%buf(4) = f1_im(1,1) + idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
 
+    ir = idr / (nd1p-0.5)
     this%buf(4*nd1p-3) = -f1_re(2,nd1p) + mode * f2_im(3,nd1p) * ir - f3_re(1,nd1p)
     this%buf(4*nd1p-2) = -f1_im(2,nd1p) - mode * f2_re(3,nd1p) * ir - f3_im(1,nd1p)
     this%buf(4*nd1p-1) = f1_re(1,nd1p) + idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
@@ -364,7 +469,41 @@ subroutine get_solution_bz( this, mode )
 
 end subroutine get_solution_bz
 
+subroutine get_solution_bperp( this, mode )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  integer, intent(in) :: mode
+
+  integer :: i, nd1p
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution_bperp'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nd1p = this%rf_re(mode)%get_ndp(1)
+
+  f1_re => this%rf_re(mode)%get_f1()
+  do i = 1, nd1p
+    f1_re(1,i) = this%buf(4*i-3)
+    f1_re(2,i) = this%buf(4*i-1)
+  enddo
+
+  if ( mode > 0 ) then
+    f1_im => this%rf_im(mode)%get_f1()
+    do i = 1, nd1p
+      f1_im(1,i) = this%buf(4*i-2)
+      f1_im(2,i) = this%buf(4*i)
+    enddo
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine get_solution_bperp
+
 subroutine get_solution_bperp_iter( this, mode )
+! this is totally the same as get_solution_bperp()
 
   implicit none
 
@@ -402,7 +541,7 @@ subroutine solve_field_bz( this, jay )
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( field ), intent(in) :: jay
+  class( field_jay ), intent(in) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   integer :: i
@@ -433,12 +572,48 @@ subroutine solve_field_bz( this, jay )
 
 end subroutine solve_field_bz
 
+subroutine solve_field_bperp( this, rho )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( field_rho ), intent(in) :: rho
+
+  type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
+  integer :: i
+  character(len=20), save :: sname = 'solve_field_bperp'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  rho_re => rho%get_rf_re()
+  rho_im => rho%get_rf_im()
+
+  do i = 0, this%num_modes
+
+    if ( i == 0 ) then
+      call this%set_source_bperp( i, rho_re(i) )
+      call this%solver_bperp(i)%solve( this%buf )
+      call this%get_solution_bperp(i)
+      cycle
+    endif
+
+    call this%set_source_bperp( i, rho_re(i), rho_im(i) )
+    call this%solver_bperp(i)%solve( this%buf )
+    call this%get_solution_bperp(i)
+
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine solve_field_bperp
+
 subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( field ), intent(in) :: djdxi, jay
+  class( field_djdxi ), intent(in) :: djdxi
+  class( field_jay ), intent(in) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   type( ufield ), dimension(:), pointer :: djdxi_re => null(), djdxi_im => null()

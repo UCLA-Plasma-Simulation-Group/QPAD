@@ -2,6 +2,7 @@ program test_field_bperp_iter
 
 use field_b_class
 use field_class
+use field_src_class
 use system
 use param
 use mpi
@@ -11,7 +12,8 @@ use debug_tool
 implicit none
 
 type( field_b ) :: b
-type( field ) :: jay, djdxi
+type( field_jay ) :: jay
+type( field_djdxi ) :: djdxi
 
 integer :: num_modes = 2, dim = 3, part_shape = p_ps_linear
 integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
@@ -39,9 +41,9 @@ dxi = 1.0
 gc_num(:,1) = (/0,0/)
 gc_num(:,2) = (/0,0/)
 
-call jay%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
-call djdxi%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
-call b%new( num_modes, dr, dxi, nd, nvp, part_shape )
+call jay%new( num_modes, dr, dxi, nd, nvp, part_shape )
+call djdxi%new( num_modes, dr, dxi, nd, nvp, part_shape )
+call b%new( num_modes, dr, dxi, nd, nvp, part_shape, p_entity_plasma )
 
 
 ujay_re => jay%get_rf_re()

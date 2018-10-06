@@ -782,9 +782,10 @@ subroutine set_ij_matrix( this, comm, nd, ndp, noff, dr )
     ! set Re(Br)
     cols = (/i-4, i, i+3, i+4/)
     HYPRE_BUF(1) = k_minus / k0 * idr2
-    HYPRE_BUF(2) = -1.0 - idr2 * (2.0 + (m2+1.0) / k0**2)
+    HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(3) = 2.0*m / k0**2 * idr2
     HYPRE_BUF(4) = k_plus  / k0 * idr2
+    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols(2), HYPRE_BUF(2), ierr )
@@ -798,9 +799,10 @@ subroutine set_ij_matrix( this, comm, nd, ndp, noff, dr )
     cols = (/i-3, i+1, i+2, i+5/)
 
     HYPRE_BUF(1) = k_minus / k0 * idr2
-    HYPRE_BUF(2) = -1.0 - idr2 * (2.0 + (m2+1.0) / k0**2)
+    HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(3) = -2.0*m / k0**2 * idr2
     HYPRE_BUF(4) = k_plus  / k0 * idr2
+    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols(2), HYPRE_BUF(2), ierr )
@@ -815,8 +817,9 @@ subroutine set_ij_matrix( this, comm, nd, ndp, noff, dr )
 
     HYPRE_BUF(1) = k_minus / k0 * idr2
     HYPRE_BUF(2) = -2.0*m / k0**2 * idr2
-    HYPRE_BUF(3) = -1.0 - idr2 * (2.0 + (m2+1.0) / k0**2)
+    HYPRE_BUF(3) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(4) = k_plus  / k0 * idr2
+    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols(2), HYPRE_BUF(2), ierr )
@@ -831,8 +834,9 @@ subroutine set_ij_matrix( this, comm, nd, ndp, noff, dr )
 
     HYPRE_BUF(1) = k_minus / k0 * idr2
     HYPRE_BUF(2) = 2.0*m / k0**2 * idr2
-    HYPRE_BUF(3) = -1.0 - idr2 * (2.0 + (m2+1.0) / k0**2)
+    HYPRE_BUF(3) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(4) = k_plus  / k0 * idr2
+    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols(2), HYPRE_BUF(2), ierr )
@@ -847,9 +851,9 @@ subroutine set_ij_matrix( this, comm, nd, ndp, noff, dr )
   call HYPRE_IJMatrixAssemble( this%A, ierr )
   call HYPRE_IJMatrixGetObject( this%A, this%par_A, ierr )
 
-  if ( m == 1 ) then
-    call HYPRE_IJMatrixPrint( this%A, 'A.out', ierr )
-  endif
+  ! if ( m == 1 ) then
+  !   call HYPRE_IJMatrixPrint( this%A, 'A.out', ierr )
+  ! endif
 
   deallocate( cols )
 

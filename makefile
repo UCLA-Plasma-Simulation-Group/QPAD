@@ -11,7 +11,8 @@ HYPRE_LIB = -L/usr/local/hypre/lib -lHYPRE
 
 # Objects list
 OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
-			field_psi_class.o field_b_class.o system.o dtimer.o debug_tool.o
+			field_psi_class.o field_b_class.o field_src_class.o \
+			system.o dtimer.o debug_tool.o
 OBJS_MAIN = main.o  
 
 # Linkage rule
@@ -26,6 +27,9 @@ TEST_field_psi :: ${OBJS_MODULE} TEST_field_psi.o
 
 TEST_field_bz :: ${OBJS_MODULE} TEST_field_bz.o
 	${LINKER} ${OBJS_MODULE} TEST_field_bz.o ${HYPRE_LIB} -o TEST_field_bz.e
+
+TEST_field_bperp :: ${OBJS_MODULE} TEST_field_bperp.o
+	${LINKER} ${OBJS_MODULE} TEST_field_bperp.o ${HYPRE_LIB} -o TEST_field_bperp.e
 
 TEST_field_bperp_iter :: ${OBJS_MODULE} TEST_field_bperp_iter.o
 	${LINKER} ${OBJS_MODULE} TEST_field_bperp_iter.o ${HYPRE_LIB} -o TEST_field_bperp_iter.e
@@ -55,24 +59,30 @@ ufield_class.o : ufield_class.f03 param.o system.o
 field_class.o : field_class.f03 param.o ufield_class.o system.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
 
+field_src_class.o : field_src_class.f03 field_class.o param.o system.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_src_class.f03 -o field_src_class.o
+
 field_solver_class.o : field_solver_class.f03 param.o system.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
 
-field_psi_class.o : ufield_class.o field_psi_class.f03 param.o field_class.o field_solver_class.o system.o
+field_psi_class.o : ufield_class.o field_psi_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_psi_class.f03 -o field_psi_class.o
 
-field_b_class.o : ufield_class.o field_b_class.f03 param.o field_class.o field_solver_class.o system.o debug_tool.o
+field_b_class.o : ufield_class.o field_b_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_b_class.f03 -o field_b_class.o
 
 # Unit test compilation rules
 TEST_ufield.o : TEST_ufield.f03 ufield_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
 
-TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o system.o param.o ufield_class.o debug_tool.o
+TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o field_src_class.o system.o param.o ufield_class.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o
 
-TEST_field_bz.o : TEST_field_bz.f03 field_b_class.o field_class.o system.o param.o ufield_class.o debug_tool.o
+TEST_field_bz.o : TEST_field_bz.f03 field_b_class.o field_class.o field_src_class.o system.o param.o ufield_class.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bz.f03 -o TEST_field_bz.o
 
-TEST_field_bperp_iter.o : TEST_field_bperp_iter.f03 field_b_class.o field_class.o system.o param.o ufield_class.o debug_tool.o
+TEST_field_bperp.o : TEST_field_bperp.f03 field_b_class.o field_class.o field_src_class.o system.o param.o ufield_class.o debug_tool.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp.f03 -o TEST_field_bperp.o
+
+TEST_field_bperp_iter.o : TEST_field_bperp_iter.f03 field_b_class.o field_class.o field_src_class.o system.o param.o ufield_class.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp_iter.f03 -o TEST_field_bperp_iter.o

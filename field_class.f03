@@ -24,7 +24,7 @@ type :: field
 
   real :: dr, dxi
   integer :: num_modes
-  ! integer :: solver_order ! order of finite difference solver
+  integer :: entity
 
   contains
 
@@ -50,7 +50,7 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num )
+subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
 
   implicit none
 
@@ -59,6 +59,7 @@ subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num )
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2) :: nd, nvp
   integer, intent(in), dimension(2,2) :: gc_num
+  integer, intent(in), optional :: entity
 
   integer :: i
   character(len=20), save :: sname = "init_field"
@@ -68,6 +69,12 @@ subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num )
   this%num_modes = num_modes
   this%dr = dr
   this%dxi = dxi
+
+  if ( present(entity) ) then
+    this%entity = entity
+  else
+    this%entity = p_entity_none
+  endif
 
   allocate( this%rf_re(0:num_modes) )
   allocate( this%rf_im(num_modes) )

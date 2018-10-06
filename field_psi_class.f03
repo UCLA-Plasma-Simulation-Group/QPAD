@@ -2,6 +2,7 @@ module field_psi_class
 
 use field_class
 use field_solver_class
+use field_src_class
 use ufield_class
 use param
 use system
@@ -49,7 +50,7 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
   integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, solver_type, kind
+  integer :: dim, i, solver_type, kind, entity
   integer, dimension(2) :: ndp, noff
   real :: tol
   character(len=20), save :: sname = "init_field_psi"
@@ -60,6 +61,7 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
   noff = (/0,0/)
   solver_type = p_hypre_cycred
   kind = p_fk_psi
+  entity = p_entity_plasma
   tol = 1.0d-6
 
   select case ( part_shape )
@@ -81,13 +83,13 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
     call this%solver(i)%new( nd, ndp, noff, kind, i, dr, solver_type, tol )
-  enddo 
+  enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -207,7 +209,7 @@ subroutine solve_field_psi( this, q )
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  class( field ), intent(in) :: q
+  class( field_rho ), intent(in) :: q
 
   type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
   integer :: i
