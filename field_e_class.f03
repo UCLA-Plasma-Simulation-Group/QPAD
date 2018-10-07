@@ -1,6 +1,9 @@
 module field_e_class
 
 use field_class
+use field_b_class
+use field_psi_class
+use field_src_class
 use field_solver_class
 use ufield_class
 use param
@@ -19,38 +22,39 @@ type, extends( field ) :: field_e
 
   ! private
 
-  class( field_solver ), dimension(:), pointer :: solver => null()
-  real, dimension(:), pointer :: buf => null() ! buffer for source term
+  class( field_solver ), dimension(:), pointer :: solver_ez => null()
+  real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
   contains
 
   generic :: new => init_field_e
   procedure :: del => end_field_e
   ! generic :: read_input => read_input_field_e
-  generic :: solve => solve_field_ez, solve_field_eperp
+  generic :: solve => solve_field_ez, solve_field_eperp, solve_field_eperp_beam
 
   procedure, private :: init_field_e
   procedure, private :: end_field_e
-  procedure, private :: sort_src
-  procedure, private :: sort_sol
+  procedure, private :: set_source_ez
+  procedure, private :: get_solution_ez
   procedure, private :: solve_field_ez
   procedure, private :: solve_field_eperp
+  procedure, private :: solve_field_eperp_beam
 
 end type field_e
 
 contains
 
-subroutine init_field_e( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
+subroutine init_field_e( this, num_modes, dr, dxi, nd, nvp, part_shape, entity )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  integer, intent(in) :: num_modes, order, part_shape
+  integer, intent(in) :: num_modes, part_shape, entity
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, solver_type, kind
+  integer :: dim, i
   integer, dimension(2) :: ndp, noff
   real :: tol
   character(len=20), save :: sname = "init_field_e"
@@ -59,8 +63,6 @@ subroutine init_field_e( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
 
   ndp = nd / nvp
   noff = (/0,0/)
-  solver_type = p_hypre_cycred
-  kind = p_fk_e
   tol = 1.0d-6
 
   select case ( part_shape )
@@ -84,13 +86,20 @@ subroutine init_field_e( this, num_modes, dr, dxi, nd, nvp, order, part_shape )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
 
   ! initialize solver
-  allocate( this%solver( 0:num_modes ) )
-  do i = 0, num_modes
-    call this%solver(i)%new( ndp, noff, order, kind, i, dr, solver_type, tol )
-  enddo 
+  select case ( entity )
+  case ( p_entity_plasma )
+    allocate( this%solver_ez( 0:num_modes ) )
+    do i = 0, num_modes
+      call this%solver_ez(i)%new( nd, ndp, noff, p_fk_ez, i, dr, p_hypre_cycred, tol )
+    enddo 
+  case ( p_entity_beam )
+    ! do nothing
+  case default
+    call write_err( 'Invalid field entity type.' )
+  end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -107,12 +116,15 @@ subroutine end_field_e( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
-    call this%solver(i)%del()
-  enddo
-  deallocate( this%solver )
+  if ( this%entity == p_entity_plasma ) then
+    do i = 0, this%num_modes
+      call this%solver_ez(i)%del()
+    enddo
+    deallocate( this%solver_ez )
+  endif
 
-  if ( associated( this%buf ) ) deallocate( this%buf )
+  if ( associated( this%buf_re ) ) deallocate( this%buf_re )
+  if ( associated( this%buf_im ) ) deallocate( this%buf_im )
 
   call this%field%del()
 
@@ -120,77 +132,134 @@ subroutine end_field_e( this )
 
 end subroutine end_field_e
 
-subroutine sort_src( this, jay )
+subroutine set_source_ez( this, mode, jay_re, jay_im )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  class( ufield ), intent(in) :: jay
+  integer, intent(in) :: mode
+  class( ufield ), intent(in) :: jay_re
+  class( ufield ), intent(in), optional :: jay_im
 
   integer :: i, nd1p
-  real, dimension(:,:), pointer :: f1 => null()
-  character(len=20), save :: sname = 'sort_src'
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real :: idrh, idr, a1, a2, a3, b
+  character(len=20), save :: sname = 'set_source_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = jay%get_ndp(1)
-  if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nd1p ) )
+  nd1p = jay_re%get_ndp(1)
+  idr = 1.0 / this%dr
+  idrh = 0.5 * idr
+
+  f1_re => jay_re%get_f1()
+  if ( .not. associated( this%buf_re ) ) then
+    allocate( this%buf_re( nd1p ) )
+  elseif ( size(this%buf_re) < nd1p ) then
+    deallocate( this%buf_re )
+    allocate( this%buf_re( nd1p ) )
   endif
 
-  f1 => q%get_f1()
-  do i = 1, nd1p
-    this%buf(i) = f1(3,i)
-  enddo
+  if ( present(jay_im) ) then
+    f1_im => jay_im%get_f1()
+    if ( .not. associated( this%buf_im ) ) then
+      allocate( this%buf_im( nd1p ) )
+    elseif ( size(this%buf_im) < nd1p ) then
+      deallocate( this%buf_im )
+      allocate( this%buf_im( nd1p ) )
+    endif
+  endif
+
+  if ( mode == 0 ) then
+    
+    do i = 2, nd1p-1
+
+      a1 = -idrh * (i-1.0) / (i-0.5)
+      a2 =  idrh / (i-0.5)
+      a3 =  idrh * i / (i-0.5)
+
+      this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1)
+
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    this%buf_re(1) = idr * ( f1_re(1,1) + f1_re(1,2) )
+    a2 = idr * (nd1p+0.5) / (nd1p-0.5)
+    this%buf_re(nd1p) = -idr * f1_re(1,nd1p-1) + a2 * f1_re(1,nd1p)
+
+  elseif ( mode > 0 .and. present( jay_im ) ) then
+    
+    do i = 2, nd1p-1
+
+      a1 = -idrh * (i-1.0) / (i-0.5)
+      a2 = idrh / (i-0.5)
+      a3 = idrh * i / (i-0.5)
+      b  = idr * real(mode) / (i-0.5)
+
+      this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1) - &
+                        b * f1_im(2,i)
+      this%buf_im(i) = a1 * f1_im(1,i-1) + a2 * f1_im(1,i) + a3 * f1_im(1,i+1) + &
+                        b * f1_re(2,i)
+
+    enddo
+
+    ! calculate the derivatives at the boundary and axis????????????????????????????????????
+    this%buf_re(1) = idr * ( f1_re(2,1) + f1_re(2,2) - 2.0 * real(mode) * f1_im(1,1) )
+    this%buf_im(1) = idr * ( f1_im(2,1) + f1_im(2,2) + 2.0 * real(mode) * f1_re(1,1) )
+    a2 = idr * (nd1p+0.5) / (nd1p-0.5)
+    b  = idr * real(mode) / (nd1p-0.5)
+    this%buf_re(nd1p) = -idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p) - b * f1_im(1,nd1p)
+    this%buf_im(nd1p) = -idr * f1_im(2,nd1p-1) + a2 * f1_im(2,nd1p) + b * f1_re(1,nd1p)
+
+  else
+
+    call write_err( 'Invalid input arguments!' )
+
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine sort_src
+end subroutine set_source_ez
 
-subroutine sort_sol( this, mode, part )
+subroutine get_solution_ez( this, mode )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  integer, intent(in) :: mode, part
+  integer, intent(in) :: mode
 
   integer :: i, nd1p
-  real, dimension(:,:), pointer :: f1 => null()
-  character(len=20), save :: sname = 'sort_sol'
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
-  if ( part == p_real ) then
+  do i = 1, nd1p
+    f1_re(3,i) = this%buf_re(i)
+  enddo
 
-    f1 => this%rf_re(mode)%get_f1()
+  if ( mode > 0 ) then
+    f1_im => this%rf_im(mode)%get_f1()
     do i = 1, nd1p
-      f1(3,i) = this%buf(i)
+      f1_im(3,i) = this%buf_im(i)
     enddo
-
-  else
-
-    f1 => this%rf_im(mode)%get_f1()
-    do i = 1, nd1p
-      f1(3,i) = this%buf(i)
-    enddo
-
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine sort_sol
+end subroutine get_solution_ez
 
 subroutine solve_field_ez( this, jay )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  class( field ), intent(in) :: jay
+  class( field_jay ), intent(in) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   integer :: i
-  character(len=20), save :: sname = 'solve_field_e'
+  character(len=20), save :: sname = 'solve_field_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -199,15 +268,17 @@ subroutine solve_field_ez( this, jay )
 
   do i = 0, this%num_modes
 
-    call this%sort_src( jay_re(i) )
-    call this%solver(i)%solve( this%buf )
-    call this%sort_sol( i, part=p_real )
+    if ( i == 0 ) then
+      call this%set_source_ez( i, jay_re(i) )
+      call this%solver_ez(i)%solve( this%buf_re )
+      call this%get_solution_ez(i)
+      cycle
+    endif
 
-    if ( i == 0 ) cycle
-
-    call this%sort_src( jay_im(i) )
-    call this%solver(i)%solve( this%buf )
-    call this%sort_sol( i, part=p_imag )
+    call this%set_source_ez( i, jay_re(i), jay_im(i) )
+    call this%solver_ez(i)%solve( this%buf_re )
+    call this%solver_ez(i)%solve( this%buf_im )
+    call this%get_solution_ez(i)
 
   enddo
 
@@ -215,16 +286,109 @@ subroutine solve_field_ez( this, jay )
 
 end subroutine solve_field_ez
 
-subroutine solve_field_eperp( this, psi, b )
+subroutine solve_field_eperp( this, b, psi )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  class( field_psi ), intent(in) :: psi
   class( field_b ), intent(in) :: b
+  class( field_psi ), intent(in) :: psi
 
+  type( ufield ), dimension(:), pointer :: b_re => null(), b_im => null()
+  type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
+  real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
+  real, dimension(:,:), pointer :: upsi_re => null(), upsi_im => null()
+  real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
+  integer :: mode, i, nd1p
+  real :: idr, idrh, ir
+  character(len=20), save :: sname = 'solve_field_eperp'
 
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  idr = 1.0 / this%dr
+  idrh = idr * 0.5
+  nd1p = this%rf_re(0)%get_ndp(1)
+
+  b_re => b%get_rf_re()
+  b_im => b%get_rf_im()
+  psi_re => psi%get_rf_re()
+  psi_im => psi%get_rf_im()
+
+  do mode = 0, this%num_modes
+
+    ub_re => b_re(mode)%get_f1()
+    upsi_re => psi_re(mode)%get_f1()
+    ue_re => this%rf_re(mode)%get_f1()
+    if ( mode == 0 ) then
+      do i = 2, nd1p-1
+        ue_re(1,i) = ub_re(2,i) - idrh * ( upsi_re(1,i+1) - upsi_re(1,i-1) )
+        ue_re(2,i) = -ub_re(1,i)
+      enddo
+      ue_re(1,1) = ub_re(2,1) - idr * ( upsi_re(1,2) - upsi_re(1,1) )
+      ue_re(2,1) = -ub_re(1,1)
+      ue_re(1,nd1p) = ub_re(2,nd1p) - idr * ( upsi_re(1,nd1p) - upsi_re(1,nd1p-1) )
+      ue_re(2,nd1p) = -ub_re(1,nd1p)
+      cycle
+    endif
+
+    ub_im => b_im(mode)%get_f1()
+    upsi_im => psi_im(mode)%get_f1()
+    ue_im => this%rf_im(mode)%get_f1()
+
+    do i = 2, nd1p-1
+      ir = idr / (i-0.5)
+      ue_re(1,i) = ub_re(2,i) - idrh * ( upsi_re(1,i+1) - upsi_re(1,i-1) )
+      ue_re(2,i) = -ub_re(1,i) + ir * mode * upsi_im(1,i)
+
+      ue_im(1,i) = ub_im(2,i) - idrh * ( upsi_im(1,i+1) - upsi_im(1,i-1) )
+      ue_im(2,i) = -ub_im(1,i) - ir * mode * upsi_re(1,i)
+    enddo
+
+  enddo
 
 end subroutine solve_field_eperp
+
+subroutine solve_field_eperp_beam( this, b )
+
+  implicit none
+
+  class( field_e ), intent(inout) :: this
+  class( field_psi ), intent(in) :: b
+
+  type( ufield ), dimension(:), pointer :: b_re => null(), b_im => null()
+  real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
+  real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
+  integer :: mode, i, nd1p
+  character(len=20), save :: sname = 'solve_field_eperp_beam'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  b_re => b%get_rf_re()
+  b_im => b%get_rf_im()
+  nd1p = this%rf_re(0)%get_ndp(1)
+
+  do mode = 0, this%num_modes
+
+    ub_re => b_re(mode)%get_f1()
+    ue_re => this%rf_re(mode)%get_f1()
+
+    do i = 1, nd1p
+      ue_re(1,i) = ub_re(2,i)
+      ue_re(2,i) = -ub_re(1,i)
+    enddo
+
+    if ( mode == 0 ) cycle
+
+    ub_im => b_im(mode)%get_f1()
+    ue_im => this%rf_im(mode)%get_f1()
+
+    do i = 1, nd1p
+      ue_im(1,i) = ub_im(2,i)
+      ue_im(2,i) = -ub_im(1,i)
+    enddo
+
+  enddo
+
+end subroutine solve_field_eperp_beam
 
 end module field_e_class

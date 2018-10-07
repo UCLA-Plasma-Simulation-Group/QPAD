@@ -11,7 +11,7 @@ HYPRE_LIB = -L/usr/local/hypre/lib -lHYPRE
 
 # Objects list
 OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
-			field_psi_class.o field_b_class.o field_src_class.o \
+			field_psi_class.o field_b_class.o field_e_class.o field_src_class.o \
 			system.o dtimer.o debug_tool.o
 OBJS_MAIN = main.o  
 
@@ -70,6 +70,9 @@ field_psi_class.o : ufield_class.o field_psi_class.f03 field_class.o param.o fie
 
 field_b_class.o : ufield_class.o field_b_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_b_class.f03 -o field_b_class.o
+
+field_e_class.o : ufield_class.o field_e_class.f03 field_b_class.o field_psi_class.o field_class.o param.o field_src_class.o field_solver_class.o system.o debug_tool.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_e_class.f03 -o field_e_class.o
 
 # Unit test compilation rules
 TEST_ufield.o : TEST_ufield.f03 ufield_class.o

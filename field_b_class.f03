@@ -205,8 +205,8 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
     ! calculate the derivatives at the boundary and axis
     this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
-    a2 = idr * (nd1p+0.5) / (nd1p-0.5)
-    this%buf_re(nd1p) = -idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p)
+    a2 = -idr * (nd1p+0.5) / (nd1p-0.5)
+    this%buf_re(nd1p) = idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p)
 
     ! call write_data( this%buf_re, 'bsource-re-0.txt' )
 
@@ -229,10 +229,10 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     ! calculate the derivatives at the boundary and axis
     this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
     this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
-    a2 = idr * (nd1p+0.5) / (nd1p-0.5)
+    a2 = -idr * (nd1p+0.5) / (nd1p-0.5)
     b  = idr * real(mode) / (nd1p-0.5)
-    this%buf_re(nd1p) = -idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p) - b * f1_im(1,nd1p)
-    this%buf_im(nd1p) = -idr * f1_im(2,nd1p-1) + a2 * f1_im(2,nd1p) + b * f1_re(1,nd1p)
+    this%buf_re(nd1p) = idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p) - b * f1_im(1,nd1p)
+    this%buf_im(nd1p) = idr * f1_im(2,nd1p-1) + a2 * f1_im(2,nd1p) + b * f1_re(1,nd1p)
 
   else
 
