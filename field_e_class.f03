@@ -235,6 +235,7 @@ subroutine get_solution_ez( this, mode )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
+  f1_re => this%rf_re(mode)%get_f1()
   do i = 1, nd1p
     f1_re(3,i) = this%buf_re(i)
   enddo
@@ -343,6 +344,16 @@ subroutine solve_field_eperp( this, b, psi )
       ue_im(1,i) = ub_im(2,i) - idrh * ( upsi_im(1,i+1) - upsi_im(1,i-1) )
       ue_im(2,i) = -ub_im(1,i) - ir * mode * upsi_re(1,i)
     enddo
+    ir = 2.0 * idr
+    ue_re(1,1) = ub_re(2,1) - idr * ( upsi_re(1,2) - upsi_re(1,1) )
+    ue_re(2,1) = -ub_re(1,1) + ir * mode * upsi_im(1,1)
+    ue_im(1,1) = ub_im(2,1) - idr * ( upsi_im(1,2) - upsi_im(1,1) )
+    ue_im(2,1) = -ub_im(1,1) - ir * mode * upsi_re(1,1)
+    ir = idr / (nd1p-0.5)
+    ue_re(1,nd1p) = ub_re(2,nd1p) - idr * ( upsi_re(1,nd1p) - upsi_re(1,nd1p-1) )
+    ue_re(2,nd1p) = -ub_re(1,nd1p) + ir * mode * upsi_im(1,nd1p)
+    ue_im(1,nd1p) = ub_im(2,nd1p) - idr * ( upsi_im(1,nd1p) - upsi_im(1,nd1p-1) )
+    ue_im(2,nd1p) = -ub_im(1,nd1p) - ir * mode * upsi_re(1,nd1p)
 
   enddo
 
@@ -353,7 +364,7 @@ subroutine solve_field_eperp_beam( this, b )
   implicit none
 
   class( field_e ), intent(inout) :: this
-  class( field_psi ), intent(in) :: b
+  class( field_b ), intent(in) :: b
 
   type( ufield ), dimension(:), pointer :: b_re => null(), b_im => null()
   real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
