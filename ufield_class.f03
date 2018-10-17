@@ -1,5 +1,7 @@
 module ufield_class
 
+use parallel_pipe_class
+use grid_class
 use param
 use system
 
@@ -30,13 +32,14 @@ type :: ufield
 
   contains
 
-  generic :: new => init_ufield
+  generic :: new => init_ufield, init_ufield_cp
   generic :: del => end_ufield
   ! generic :: write_hdf5
   generic :: get_nd => get_nd_all, get_nd_dim
   generic :: get_ndp => get_ndp_all, get_ndp_dim
   generic :: get_gc_num => get_gc_num_all, get_gc_num_dim
   generic :: get_nvp => get_nvp_all, get_nvp_dim
+  generic :: get_noff => get_noff_all, get_noff_dim
   procedure :: get_dim
   procedure :: copy_slice
   procedure :: get_f1
@@ -47,11 +50,12 @@ type :: ufield
   generic :: operator(-) => sub_array, sub_scalar1, sub_scalar2
   generic :: operator(*) => dot_array, dot_scalar1, dot_scalar2
 
-  procedure, private :: init_ufield, end_ufield
+  procedure, private :: init_ufield, init_ufield_cp, end_ufield
   procedure, private :: get_nd_all, get_nd_dim
   procedure, private :: get_ndp_all, get_ndp_dim
   procedure, private :: get_gc_num_all, get_gc_num_dim
   procedure, private :: get_nvp_all, get_nvp_dim
+  procedure, private :: get_noff_all, get_noff_dim
 
   procedure, private, pass(a1) :: add_array, add_scalar1, add_scalar2
   procedure, private, pass(a1) :: dot_array, dot_scalar1, dot_scalar2
@@ -62,13 +66,14 @@ end type ufield
 
 contains
 
-subroutine init_ufield( this, dim, nd, nvp, gc_num, has_2d )
+subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: dim
-  integer, intent(in), dimension(2) :: nd, nvp
   integer, intent(in), dimension(2,2) :: gc_num
   logical, intent(in), optional :: has_2d
 
@@ -76,11 +81,11 @@ subroutine init_ufield( this, dim, nd, nvp, gc_num, has_2d )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%nd = nd
-  this%nvp = nvp
+  this%nd = gp%get_nd()
+  this%nvp = gp%get_nvp()
   this%dim = dim
-  this%ndp = nd / this%nvp
-  this%noff = (/0,0/) ! single core
+  this%ndp = gp%get_ndp()
+  this%noff = gp%get_noff()
   this%gc_num = gc_num
 
   allocate( this%f1( dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
@@ -98,7 +103,43 @@ subroutine init_ufield( this, dim, nd, nvp, gc_num, has_2d )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine
+end subroutine init_ufield
+
+subroutine init_ufield_cp( this, that, has_2d )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class( ufield ), intent(in) :: that
+  logical, intent(in), optional :: has_2d
+
+  character(len=20), save :: sname = "init_ufield_cp"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%nd = that%get_nd()
+  this%nvp = that%get_nvp()
+  this%dim = that%dim
+  this%ndp = that%get_ndp()
+  this%noff = that%get_noff()
+  this%gc_num = that%get_gc_num()
+
+  allocate( this%f1( this%dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
+  this%f1 = 0.0
+
+  if ( present(has_2d) ) then
+    this%has_2d = has_2d
+    allocate( this%f2( this%dim, &
+              1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1), &
+              1-this%gc_num(p_lower,2):this%ndp(2)+this%gc_num(p_upper,2) ) )
+    this%f2 = 0.0
+  else
+    this%has_2d = .false.
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine init_ufield_cp
 
 subroutine end_ufield( this )
 
@@ -208,7 +249,8 @@ function add_array( a1, a2 ) result( a3 )
   integer :: i, j
 
   allocate(a3)
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -230,7 +272,8 @@ function add_scalar1( a1, a2 ) result( a3 )
 
   allocate( a3 )
   ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -251,8 +294,9 @@ function add_scalar2( a2, a1 ) result( a3 )
   integer :: i, j
 
   allocate( a3 )
-    ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! note that buffer has no 2D array
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -273,7 +317,8 @@ function sub_array( a1, a2 ) result( a3 )
   integer :: i, j
 
   allocate(a3)
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -295,7 +340,8 @@ function sub_scalar1( a1, a2 ) result( a3 )
 
   allocate( a3 )
   ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -317,7 +363,8 @@ function sub_scalar2( a2, a1 ) result( a3 )
 
   allocate( a3 )
     ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -338,7 +385,8 @@ function dot_array( a1, a2 ) result( a3 )
   integer :: i, j
 
   allocate(a3)
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -360,7 +408,8 @@ function dot_scalar1( a1, a2 ) result( a3 )
 
   allocate( a3 )
   ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -382,7 +431,8 @@ function dot_scalar2( a2, a1 ) result( a3 )
 
   allocate( a3 )
     ! note that buffer has no 2D array
-  call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
+  call a3%new(a1)
 
   do j = 1, a1%ndp(1)
     do i = 1, a1%dim
@@ -494,6 +544,29 @@ function get_nvp_dim( this, dim )
   get_nvp_dim = this%nvp(dim)
   
 end function get_nvp_dim
+
+function get_noff_all( this )
+
+  implicit none
+
+  class( ufield ), intent(in) :: this
+  integer, dimension(2) :: get_noff_all
+
+  get_noff_all = this%noff
+
+end function get_noff_all
+
+function get_noff_dim( this, dim )
+
+  implicit none
+
+  class( ufield ), intent(in) :: this
+  integer, intent(in) :: dim
+  integer :: get_noff_dim
+
+  get_noff_dim = this%noff(dim)
+  
+end function get_noff_dim
 
 function get_f1( this )
 

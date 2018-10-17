@@ -1,8 +1,6 @@
 module grid_class
 
-use parallel_class
 use parallel_pipe_class
-use input_class
 use system
 
 implicit none
@@ -27,28 +25,36 @@ contains
 
 generic :: new => init_grid
 generic :: del => end_grid
-generic :: noff => get_noff, get_noff_dim
-generic :: nd => get_nd, get_nd_dim
-generic :: ndp => get_ndp, get_ndp_dim
+generic :: get_noff => get_noff_all, get_noff_dim
+generic :: get_nd => get_nd_all, get_nd_dim
+generic :: get_ndp => get_ndp_all, get_ndp_dim
+generic :: get_nvp => get_nvp_all, get_nvp_dim
+
+procedure, private :: init_grid, end_grid
+procedure, private :: get_noff_all, get_noff_dim
+procedure, private :: get_nd_all, get_nd_dim
+procedure, private :: get_ndp_all, get_ndp_dim
+procedure, private :: get_nvp_all, get_nvp_dim
 
 end type grid
 
 contains
 
-subroutine init_grid( this, pp, input )
+subroutine init_grid( this, pp, nr, nz )
 
   implicit none
 
   class( grid ), intent(inout) :: this
-  type( input_json ), pointer, intent(inout) :: input
+  class( parallel_pipe ), intent(in) :: pp
+  integer, intent(in) :: nr, nz
 
   integer :: lidproc, stageid, local_size, extra
   character(len=18), save :: sname = 'init_grid'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call input%get( 'simulation.nr', this%nd(1) )
-  call input%get( 'simulation.nz', this%nd(2) )
+  this%nd(1) = nr
+  this%nd(2) = nz
 
   this%nvp(1) = pp%getlnvp()
   this%nvp(2) = pp%getnstage()
@@ -57,13 +63,13 @@ subroutine init_grid( this, pp, input )
   stageid = pp%getstageid()
 
   ! the un-evenly distributed grid points among processors are accounted for
-  local_size = this%nd(1) / this%nvp(1)
-  extra = this%nd(1) - local_size * this%nvp(1)
+  local_size = nr / this%nvp(1)
+  extra = nr - local_size * this%nvp(1)
   this%noff(1) = local_size * lidproc + min( lidproc, extra )
   this%ndp(1) = local_size + merge( 1, 0, lidproc<extra )
 
-  local_size = this%nd(2) / this%nvp(2)
-  extra = this%nd(2) - local_size * this%nvp(2)
+  local_size = nz / this%nvp(2)
+  extra = nz - local_size * this%nvp(2)
   this%noff(2) = local_size * stageid + min( stageid, extra )
   this%ndp(2) = local_size + merge( 1, 0, stageid<extra )
 
@@ -85,16 +91,16 @@ subroutine end_grid( this )
   
 end subroutine end_grid
 
-function get_nd( this )
+function get_nd_all( this )
 
   implicit none
 
   class( grid ), intent(in) :: this
-  integer, dimension(2) :: get_nd
+  integer, dimension(2) :: get_nd_all
 
-  get_nd = this%nd
+  get_nd_all = this%nd
 
-end function get_nd
+end function get_nd_all
 
 function get_nd_dim( this, dim )
 
@@ -108,16 +114,16 @@ function get_nd_dim( this, dim )
   
 end function get_nd_dim
 
-function get_ndp( this )
+function get_ndp_all( this )
 
   implicit none
 
   class( grid ), intent(in) :: this
-  integer, dimension(2) :: get_ndp
+  integer, dimension(2) :: get_ndp_all
 
-  get_ndp = this%ndp
+  get_ndp_all = this%ndp
 
-end function get_ndp
+end function get_ndp_all
 
 function get_ndp_dim( this, dim )
 
@@ -131,16 +137,39 @@ function get_ndp_dim( this, dim )
   
 end function get_ndp_dim
 
-function get_noff( this )
+function get_nvp_all( this )
 
   implicit none
 
   class( grid ), intent(in) :: this
-  integer, dimension(2) :: get_noff
+  integer, dimension(2) :: get_nvp_all
 
-  get_noff = this%noff
+  get_nvp_all = this%nvp
 
-end function get_noff
+end function get_nvp_all
+
+function get_nvp_dim( this, dim )
+
+  implicit none
+
+  class( grid ), intent(in) :: this
+  integer, intent(in) :: dim
+  integer :: get_nvp_dim
+
+  get_nvp_dim = this%nvp(dim)
+  
+end function get_nvp_dim
+
+function get_noff_all( this )
+
+  implicit none
+
+  class( grid ), intent(in) :: this
+  integer, dimension(2) :: get_noff_all
+
+  get_noff_all = this%noff
+
+end function get_noff_all
 
 function get_noff_dim( this, dim )
 

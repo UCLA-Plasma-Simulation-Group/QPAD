@@ -1,5 +1,7 @@
 module field_class
 
+use parallel_pipe_class
+use grid_class
 use ufield_class
 use param
 use system
@@ -50,14 +52,15 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
+subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, dim
   real, intent(in) :: dr, dxi
-  integer, intent(in), dimension(2) :: nd, nvp
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity
 
@@ -78,10 +81,10 @@ subroutine init_field( this, num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
 
   allocate( this%rf_re(0:num_modes) )
   allocate( this%rf_im(num_modes) )
-  call this%rf_re(0)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+  call this%rf_re(0)%new( pp, gp, dim, gc_num, has_2d=.true. )
   do i = 1, this%num_modes
-    call this%rf_re(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
-    call this%rf_im(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+    call this%rf_re(i)%new( pp, gp, dim, gc_num, has_2d=.true. )
+    call this%rf_im(i)%new( pp, gp, dim, gc_num, has_2d=.true. )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

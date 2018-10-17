@@ -17,7 +17,7 @@ LINKER = mpif90 -fopenmp -O3
 OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
 			field_psi_class.o field_b_class.o field_e_class.o field_src_class.o \
 			system.o dtimer.o debug_tool.o parallel_class.o parallel_pipe_class.o \
-			input_class.o
+			input_class.o simulation.o
 OBJS_MAIN = main.o  
 
 # Linkage rule
@@ -76,55 +76,65 @@ parallel_pipe_class.o : parallel_pipe_class.f03 parallel_class.o
 input_class.o : input_class.f03 parallel_class.o parallel_pipe_class.o system.o
 	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} input_class.f03 -o input_class.o
 
-ufield_class.o : ufield_class.f03 param.o system.o
+grid_class.o : grid_class.f03 parallel_pipe_class.o system.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} grid_class.f03 -o grid_class.o
+
+simulation_class.o : simulation.f03 parallel_class.o parallel_pipe_class.o grid_class.o field_src_class.o field_b_class.o \
+field_e_class.o field_psi_class.o input_class.o system.o param.o
+	${FC} ${FC_OPTS} -c ${FORMAT_FREE} simulation_class.f03 -o simulation_class.o
+
+ufield_class.o : ufield_class.f03 param.o system.o parallel_pipe_class.o grid_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} ufield_class.f03 -o ufield_class.o
 
-field_class.o : field_class.f03 param.o ufield_class.o system.o
+field_class.o : field_class.f03 param.o ufield_class.o system.o parallel_pipe_class.o grid_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
 
-field_src_class.o : field_src_class.f03 field_class.o param.o system.o
+field_src_class.o : field_src_class.f03 field_class.o param.o system.o grid_class.o parallel_pipe_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_src_class.f03 -o field_src_class.o
 
 field_solver_class.o : field_solver_class.f03 param.o system.o debug_tool.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
 
-field_psi_class.o : ufield_class.o field_psi_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o
+field_psi_class.o : ufield_class.o field_psi_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o \
+parallel_pipe_class.o grid_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_psi_class.f03 -o field_psi_class.o
 
-field_b_class.o : ufield_class.o field_b_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o debug_tool.o
+field_b_class.o : ufield_class.o field_b_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o \
+debug_tool.o parallel_pipe_class.o grid_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_b_class.f03 -o field_b_class.o
 
-field_e_class.o : ufield_class.o field_e_class.f03 field_b_class.o field_psi_class.o field_class.o param.o field_src_class.o field_solver_class.o system.o debug_tool.o
+field_e_class.o : ufield_class.o field_e_class.f03 field_b_class.o field_psi_class.o field_class.o param.o field_src_class.o \
+field_solver_class.o system.o debug_tool.o parallel_pipe_class.o grid_class.o
 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_e_class.f03 -o field_e_class.o
 
 # Unit test compilation rules
-TEST_ufield.o : TEST_ufield.f03 ufield_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
+# TEST_ufield.o : TEST_ufield.f03 ufield_class.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
 
-TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o field_src_class.o system.o param.o \
-ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o
+# TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o field_src_class.o system.o param.o \
+# ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o
 
-TEST_field_bz.o : TEST_field_bz.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
-ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bz.f03 -o TEST_field_bz.o
+# TEST_field_bz.o : TEST_field_bz.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
+# ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bz.f03 -o TEST_field_bz.o
 
-TEST_field_bperp.o : TEST_field_bperp.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
-ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp.f03 -o TEST_field_bperp.o
+# TEST_field_bperp.o : TEST_field_bperp.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
+# ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp.f03 -o TEST_field_bperp.o
 
-TEST_field_bperp_iter.o : TEST_field_bperp_iter.f03 field_b_class.o field_class.o field_src_class.o \
-system.o param.o ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp_iter.f03 -o TEST_field_bperp_iter.o
+# TEST_field_bperp_iter.o : TEST_field_bperp_iter.f03 field_b_class.o field_class.o field_src_class.o \
+# system.o param.o ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp_iter.f03 -o TEST_field_bperp_iter.o
 
-TEST_field_ez.o : TEST_field_ez.f03 field_e_class.o field_class.o field_src_class.o system.o param.o \
-ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_ez.f03 -o TEST_field_ez.o
+# TEST_field_ez.o : TEST_field_ez.f03 field_e_class.o field_class.o field_src_class.o system.o param.o \
+# ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_ez.f03 -o TEST_field_ez.o
 
-TEST_field_eperp.o : TEST_field_eperp.f03 field_e_class.o field_b_class.o field_psi_class.o field_class.o \
-field_src_class.o system.o param.o ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp.f03 -o TEST_field_eperp.o
+# TEST_field_eperp.o : TEST_field_eperp.f03 field_e_class.o field_b_class.o field_psi_class.o field_class.o \
+# field_src_class.o system.o param.o ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp.f03 -o TEST_field_eperp.o
 
-TEST_field_eperp_beam.o : TEST_field_eperp_beam.f03 field_e_class.o field_b_class.o field_class.o \
-field_src_class.o system.o param.o ufield_class.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp_beam.f03 -o TEST_field_eperp_beam.o
+# TEST_field_eperp_beam.o : TEST_field_eperp_beam.f03 field_e_class.o field_b_class.o field_class.o \
+# field_src_class.o system.o param.o ufield_class.o debug_tool.o
+# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp_beam.f03 -o TEST_field_eperp_beam.o

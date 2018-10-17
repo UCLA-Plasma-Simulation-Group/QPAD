@@ -2,6 +2,7 @@ module input_class
 
 use parallel_class
 use parallel_pipe_class
+use grid_class
 use mpi
 use json_module
 use system
@@ -14,10 +15,9 @@ public :: input_json
 
 type input_json
 
-   ! class(spect3d), pointer :: sp => null()
-   ! class(perrors), pointer :: err => null()
    class(parallel), pointer :: p => null()
    class(parallel_pipe), pointer :: pp => null()
+   class(grid), pointer :: gp => null()
    type(json_file), private, pointer :: input => null()
 
    contains
@@ -48,9 +48,7 @@ end type
 
 character(len=10), save :: cls_name = 'input'
 integer, parameter :: cls_level = 1
-character(len=128), save :: erstr
-! type(spect3d), save, target  :: sp
-! type(perrors), save, target :: err
+type(grid), save, target  :: gp
 type(parallel), save, target :: p
 type(parallel_pipe), save, target :: pp
 
@@ -65,14 +63,11 @@ subroutine read_input_json(this)
    character(len=18), save :: sname = 'read_input_json'
    logical :: found, stat
    character(len=:), allocatable :: ff, boundary, error_msg
-   integer :: length, num_stages, verbose, indx, indy, indz, psolve, ierr
+   integer :: length, num_stages, verbose, nr, nz, psolve, ierr
    
    call p%new()
    
    this%p => p
-
-   ! call err%new(this%p,2,monitor=0)
-   ! this%err => err
    
    call write_dbg( cls_name, sname, cls_level, 'starts' )
    
@@ -85,14 +80,9 @@ subroutine read_input_json(this)
          call this%load_file(filename = './qpinput.json')
          call this%input%check_for_errors(stat,error_msg)
          if (.not. stat) then
-            ! call this%err%equit(class//sname//trim(error_msg))
-            ! return
             call write_err( error_msg )
          end if
       else
-          ! write (erstr,*) 'error: cannot find the input file'
-          ! call this%err%equit(class//sname//erstr)
-          ! return
           call write_err( 'cannot find the input file' )
       end if
       call this%print_to_string(ff)
@@ -113,30 +103,24 @@ subroutine read_input_json(this)
    
    this%pp => pp
                
-   call this%get('simulation.indx',indx)
+   call this%get('simulation.nr',nr)
 
-   call this%get('simulation.indy',indy)
+   call this%get('simulation.nz',nz)
 
-   call this%get('simulation.indz',indz)
-
-   call this%get('simulation.boundary',boundary)
+   ! call this%get('simulation.boundary',boundary)
    
-   select case (trim(boundary))
-   case ("conducting")
-      psolve = 1
-   case default
-      psolve = 1
-   end select
+   ! select case (trim(boundary))
+   ! case ("conducting")
+   !    psolve = 1
+   ! case default
+   !    psolve = 1
+   ! end select
    
-   ! call sp%new(this%pp,this%err,indx,indy,indz,psolve,1)
+   call gp%new( pp, nr, nz )
 
-   ! this%sp => sp
-
-   ! call this%err%werrfl0(ff)
-
-   ! call this%err%werrfl0(class//sname//' ended')
+   this%gp => gp
    
-   call this%get('simulation.verbose',verbose)
+   ! call this%get('simulation.verbose',verbose)
 
    ! call err%setmonitor(verbose)
 

@@ -1,6 +1,8 @@
 module field_src_class
 
 use field_class
+use parallel_pipe_class
+use grid_class
 use param
 use system
 
@@ -42,24 +44,21 @@ end type field_djdxi
 
 contains
 
-subroutine init_field_rho( this, num_modes, dr, dxi, nd, nvp, part_shape )
+subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   implicit none
 
   class( field_rho ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
-  integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
-  integer, dimension(2) :: ndp, noff
   character(len=20), save :: sname = "init_field_rho"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  ndp = nd / nvp
-  noff = (/0,0/)
 
   select case ( part_shape )
   
@@ -80,30 +79,27 @@ subroutine init_field_rho( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_rho
 
-subroutine init_field_jay( this, num_modes, dr, dxi, nd, nvp, part_shape )
+subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   implicit none
 
   class( field_jay ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
-  integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
-  integer, dimension(2) :: ndp, noff
   character(len=20), save :: sname = "init_field_jay"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  ndp = nd / nvp
-  noff = (/0,0/)
 
   select case ( part_shape )
   
@@ -124,30 +120,27 @@ subroutine init_field_jay( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_jay
 
-subroutine init_field_djdxi( this, num_modes, dr, dxi, nd, nvp, part_shape )
+subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   implicit none
 
   class( field_djdxi ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
-  integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
-  integer, dimension(2) :: ndp, noff
   character(len=20), save :: sname = "init_field_djdxi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  ndp = nd / nvp
-  noff = (/0,0/)
 
   select case ( part_shape )
   
@@ -168,7 +161,7 @@ subroutine init_field_djdxi( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 2
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num )
+  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

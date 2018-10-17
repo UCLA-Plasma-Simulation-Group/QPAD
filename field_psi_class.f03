@@ -1,5 +1,7 @@
 module field_psi_class
 
+use parallel_pipe_class
+use grid_class
 use field_class
 use field_solver_class
 use field_src_class
@@ -40,25 +42,27 @@ end type field_psi
 
 contains
 
-subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
+subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
+  class( parallel_pipe ), intent(in), pointer :: pp
+  class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
-  integer, intent(in), dimension(2) :: nd, nvp
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, solver_type, kind, entity
-  integer, dimension(2) :: ndp, noff
+  integer, dimension(2) :: ndp, noff, nd
   real :: tol
   character(len=20), save :: sname = "init_field_psi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ndp = nd / nvp
-  noff = (/0,0/)
+  nd = gp%get_nd()
+  ndp = gp%get_ndp()
+  noff = gp%get_noff()
   solver_type = p_hypre_cycred
   kind = p_fk_psi
   entity = p_entity_plasma
@@ -83,7 +87,7 @@ subroutine init_field_psi( this, num_modes, dr, dxi, nd, nvp, part_shape )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( num_modes, dim, dr, dxi, nd, nvp, gc_num, entity )
+  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
