@@ -10,7 +10,7 @@ implicit none
 private
 
 character(len=20), parameter :: cls_name = "ufield"
-integer, parameter :: cls_level = 2
+integer, parameter :: cls_level = 4
 
 public :: ufield
 

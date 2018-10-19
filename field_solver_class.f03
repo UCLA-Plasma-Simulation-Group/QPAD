@@ -13,7 +13,7 @@ public :: field_solver
 public :: HYPRE_BUF
 
 character(len=20), parameter :: cls_name = "field_solver"
-integer, parameter :: cls_level = 2
+integer, parameter :: cls_level = 4
 
 integer, dimension(4), save :: itime
 double precision, save :: dtime

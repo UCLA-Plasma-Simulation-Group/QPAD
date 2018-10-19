@@ -81,7 +81,7 @@ subroutine init_sim_fields( this, input, dr, dxi, num_modes, part_shape )
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=18), save :: cls_name = 'sim_fields'
-  integer, save :: cls_level = 1
+  integer, save :: cls_level = 2
   character(len=20) :: s1, s2, s3
   character(len=:), allocatable :: ff
   integer :: i,n,ndump,j,k,l,m
@@ -164,7 +164,7 @@ subroutine end_sim_fields( this )
   ! local data
   character(len=18), save :: sname = 'end_sim_fields'
   character(len=18), save :: cls_name = 'sim_fields'
-  integer, save :: cls_level = 1
+  integer, save :: cls_level = 2
   integer :: i, n
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -191,7 +191,7 @@ subroutine init_simulation(this)
   ! local data
   character(len=18), save :: sname = 'init_simulation:'
   character(len=18), save :: cls_name = 'simulation'
-  integer, save :: cls_level = 0
+  integer, save :: cls_level = 1
 
   real :: min, max, n0, dr, dxi, dt, time
   integer :: nr, nz
@@ -278,7 +278,7 @@ subroutine end_simulation(this)
   ! local data
   character(len=18), save :: sname = 'end_simulation'
   character(len=18), save :: cls_name = 'simulation'
-  integer, save :: cls_level = 0
+  integer, save :: cls_level = 1
   integer :: ierr
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

@@ -14,7 +14,7 @@ implicit none
 private
 
 character(len=20), parameter :: cls_name = "field_psi"
-integer, parameter :: cls_level = 1
+integer, parameter :: cls_level = 3
 
 public :: field_psi
 
