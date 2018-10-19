@@ -6,9 +6,7 @@ use grid_class
 use field_psi_class
 use field_e_class
 use field_b_class
-use field_jay_class
-use field_djdxi_class
-use field_rho_class
+use field_src_class
 
 use input_class
 use system
@@ -29,8 +27,8 @@ type sim_fields
   class( grid ), pointer :: gp => null()
 
   type( field_psi ), allocatable :: psi
-  type( field_b ), allocatable :: e_spe, b_spe
-  type( field_e ), allocatable :: e_beam, b_beam
+  type( field_b ), allocatable :: b_spe, b_beam
+  type( field_e ), allocatable :: e_spe, e_beam
   type( field_jay ), allocatable :: jay
   type( field_rho ), allocatable :: q_spe, q_beam
   type( field_djdxi ), allocatable :: djdxi
@@ -78,7 +76,7 @@ subroutine init_sim_fields( this, input, dr, dxi, num_modes, part_shape )
   class( sim_fields ), intent(inout) :: this
   type( input_json ), pointer, intent(inout) :: input
   real, intent(in) :: dr, dxi
-  integer, intent(in) :: num_modes
+  integer, intent(in) :: num_modes, part_shape
 
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
@@ -94,8 +92,8 @@ subroutine init_sim_fields( this, input, dr, dxi, num_modes, part_shape )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  allocate( this%psi, this%e_spe, this%b_spe, this%e_beam, this%b_beam &
-    jay, q_spe, q_beam, djdxi )
+  allocate( this%psi, this%e_spe, this%b_spe, this%e_beam, this%b_beam, &
+    this%jay, this%q_spe, this%q_beam, this%djdxi )
 
   call this%psi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
   call this%jay%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
@@ -211,17 +209,17 @@ subroutine init_simulation(this)
 
   call this%input%get( 'simulation.box.r(1)', min )
   call this%input%get( 'simulation.box.r(2)', max )
-  nr = this%gp%nd(1)
+  nr = this%gp%get_nd(1)
   dr = ( max - min ) / real(nr)
   call this%input%get( 'simulation.box.z(1)', min )
   call this%input%get( 'simulation.box.z(2)', max )
-  nz = this%gp%nd(2)
+  nz = this%gp%get_nd(2)
   dxi = ( max - min ) / real(nz)
 
   this%dr = dr
   this%dxi = dxi
 
-  this%nstep2d = this%gp%ndp(2)
+  this%nstep2d = this%gp%get_ndp(2)
 
   call this%input%get( 'simulation.time', time )
   call this%input%get( 'simulation.dt', dt )

@@ -1,0 +1,15 @@
+# Compiler configuration
+FC = mpif90
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -I$(JSON_INC) -fopenmp -ffree-form
+CC = gcc
+CC_OPTS = -O3 -std=c99
+
+# Linker configuration
+LINKER = mpif90
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran
+
+# Library dependencies
+HYPRE_LIB = /usr/local/hypre/lib
+JSON_LIB = /usr/local/json-fortran/jsonfortran-gnu-6.9.0/lib
+JSON_INC = /usr/local/json-fortran/jsonfortran-gnu-6.9.0/lib

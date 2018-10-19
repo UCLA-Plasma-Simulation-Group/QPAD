@@ -1,140 +1,117 @@
-HYPRE_LIB = /usr/local/hypre/lib -lHYPRE
-JSON_LIB = /usr/local/json-fortran/jsonfortran-gnu-6.9.0/lib
-JSON_INC = /usr/local/json-fortran/jsonfortran-gnu-6.9.0/lib
+# system (must be one of the file suffix in config directory)
+sys ?= gnu_openmpi
 
-LINK_LIB = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran
+# main binary name
+quickpic = $(builddir)/qpic.e
+# build directory
+builddir ?= build
+# binary directory
+bindir ?= bin
+# test directory
+testdir ?= test
+# configuration directory
+configdir ?= config
 
-FC = mpif90
-# FC = gfortran
-FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -I$(JSON_INC) -fopenmp
-FORMAT_FREE = -ffree-form
-CC = gcc
-CC_OPTS = -O3 -std=c99
-LINKER = mpif90 -fopenmp -O3
-# LINKER = gfortran
+configfile = $(configdir)/make.$(sys)
+include $(configfile)
 
-# Objects list
-OBJS_MODULE = param.o ufield_class.o field_class.o field_solver_class.o \
-			field_psi_class.o field_b_class.o field_e_class.o field_src_class.o \
-			system.o dtimer.o debug_tool.o parallel_class.o parallel_pipe_class.o \
-			input_class.o simulation.o
-OBJS_MAIN = main.o  
+# ------------------------------------------------------------------------------
+# QuickPIC source files
+# Now the source files must be listed in sequence
+# We may include a tool to generate dependencies in the future
+# ------------------------------------------------------------------------------
+# source with no dependency
+src = dtimer.c param.f03 system.f03 parallel_class.f03 debug_tool.f03
 
-# Linkage rule
-main :: ${OBJS_MODULE} ${OBJS_MAIN} 
-	${LINKER} ${OBJS_MODULE} ${OBJS_MAIN} ${LINK_LIB} -o main.e
+src += parallel_pipe_class.f03
+src += grid_class.f03
+src += field_solver_class.f03
+src += input_class.f03
+src += ufield_class.f03
+src += field_class.f03
+src += field_src_class.f03
+src += field_psi_class.f03 field_b_class.f03 field_e_class.f03
+src += simulation_class.f03
+src += main.f03
+# ------------------------------------------------------------------------------
 
-TEST_ufield :: ${OBJS_MODULE} TEST_ufield.o
-	${LINKER} ${OBJS_MODULE} TEST_ufield.o ${LINK_LIB} -o TEST_ufield.e
+# Parse source files to generate object files
+objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
+objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
 
-TEST_field_psi :: ${OBJS_MODULE} TEST_field_psi.o
-	${LINKER} ${OBJS_MODULE} TEST_field_psi.o ${LINK_LIB} -o TEST_field_psi.e
+# ------------------------------------------------------------------------------
+# QuickPIC unit test source files
+# Each test source file is independent on others, so they can be listed in
+# arbitrary order.
+# ------------------------------------------------------------------------------
+test_src = TEST_field_bperp.f03 TEST_field_bz.f03 TEST_field_eperp.f03 \
+	TEST_field_psi.f03 TEST_field_bperp_iter.f03 TEST_field_eperp_beam.f03 \
+	TEST_field_ez.f03 TEST_ufield.f03
+# ------------------------------------------------------------------------------
 
-TEST_field_bz :: ${OBJS_MODULE} TEST_field_bz.o
-	${LINKER} ${OBJS_MODULE} TEST_field_bz.o ${LINK_LIB} -o TEST_field_bz.e
+# Parse test source files to generate object files
+test_src := $(patsubst %.f03, $(testdir)/%.f03, $(test_src))
+test_exe := $(patsubst %.f03, %.e, $(test_src))
 
-TEST_field_bperp :: ${OBJS_MODULE} TEST_field_bperp.o
-	${LINKER} ${OBJS_MODULE} TEST_field_bperp.o ${LINK_LIB} -o TEST_field_bperp.e
+# Generate date stamp
+DATESTAMP = $$(date +%s)
 
-TEST_field_bperp_iter :: ${OBJS_MODULE} TEST_field_bperp_iter.o
-	${LINKER} ${OBJS_MODULE} TEST_field_bperp_iter.o ${LINK_LIB} -o TEST_field_bperp_iter.e
+# Targets and rules
+.DEFAULT_GOAL := main
+.PHONY: main clean module help
 
-TEST_field_ez :: ${OBJS_MODULE} TEST_field_ez.o
-	${LINKER} ${OBJS_MODULE} TEST_field_ez.o ${LINK_LIB} -o TEST_field_ez.e
+$(quickpic) : $(objs)
+	@echo "[LINK] $(@F)"
+	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -o $(@F) $(^F) $(LDF)
+	@chmod a+rw $@
+	@echo "Copying binary to bin directory"
+	@cp $@ $(bindir)/qpic-$(DATESTAMP).e
+	@echo "Creating symbolic link"
+	@ln -f -s qpic-$(DATESTAMP).e $(bindir)/qpic.e
+	@echo "Done!"
 
-TEST_field_eperp :: ${OBJS_MODULE} TEST_field_eperp.o
-	${LINKER} ${OBJS_MODULE} TEST_field_eperp.o ${LINK_LIB} -o TEST_field_eperp.e
+$(objs) : $(builddir) $(configfile)
 
-TEST_field_eperp_beam :: ${OBJS_MODULE} TEST_field_eperp_beam.o
-	${LINKER} ${OBJS_MODULE} TEST_field_eperp_beam.o ${LINK_LIB} -o TEST_field_eperp_beam.e
+$(builddir) :
+	@echo "Creating $@ directory"
+	@mkdir -p $@
 
-clean ::
-	rm *.o; rm *.mod; rm *.e
+$(builddir)/%.o : %.f03
+	@echo "[F03] $(<F)"
+	@cp $< $(builddir)
+	@cd $(builddir) && $(FC) $(FC_OPTS) -c $(<F) -o $(@F)
 
-cleanall ::
-	rm -r *.o *.mod *.e *.txt ELOG
+$(builddir)/%.o : %.c
+	@echo "[CC] $(<F)"
+	@$(CC) $(CC_OPTS) -c $(<F) -o $@
 
-# Module compilation rules
-dtimer.o : dtimer.c
-	$(CC) ${CC_OPTS} -O3 -std=c99 -c dtimer.c
+# $(test_exe) : $(objs)
 
-system.o : system.f03 dtimer.o
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} system.f03 -o system.o
+%.e : $(testdir)/%.f03
+	@echo "[F03] $(<F)"
+	@cd $(testdir) && $(FC) $(FC_OPTS) -I../$(builddir) -o $@ $(<F) $(LDF)
+	@chmod a+rw $@
+	@echo "Done!"
 
-debug_tool.o : debug_tool.f03
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} debug_tool.f03 -o debug_tool.o
+main : $(quickpic)
 
-param.o : param.f03
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} param.f03 -o param.o
+module : $(objs)
+	@echo "Only compile modules, no executable is generated"
 
-parallel_class.o : parallel_class.f03
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} parallel_class.f03 -o parallel_class.o
+clean:
+	@echo "[CLEAN] Removing build directory"
+	@rm -rf $(builddir)
 
-parallel_pipe_class.o : parallel_pipe_class.f03 parallel_class.o
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} parallel_pipe_class.f03 -o parallel_pipe_class.o
-
-input_class.o : input_class.f03 parallel_class.o parallel_pipe_class.o system.o
-	$(FC) ${FC_OPTS} -c ${FORMAT_FREE} input_class.f03 -o input_class.o
-
-grid_class.o : grid_class.f03 parallel_pipe_class.o system.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} grid_class.f03 -o grid_class.o
-
-simulation_class.o : simulation.f03 parallel_class.o parallel_pipe_class.o grid_class.o field_src_class.o field_b_class.o \
-field_e_class.o field_psi_class.o input_class.o system.o param.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} simulation_class.f03 -o simulation_class.o
-
-ufield_class.o : ufield_class.f03 param.o system.o parallel_pipe_class.o grid_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} ufield_class.f03 -o ufield_class.o
-
-field_class.o : field_class.f03 param.o ufield_class.o system.o parallel_pipe_class.o grid_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_class.f03 -o field_class.o
-
-field_src_class.o : field_src_class.f03 field_class.o param.o system.o grid_class.o parallel_pipe_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_src_class.f03 -o field_src_class.o
-
-field_solver_class.o : field_solver_class.f03 param.o system.o debug_tool.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_solver_class.f03 -o field_solver_class.o
-
-field_psi_class.o : ufield_class.o field_psi_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o \
-parallel_pipe_class.o grid_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_psi_class.f03 -o field_psi_class.o
-
-field_b_class.o : ufield_class.o field_b_class.f03 field_class.o param.o field_src_class.o field_solver_class.o system.o \
-debug_tool.o parallel_pipe_class.o grid_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_b_class.f03 -o field_b_class.o
-
-field_e_class.o : ufield_class.o field_e_class.f03 field_b_class.o field_psi_class.o field_class.o param.o field_src_class.o \
-field_solver_class.o system.o debug_tool.o parallel_pipe_class.o grid_class.o
-	${FC} ${FC_OPTS} -c ${FORMAT_FREE} field_e_class.f03 -o field_e_class.o
-
-# Unit test compilation rules
-# TEST_ufield.o : TEST_ufield.f03 ufield_class.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_ufield.f03 -o TEST_ufield.o
-
-# TEST_field_psi.o : TEST_field_psi.f03 field_psi_class.o field_class.o field_src_class.o system.o param.o \
-# ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_psi.f03 -o TEST_field_psi.o
-
-# TEST_field_bz.o : TEST_field_bz.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
-# ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bz.f03 -o TEST_field_bz.o
-
-# TEST_field_bperp.o : TEST_field_bperp.f03 field_b_class.o field_class.o field_src_class.o system.o param.o \
-# ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp.f03 -o TEST_field_bperp.o
-
-# TEST_field_bperp_iter.o : TEST_field_bperp_iter.f03 field_b_class.o field_class.o field_src_class.o \
-# system.o param.o ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_bperp_iter.f03 -o TEST_field_bperp_iter.o
-
-# TEST_field_ez.o : TEST_field_ez.f03 field_e_class.o field_class.o field_src_class.o system.o param.o \
-# ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_ez.f03 -o TEST_field_ez.o
-
-# TEST_field_eperp.o : TEST_field_eperp.f03 field_e_class.o field_b_class.o field_psi_class.o field_class.o \
-# field_src_class.o system.o param.o ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp.f03 -o TEST_field_eperp.o
-
-# TEST_field_eperp_beam.o : TEST_field_eperp_beam.f03 field_e_class.o field_b_class.o field_class.o \
-# field_src_class.o system.o param.o ufield_class.o debug_tool.o
-# 	${FC} ${FC_OPTS} -c ${FORMAT_FREE} TEST_field_eperp_beam.f03 -o TEST_field_eperp_beam.o
+help:
+	@echo "QuickPIC makefile usage: make [options] [sys=system_name]"
+	@echo ""
+	@echo "sys         - specify the system configure file. These files are located in config directory."
+	@echo "              Argument system_name must be same with the suffix of configure file."
+	@echo ""
+	@echo "Options:"
+	@echo "main        - (default) make the main executable of QuickPIC"
+	@echo "module      - only compile the source files, not link to executable"
+	@echo "TEST_*.e    - generate test executable corresponding to the test source file in test directory."
+	@echo "              'make module' must be conducted before."
+	@echo "clean       - remove build directory"
+	@echo "help        - show this help list"
