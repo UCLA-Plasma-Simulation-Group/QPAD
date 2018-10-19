@@ -53,9 +53,8 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape )
   real, intent(in) :: dr, dxi
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, solver_type, kind, entity
+  integer :: dim, i
   integer, dimension(2) :: ndp, noff, nd
-  real :: tol
   character(len=20), save :: sname = "init_field_psi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -63,10 +62,6 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape )
   nd = gp%get_nd()
   ndp = gp%get_ndp()
   noff = gp%get_noff()
-  solver_type = p_hypre_cycred
-  kind = p_fk_psi
-  entity = p_entity_plasma
-  tol = 1.0d-6
 
   select case ( part_shape )
   
@@ -87,12 +82,13 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, entity=p_entity_plasma )
 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver(i)%new( nd, ndp, noff, kind, i, dr, solver_type, tol )
+    call this%solver(i)%new( pp, gp, i, dr, &
+      kind=p_fk_psi, stype=p_hypre_cycred, tol=1.0d-6 )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

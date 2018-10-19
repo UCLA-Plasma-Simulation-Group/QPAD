@@ -59,7 +59,6 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
   integer, dimension(2) :: ndp, noff, nd
-  real :: tol
   character(len=20), save :: sname = "init_field_e"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -67,7 +66,6 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   nd = gp%get_nd()
   ndp = gp%get_ndp()
   noff = gp%get_noff()
-  tol = 1.0d-6
 
   select case ( part_shape )
   
@@ -97,7 +95,8 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   case ( p_entity_plasma )
     allocate( this%solver_ez( 0:num_modes ) )
     do i = 0, num_modes
-      call this%solver_ez(i)%new( nd, ndp, noff, p_fk_ez, i, dr, p_hypre_cycred, tol )
+      call this%solver_ez(i)%new( pp, gp, i, dr, kind=p_fk_ez, &
+        stype=p_hypre_cycred, tol=1.0d-6 )
     enddo 
   case ( p_entity_beam )
     ! do nothing

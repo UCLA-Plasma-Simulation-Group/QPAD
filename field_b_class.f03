@@ -66,7 +66,6 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
   integer, dimension(2) :: nd, ndp, noff
-  real :: tol
   character(len=20), save :: sname = "init_field_b"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -74,7 +73,6 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   nd = gp%get_nd()
   ndp = gp%get_ndp()
   noff = gp%get_noff()
-  tol = 1.0d-6
 
   select case ( part_shape )
   
@@ -105,13 +103,16 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
     allocate( this%solver_bz( 0:num_modes ) )
     allocate( this%solver_bperp_iter( 0:num_modes ) )
     do i = 0, num_modes
-      call this%solver_bz(i)%new( nd, ndp, noff, p_fk_bz, i, dr, p_hypre_cycred, tol )
-      call this%solver_bperp_iter(i)%new( nd, ndp, noff, p_fk_bperp_iter, i, dr, p_hypre_amg, tol )
+      call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
+        stype=p_hypre_cycred, tol=1.0d-6 )
+      call this%solver_bperp_iter(i)%new( pp, gp, i, dr, kind=p_fk_bperp_iter, &
+        stype=p_hypre_amg, tol=1.0d-6 )
     enddo 
   case ( p_entity_beam )
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
-      call this%solver_bperp(i)%new( nd, ndp, noff, p_fk_bperp, i, dr, p_hypre_amg, tol )
+      call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp, &
+        stype=p_hypre_amg, tol=1.0d-6 )
     enddo
   case default
     call write_err( 'Invalid field entity type.' )
