@@ -32,12 +32,12 @@ src += field_class.f03
 src += field_src_class.f03
 src += field_psi_class.f03 field_b_class.f03 field_e_class.f03
 src += simulation_class.f03
-src += main.f03
 # ------------------------------------------------------------------------------
 
 # Parse source files to generate object files
 objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
 objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
+main_obj := main.o
 
 # ------------------------------------------------------------------------------
 # QuickPIC unit test source files
@@ -60,7 +60,7 @@ DATESTAMP = $$(date +%s)
 .DEFAULT_GOAL := main
 .PHONY: main clean module help
 
-$(quickpic) : $(objs)
+$(quickpic) : $(objs) main.o
 	@echo "[LINK] $(@F)"
 	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -o $(@F) $(^F) $(LDF)
 	@chmod a+x $@
@@ -87,10 +87,13 @@ $(builddir)/%.o : %.c
 
 # $(test_exe) : $(objs)
 
+# $(testdir)/%.o : %(testdir)/%.f03
+
 %.e : $(testdir)/%.f03
 	@echo "[F03] $(<F)"
-	@cd $(testdir) && $(FC) $(FC_OPTS) -I../$(builddir) -o $@ $(<F) $(LDF)
-	@chmod a+x $@
+	@cp $< $(builddir)
+	@cd $(builddir) && $(FC) $(FC_OPTS) -o $@ $(<F) $(notdir $(objs)) $(LDF)
+	@cd $(builddir) chmod a+x $@
 	@echo "Done!"
 
 main : $(quickpic)
