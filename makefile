@@ -63,7 +63,7 @@ DATESTAMP = $$(date +%s)
 $(quickpic) : $(objs)
 	@echo "[LINK] $(@F)"
 	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -o $(@F) $(^F) $(LDF)
-	@chmod a+rw $@
+	@chmod a+x $@
 	@echo "Copying binary to bin directory"
 	@cp $@ $(bindir)/qpic-$(DATESTAMP).e
 	@echo "Creating symbolic link"
@@ -90,7 +90,7 @@ $(builddir)/%.o : %.c
 %.e : $(testdir)/%.f03
 	@echo "[F03] $(<F)"
 	@cd $(testdir) && $(FC) $(FC_OPTS) -I../$(builddir) -o $@ $(<F) $(LDF)
-	@chmod a+rw $@
+	@chmod a+x $@
 	@echo "Done!"
 
 main : $(quickpic)
