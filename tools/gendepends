@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+
+"""
+gendepends [-t depType] main-source-file.f03
+  
+Generate and object file list and dependencies for the given fortran 90 source file based on
+module and use statements.
+
+The results are sent to stdout.
+
+When a module or include file is not found in the same directory where  main-source-file.f03 is
+located it is assumed that this is a 'system' file, and it will not be included in the
+dependencies.
+
+Possible depType values:
+
+   obj-only     Generate only the object file list. The list is correctly sorted so that files
+                will be compiled in the correct order. (this matches the main OSIRIS Makefile)
+
+   obj-dep      Generate object file dependencies: 
+                os-random.o : os-random.f03 os-sys-multi.o os-restart.o
+
+   mod-dep      Generate module based file dependencies
+                os-random.o : os-random.f03 m_system.mod m_restart.mod
+                m_random.mod : os-random.o
+
+"""
+
+import re, sys, os, glob
+from optparse import OptionParser
+
+#------------------------------------------------------------------------------------------------
+# Find all available modules and source files are in a given directory
+#------------------------------------------------------------------------------------------------
+
+def mod_source_files( sourceDir ):
+    sourceFiles = glob.glob( sourceDir+'/*.f03' )
+    modules = dict()
+    for fname in sourceFiles:
+        file = open( fname, 'r' )
+        for line in file :
+            if ( re.match( "\s*module procedure\s*", line.lower()) ):
+                continue
+            else :
+                a = re.match( "\s*module (\S+)\s*", line.lower()) 
+                if ( a ) :
+                    mod = a.group(1)
+                    if ( modules.has_key(mod) ):
+                        print >> sys.stderr, 'There is an ambiguity in module defintion.'
+                        print >> sys.stderr, 'the module %s is defined in the following files:' \
+                                              %mod
+                        print >> sys.stderr, modules[mod], ' and', fname
+                        sys.exit('aborting...')
+                    modules[mod]=fname
+                    break
+        file.close()
+    return modules
+
+#------------------------------------------------------------------------------------------------
+# Find all used modules by a given source file
+#------------------------------------------------------------------------------------------------
+
+def mod_required( fname ):
+    modules = []
+    file = open( fname, 'r' )
+    for line in file :
+        a = re.match( "\s*use (\S+)\s*", line.lower()) 
+        if ( a ) :
+            # The same module may be included inside several subroutines; this
+            # insures it only shows once in the dependency list
+            if ( a.group(1) not in modules ) :
+                modules.append( a.group(1) )
+    return modules
+
+#------------------------------------------------------------------------------------------------
+# Generate an object filename from a source filename
+#------------------------------------------------------------------------------------------------
+
+def object_file( fname ) :
+    base = re.match("(.+)f03", fname)
+    return base.group(1)+'o'
+
+#------------------------------------------------------------------------------------------------
+# Recursively build the dependencies for a given file
+#------------------------------------------------------------------------------------------------
+
+def build_depends( fname, depends, objects, availableMods ):
+    fdepends = mod_required( fname )
+    
+    # Store dependencies for current file
+    depends[ fname ] = fdepends
+    
+    # Get dependencies of dependencies 
+    for dep in fdepends :
+        if ( availableMods.has_key( dep ) ) :
+            # Only build dependency if not done already
+            if ( not depends.has_key( availableMods[dep] ) ) :
+                build_depends( availableMods[dep], depends, objects, availableMods )
+    
+    # Add the corresponding object file to the list
+    objects.append( object_file( os.path.basename( fname ) ) )
+
+
+#################################################################################################
+# Main Script
+#################################################################################################
+
+# Parse command line options
+
+parser = OptionParser(usage = "usage: %prog [options] main-source-file.f03" )
+parser.add_option( "-t", "--type", dest="depType", default = "obj-only", \
+                     help = "Type of dependency to generate: 'obj-only', 'obj-dep' or 'mod-dep'" )
+
+(options, args) = parser.parse_args()
+
+if ( not options.depType in ('obj-only','obj-dep','mod-dep') ):
+    parser.error('Invalid value for type, must be one of "obj-only", "obj-dep" or "mod-dep"')
+
+if ( len(args) != 1 ):
+    parser.error('No source file supplied')
+    
+baseFile = args[0]
+
+if ( not os.path.isfile(baseFile) ):
+    parser.error('File not found : '+baseFile)
+
+sourceDir = os.path.dirname( baseFile )
+if ( sourceDir == '' ):
+    sourceDir = '.'
+    
+# Get available modules
+availableMods = mod_source_files(sourceDir)
+
+# Build dependency list
+depends = dict()
+objects = []
+build_depends( baseFile, depends, objects, availableMods )
+
+# Print complete object files list
+# print
+# print "F03OBJS =",
+# for obj in objects :
+#     print obj,
+# print
+# print
+
+# Generate dependency lists if required
+if ( options.depType == 'mod-dep' ) :
+    # Use module dependency rules
+    # This is not 100% working in the sense that sometimes it requires a make clean
+    # to get the compilation to work. Don't really know why at this point...
+    
+    # Print f03 dependency files rules
+    for dep in depends.keys() :
+        print object_file( os.path.basename( dep ) ), ":", os.path.basename( dep ),
+        for mod in depends[dep] :
+            if ( availableMods.has_key( mod ) ) :
+                print mod+'.mod',
+        print
+        print
+    
+    # Print module source dependency
+    for mod in availableMods.keys() :
+        print mod+'.mod :',object_file( os.path.basename( availableMods[mod] ) )
+    print
+    
+elif ( options.depType == 'obj-dep' ) :
+    # Use old style object file dependency rules
+    # This leads to a bit of an overkill since a file that depends on a module will always be
+    # recompiled when that module object file changes, instead of compiling only when the interface
+    # (.mod) changes
+    for dep in depends.keys() :
+        print 'build/'+object_file( os.path.basename( dep ) ), ":", os.path.basename( dep ),
+        for mod in depends[dep] :
+            if ( availableMods.has_key( mod ) ) :
+                print 'build/'+object_file( os.path.basename( availableMods[mod] ) ),
+        print
+        print
+
+# end

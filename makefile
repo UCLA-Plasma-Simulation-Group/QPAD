@@ -2,7 +2,7 @@
 sys ?= gnu_openmpi
 
 # main binary name
-quickpic = $(builddir)/qpic.e
+quickpic = $(builddir)/qpad.e
 # build directory
 builddir ?= build
 # binary directory
@@ -15,29 +15,37 @@ configdir ?= config
 configfile = $(configdir)/make.$(sys)
 include $(configfile)
 
+AUTO_MAKE_DEPEND ?= TRUE
+MAKEDEPEND = ./tools/gendepends -t obj-dep
+depfile = .depend
+ifeq ($(AUTO_MAKE_DEPEND),TRUE)
+	-include $(depfile)
+endif
+
 # ------------------------------------------------------------------------------
 # QuickPIC source files
-# Now the source files must be listed in sequence
-# We may include a tool to generate dependencies in the future
+# If AUTO_MAKE_DEPEND is TRUE, the source files below can be listed in
+# arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
-# source with no dependency
-src = dtimer.c param.f03 system.f03 parallel_class.f03 debug_tool.f03
+src = ufield_class.f03
+src += dtimer.c param.f03 system.f03 parallel_class.f03 debug_tool.f03
 
 src += parallel_pipe_class.f03
 src += grid_class.f03
 src += field_solver_class.f03
 src += input_class.f03
-src += ufield_class.f03
+# src += ufield_class.f03
 src += field_class.f03
 src += field_src_class.f03
 src += field_psi_class.f03 field_b_class.f03 field_e_class.f03
 src += simulation_class.f03
+main_src = main.f03
 # ------------------------------------------------------------------------------
 
 # Parse source files to generate object files
 objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
 objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
-main_obj := main.o
+main_obj := $(builddir)/main.o
 
 # ------------------------------------------------------------------------------
 # QuickPIC unit test source files
@@ -60,17 +68,19 @@ DATESTAMP = $$(date +%s)
 .DEFAULT_GOAL := main
 .PHONY: main clean module help
 
-$(quickpic) : $(objs) main.o
+$(quickpic) : $(objs) $(main_obj)
 	@echo "[LINK] $(@F)"
 	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -o $(@F) $(^F) $(LDF)
 	@chmod a+x $@
 	@echo "Copying binary to bin directory"
-	@cp $@ $(bindir)/qpic-$(DATESTAMP).e
+	@cp $@ $(bindir)/qpad-$(DATESTAMP).e
 	@echo "Creating symbolic link"
-	@ln -f -s qpic-$(DATESTAMP).e $(bindir)/qpic.e
+	@ln -f -s qpad-$(DATESTAMP).e $(bindir)/qpad.e
 	@echo "Done!"
 
 $(objs) : $(builddir) $(configfile)
+
+$(main_obj) : $(builddir) $(configfile)
 
 $(builddir) :
 	@echo "Creating $@ directory"
@@ -85,10 +95,6 @@ $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
 	@$(CC) $(CC_OPTS) -c $(<F) -o $@
 
-# $(test_exe) : $(objs)
-
-# $(testdir)/%.o : %(testdir)/%.f03
-
 %.e : $(testdir)/%.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
@@ -99,11 +105,19 @@ $(builddir)/%.o : %.c
 main : $(quickpic)
 
 module : $(objs)
-	@echo "Only compile modules, no executable is generated"
+	@echo "Only compile modules, no executable is generated."
 
-clean:
+clean :
 	@echo "[CLEAN] Removing build directory"
 	@rm -rf $(builddir)
+
+cleanall :
+	@echo "[CLEAN] Removing build directory and dependencies file"
+	@rm -rf $(builddir) $(depfile)
+
+$(depfile) : $(src) $(main_src)
+	@echo "Automatically generating module dependencies."
+	@$(PYTHON) $(MAKEDEPEND) $(main_src) > $(depfile)
 
 help:
 	@echo "QuickPIC makefile usage: make [options] [sys=system_name]"
@@ -116,5 +130,6 @@ help:
 	@echo "module      - only compile the source files, not link to executable"
 	@echo "TEST_*.e    - generate test executable corresponding to the test source file in test directory."
 	@echo "              'make module' must be conducted before."
-	@echo "clean       - remove build directory"
+	@echo "clean       - remove build directory."
+	@echo "cleanall    - remove build directory and dependencies file."
 	@echo "help        - show this help list"
