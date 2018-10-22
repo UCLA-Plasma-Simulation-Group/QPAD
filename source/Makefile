@@ -104,6 +104,10 @@ TEST_%.e : $(testdir)/TEST_%.f03
 	@cp $< $(builddir)
 	@cd $(builddir) && $(FC) $(FC_OPTS) -o $@ $(<F) $(notdir $(objs)) $(LDF)
 	@cd $(builddir) && chmod a+x $@
+	@if [ ! -d $(bindir) ];then \
+		mkdir $(bindir); \
+	fi
+	@cp $(builddir)/$@ $(bindir)/$@
 	@echo "Done!"
 
 all : $(quickpic)
