@@ -1,0 +1,20 @@
+# Fortran compiler configuration
+FC = mpif90
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -I$(JSON_INC) -fopenmp -ffree-form
+
+# C compiler configuration
+CC = mpicc
+CC_OPTS = -O3 -std=c99
+
+# Python 2 configuration. Used for automatically generate compile rules
+PYTHON = python 
+
+# Linker configuration
+LINKER = mpif90
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran
+
+# Library dependencies
+HYPRE_LIB = /Users/anweiming/work/codes/hypre-2.11.2/src/hypre/lib
+JSON_LIB = /usr/local/jsonfortran-gnu-6.3.0/lib/
+JSON_INC = /usr/local/jsonfortran-gnu-6.3.0/lib/

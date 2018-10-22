@@ -9,8 +9,8 @@ public
 ! ================================================================
 
 integer, parameter :: SG = kind(0.0)
-integer, parameter :: DB = kind(0.0d0.0)
-integer, parameter :: LG = select_int_kind(12)
+integer, parameter :: DB = kind(0.0d0)
+integer, parameter :: LG = selected_int_kind(12)
 
 ! ================================================================
 ! mathematics
