@@ -90,10 +90,6 @@ $(builddir) :
 	@echo "Creating $@ directory"
 	@mkdir -p $@
 
-$(bindir) :
-	@echo "Creating $@ directory"
-	@mkdir -p $@
-
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
@@ -107,7 +103,7 @@ TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
 	@cd $(builddir) && $(FC) $(FC_OPTS) -o $@ $(<F) $(notdir $(objs)) $(LDF)
-	@cd $(builddir) chmod a+x $@
+	@cd $(builddir) && chmod a+x $@
 	@echo "Done!"
 
 all : $(quickpic)
