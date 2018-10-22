@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+   <meta name="description" content="">
+    
+    <meta name="author" content="Fei Li and Weiming An" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>parallel_class.f03 &ndash; QuickPIC wit Azimuzal Decomposition</title>
+
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+    
+    <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+    
+    
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    <script src="../js/jquery-2.1.3.min.js"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html">QuickPIC wit Azimuzal Decomposition </a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+        
+            <li class="dropdown hidden-xs visible-sm visible-md hidden-lg">
+              <a href="#" class="dropdown-toggle"
+              data-toggle="dropdown" role="button"
+              aria-haspopup="true"
+     aria-expanded="false">Contents <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+          
+              
+            <li><a href="../lists/files.html">Source Files</a></li>
+        
+        
+        
+            <li><a href="../lists/modules.html">Modules</a></li>
+        
+            
+                                
+            <li><a href="../lists/procedures.html">Procedures</a></li>
+        
+               
+            <li><a href="../lists/types.html">Derived Types</a></li>
+        
+        
+            <li><a href="../lists/programs.html">Programs</a></li>
+        
+            </ul>
+            </li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/files.html">Source Files</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/modules.html">Modules</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/procedures.html">Procedures</a></li>
+
+                             
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/types.html">Derived Types</a></li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/programs.html">Programs</a></li>
+
+          </ul>
+        
+        <form action="../search.html" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+        </div>
+<!--
+        <button type="submit" class="btn btn-default">Submit</button>
+-->
+        </form>
+        
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    
+  
+  <div class="row">
+    <h1>parallel_class.f03
+    <small>Source File</small>
+    
+    </h1>
+    
+<div class="row">
+  <div class="col-lg-12">
+<div class="well well-sm">
+  <ul class="list-inline" style="margin-bottom:0px;display:inline">
+     
+     
+     
+     
+    
+    
+     <li><i class="fa fa-list-ol"></i>
+       <a data-toggle="tooltip"
+    data-placement="bottom" data-html="true"
+    title=" 4.3% of total for source files.">151 statements</a>
+     </li> 
+     
+     
+     
+    <li><i class="fa fa-code"></i><a href="../src/parallel_class.f03"> Source File</a></li>
+     
+     
+  </ul>
+  <ol class="breadcrumb in-well text-right">
+  
+    
+  
+     <li class="active">parallel_class.f03</li>
+  </ol>
+</div>
+</div>
+</div>
+<script>
+  $(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+
+  </div>
+  <div class="row">
+    <div class="col-md-3 hidden-xs hidden-sm visible-md visible-lg">
+    
+<div id="sidebar">
+  
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#mods-0">Modules</a></h3></div>
+  <div id="mods-0" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/parallel_class.html">parallel_class</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/parallel_class.f03.html#src">parallel_class.f03</a>
+  </div>
+</div>
+
+
+
+</div>
+
+    </div>
+    <div class="col-md-9" id='text'>
+      
+      <br>
+    
+      
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Files dependent on this one</h3>
+      </div>
+      <div class="panel-body">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: sourcefile~~parallel_class.f03~~AfferentGraph Pages: 1 -->
+<svg id="sourcefileparallel_classf03AfferentGraph" width="641pt" height="386pt"
+ viewBox="0.00 0.00 641.00 385.79" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph" class="graph" transform="scale(.5199 .5199) rotate(0) translate(4 737.9867)">
+<title>sourcefile~~parallel_class.f03~~AfferentGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-737.9867 1228.8181,-737.9867 1228.8181,4 -4,4"/>
+<!-- sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node1" class="node">
+<title>sourcefile~parallel_class.f03</title>
+<polygon fill="none" stroke="#000000" points="93.1934,-699.2554 -.0645,-699.2554 -.0645,-677.2446 93.1934,-677.2446 93.1934,-699.2554"/>
+<text text-anchor="middle" x="46.5645" y="-685.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">parallel_class.f03</text>
+</g>
+<!-- sourcefile~simulation_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node2" class="node">
+<title>sourcefile~simulation_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node2"><a xlink:href=".././sourcefile/simulation_class.f03.html" xlink:title="simulation_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1204.7406,-377.2554 1098.6464,-377.2554 1098.6464,-355.2446 1204.7406,-355.2446 1204.7406,-377.2554"/>
+<text text-anchor="middle" x="1151.6935" y="-363.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">simulation_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge1" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-707.25C524.2586,-707.3916 517.3312,-722.7717 481.1104,-727.25 351.7894,-743.239 317.5605,-726.4982 188.5389,-708.25"/>
+</g>
+<!-- sourcefile~input_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node3" class="node">
+<title>sourcefile~input_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node3"><a xlink:href=".././sourcefile/input_class.f03.html" xlink:title="input_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="479.9662,-718.2554 397.8773,-718.2554 397.8773,-696.2446 479.9662,-696.2446 479.9662,-718.2554"/>
+<text text-anchor="middle" x="438.9218" y="-704.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">input_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~input_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge4" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~input_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-707.25C537.5653,-707.34 511.8925,-707.3529 490.1168,-707.3383"/>
+<polygon fill="#000000" stroke="#000000" points="490.0926,-703.8383 480.0895,-707.3294 490.0863,-710.8383 490.0926,-703.8383"/>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node4" class="node">
+<title>sourcefile~parallel_pipe_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node4"><a xlink:href=".././sourcefile/parallel_pipe_class.f03.html" xlink:title="parallel_pipe_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="247.8591,-679.2554 129.2187,-679.2554 129.2187,-657.2446 247.8591,-657.2446 247.8591,-679.2554"/>
+<text text-anchor="middle" x="188.5389" y="-665.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_pipe_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge9" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-707.25C503.9007,-707.4707 495.5598,-673.2092 438.9218,-668.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-630.25C811.8097,-721.5901 748.2656,-706.5223 560.755,-707.25"/>
+</g>
+<!-- sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node5" class="node">
+<title>sourcefile~field_e_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node5"><a xlink:href=".././sourcefile/field_e_class.f03.html" xlink:title="field_e_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1020.788,-529.2554 930.3539,-529.2554 930.3539,-507.2446 1020.788,-507.2446 1020.788,-529.2554"/>
+<text text-anchor="middle" x="975.5709" y="-515.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_e_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge14" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1144.9295,-377.4125C1129.6378,-401.771 1090.0163,-460.1551 1042.5688,-493.25 1037.0273,-497.1153 1030.814,-500.467 1024.465,-503.3488"/>
+<polygon fill="#000000" stroke="#000000" points="1023.0126,-500.1623 1015.1285,-507.2398 1025.7054,-506.6236 1023.0126,-500.1623"/>
+</g>
+<!-- sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node6" class="node">
+<title>sourcefile~grid_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node6"><a xlink:href=".././sourcefile/grid_class.f03.html" xlink:title="grid_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="360.6255,-564.2554 284.0566,-564.2554 284.0566,-542.2446 360.6255,-542.2446 360.6255,-564.2554"/>
+<text text-anchor="middle" x="322.3411" y="-550.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">grid_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge21" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-630.25C863.4311,-690.0841 816.6907,-630.25 689.5865,-630.25 689.5865,-630.25 689.5865,-630.25 560.755,-630.25 481.735,-630.25 394.8024,-591.4728 350.9821,-568.9547"/>
+<polygon fill="#000000" stroke="#000000" points="352.5356,-565.8174 342.0526,-564.2822 349.2902,-572.0196 352.5356,-565.8174"/>
+</g>
+<!-- sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node7" class="node">
+<title>sourcefile~field_src_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node7"><a xlink:href=".././sourcefile/field_src_class.f03.html" xlink:title="field_src_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="738.961,-374.2554 640.2121,-374.2554 640.2121,-352.2446 738.961,-352.2446 738.961,-374.2554"/>
+<text text-anchor="middle" x="689.5865" y="-360.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_src_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge34" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1098.5656,-357.1853C1063.0254,-353.0861 1015.6117,-351.4496 975.5709,-363.25"/>
+</g>
+<!-- sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node9" class="node">
+<title>sourcefile~field_b_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node9"><a xlink:href=".././sourcefile/field_b_class.f03.html" xlink:title="field_b_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="868.8903,-220.2554 778.4562,-220.2554 778.4562,-198.2446 868.8903,-198.2446 868.8903,-220.2554"/>
+<text text-anchor="middle" x="823.6732" y="-206.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_b_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge54" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1098.3132,-358.2948C1090.9246,-355.2198 1084.0147,-351.0075 1078.5688,-345.25 1029.0777,-292.9261 1092.1467,-239.4917 1042.5688,-187.25 1021.263,-164.7994 1005.8907,-162.0306 975.5709,-168.25"/>
+</g>
+<!-- sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node11" class="node">
+<title>sourcefile~field_psi_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node11"><a xlink:href=".././sourcefile/field_psi_class.f03.html" xlink:title="field_psi_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="872.473,-564.2554 774.8735,-564.2554 774.8735,-542.2446 872.473,-542.2446 872.473,-564.2554"/>
+<text text-anchor="middle" x="823.6732" y="-550.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_psi_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge67" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1148.4806,-377.3479C1135.4772,-419.9303 1082.2698,-573.3191 975.5709,-630.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-630.25C926.4832,-656.4416 867.484,-602.5189 839.67,-572.1119"/>
+<polygon fill="#000000" stroke="#000000" points="842.2498,-569.7459 832.9899,-564.5975 837.0181,-574.3967 842.2498,-569.7459"/>
+</g>
+<!-- sourcefile~input_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge2" class="edge">
+<title>sourcefile~input_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M188.5389,-708.25C160.4709,-704.2802 129.2791,-699.8844 103.2974,-696.2273"/>
+<polygon fill="#000000" stroke="#000000" points="103.6358,-692.7405 93.2455,-694.8127 102.6602,-699.6722 103.6358,-692.7405"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-708.25C263.0187,-704.0966 247.4205,-716.5779 188.5389,-708.25"/>
+</g>
+<!-- sourcefile~input_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge10" class="edge">
+<title>sourcefile~input_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-708.25C287.5981,-705.8175 249.7161,-693.5204 223.1573,-683.1951"/>
+<polygon fill="#000000" stroke="#000000" points="224.1476,-679.8217 213.5629,-679.3591 221.5488,-686.3215 224.1476,-679.8217"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M397.8695,-709.1716C375.5124,-709.8231 347.3779,-710.0029 322.3411,-708.25"/>
+</g>
+<!-- sourcefile~input_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge22" class="edge">
+<title>sourcefile~input_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M430.5376,-696.1747C410.9715,-670.3285 362.0802,-605.7443 337.2766,-572.9794"/>
+<polygon fill="#000000" stroke="#000000" points="339.7902,-570.501 330.9638,-564.6404 334.209,-574.726 339.7902,-570.501"/>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge3" class="edge">
+<title>sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M129.1516,-676.6159C120.6163,-677.8183 111.851,-679.0531 103.3674,-680.2481"/>
+<polygon fill="#000000" stroke="#000000" points="102.6075,-676.8205 93.1935,-681.6813 103.584,-683.7521 102.6075,-676.8205"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge5" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-668.25C387.2712,-664.1427 374.0267,-664.6105 322.3411,-668.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M963.2737,-529.4338C944.9302,-545.4798 908.6768,-574.7982 872.573,-590.25 692.5414,-667.3004 634.1323,-683.7734 438.9218,-668.25"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge18" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-554.25C633.6116,-542.1942 617.8396,-558.7092 560.755,-554.25"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge27" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M951.454,-507.1824C913.1105,-489.2734 836.293,-452.1111 774.7734,-414.25 757.965,-403.9056 755.6213,-398.53 738.7734,-388.25 733.6397,-385.1176 728.0658,-382.018 722.5763,-379.1235"/>
+<polygon fill="#000000" stroke="#000000" points="724.0058,-375.9233 713.5102,-374.4764 720.8127,-382.1526 724.0058,-375.9233"/>
+</g>
+<!-- sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node8" class="node">
+<title>sourcefile~ufield_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node8"><a xlink:href=".././sourcefile/ufield_class.f03.html" xlink:title="ufield_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="481.2998,-184.2554 396.5437,-184.2554 396.5437,-162.2446 481.2998,-162.2446 481.2998,-184.2554"/>
+<text text-anchor="middle" x="438.9218" y="-170.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">ufield_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge38" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M960.5051,-529.3946C941.2646,-542.8669 906.3965,-564.7849 872.573,-573.25 793.2548,-593.1011 769.5327,-571.3978 689.5865,-554.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-554.25C643.5772,-547.0833 536.9051,-480.5671 517.1104,-454.25 455.6903,-372.5919 442.5174,-245.0825 439.6927,-194.7352"/>
+<polygon fill="#000000" stroke="#000000" points="443.1739,-194.2551 439.203,-184.4326 436.1818,-194.5875 443.1739,-194.2551"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge49" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M965.5723,-506.9984C950.9017,-489.8997 923.6547,-455.803 908.573,-422.25 880.4651,-359.7169 902.2581,-334.05 872.573,-272.25 864.6822,-255.8226 851.9785,-239.6331 841.4971,-227.7796"/>
+<polygon fill="#000000" stroke="#000000" points="844.0099,-225.3409 834.6823,-220.3165 838.8408,-230.0611 844.0099,-225.3409"/>
+</g>
+<!-- sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node10" class="node">
+<title>sourcefile~field_class.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node10"><a xlink:href=".././sourcefile/field_class.f03.html" xlink:title="field_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="599.794,-336.2554 521.7161,-336.2554 521.7161,-314.2446 599.794,-314.2446 599.794,-336.2554"/>
+<text text-anchor="middle" x="560.755" y="-322.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge57" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M930.0997,-507.497C888.5917,-496.8682 826.0764,-478.7965 774.7734,-455.25 734.2476,-436.6498 729.4628,-422.2048 689.5865,-402.25"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge68" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M930.4079,-528.6564C915.0546,-532.1941 897.6809,-536.1973 881.4776,-539.9308"/>
+<polygon fill="#000000" stroke="#000000" points="880.5272,-536.558 871.5684,-542.2141 882.099,-543.3793 880.5272,-536.558"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge6" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M309.5116,-564.2767C286.2938,-584.2318 237.1245,-626.4917 209.1467,-650.5381"/>
+<polygon fill="#000000" stroke="#000000" points="206.8287,-647.9152 201.5262,-657.0877 211.3914,-653.2239 206.8287,-647.9152"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge7" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M640.1919,-364.4593C604.8965,-363.8156 556.8227,-359.8163 517.1104,-345.25 492.5078,-336.2259 343.0284,-196.1643 322.3411,-212.25"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge19" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M681.9114,-374.321C668.3201,-393.1763 638.2416,-431.6677 604.3997,-454.25 539.0704,-497.8433 511.4296,-486.069 438.9218,-516.25"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge63" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M651.9768,-352.1567C638.2182,-348.0985 622.4739,-343.4545 607.9818,-339.18"/>
+<polygon fill="#000000" stroke="#000000" points="608.7705,-335.7636 598.1888,-336.2914 606.79,-342.4776 608.7705,-335.7636"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge8" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M396.4781,-179.7631C372.6152,-185.1841 343.47,-194.9341 322.3411,-212.25"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge20" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M429.475,-184.5848C419.8742,-196.6609 405.239,-216.6951 396.7332,-236.25 350.8331,-341.7737 330.892,-479.9164 324.6486,-532.0807"/>
+<polygon fill="#000000" stroke="#000000" points="321.1587,-531.7929 323.4907,-542.1279 328.1127,-532.5944 321.1587,-531.7929"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge11" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M791.106,-198.1993C748.711,-184.4509 672.0361,-161.7504 604.3997,-153.25 512.8238,-141.741 483.8908,-122.8833 396.7332,-153.25 356.8833,-167.1341 355.6546,-186.3466 322.3411,-212.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-212.25C250.0798,-267.0835 203.2372,-564.1567 191.4609,-646.867"/>
+<polygon fill="#000000" stroke="#000000" points="187.9809,-646.4806 190.0602,-656.8694 194.9133,-647.4514 187.9809,-646.4806"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge23" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-248.25C416.2773,-238.3328 346.108,-461.1849 327.5119,-531.9928"/>
+<polygon fill="#000000" stroke="#000000" points="324.0415,-531.4383 324.9667,-541.9927 330.8252,-533.165 324.0415,-531.4383"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge33" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M814.0853,-220.4509C803.7819,-232.7406 787.2116,-253.2528 774.7734,-272.25 756.4706,-300.2044 762.7415,-314.9696 738.7734,-338.25 735.3464,-341.5787 731.3877,-344.5593 727.2346,-347.2011"/>
+<polygon fill="#000000" stroke="#000000" points="725.5018,-344.1601 718.5449,-352.1509 728.9665,-350.2426 725.5018,-344.1601"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge45" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M778.4121,-214.9319C741.2766,-219.7119 687.3587,-226.9227 640.3997,-234.25 604.889,-239.7909 596.6953,-248.3265 560.755,-248.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-248.25C519.0582,-245.3879 516.7901,-220.0163 481.1104,-198.25 476.5042,-195.44 471.5931,-192.4892 466.8103,-189.6394"/>
+<polygon fill="#000000" stroke="#000000" points="468.2717,-186.437 457.8849,-184.3475 464.7016,-192.4582 468.2717,-186.437"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge64" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M778.5056,-216.445C751.3482,-222.1731 716.8764,-232.0047 689.5865,-248.25"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge12" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M540.5011,-314.2349C533.0445,-310.0271 524.5954,-305.0777 517.1104,-300.25 437.2842,-248.764 395.8102,-152.0395 322.3411,-212.25"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge24" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M558.2678,-336.3744C549.5552,-372.1677 516.628,-483.9052 438.9218,-516.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-516.25C416.9207,-525.4078 391.8049,-533.647 370.5334,-540.0131"/>
+<polygon fill="#000000" stroke="#000000" points="369.3497,-536.713 360.744,-542.893 371.3253,-543.4284 369.3497,-536.713"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge47" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M534.4847,-314.1883C528.121,-310.5123 521.8074,-305.884 517.1104,-300.25 486.3262,-263.3251 511.6212,-235.4011 481.1104,-198.25 478.6991,-195.314 475.8465,-192.6419 472.7798,-190.2309"/>
+<polygon fill="#000000" stroke="#000000" points="474.5507,-187.2021 464.3176,-184.457 470.6053,-192.9844 474.5507,-187.2021"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge13" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-668.25C301.6396,-671.5387 278.9081,-672.509 258.1496,-672.3867"/>
+<polygon fill="#000000" stroke="#000000" points="258.1839,-668.887 248.1351,-672.2443 258.0843,-675.8862 258.1839,-668.887"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-516.25C646.9436,-504.0374 643.3082,-546.9499 604.3997,-568.25 546.0663,-600.1841 388.0198,-657.816 322.3411,-668.25"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge25" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-554.25C504.2064,-549.8326 491.1466,-494.1182 438.9218,-516.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-516.25C632.1964,-499.814 620.271,-558.8992 560.755,-554.25"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge36" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M818.186,-542.1279C800.3634,-506.0654 744.8964,-394.3426 738.7734,-388.25 735.5152,-385.0079 731.7502,-382.1029 727.7831,-379.5224"/>
+<polygon fill="#000000" stroke="#000000" points="729.3032,-376.3586 718.8934,-374.3871 725.8017,-382.4199 729.3032,-376.3586"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge48" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-516.25C625.6767,-497.9468 609.566,-485.3826 560.755,-440.25"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge66" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M782.833,-542.201C756.2386,-534.9518 720.8116,-525.1926 689.5865,-516.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-516.25C650.7181,-505.1184 592.8944,-392.4524 570.2938,-345.5598"/>
+<polygon fill="#000000" stroke="#000000" points="573.373,-343.8854 565.9092,-336.366 567.0547,-346.8987 573.373,-343.8854"/>
+</g>
+<!-- sourcefile~test_field_bperp.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node12" class="node">
+<title>sourcefile~test_field_bperp.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node12"><a xlink:href=".././sourcefile/test_field_bperp.f03.html" xlink:title="TEST_field_bperp.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1032.7153,-140.2554 918.4265,-140.2554 918.4265,-118.2446 1032.7153,-118.2446 1032.7153,-140.2554"/>
+<text text-anchor="middle" x="975.5709" y="-126.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_bperp.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge30" class="edge">
+<title>sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-128.25C728.5966,-161.3461 801.1958,-259.2667 738.7734,-338.25 736.2723,-341.4147 733.2632,-344.2147 729.9808,-346.6843"/>
+<polygon fill="#000000" stroke="#000000" points="727.9414,-343.8337 721.3926,-352.1623 731.7058,-349.7354 727.9414,-343.8337"/>
+</g>
+<!-- sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge41" class="edge">
+<title>sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-128.25C765.811,-148.3918 750.7228,-100.2602 689.5865,-96.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M918.1782,-119.9257C889.098,-117.4124 853.6848,-117.803 823.6732,-128.25"/>
+</g>
+<!-- sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge51" class="edge">
+<title>sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M941.5637,-140.314C930.8012,-144.243 918.9988,-149.0065 908.573,-154.25 886.8625,-165.169 863.8171,-180.3533 847.223,-192.0017"/>
+<polygon fill="#000000" stroke="#000000" points="844.8321,-189.4075 838.7173,-198.0597 848.893,-195.1092 844.8321,-189.4075"/>
+</g>
+<!-- sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge60" class="edge">
+<title>sourcefile~test_field_bperp.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-248.25C654.5364,-269.1149 614.1786,-293.2546 588.1107,-308.8621"/>
+<polygon fill="#000000" stroke="#000000" points="586.2994,-305.8671 579.5182,-314.0075 589.8957,-311.8727 586.2994,-305.8671"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-128.25C748.1441,-154.5417 758.3065,-207.3419 689.5865,-248.25"/>
+</g>
+<!-- sourcefile~test_field_ez.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node13" class="node">
+<title>sourcefile~test_field_ez.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node13"><a xlink:href=".././sourcefile/test_field_ez.f03.html" xlink:title="TEST_field_ez.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1201.0731,-336.2554 1102.3138,-336.2554 1102.3138,-314.2446 1201.0731,-314.2446 1201.0731,-336.2554"/>
+<text text-anchor="middle" x="1151.6935" y="-322.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_ez.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge15" class="edge">
+<title>sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1102.1284,-331.8421C1093.3471,-334.9939 1084.9763,-339.5844 1078.5688,-346.25 1031.9542,-394.7425 1087.2701,-442.9883 1042.5688,-493.25 1038.9077,-497.3666 1034.5027,-500.8072 1029.7217,-503.6825"/>
+<polygon fill="#000000" stroke="#000000" points="1028.0849,-500.5885 1020.7895,-508.2715 1031.2837,-506.8149 1028.0849,-500.5885"/>
+</g>
+<!-- sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge29" class="edge">
+<title>sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1102.2344,-333.8888C1066.6608,-340.5933 1017.7273,-350.8261 975.5709,-363.25"/>
+</g>
+<!-- sourcefile~test_field_ez.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge40" class="edge">
+<title>sourcefile~test_field_ez.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1102.3827,-333.1857C1093.7836,-336.2292 1085.415,-340.4361 1078.5688,-346.25 1050.0799,-370.4433 1073.0956,-400.6849 1042.5688,-422.25 913.7706,-513.2372 847.2797,-457.5209 689.5865,-458.25"/>
+</g>
+<!-- sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge59" class="edge">
+<title>sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1102.489,-316.9685C1066.3888,-312.852 1016.698,-311.3294 975.5709,-325.25"/>
+</g>
+<!-- sourcefile~test_field_bz.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node14" class="node">
+<title>sourcefile~test_field_bz.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node14"><a xlink:href=".././sourcefile/test_field_bz.f03.html" xlink:title="TEST_field_bz.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1024.9506,-259.2554 926.1913,-259.2554 926.1913,-237.2446 1024.9506,-237.2446 1024.9506,-259.2554"/>
+<text text-anchor="middle" x="975.5709" y="-245.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_bz.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge28" class="edge">
+<title>sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-362.25C799.5227,-367.1298 772.4226,-368.1456 748.9398,-367.6583"/>
+<polygon fill="#000000" stroke="#000000" points="748.8748,-364.1548 738.7736,-367.3509 748.6632,-371.1516 748.8748,-364.1548"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M931.987,-259.3884C923.6082,-262.8863 915.3456,-267.4161 908.573,-273.25 883.5522,-294.8029 896.4954,-315.4841 872.573,-338.25 855.0355,-354.9397 847.4034,-357.4552 823.6732,-362.25"/>
+</g>
+<!-- sourcefile~test_field_bz.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge39" class="edge">
+<title>sourcefile~test_field_bz.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M925.9716,-252.6921C814.6087,-262.2494 551.7193,-282.3344 517.1104,-262.25 489.2178,-246.0633 503.5327,-222.4284 481.1104,-199.25 477.8595,-195.8895 474.0877,-192.7842 470.1626,-189.977"/>
+<polygon fill="#000000" stroke="#000000" points="471.7596,-186.8407 461.4678,-184.3248 467.9444,-192.7096 471.7596,-186.8407"/>
+</g>
+<!-- sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge50" class="edge">
+<title>sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.4494,-237.1785C915.0582,-232.7132 894.8232,-227.5179 876.5553,-222.8276"/>
+<polygon fill="#000000" stroke="#000000" points="877.1957,-219.3785 866.6394,-220.2817 875.4549,-226.1586 877.1957,-219.3785"/>
+</g>
+<!-- sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge58" class="edge">
+<title>sourcefile~test_field_bz.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-324.25C764.515,-331.4444 749.0164,-319.8285 689.5865,-324.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M940.3056,-259.2648C929.817,-263.1049 918.4859,-267.8304 908.573,-273.25 869.9505,-294.3658 867.3692,-318.936 823.6732,-324.25"/>
+</g>
+<!-- sourcefile~test_ufield.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node15" class="node">
+<title>sourcefile~test_ufield.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node15"><a xlink:href=".././sourcefile/test_ufield.f03.html" xlink:title="TEST_ufield.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="604.5448,-184.2554 516.9652,-184.2554 516.9652,-162.2446 604.5448,-162.2446 604.5448,-184.2554"/>
+<text text-anchor="middle" x="560.755" y="-170.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_ufield.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_ufield.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge42" class="edge">
+<title>sourcefile~test_ufield.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M516.7704,-173.25C508.5327,-173.25 499.8462,-173.25 491.3819,-173.25"/>
+<polygon fill="#000000" stroke="#000000" points="491.2126,-169.7501 481.2125,-173.25 491.2125,-176.7501 491.2126,-169.7501"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node16" class="node">
+<title>sourcefile~test_field_eperp.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node16"><a xlink:href=".././sourcefile/test_field_eperp.f03.html" xlink:title="TEST_field_eperp.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1208.8379,-22.2554 1094.5491,-22.2554 1094.5491,-.2446 1208.8379,-.2446 1208.8379,-22.2554"/>
+<text text-anchor="middle" x="1151.6935" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_eperp.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge16" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1094.3132,-20.0423C1088.2928,-23.0585 1082.8283,-27.0313 1078.5688,-32.25 1013.5945,-111.8565 1104.4109,-411.1864 1042.5688,-493.25 1039.1599,-497.7737 1034.8379,-501.479 1030.0367,-504.5139"/>
+<polygon fill="#000000" stroke="#000000" points="1028.1902,-501.5306 1020.9707,-509.2849 1031.4501,-507.7252 1028.1902,-501.5306"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge31" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1094.3191,-20.5253C1088.3767,-23.4671 1082.9298,-27.2904 1078.5688,-32.25 1008.5064,-111.9301 1107.4775,-184.3182 1042.5688,-268.25 977.7974,-352.0044 927.4538,-341.2805 823.6732,-362.25"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge43" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-96.25C605.8251,-90.7557 512.6866,-133.1208 467.1311,-157.2538"/>
+<polygon fill="#000000" stroke="#000000" points="465.2882,-154.2713 458.1528,-162.103 468.6148,-160.4304 465.2882,-154.2713"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1111.3405,-22.3298C1067.9162,-33.9498 1001.5846,-50.7411 975.5709,-52.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-52.25C911.3789,-55.9733 753.8696,-94.782 689.5865,-96.25"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge52" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1094.279,-21.5175C1088.4929,-24.2957 1083.094,-27.8094 1078.5688,-32.25 1039.7373,-70.3566 1081.4636,-111.2079 1042.5688,-149.25 1020.4419,-170.8919 1005.8907,-162.0306 975.5709,-168.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-168.25C939.5107,-175.6469 899.3218,-186.6181 869.3444,-195.3505"/>
+<polygon fill="#000000" stroke="#000000" points="868.1973,-192.0396 859.5903,-198.2178 870.1715,-198.7554 868.1973,-192.0396"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge61" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1101.2288,-22.294C1093.3835,-24.9774 1085.568,-28.2589 1078.5688,-32.25 1059.4508,-43.1517 1062.2192,-56.34 1042.5688,-66.25 934.6045,-120.6984 883.4863,-61.3121 774.7734,-114.25 681.2464,-159.7932 603.5896,-262.3744 573.8097,-305.5292"/>
+<polygon fill="#000000" stroke="#000000" points="570.764,-303.7841 568.0403,-314.0228 576.5545,-307.7173 570.764,-303.7841"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge70" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1094.3838,-20.1004C1088.3516,-23.1069 1082.865,-27.0615 1078.5688,-32.25 1023.0608,-99.2871 1089.7885,-349.1376 1042.5688,-422.25 1005.4237,-479.7636 967.1062,-462.7331 908.573,-498.25 888.177,-510.6259 865.5209,-525.3544 848.7464,-536.4538"/>
+<polygon fill="#000000" stroke="#000000" points="846.4765,-533.7598 840.084,-542.2089 850.3501,-539.5903 846.4765,-533.7598"/>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node17" class="node">
+<title>sourcefile~test_field_bperp_iter.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node17"><a xlink:href=".././sourcefile/test_field_bperp_iter.f03.html" xlink:title="TEST_field_bperp_iter.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1042.5668,-218.2554 908.5751,-218.2554 908.5751,-196.2446 1042.5668,-196.2446 1042.5668,-218.2554"/>
+<text text-anchor="middle" x="975.5709" y="-204.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_bperp_iter.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge32" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-286.25C783.6838,-305.1911 777.3933,-316.653 738.7734,-338.25 733.1771,-341.3796 727.1444,-344.5818 721.2863,-347.6047"/>
+<polygon fill="#000000" stroke="#000000" points="719.6374,-344.5166 712.3122,-352.1711 722.812,-350.7554 719.6374,-344.5166"/>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge44" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M931.3655,-196.1711C889.9138,-185.0359 826.7116,-166.1207 774.7734,-142.25 735.6768,-124.2813 732.5044,-99.3281 689.5865,-96.25"/>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge53" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M908.5042,-208.1331C898.699,-208.2622 888.6935,-208.3939 879.1536,-208.5195"/>
+<polygon fill="#000000" stroke="#000000" points="878.9691,-205.0215 869.0161,-208.653 879.0613,-212.0209 878.9691,-205.0215"/>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge62" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-324.25C663.4528,-326.1943 634.2554,-326.5684 610.2725,-326.4023"/>
+<polygon fill="#000000" stroke="#000000" points="610.0303,-322.8997 599.9947,-326.2964 609.9581,-329.8993 610.0303,-322.8997"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-286.25C767.6941,-312.7646 751.3568,-319.6544 689.5865,-324.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M933.7295,-218.2658C925.2244,-221.0838 916.4699,-224.4204 908.573,-228.25 867.4552,-248.1903 864.9726,-266.6885 823.6732,-286.25"/>
+</g>
+<!-- sourcefile~test_field_psi.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node18" class="node">
+<title>sourcefile~test_field_psi.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node18"><a xlink:href=".././sourcefile/test_field_psi.f03.html" xlink:title="TEST_field_psi.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1025.783,-413.2554 925.3588,-413.2554 925.3588,-391.2446 1025.783,-391.2446 1025.783,-413.2554"/>
+<text text-anchor="middle" x="975.5709" y="-399.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_psi.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge35" class="edge">
+<title>sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-400.25C788.1942,-401.0298 749.2638,-388.7222 722.5354,-378.0955"/>
+<polygon fill="#000000" stroke="#000000" points="723.8488,-374.8513 713.2691,-374.2838 721.1857,-381.325 723.8488,-374.8513"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M925.2802,-400.7017C895.6942,-400.0122 857.5549,-399.5054 823.6732,-400.25"/>
+</g>
+<!-- sourcefile~test_field_psi.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge46" class="edge">
+<title>sourcefile~test_field_psi.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-458.25C631.7725,-458.5173 603.2043,-479.5003 560.755,-440.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M560.755,-440.25C485.1084,-370.3041 452.9526,-244.2743 442.779,-194.3978"/>
+<polygon fill="#000000" stroke="#000000" points="446.1876,-193.5906 440.8386,-184.4452 439.317,-194.9302 446.1876,-193.5906"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-400.25C758.7586,-401.6767 754.5162,-457.9498 689.5865,-458.25"/>
+</g>
+<!-- sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge65" class="edge">
+<title>sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M823.6732,-400.25C764.0869,-401.5596 742.8861,-428.9221 689.5865,-402.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M689.5865,-402.25C668.629,-391.7625 660.9769,-394.4653 640.3997,-383.25 619.2367,-371.7154 597.2417,-355.307 581.742,-342.8844"/>
+<polygon fill="#000000" stroke="#000000" points="583.8088,-340.0537 573.8459,-336.4493 579.3866,-345.4799 583.8088,-340.0537"/>
+</g>
+<!-- sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge69" class="edge">
+<title>sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M963.0513,-413.6836C949.4619,-426.1724 927.2067,-446.8536 908.573,-465.25 884.861,-488.6601 858.3099,-516.4449 841.3152,-534.4395"/>
+<polygon fill="#000000" stroke="#000000" points="838.533,-532.2885 834.2238,-541.9674 843.6283,-537.0884 838.533,-532.2885"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_node19" class="node">
+<title>sourcefile~test_field_eperp_beam.f03</title>
+<g id="a_sourcefile~~parallel_class.f03~~AfferentGraph_node19"><a xlink:href=".././sourcefile/test_field_eperp_beam.f03.html" xlink:title="TEST_field_eperp_beam.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1224.943,-63.2554 1078.444,-63.2554 1078.444,-41.2446 1224.943,-41.2446 1224.943,-63.2554"/>
+<text text-anchor="middle" x="1151.6935" y="-49.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_eperp_beam.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge17" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1147.958,-63.749C1136.4844,-99.3433 1101.1647,-210.991 1078.5688,-305.25 1058.7368,-387.9798 1097.4675,-428.2603 1042.5688,-493.25 1038.9637,-497.5178 1034.5558,-501.0577 1029.7388,-503.9938"/>
+<polygon fill="#000000" stroke="#000000" points="1027.9922,-500.9565 1020.7113,-508.6532 1031.2028,-507.1768 1027.9922,-500.9565"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge26" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-363.25C910.813,-382.3347 889.8475,-348.8791 823.6732,-362.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1150.7368,-63.3799C1146.5208,-105.5862 1125.9129,-257.5045 1042.5688,-339.25 1019.9878,-361.398 1005.9105,-354.3086 975.5709,-363.25"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge37" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1078.3736,-50.354C1046.7273,-50.0261 1009.3016,-50.2935 975.5709,-52.25"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge55" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1142.3714,-63.3333C1124.8719,-83.4353 1085.022,-125.9756 1042.5688,-149.25 1015.4288,-164.1292 1005.8907,-162.0306 975.5709,-168.25"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~parallel_class.f03~~AfferentGraph_edge56" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M975.5709,-325.25C911.6232,-346.8948 890.691,-316.0998 823.6732,-324.25"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1150.5896,-63.4836C1145.9775,-104 1124.4842,-243.7775 1042.5688,-311.25 1019.0885,-330.5904 1004.3851,-315.4971 975.5709,-325.25"/>
+</g>
+</g>
+</svg>
+</div><script>var pansourcefileparallel_classf03AfferentGraph = svgPanZoom('#sourcefileparallel_classf03AfferentGraph', {zoomEnabled: true,controlIconsEnabled: true, fit: true, center: true,}); </script><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="186pt" height="31pt"
+ viewBox="0.00 0.00 186.41 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 182.4064,-26.5 182.4064,4 -4,4"/>
+<!-- Source File -->
+<g id="node1" class="node">
+<title>Source File</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="65.1576,-22.2554 -.0526,-22.2554 -.0526,-.2446 65.1576,-.2446 65.1576,-22.2554"/>
+<text text-anchor="middle" x="32.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Source File</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node2" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="178.2607,-22.2554 82.8443,-22.2554 82.8443,-.2446 178.2607,-.2446 178.2607,-22.2554"/>
+<text text-anchor="middle" x="130.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a file to a file which it depends on. A file
+    is dependent upon another if the latter must be compiled before the former
+    can be.
+    </p>
+    </div></div></div></div>
+      </div>
+    </div>
+      
+      <br>
+
+    <section class="visible-xs visible-sm hidden-md">
+      
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#mods-1">Modules</a></h3></div>
+  <div id="mods-1" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/parallel_class.html">parallel_class</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/parallel_class.f03.html#src">parallel_class.f03</a>
+  </div>
+</div>
+
+
+
+    </section>
+    <br class="visible-xs visible-sm hidden-md">
+
+    <section>
+      <h2><span class="anchor" id="src"></span>Source Code</h2>
+    <div class="hl"><pre><span></span><a name="ln-1"></a><span class="k">module </span><span class="n">parallel_class</span>
+<a name="ln-2"></a>
+<a name="ln-3"></a><span class="k">use </span><span class="n">mpi</span>
+<a name="ln-4"></a><span class="k">use </span><span class="n">omp_lib</span>
+<a name="ln-5"></a>
+<a name="ln-6"></a><span class="k">implicit none</span>
+<a name="ln-7"></a>
+<a name="ln-8"></a><span class="k">private</span>
+<a name="ln-9"></a>
+<a name="ln-10"></a><span class="k">public</span> <span class="kd">::</span> <span class="n">parallel</span>
+<a name="ln-11"></a>
+<a name="ln-12"></a><span class="k">type </span><span class="n">parallel</span>
+<a name="ln-13"></a>
+<a name="ln-14"></a>  <span class="k">private</span>
+<a name="ln-15"></a>  <span class="c">! nvp: number of MPI nodes</span>
+<a name="ln-16"></a>  <span class="c">! idproc: processor id</span>
+<a name="ln-17"></a>  <span class="c">! kstrt: idproc+1</span>
+<a name="ln-18"></a>  <span class="c">! mreal = default datatype for reals</span>
+<a name="ln-19"></a>  <span class="c">! mint = default datatype for integers</span>
+<a name="ln-20"></a>  <span class="c">! mcplx = default datatype for complex type</span>
+<a name="ln-21"></a>  <span class="c">! mdouble = default double precision type</span>
+<a name="ln-22"></a>  <span class="c">! lworld = MPI_COMM_WORLD communicator</span>
+<a name="ln-23"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">nvp</span>
+<a name="ln-24"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">idproc</span>
+<a name="ln-25"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">kstrt</span>
+<a name="ln-26"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">mreal</span><span class="p">,</span> <span class="n">mint</span><span class="p">,</span> <span class="n">mcplx</span><span class="p">,</span> <span class="n">mdouble</span><span class="p">,</span> <span class="n">mchar</span><span class="p">,</span> <span class="n">lworld</span>
+<a name="ln-27"></a>
+<a name="ln-28"></a>  <span class="k">contains</span>
+<a name="ln-29"></a>
+<a name="ln-30"></a><span class="k">  generic</span> <span class="kd">::</span> <span class="n">new</span> <span class="o">=&gt;</span> <span class="n">init_parallel</span>
+<a name="ln-31"></a>  <span class="k">generic</span> <span class="kd">::</span> <span class="n">del</span> <span class="o">=&gt;</span> <span class="n">end_parallel</span>
+<a name="ln-32"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getnvp</span>
+<a name="ln-33"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getidproc</span>
+<a name="ln-34"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getkstrt</span>
+<a name="ln-35"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getlworld</span>
+<a name="ln-36"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getmreal</span>
+<a name="ln-37"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getmint</span>
+<a name="ln-38"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getmdouble</span>
+<a name="ln-39"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getmcplx</span>
+<a name="ln-40"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">getmchar</span>
+<a name="ln-41"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">init_parallel</span>
+<a name="ln-42"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">end_parallel</span>
+<a name="ln-43"></a>            
+<a name="ln-44"></a><span class="k">end type </span><span class="n">parallel</span>         
+<a name="ln-45"></a>
+<a name="ln-46"></a><span class="k">contains</span>
+<a name="ln-47"></a><span class="c">!      </span>
+<a name="ln-48"></a><span class="k">function </span><span class="n">getnvp</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-49"></a>
+<a name="ln-50"></a>  <span class="k">implicit none</span>
+<a name="ln-51"></a>
+<a name="ln-52"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-53"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getnvp</span>
+<a name="ln-54"></a>
+<a name="ln-55"></a>  <span class="n">getnvp</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">nvp</span>
+<a name="ln-56"></a>
+<a name="ln-57"></a><span class="k">end function </span><span class="n">getnvp</span>         
+<a name="ln-58"></a><span class="c">!</span>
+<a name="ln-59"></a><span class="k">function </span><span class="n">getidproc</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-60"></a>
+<a name="ln-61"></a>  <span class="k">implicit none</span>
+<a name="ln-62"></a>
+<a name="ln-63"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-64"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getidproc</span>
+<a name="ln-65"></a>
+<a name="ln-66"></a>  <span class="n">getidproc</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">idproc</span>
+<a name="ln-67"></a>
+<a name="ln-68"></a><span class="k">end function </span><span class="n">getidproc</span>         
+<a name="ln-69"></a><span class="c">!</span>
+<a name="ln-70"></a><span class="k">function </span><span class="n">getkstrt</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-71"></a>
+<a name="ln-72"></a>  <span class="k">implicit none</span>
+<a name="ln-73"></a>
+<a name="ln-74"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-75"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getkstrt</span>
+<a name="ln-76"></a>
+<a name="ln-77"></a>  <span class="n">getkstrt</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">kstrt</span>
+<a name="ln-78"></a>
+<a name="ln-79"></a><span class="k">end function </span><span class="n">getkstrt</span>
+<a name="ln-80"></a><span class="c">!</span>
+<a name="ln-81"></a><span class="k">function </span><span class="n">getlworld</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-82"></a>
+<a name="ln-83"></a>  <span class="k">implicit none</span>
+<a name="ln-84"></a>
+<a name="ln-85"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-86"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getlworld</span>
+<a name="ln-87"></a>
+<a name="ln-88"></a>  <span class="n">getlworld</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">lworld</span>
+<a name="ln-89"></a>
+<a name="ln-90"></a><span class="k">end function </span><span class="n">getlworld</span>
+<a name="ln-91"></a><span class="c">!</span>
+<a name="ln-92"></a><span class="k">function </span><span class="n">getmint</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-93"></a>
+<a name="ln-94"></a>  <span class="k">implicit none</span>
+<a name="ln-95"></a>
+<a name="ln-96"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-97"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getmint</span>
+<a name="ln-98"></a>
+<a name="ln-99"></a>  <span class="n">getmint</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">mint</span>
+<a name="ln-100"></a>
+<a name="ln-101"></a><span class="k">end function </span><span class="n">getmint</span>
+<a name="ln-102"></a><span class="c">!</span>
+<a name="ln-103"></a><span class="k">function </span><span class="n">getmreal</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-104"></a>
+<a name="ln-105"></a>  <span class="k">implicit none</span>
+<a name="ln-106"></a>
+<a name="ln-107"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-108"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getmreal</span>
+<a name="ln-109"></a>
+<a name="ln-110"></a>  <span class="n">getmreal</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">mreal</span>
+<a name="ln-111"></a>
+<a name="ln-112"></a><span class="k">end function </span><span class="n">getmreal</span>
+<a name="ln-113"></a><span class="c">!</span>
+<a name="ln-114"></a><span class="k">function </span><span class="n">getmdouble</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-115"></a>
+<a name="ln-116"></a>  <span class="k">implicit none</span>
+<a name="ln-117"></a>
+<a name="ln-118"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-119"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getmdouble</span>
+<a name="ln-120"></a>
+<a name="ln-121"></a>  <span class="n">getmdouble</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">mdouble</span>
+<a name="ln-122"></a>
+<a name="ln-123"></a><span class="k">end function </span><span class="n">getmdouble</span>
+<a name="ln-124"></a><span class="c">!      </span>
+<a name="ln-125"></a><span class="k">function </span><span class="n">getmcplx</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-126"></a>
+<a name="ln-127"></a>  <span class="k">implicit none</span>
+<a name="ln-128"></a>
+<a name="ln-129"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-130"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getmcplx</span>
+<a name="ln-131"></a>
+<a name="ln-132"></a>  <span class="n">getmcplx</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">mcplx</span>
+<a name="ln-133"></a>
+<a name="ln-134"></a><span class="k">end function </span><span class="n">getmcplx</span>
+<a name="ln-135"></a><span class="c">!</span>
+<a name="ln-136"></a><span class="k">function </span><span class="n">getmchar</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-137"></a>
+<a name="ln-138"></a>  <span class="k">implicit none</span>
+<a name="ln-139"></a>
+<a name="ln-140"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-141"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">getmchar</span>
+<a name="ln-142"></a>
+<a name="ln-143"></a>  <span class="n">getmchar</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">mchar</span>
+<a name="ln-144"></a>
+<a name="ln-145"></a><span class="k">end function </span><span class="n">getmchar</span>
+<a name="ln-146"></a><span class="c">!</span>
+<a name="ln-147"></a><span class="k">subroutine </span><span class="n">init_parallel</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-148"></a>
+<a name="ln-149"></a>  <span class="k">implicit none</span>
+<a name="ln-150"></a>
+<a name="ln-151"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-152"></a>  <span class="c">! nvpp = number of shared memory threads (0=default)</span>
+<a name="ln-153"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">nvpp</span> <span class="o">=</span> <span class="mi">0</span>
+<a name="ln-154"></a>
+<a name="ln-155"></a>  <span class="c">! initialize for shared memory parallel processing using openmp</span>
+<a name="ln-156"></a>  <span class="k">call </span><span class="n">init_omp</span><span class="p">(</span><span class="n">nvpp</span><span class="p">)</span>
+<a name="ln-157"></a>
+<a name="ln-158"></a>  <span class="c">! initialize for distributed memory parallel processing using mpi</span>
+<a name="ln-159"></a>  <span class="k">call </span><span class="n">ppinit2</span><span class="p">(</span><span class="n">this</span><span class="p">%</span><span class="n">idproc</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">nvp</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">lworld</span><span class="p">,&amp;</span>
+<a name="ln-160"></a>  <span class="p">&amp;</span><span class="n">this</span><span class="p">%</span><span class="n">mint</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">mreal</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">mdouble</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">mcplx</span><span class="p">,</span><span class="n">this</span><span class="p">%</span><span class="n">mchar</span><span class="p">)</span>
+<a name="ln-161"></a>  <span class="n">this</span><span class="p">%</span><span class="n">kstrt</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">idproc</span> <span class="o">+</span> <span class="mi">1</span>
+<a name="ln-162"></a>   
+<a name="ln-163"></a><span class="k">end subroutine </span><span class="n">init_parallel</span>
+<a name="ln-164"></a><span class="c">!</span>
+<a name="ln-165"></a><span class="k">subroutine </span><span class="n">ppinit2</span><span class="p">(</span><span class="n">idproc</span><span class="p">,</span><span class="n">nvp</span><span class="p">,</span><span class="n">lworld</span><span class="p">,</span><span class="n">mint</span><span class="p">,</span><span class="n">mreal</span><span class="p">,</span><span class="n">mdouble</span><span class="p">,</span><span class="n">mcplx</span><span class="p">,</span><span class="n">mchar</span><span class="p">)</span>
+<a name="ln-166"></a>  <span class="c">! this subroutine initializes parallel processing using mpi</span>
+<a name="ln-167"></a>  <span class="k">implicit none</span>
+<a name="ln-168"></a>
+<a name="ln-169"></a><span class="k">  </span><span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">idproc</span><span class="p">,</span> <span class="n">nvp</span>
+<a name="ln-170"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">lworld</span><span class="p">,</span><span class="n">mint</span><span class="p">,</span><span class="n">mreal</span><span class="p">,</span><span class="n">mdouble</span><span class="p">,</span><span class="n">mcplx</span><span class="p">,</span><span class="n">mchar</span>
+<a name="ln-171"></a>  <span class="c">! nproc = number of real or virtual processors obtained</span>
+<a name="ln-172"></a>  <span class="c">! mreal = default datatype for reals</span>
+<a name="ln-173"></a>  <span class="c">! mint = default datatype for integers</span>
+<a name="ln-174"></a>  <span class="c">! mcplx = default datatype for complex type</span>
+<a name="ln-175"></a>  <span class="c">! mdouble = default double precision type</span>
+<a name="ln-176"></a>  <span class="c">! mchar = default datatype for character type</span>
+<a name="ln-177"></a>  <span class="c">! lworld = MPI_COMM_WORLD communicator</span>
+<a name="ln-178"></a>  <span class="c">! local data</span>
+<a name="ln-179"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">ierror</span><span class="p">,</span> <span class="n">ndprec</span><span class="p">,</span> <span class="n">idprec</span>
+<a name="ln-180"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">iprec</span>
+<a name="ln-181"></a>  <span class="kt">logical</span> <span class="kd">::</span> <span class="n">flag</span>
+<a name="ln-182"></a>  <span class="kt">real</span> <span class="kd">::</span> <span class="n">prec</span>
+<a name="ln-183"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">nproc</span>
+<a name="ln-184"></a>  <span class="c">! ndprec = (0,1) = (no,yes) use (normal,autodouble) precision</span>
+<a name="ln-185"></a>  <span class="k">if</span> <span class="p">(</span><span class="nb">digits</span><span class="p">(</span><span class="n">prec</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">24</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-186"></a><span class="k">     </span><span class="n">ndprec</span> <span class="o">=</span> <span class="mi">1</span>
+<a name="ln-187"></a>  <span class="k">else</span>
+<a name="ln-188"></a><span class="k">     </span><span class="n">ndprec</span> <span class="o">=</span> <span class="mi">0</span>
+<a name="ln-189"></a>  <span class="n">endif</span>
+<a name="ln-190"></a>  <span class="c">! idprec = (0,1) = (no,yes) use (normal,autodouble) integer precision</span>
+<a name="ln-191"></a>  <span class="k">if</span> <span class="p">(</span><span class="nb">digits</span><span class="p">(</span><span class="n">iprec</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">31</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-192"></a><span class="k">     </span><span class="n">idprec</span> <span class="o">=</span> <span class="mi">1</span>
+<a name="ln-193"></a>  <span class="k">else</span>
+<a name="ln-194"></a><span class="k">     </span><span class="n">idprec</span> <span class="o">=</span> <span class="mi">0</span>
+<a name="ln-195"></a>  <span class="n">endif</span>
+<a name="ln-196"></a>  <span class="c">! this segment is used for mpi computers</span>
+<a name="ln-197"></a>  <span class="c">! indicate whether MPI_INIT has been called</span>
+<a name="ln-198"></a>  <span class="k">call </span><span class="n">MPI_INITIALIZED</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-199"></a>  <span class="k">if</span> <span class="p">(.</span><span class="nb">not</span><span class="p">.</span><span class="n">flag</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-200"></a>  <span class="c">! initialize the MPI execution environment</span>
+<a name="ln-201"></a>     <span class="k">call </span><span class="n">MPI_INIT</span><span class="p">(</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-202"></a>     <span class="k">if</span> <span class="p">(</span><span class="n">ierror</span> <span class="o">/=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">stop</span>
+<a name="ln-203"></a><span class="k">  </span><span class="n">endif</span>
+<a name="ln-204"></a>  <span class="n">lworld</span> <span class="o">=</span> <span class="n">MPI_COMM_WORLD</span>
+<a name="ln-205"></a>  <span class="c">! determine the rank of the calling process in the communicator</span>
+<a name="ln-206"></a>  <span class="k">call </span><span class="n">MPI_COMM_RANK</span><span class="p">(</span><span class="n">lworld</span><span class="p">,</span><span class="n">idproc</span><span class="p">,</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-207"></a>  <span class="c">! determine the size of the group associated with a communicator</span>
+<a name="ln-208"></a>  <span class="k">call </span><span class="n">MPI_COMM_SIZE</span><span class="p">(</span><span class="n">lworld</span><span class="p">,</span><span class="n">nproc</span><span class="p">,</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-209"></a>  <span class="c">! set default datatypes</span>
+<a name="ln-210"></a>  <span class="n">mint</span> <span class="o">=</span> <span class="n">MPI_INTEGER</span>
+<a name="ln-211"></a>  <span class="n">mdouble</span> <span class="o">=</span> <span class="n">MPI_DOUBLE_PRECISION</span>
+<a name="ln-212"></a>  <span class="n">mchar</span> <span class="o">=</span> <span class="n">MPI_CHARACTER</span>
+<a name="ln-213"></a>  <span class="c">! single precision real</span>
+<a name="ln-214"></a>  <span class="k">if</span> <span class="p">(</span><span class="n">ndprec</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-215"></a><span class="k">     </span><span class="n">mreal</span> <span class="o">=</span> <span class="n">MPI_REAL</span>
+<a name="ln-216"></a>     <span class="n">mcplx</span> <span class="o">=</span> <span class="n">MPI_COMPLEX</span>
+<a name="ln-217"></a>  <span class="c">! double precision real</span>
+<a name="ln-218"></a>  <span class="k">else</span>
+<a name="ln-219"></a><span class="k">     </span><span class="n">mreal</span> <span class="o">=</span> <span class="n">MPI_DOUBLE_PRECISION</span>
+<a name="ln-220"></a>     <span class="n">mcplx</span> <span class="o">=</span> <span class="n">MPI_DOUBLE_COMPLEX</span>
+<a name="ln-221"></a>  <span class="n">endif</span>
+<a name="ln-222"></a>  <span class="c">! single precision integer</span>
+<a name="ln-223"></a>  <span class="c">!     if (idprec==0) then</span>
+<a name="ln-224"></a>  <span class="c">!        mint = MPI_INTEGER</span>
+<a name="ln-225"></a>  <span class="c">! double precision integer</span>
+<a name="ln-226"></a>  <span class="c">!     else</span>
+<a name="ln-227"></a>  <span class="c">!        mint = MPI_INTEGER8</span>
+<a name="ln-228"></a>  <span class="c">!     endif</span>
+<a name="ln-229"></a>  <span class="c">! operators</span>
+<a name="ln-230"></a>  <span class="n">nvp</span> <span class="o">=</span> <span class="n">nproc</span>
+<a name="ln-231"></a>
+<a name="ln-232"></a><span class="k">end subroutine </span><span class="n">ppinit2</span>
+<a name="ln-233"></a><span class="c">!</span>
+<a name="ln-234"></a><span class="k">subroutine </span><span class="n">init_omp</span><span class="p">(</span><span class="n">nth</span><span class="p">)</span>
+<a name="ln-235"></a>  <span class="c">! initialize openmp library</span>
+<a name="ln-236"></a>  <span class="c">! use nth threads if nth &gt; 0; otherwise, use the number found</span>
+<a name="ln-237"></a>  <span class="k">implicit none</span>
+<a name="ln-238"></a><span class="k">  </span><span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">nth</span>
+<a name="ln-239"></a>  <span class="c">! local data</span>
+<a name="ln-240"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">ncpus</span><span class="p">,</span> <span class="n">nthreads</span><span class="p">,</span> <span class="n">tid</span>
+<a name="ln-241"></a>  <span class="c">! determine how many processors are available</span>
+<a name="ln-242"></a>  <span class="n">ncpus</span> <span class="o">=</span> <span class="n">omp_get_num_procs</span><span class="p">()</span>
+<a name="ln-243"></a>  <span class="n">nthreads</span> <span class="o">=</span> <span class="n">omp_get_max_threads</span><span class="p">()</span>
+<a name="ln-244"></a>  <span class="k">if</span> <span class="p">(</span><span class="n">nth</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">nthreads</span> <span class="o">=</span> <span class="n">nth</span>
+<a name="ln-245"></a>  <span class="k">call </span><span class="n">omp_set_num_threads</span><span class="p">(</span><span class="n">nthreads</span><span class="p">)</span>
+<a name="ln-246"></a>
+<a name="ln-247"></a>  <span class="c">!$OMP PARALLEL PRIVATE(tid)</span>
+<a name="ln-248"></a>  <span class="n">tid</span> <span class="o">=</span> <span class="n">OMP_GET_THREAD_NUM</span><span class="p">()</span>
+<a name="ln-249"></a>  <span class="c">!$OMP END PARALLEL</span>
+<a name="ln-250"></a>
+<a name="ln-251"></a><span class="k">end subroutine </span><span class="n">init_omp</span>
+<a name="ln-252"></a><span class="c">!</span>
+<a name="ln-253"></a><span class="k">subroutine </span><span class="n">end_parallel</span><span class="p">(</span><span class="n">this</span><span class="p">)</span>
+<a name="ln-254"></a>  <span class="c">! this subroutine terminates parallel processing</span>
+<a name="ln-255"></a>  <span class="k">implicit none</span>
+<a name="ln-256"></a>
+<a name="ln-257"></a><span class="k">  class</span><span class="p">(</span><span class="n">parallel</span><span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-258"></a>  <span class="c">! lworld = MPI_COMM_WORLD communicator</span>
+<a name="ln-259"></a>  <span class="c">! local data</span>
+<a name="ln-260"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">ierror</span>
+<a name="ln-261"></a>  <span class="kt">logical</span> <span class="kd">::</span> <span class="n">flag</span>
+<a name="ln-262"></a>  <span class="c">! indicate whether MPI_INIT has been called</span>
+<a name="ln-263"></a>  <span class="k">call </span><span class="n">MPI_INITIALIZED</span><span class="p">(</span><span class="n">flag</span><span class="p">,</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-264"></a>  <span class="k">if</span> <span class="p">(</span><span class="n">flag</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-265"></a>  <span class="c">! synchronize processes</span>
+<a name="ln-266"></a>     <span class="k">call </span><span class="n">MPI_BARRIER</span><span class="p">(</span><span class="n">this</span><span class="p">%</span><span class="n">getlworld</span><span class="p">(),</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-267"></a>  <span class="c">! terminate MPI execution environment</span>
+<a name="ln-268"></a>     <span class="k">call </span><span class="n">MPI_FINALIZE</span><span class="p">(</span><span class="n">ierror</span><span class="p">)</span>
+<a name="ln-269"></a>  <span class="n">endif</span>
+<a name="ln-270"></a>  
+<a name="ln-271"></a><span class="k">end subroutine </span><span class="n">end_parallel</span>
+<a name="ln-272"></a><span class="c">!</span>
+<a name="ln-273"></a><span class="k">end module </span><span class="n">parallel_class</span>
+</pre></div>
+
+    </section>
+    </div>
+  </div>
+
+  
+    <hr>    
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+      <div class="row">
+        <div class="col-xs-6 col-md-4"><p>&copy; 2018 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>
+                                          </p></div>
+        <div class="col-xs-6 col-md-4 col-md-push-4">
+          <p class="text-right">
+            Documentation generated by 
+            <a href="https://github.com/cmacmackin/ford">FORD</a>
+            
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4 col-md-pull-4"><p class="text-center"> QuickPIC wit Azimuzal Decomposition was developed by Fei Li and Weiming An</p></div>
+      </div>
+      <br>
+      </div> <!-- /container -->    
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+<!--
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+-->
+    <script src="../js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+    <!-- MathJax JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+        jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+        extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+      });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    
+    <script src="../tipuesearch/tipuesearch_content.js"></script>
+    <script src="../tipuesearch/tipuesearch_set.js"></script>
+    <script src="../tipuesearch/tipuesearch.js"></script>
+    
+    
+  </body>
+</html>

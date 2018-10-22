@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+   <meta name="description" content="">
+    
+    <meta name="author" content="Fei Li and Weiming An" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>field_psi_class.f03 &ndash; QuickPIC wit Azimuzal Decomposition</title>
+
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+    
+    <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+    
+    
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    <script src="../js/jquery-2.1.3.min.js"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html">QuickPIC wit Azimuzal Decomposition </a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+        
+            <li class="dropdown hidden-xs visible-sm visible-md hidden-lg">
+              <a href="#" class="dropdown-toggle"
+              data-toggle="dropdown" role="button"
+              aria-haspopup="true"
+     aria-expanded="false">Contents <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+          
+              
+            <li><a href="../lists/files.html">Source Files</a></li>
+        
+        
+        
+            <li><a href="../lists/modules.html">Modules</a></li>
+        
+            
+                                
+            <li><a href="../lists/procedures.html">Procedures</a></li>
+        
+               
+            <li><a href="../lists/types.html">Derived Types</a></li>
+        
+        
+            <li><a href="../lists/programs.html">Programs</a></li>
+        
+            </ul>
+            </li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/files.html">Source Files</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/modules.html">Modules</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/procedures.html">Procedures</a></li>
+
+                             
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/types.html">Derived Types</a></li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/programs.html">Programs</a></li>
+
+          </ul>
+        
+        <form action="../search.html" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+        </div>
+<!--
+        <button type="submit" class="btn btn-default">Submit</button>
+-->
+        </form>
+        
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    
+  
+  <div class="row">
+    <h1>field_psi_class.f03
+    <small>Source File</small>
+    
+    </h1>
+    
+<div class="row">
+  <div class="col-lg-12">
+<div class="well well-sm">
+  <ul class="list-inline" style="margin-bottom:0px;display:inline">
+     
+     
+     
+     
+    
+    
+     <li><i class="fa fa-list-ol"></i>
+       <a data-toggle="tooltip"
+    data-placement="bottom" data-html="true"
+    title=" 4.8% of total for source files.">167 statements</a>
+     </li> 
+     
+     
+     
+    <li><i class="fa fa-code"></i><a href="../src/field_psi_class.f03"> Source File</a></li>
+     
+     
+  </ul>
+  <ol class="breadcrumb in-well text-right">
+  
+    
+  
+     <li class="active">field_psi_class.f03</li>
+  </ol>
+</div>
+</div>
+</div>
+<script>
+  $(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+
+  </div>
+  <div class="row">
+    <div class="col-md-3 hidden-xs hidden-sm visible-md visible-lg">
+    
+<div id="sidebar">
+  
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#mods-0">Modules</a></h3></div>
+  <div id="mods-0" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/field_psi_class.html">field_psi_class</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/field_psi_class.f03.html#src">field_psi_class.f03</a>
+  </div>
+</div>
+
+
+
+</div>
+
+    </div>
+    <div class="col-md-9" id='text'>
+      
+      <br>
+    
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">This file depends on</h3>
+      </div>
+      <div class="panel-body">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: sourcefile~~field_psi_class.f03~~EfferentGraph Pages: 1 -->
+<svg id="sourcefilefield_psi_classf03EfferentGraph" width="641pt" height="202pt"
+ viewBox="0.00 0.00 641.00 201.92" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph" class="graph" transform="scale(.7087 .7087) rotate(0) translate(4 280.9266)">
+<title>sourcefile~~field_psi_class.f03~~EfferentGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-280.9266 900.5261,-280.9266 900.5261,4 -4,4"/>
+<!-- sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node1" class="node">
+<title>sourcefile~field_psi_class.f03</title>
+<polygon fill="none" stroke="#000000" points="896.4261,-52.8311 798.8266,-52.8311 798.8266,-30.8202 896.4261,-30.8202 896.4261,-52.8311"/>
+<text text-anchor="middle" x="847.6263" y="-38.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">field_psi_class.f03</text>
+</g>
+<!-- sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node2" class="node">
+<title>sourcefile~field_solver_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node2"><a xlink:href=".././sourcefile/field_solver_class.f03.html" xlink:title="field_solver_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="514.0087,-246.8311 401.2359,-246.8311 401.2359,-224.8202 514.0087,-224.8202 514.0087,-246.8311"/>
+<text text-anchor="middle" x="457.6223" y="-232.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_solver_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge1" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_solver_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-235.8256C568.0152,-238.0206 544.9438,-238.624 524.0912,-238.5014"/>
+<polygon fill="#000000" stroke="#000000" points="524.0906,-235.0013 514.0512,-238.3867 524.0105,-242.0008 524.0906,-235.0013"/>
+</g>
+<!-- sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node3" class="node">
+<title>sourcefile~param.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node3"><a xlink:href=".././sourcefile/param.f03.html" xlink:title="param.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="354.4655,-168.8311 294.9129,-168.8311 294.9129,-146.8202 354.4655,-146.8202 354.4655,-168.8311"/>
+<text text-anchor="middle" x="324.6892" y="-154.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">param.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge2" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-235.8256C521.7364,-242.8421 525.2479,-162.2459 457.6223,-158.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M713.5397,-196.8256C661.266,-221.8757 646.7378,-229.8191 589.084,-235.8256"/>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node4" class="node">
+<title>sourcefile~parallel_pipe_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node4"><a xlink:href=".././sourcefile/parallel_pipe_class.f03.html" xlink:title="parallel_pipe_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="247.8591,-52.8311 129.2187,-52.8311 129.2187,-30.8202 247.8591,-30.8202 247.8591,-52.8311"/>
+<text text-anchor="middle" x="188.5389" y="-38.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_pipe_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge3" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M824.9551,-30.7927C798.7497,-19.0976 754.0238,-2.3588 713.5397,-2.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-3.8256C530.8155,.4814 515.4263,-12.3378 457.6223,-3.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M713.5397,-2.8256C658.2279,-3.4635 644.2489,-7.9033 589.084,-3.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M457.6223,-3.8256C378.2539,7.8621 285.6047,-12.742 232.3342,-27.8965"/>
+<polygon fill="#000000" stroke="#000000" points="231.1621,-24.5923 222.5393,-30.7485 233.1191,-31.3132 231.1621,-24.5923"/>
+</g>
+<!-- sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node5" class="node">
+<title>sourcefile~system.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node5"><a xlink:href=".././sourcefile/system.f03.html" xlink:title="system.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="219.8065,-168.8311 157.2714,-168.8311 157.2714,-146.8202 219.8065,-146.8202 219.8065,-168.8311"/>
+<text text-anchor="middle" x="188.5389" y="-154.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">system.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge4" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-235.8256C554.6567,-239.4124 548.1374,-251.3434 513.8152,-255.8256 412.5126,-269.0549 378.0712,-295.5527 283.949,-255.8256 246.4819,-240.0115 216.4436,-201.4951 200.6634,-177.7302"/>
+<polygon fill="#000000" stroke="#000000" points="203.4944,-175.661 195.149,-169.1338 197.6024,-179.4406 203.4944,-175.661"/>
+</g>
+<!-- sourcefile~grid_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node6" class="node">
+<title>sourcefile~grid_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node6"><a xlink:href=".././sourcefile/grid_class.f03.html" xlink:title="grid_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="362.9737,-52.8311 286.4047,-52.8311 286.4047,-30.8202 362.9737,-30.8202 362.9737,-52.8311"/>
+<text text-anchor="middle" x="324.6892" y="-38.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">grid_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge5" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M713.5397,-2.8256C655.5776,-3.494 646.8749,-37.3257 589.084,-41.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-41.8256C514.0035,-47.6719 426.5661,-46.0247 373.4467,-44.0877"/>
+<polygon fill="#000000" stroke="#000000" points="373.4209,-40.5842 363.2942,-43.6985 373.1528,-47.5791 373.4209,-40.5842"/>
+</g>
+<!-- sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node7" class="node">
+<title>sourcefile~field_src_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node7"><a xlink:href=".././sourcefile/field_src_class.f03.html" xlink:title="field_src_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="762.9142,-52.8311 664.1652,-52.8311 664.1652,-30.8202 762.9142,-30.8202 762.9142,-52.8311"/>
+<text text-anchor="middle" x="713.5397" y="-38.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_src_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge6" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M798.4588,-41.8256C790.2756,-41.8256 781.7092,-41.8256 773.2975,-41.8256"/>
+<polygon fill="#000000" stroke="#000000" points="773.1501,-38.3257 763.1501,-41.8256 773.1501,-45.3257 773.1501,-38.3257"/>
+</g>
+<!-- sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node8" class="node">
+<title>sourcefile~ufield_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node8"><a xlink:href=".././sourcefile/ufield_class.f03.html" xlink:title="ufield_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="500.0004,-130.8311 415.2443,-130.8311 415.2443,-108.8202 500.0004,-108.8202 500.0004,-130.8311"/>
+<text text-anchor="middle" x="457.6223" y="-116.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">ufield_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge7" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M842.3446,-52.8701C827.2754,-82.9112 780.7866,-165.9183 713.5397,-196.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M713.5397,-196.8256C693.54,-206.0177 562.5773,-159.2754 496.1419,-134.4703"/>
+<polygon fill="#000000" stroke="#000000" points="497.0367,-131.068 486.4444,-130.8342 494.579,-137.6224 497.0367,-131.068"/>
+</g>
+<!-- sourcefile~field_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node9" class="node">
+<title>sourcefile~field_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node9"><a xlink:href=".././sourcefile/field_class.f03.html" xlink:title="field_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="628.1229,-91.8311 550.045,-91.8311 550.045,-69.8202 628.1229,-69.8202 628.1229,-91.8311"/>
+<text text-anchor="middle" x="589.084" y="-77.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge8" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M713.5397,-2.8256C690.1061,-3.0958 684.1743,-9.3231 664.3528,-21.8256 645.7385,-33.5667 645.7134,-42.2996 628.3528,-55.8256 624.7408,-58.6398 620.8042,-61.4328 616.8636,-64.0763"/>
+<polygon fill="#000000" stroke="#000000" points="614.8546,-61.2073 608.355,-69.5743 618.6537,-67.0866 614.8546,-61.2073"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge11" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.8582,-224.8156C416.4215,-211.6506 378.6571,-189.4919 352.7473,-174.289"/>
+<polygon fill="#000000" stroke="#000000" points="354.1845,-171.0743 343.7883,-169.0322 350.642,-177.1118 354.1845,-171.0743"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge10" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M424.9152,-224.7757C398.2156,-216.1093 359.3684,-204.3012 324.6892,-196.8256"/>
+</g>
+<!-- sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node10" class="node">
+<title>sourcefile~debug_tool.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node10"><a xlink:href=".././sourcefile/debug_tool.f03.html" xlink:title="debug_tool.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="365.6711,-246.8311 283.7073,-246.8311 283.7073,-224.8202 365.6711,-224.8202 365.6711,-246.8311"/>
+<text text-anchor="middle" x="324.6892" y="-232.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">debug_tool.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge9" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M401.2467,-235.8256C392.8878,-235.8256 384.3108,-235.8256 376.0614,-235.8256"/>
+<polygon fill="#000000" stroke="#000000" points="375.8284,-232.3257 365.8284,-235.8256 375.8283,-239.3257 375.8284,-232.3257"/>
+</g>
+<!-- sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_node11" class="node">
+<title>sourcefile~parallel_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~EfferentGraph_node11"><a xlink:href=".././sourcefile/parallel_class.f03.html" xlink:title="parallel_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="93.1934,-52.8311 -.0645,-52.8311 -.0645,-30.8202 93.1934,-30.8202 93.1934,-52.8311"/>
+<text text-anchor="middle" x="46.5645" y="-38.6756" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge12" class="edge">
+<title>sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M129.1516,-41.8256C120.6163,-41.8256 111.851,-41.8256 103.3674,-41.8256"/>
+<polygon fill="#000000" stroke="#000000" points="103.1936,-38.3257 93.1935,-41.8256 103.1935,-45.3257 103.1936,-38.3257"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge14" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M286.4014,-41.8256C277.5285,-41.8256 267.8146,-41.8256 258.061,-41.8256"/>
+<polygon fill="#000000" stroke="#000000" points="257.9161,-38.3257 247.916,-41.8256 257.916,-45.3257 257.9161,-38.3257"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge13" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M311.6345,-52.9482C288.0093,-73.0769 237.9772,-115.7043 209.5083,-139.9597"/>
+<polygon fill="#000000" stroke="#000000" points="207.0962,-137.4168 201.7541,-146.5663 211.6359,-142.7451 207.0962,-137.4168"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge15" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M709.2808,-52.9069C696.6764,-83.8057 656.1895,-170.3828 589.084,-196.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-196.8256C532.4992,-219.1228 518.3641,-161.8977 457.6223,-158.8256"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge16" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M688.9053,-30.7335C664.2408,-20.4911 624.9069,-6.4736 589.084,-3.8256"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge17" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M324.6892,-196.8256C292.4001,-189.8653 256.5072,-179.4705 229.6841,-171.1624"/>
+<polygon fill="#000000" stroke="#000000" points="230.4634,-167.7389 219.8744,-168.0919 228.3723,-174.4193 230.4634,-167.7389"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M589.084,-196.8256C534.4204,-218.3657 382.1243,-209.2065 324.6892,-196.8256"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge18" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M664.1105,-40.0653C641.2476,-39.7025 613.7492,-39.905 589.084,-41.8256"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge19" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M678.2086,-52.8971C664.5454,-57.1787 648.7399,-62.1316 634.2673,-66.6668"/>
+<polygon fill="#000000" stroke="#000000" points="632.9993,-63.3962 624.5034,-69.7264 635.0925,-70.076 632.9993,-63.3962"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge21" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M418.8152,-130.919C401.6466,-135.8267 381.4813,-141.5912 364.2289,-146.5229"/>
+<polygon fill="#000000" stroke="#000000" points="363.105,-143.2039 354.4522,-149.3176 365.029,-149.9343 363.105,-143.2039"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge22" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M419.6399,-108.8156C371.5974,-94.8893 288.837,-70.8993 236.4879,-55.7247"/>
+<polygon fill="#000000" stroke="#000000" points="237.3419,-52.3283 226.7628,-52.9057 235.393,-59.0515 237.3419,-52.3283"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge20" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M415.2482,-114.9079C388.9047,-112.9789 354.4933,-112.5158 324.6892,-118.8256"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge23" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M429.2259,-108.7852C420.1124,-104.8263 410.1308,-100.0393 401.4294,-94.8256 384.042,-84.4073 382.0931,-78.3663 365.4294,-66.8256 361.2978,-63.9642 356.8409,-61.0575 352.4439,-58.287"/>
+<polygon fill="#000000" stroke="#000000" points="353.975,-55.1192 343.626,-52.8499 350.301,-61.0776 353.975,-55.1192"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge24" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M457.6223,-158.8256C426.3871,-157.2459 390.9718,-157.0584 364.554,-157.2318"/>
+<polygon fill="#000000" stroke="#000000" points="364.5098,-153.732 354.5401,-157.3176 364.5698,-160.7317 364.5098,-153.732"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M579.3656,-92.1042C559.0336,-114.335 509.5708,-161.453 457.6223,-158.8256"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge25" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M577.2898,-69.5706C555.6732,-50.0157 507.3412,-11.1472 457.6223,-3.8256"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge26" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M457.6223,-80.8256C396.1745,-80.7101 384.8047,-106.0986 324.6892,-118.8256"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M324.6892,-118.8256C292.3747,-125.6669 256.483,-136.0676 229.6669,-144.4082"/>
+<polygon fill="#000000" stroke="#000000" points="228.3495,-141.1534 219.8601,-147.4922 230.4495,-147.831 228.3495,-141.1534"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge27" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M457.6223,-80.8256C422.2199,-80.759 383.5807,-67.8755 357.1312,-56.936"/>
+<polygon fill="#000000" stroke="#000000" points="358.1938,-53.5839 347.6231,-52.8693 355.441,-60.0199 358.1938,-53.5839"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M549.968,-80.8641C523.8238,-80.8804 488.6618,-80.884 457.6223,-80.8256"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~EfferentGraph_edge28" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M551.764,-91.8971C537.1929,-96.2199 520.3152,-101.2269 504.9086,-105.7975"/>
+<polygon fill="#000000" stroke="#000000" points="503.6272,-102.5268 495.0356,-108.7264 505.6181,-109.2377 503.6272,-102.5268"/>
+</g>
+</g>
+</svg>
+</div><script>var pansourcefilefield_psi_classf03EfferentGraph = svgPanZoom('#sourcefilefield_psi_classf03EfferentGraph', {zoomEnabled: true,controlIconsEnabled: true, fit: true, center: true,}); </script><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="186pt" height="31pt"
+ viewBox="0.00 0.00 186.41 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 182.4064,-26.5 182.4064,4 -4,4"/>
+<!-- Source File -->
+<g id="node1" class="node">
+<title>Source File</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="65.1576,-22.2554 -.0526,-22.2554 -.0526,-.2446 65.1576,-.2446 65.1576,-22.2554"/>
+<text text-anchor="middle" x="32.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Source File</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node2" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="178.2607,-22.2554 82.8443,-22.2554 82.8443,-.2446 178.2607,-.2446 178.2607,-22.2554"/>
+<text text-anchor="middle" x="130.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a file to a file which it depends on. A file
+    is dependent upon another if the latter must be compiled before the former
+    can be.
+    </p>
+    </div></div></div></div>
+      </div>
+    </div>
+    
+      
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Files dependent on this one</h3>
+      </div>
+      <div class="panel-body">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: sourcefile~~field_psi_class.f03~~AfferentGraph Pages: 1 -->
+<svg id="sourcefilefield_psi_classf03AfferentGraph" width="425pt" height="180pt"
+ viewBox="0.00 0.00 424.76 179.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph" class="graph" transform="scale(1 1) rotate(0) translate(4 175.5)">
+<title>sourcefile~~field_psi_class.f03~~AfferentGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-175.5 420.7605,-175.5 420.7605,4 -4,4"/>
+<!-- sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node1" class="node">
+<title>sourcefile~field_psi_class.f03</title>
+<polygon fill="none" stroke="#000000" points="97.6995,-80.2554 .1,-80.2554 .1,-58.2446 97.6995,-58.2446 97.6995,-80.2554"/>
+<text text-anchor="middle" x="48.8998" y="-66.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">field_psi_class.f03</text>
+</g>
+<!-- sourcefile~simulation_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node2" class="node">
+<title>sourcefile~simulation_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node2"><a xlink:href=".././sourcefile/simulation_class.f03.html" xlink:title="simulation_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="396.683,-171.2554 290.5888,-171.2554 290.5888,-149.2446 396.683,-149.2446 396.683,-171.2554"/>
+<text text-anchor="middle" x="343.6359" y="-157.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">simulation_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge1" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M290.1705,-150.3636C247.2422,-141.6885 185.7674,-127.5956 133.7996,-109.25 114.7911,-102.5397 94.3264,-92.973 78.2526,-84.878"/>
+<polygon fill="#000000" stroke="#000000" points="79.8364,-81.7569 69.3402,-80.3146 76.6461,-87.9876 79.8364,-81.7569"/>
+</g>
+<!-- sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node3" class="node">
+<title>sourcefile~field_e_class.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node3"><a xlink:href=".././sourcefile/field_e_class.f03.html" xlink:title="field_e_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="229.3725,-100.2554 138.9383,-100.2554 138.9383,-78.2446 229.3725,-78.2446 229.3725,-100.2554"/>
+<text text-anchor="middle" x="184.1554" y="-86.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_e_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge5" class="edge">
+<title>sourcefile~simulation_class.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M298.5599,-149.1856C289.1422,-146.3543 279.3838,-143.0247 270.5112,-139.25 248.856,-130.0369 225.867,-116.5226 209.0575,-105.866"/>
+<polygon fill="#000000" stroke="#000000" points="210.7034,-102.7628 200.4023,-100.2852 206.91,-108.6459 210.7034,-102.7628"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge2" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M138.741,-82.5347C128.956,-81.0878 118.4732,-79.5377 108.2468,-78.0255"/>
+<polygon fill="#000000" stroke="#000000" points="108.5456,-74.5317 98.1412,-76.5312 107.5216,-81.4565 108.5456,-74.5317"/>
+</g>
+<!-- sourcefile~test_field_psi.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node4" class="node">
+<title>sourcefile~test_field_psi.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node4"><a xlink:href=".././sourcefile/test_field_psi.f03.html" xlink:title="TEST_field_psi.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="234.3675,-22.2554 133.9433,-22.2554 133.9433,-.2446 234.3675,-.2446 234.3675,-22.2554"/>
+<text text-anchor="middle" x="184.1554" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_psi.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge3" class="edge">
+<title>sourcefile~test_field_psi.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M158.3965,-22.2959C137.4719,-31.2687 107.7309,-44.0222 84.5243,-53.9736"/>
+<polygon fill="#000000" stroke="#000000" points="82.8347,-50.8898 75.0235,-58.0477 85.5935,-57.3232 82.8347,-50.8898"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node5" class="node">
+<title>sourcefile~test_field_eperp.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node5"><a xlink:href=".././sourcefile/test_field_eperp.f03.html" xlink:title="TEST_field_eperp.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="400.7802,-48.2554 286.4915,-48.2554 286.4915,-26.2446 400.7802,-26.2446 400.7802,-48.2554"/>
+<text text-anchor="middle" x="343.6359" y="-34.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_eperp.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge4" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M286.4583,-43.4579C235.1385,-49.0297 160.1082,-57.1759 108.1594,-62.8161"/>
+<polygon fill="#000000" stroke="#000000" points="107.6551,-59.3502 98.0913,-63.9092 108.4107,-66.3093 107.6551,-59.3502"/>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge7" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M303.263,-48.3364C292.5727,-51.4103 281.0701,-54.8426 270.5112,-58.25 254.9919,-63.2581 238.0748,-69.2183 223.3598,-74.5682"/>
+<polygon fill="#000000" stroke="#000000" points="221.7542,-71.4288 213.5685,-78.1552 224.1622,-78.0017 221.7542,-71.4288"/>
+</g>
+<!-- sourcefile~test_field_ez.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node6" class="node">
+<title>sourcefile~test_field_ez.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node6"><a xlink:href=".././sourcefile/test_field_ez.f03.html" xlink:title="TEST_field_ez.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="393.0155,-130.2554 294.2562,-130.2554 294.2562,-108.2446 393.0155,-108.2446 393.0155,-130.2554"/>
+<text text-anchor="middle" x="343.6359" y="-116.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_ez.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge6" class="edge">
+<title>sourcefile~test_field_ez.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M294.0495,-109.9223C276.775,-106.6727 257.2863,-103.0067 239.5695,-99.674"/>
+<polygon fill="#000000" stroke="#000000" points="239.8476,-96.165 229.3729,-97.7559 238.5535,-103.0443 239.8476,-96.165"/>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_node7" class="node">
+<title>sourcefile~test_field_eperp_beam.f03</title>
+<g id="a_sourcefile~~field_psi_class.f03~~AfferentGraph_node7"><a xlink:href=".././sourcefile/test_field_eperp_beam.f03.html" xlink:title="TEST_field_eperp_beam.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="416.8853,-89.2554 270.3864,-89.2554 270.3864,-67.2446 416.8853,-67.2446 416.8853,-89.2554"/>
+<text text-anchor="middle" x="343.6359" y="-75.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">TEST_field_eperp_beam.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~field_psi_class.f03~~AfferentGraph_edge8" class="edge">
+<title>sourcefile~test_field_eperp_beam.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M270.4303,-83.2993C260.0988,-84.0119 249.62,-84.7346 239.694,-85.4193"/>
+<polygon fill="#000000" stroke="#000000" points="239.3148,-81.937 229.5794,-86.1169 239.7965,-88.9204 239.3148,-81.937"/>
+</g>
+</g>
+</svg>
+</div><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="186pt" height="31pt"
+ viewBox="0.00 0.00 186.41 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 182.4064,-26.5 182.4064,4 -4,4"/>
+<!-- Source File -->
+<g id="node1" class="node">
+<title>Source File</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="65.1576,-22.2554 -.0526,-22.2554 -.0526,-.2446 65.1576,-.2446 65.1576,-22.2554"/>
+<text text-anchor="middle" x="32.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Source File</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node2" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="178.2607,-22.2554 82.8443,-22.2554 82.8443,-.2446 178.2607,-.2446 178.2607,-22.2554"/>
+<text text-anchor="middle" x="130.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a file to a file which it depends on. A file
+    is dependent upon another if the latter must be compiled before the former
+    can be.
+    </p>
+    </div></div></div></div>
+      </div>
+    </div>
+      
+      <br>
+
+    <section class="visible-xs visible-sm hidden-md">
+      
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#mods-1">Modules</a></h3></div>
+  <div id="mods-1" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/field_psi_class.html">field_psi_class</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/field_psi_class.f03.html#src">field_psi_class.f03</a>
+  </div>
+</div>
+
+
+
+    </section>
+    <br class="visible-xs visible-sm hidden-md">
+
+    <section>
+      <h2><span class="anchor" id="src"></span>Source Code</h2>
+    <div class="hl"><pre><span></span><a name="ln-1"></a><span class="k">module </span><span class="n">field_psi_class</span>
+<a name="ln-2"></a>
+<a name="ln-3"></a><span class="k">use </span><span class="n">parallel_pipe_class</span>
+<a name="ln-4"></a><span class="k">use </span><span class="n">grid_class</span>
+<a name="ln-5"></a><span class="k">use </span><span class="n">field_class</span>
+<a name="ln-6"></a><span class="k">use </span><span class="n">field_solver_class</span>
+<a name="ln-7"></a><span class="k">use </span><span class="n">field_src_class</span>
+<a name="ln-8"></a><span class="k">use </span><span class="n">ufield_class</span>
+<a name="ln-9"></a><span class="k">use </span><span class="n">param</span>
+<a name="ln-10"></a><span class="k">use </span><span class="nb">system</span>
+<a name="ln-11"></a>
+<a name="ln-12"></a><span class="k">implicit none</span>
+<a name="ln-13"></a>
+<a name="ln-14"></a><span class="k">private</span>
+<a name="ln-15"></a>
+<a name="ln-16"></a><span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">parameter</span> <span class="kd">::</span> <span class="n">cls_name</span> <span class="o">=</span> <span class="s2">&quot;field_psi&quot;</span>
+<a name="ln-17"></a><span class="kt">integer</span><span class="p">,</span> <span class="k">parameter</span> <span class="kd">::</span> <span class="n">cls_level</span> <span class="o">=</span> <span class="mi">1</span>
+<a name="ln-18"></a>
+<a name="ln-19"></a><span class="k">public</span> <span class="kd">::</span> <span class="n">field_psi</span>
+<a name="ln-20"></a>
+<a name="ln-21"></a><span class="k">type</span><span class="p">,</span> <span class="k">extends</span><span class="p">(</span> <span class="n">field</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">field_psi</span>
+<a name="ln-22"></a>
+<a name="ln-23"></a>  <span class="c">! private</span>
+<a name="ln-24"></a>
+<a name="ln-25"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">field_solver</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">solver</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-26"></a>  <span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">buf_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">buf_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span> <span class="c">! buffer for source term</span>
+<a name="ln-27"></a>
+<a name="ln-28"></a>  <span class="k">contains</span>
+<a name="ln-29"></a>
+<a name="ln-30"></a><span class="k">  generic</span> <span class="kd">::</span> <span class="n">new</span> <span class="o">=&gt;</span> <span class="n">init_field_psi</span>
+<a name="ln-31"></a>  <span class="k">procedure</span> <span class="kd">::</span> <span class="n">del</span> <span class="o">=&gt;</span> <span class="n">end_field_psi</span>
+<a name="ln-32"></a>  <span class="c">! generic :: read_input =&gt; read_input_field_psi</span>
+<a name="ln-33"></a>  <span class="k">generic</span> <span class="kd">::</span> <span class="n">solve</span> <span class="o">=&gt;</span> <span class="n">solve_field_psi</span>
+<a name="ln-34"></a>
+<a name="ln-35"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">init_field_psi</span>
+<a name="ln-36"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">end_field_psi</span>
+<a name="ln-37"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">set_source</span>
+<a name="ln-38"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">get_solution</span>
+<a name="ln-39"></a>  <span class="k">procedure</span><span class="p">,</span> <span class="k">private</span> <span class="kd">::</span> <span class="n">solve_field_psi</span>
+<a name="ln-40"></a>
+<a name="ln-41"></a><span class="k">end type </span><span class="n">field_psi</span>
+<a name="ln-42"></a>
+<a name="ln-43"></a><span class="k">contains</span>
+<a name="ln-44"></a>
+<a name="ln-45"></a><span class="k">subroutine </span><span class="n">init_field_psi</span><span class="p">(</span> <span class="n">this</span><span class="p">,</span> <span class="n">pp</span><span class="p">,</span> <span class="n">gp</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-46"></a>
+<a name="ln-47"></a>  <span class="k">implicit none</span>
+<a name="ln-48"></a>
+<a name="ln-49"></a><span class="k">  class</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-50"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">parallel_pipe</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">pp</span>
+<a name="ln-51"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">grid</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">gp</span>
+<a name="ln-52"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">part_shape</span>
+<a name="ln-53"></a>  <span class="kt">real</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span>
+<a name="ln-54"></a>
+<a name="ln-55"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">gc_num</span>
+<a name="ln-56"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="nb">dim</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">solver_type</span><span class="p">,</span> <span class="nb">kind</span><span class="p">,</span> <span class="n">entity</span>
+<a name="ln-57"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">ndp</span><span class="p">,</span> <span class="n">noff</span><span class="p">,</span> <span class="n">nd</span>
+<a name="ln-58"></a>  <span class="kt">real</span> <span class="kd">::</span> <span class="n">tol</span>
+<a name="ln-59"></a>  <span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">save</span> <span class="kd">::</span> <span class="n">sname</span> <span class="o">=</span> <span class="s2">&quot;init_field_psi&quot;</span>
+<a name="ln-60"></a>
+<a name="ln-61"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-62"></a>
+<a name="ln-63"></a>  <span class="n">nd</span> <span class="o">=</span> <span class="n">gp</span><span class="p">%</span><span class="n">get_nd</span><span class="p">()</span>
+<a name="ln-64"></a>  <span class="n">ndp</span> <span class="o">=</span> <span class="n">gp</span><span class="p">%</span><span class="n">get_ndp</span><span class="p">()</span>
+<a name="ln-65"></a>  <span class="n">noff</span> <span class="o">=</span> <span class="n">gp</span><span class="p">%</span><span class="n">get_noff</span><span class="p">()</span>
+<a name="ln-66"></a>  <span class="n">solver_type</span> <span class="o">=</span> <span class="n">p_hypre_cycred</span>
+<a name="ln-67"></a>  <span class="nb">kind</span> <span class="o">=</span> <span class="n">p_fk_psi</span>
+<a name="ln-68"></a>  <span class="n">entity</span> <span class="o">=</span> <span class="n">p_entity_plasma</span>
+<a name="ln-69"></a>  <span class="n">tol</span> <span class="o">=</span> <span class="mf">1.0d-6</span>
+<a name="ln-70"></a>
+<a name="ln-71"></a>  <span class="k">select case</span> <span class="p">(</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-72"></a>  
+<a name="ln-73"></a>  <span class="k">case</span> <span class="p">(</span> <span class="n">p_ps_linear</span> <span class="p">)</span>
+<a name="ln-74"></a>  
+<a name="ln-75"></a>    <span class="n">gc_num</span><span class="p">(:,</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-76"></a>    <span class="n">gc_num</span><span class="p">(:,</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-77"></a>  
+<a name="ln-78"></a>  <span class="k">case</span> <span class="p">(</span> <span class="n">p_ps_quadratic</span> <span class="p">)</span>
+<a name="ln-79"></a>
+<a name="ln-80"></a>    <span class="k">call </span><span class="n">write_err</span><span class="p">(</span> <span class="s2">&quot;Quadratic particle shape not implemented.&quot;</span> <span class="p">)</span>
+<a name="ln-81"></a>
+<a name="ln-82"></a>  <span class="k">case </span><span class="n">default</span>
+<a name="ln-83"></a>
+<a name="ln-84"></a>    <span class="k">call </span><span class="n">write_err</span><span class="p">(</span> <span class="s2">&quot;Invalid particle shape.&quot;</span> <span class="p">)</span>
+<a name="ln-85"></a>
+<a name="ln-86"></a>  <span class="k">end select</span>
+<a name="ln-87"></a>
+<a name="ln-88"></a><span class="k">  </span><span class="nb">dim</span> <span class="o">=</span> <span class="mi">1</span>
+<a name="ln-89"></a>  <span class="c">! call initialization routine of the parent class</span>
+<a name="ln-90"></a>  <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">field</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">pp</span><span class="p">,</span> <span class="n">gp</span><span class="p">,</span> <span class="nb">dim</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">gc_num</span> <span class="p">)</span>
+<a name="ln-91"></a>
+<a name="ln-92"></a>  <span class="c">! initialize solver</span>
+<a name="ln-93"></a>  <span class="k">allocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span> <span class="mi">0</span><span class="p">:</span><span class="n">num_modes</span> <span class="p">)</span> <span class="p">)</span>
+<a name="ln-94"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-95"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">new</span><span class="p">(</span> <span class="n">nd</span><span class="p">,</span> <span class="n">ndp</span><span class="p">,</span> <span class="n">noff</span><span class="p">,</span> <span class="nb">kind</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">solver_type</span><span class="p">,</span> <span class="n">tol</span> <span class="p">)</span>
+<a name="ln-96"></a>  <span class="n">enddo</span>
+<a name="ln-97"></a>
+<a name="ln-98"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-99"></a>
+<a name="ln-100"></a><span class="k">end subroutine </span><span class="n">init_field_psi</span>
+<a name="ln-101"></a>
+<a name="ln-102"></a><span class="k">subroutine </span><span class="n">end_field_psi</span><span class="p">(</span> <span class="n">this</span> <span class="p">)</span>
+<a name="ln-103"></a>
+<a name="ln-104"></a>  <span class="k">implicit none</span>
+<a name="ln-105"></a>
+<a name="ln-106"></a><span class="k">  class</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-107"></a>
+<a name="ln-108"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">i</span>
+<a name="ln-109"></a>  <span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">save</span> <span class="kd">::</span> <span class="n">sname</span> <span class="o">=</span> <span class="s1">&#39;end_field_psi&#39;</span>
+<a name="ln-110"></a>
+<a name="ln-111"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-112"></a>
+<a name="ln-113"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">this</span><span class="p">%</span><span class="n">num_modes</span>
+<a name="ln-114"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-115"></a>  <span class="n">enddo</span>
+<a name="ln-116"></a>  <span class="k">deallocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">solver</span> <span class="p">)</span>
+<a name="ln-117"></a>
+<a name="ln-118"></a>  <span class="k">if</span> <span class="p">(</span> <span class="nb">associated</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span> <span class="p">)</span> <span class="k">deallocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span>
+<a name="ln-119"></a>  <span class="k">if</span> <span class="p">(</span> <span class="nb">associated</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span> <span class="p">)</span> <span class="p">)</span> <span class="k">deallocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span> <span class="p">)</span>
+<a name="ln-120"></a>
+<a name="ln-121"></a>  <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">field</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-122"></a>
+<a name="ln-123"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-124"></a>
+<a name="ln-125"></a><span class="k">end subroutine </span><span class="n">end_field_psi</span>
+<a name="ln-126"></a>
+<a name="ln-127"></a><span class="k">subroutine </span><span class="n">set_source</span><span class="p">(</span> <span class="n">this</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">q_re</span><span class="p">,</span> <span class="n">q_im</span> <span class="p">)</span>
+<a name="ln-128"></a>
+<a name="ln-129"></a>  <span class="k">implicit none</span>
+<a name="ln-130"></a>
+<a name="ln-131"></a><span class="k">  class</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-132"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">q_re</span>
+<a name="ln-133"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span> <span class="k">optional</span> <span class="kd">::</span> <span class="n">q_im</span>
+<a name="ln-134"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">mode</span>
+<a name="ln-135"></a>
+<a name="ln-136"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">i</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-137"></a>  <span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:,:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">f1_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">f1_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-138"></a>  <span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">save</span> <span class="kd">::</span> <span class="n">sname</span> <span class="o">=</span> <span class="s1">&#39;set_source&#39;</span>
+<a name="ln-139"></a>
+<a name="ln-140"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-141"></a>
+<a name="ln-142"></a>  <span class="n">nd1p</span> <span class="o">=</span> <span class="n">q_re</span><span class="p">%</span><span class="n">get_ndp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-143"></a>
+<a name="ln-144"></a>  <span class="n">f1_re</span> <span class="o">=&gt;</span> <span class="n">q_re</span><span class="p">%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-145"></a>  <span class="k">if</span> <span class="p">(</span> <span class="p">.</span><span class="nb">not</span><span class="p">.</span> <span class="nb">associated</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-146"></a><span class="k">    allocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">(</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="p">)</span>
+<a name="ln-147"></a>  <span class="n">elseif</span> <span class="p">(</span> <span class="n">size</span><span class="p">(</span><span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-148"></a><span class="k">    deallocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span>
+<a name="ln-149"></a>    <span class="k">allocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">(</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="p">)</span>
+<a name="ln-150"></a>  <span class="n">endif</span>
+<a name="ln-151"></a>
+<a name="ln-152"></a>  <span class="k">if</span> <span class="p">(</span> <span class="nb">present</span><span class="p">(</span><span class="n">q_im</span><span class="p">)</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-153"></a><span class="k">    </span><span class="n">f1_im</span> <span class="o">=&gt;</span> <span class="n">q_im</span><span class="p">%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-154"></a>    <span class="k">if</span> <span class="p">(</span> <span class="p">.</span><span class="nb">not</span><span class="p">.</span> <span class="nb">associated</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span> <span class="p">)</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-155"></a><span class="k">      allocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span><span class="p">(</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="p">)</span>
+<a name="ln-156"></a>    <span class="n">elseif</span> <span class="p">(</span> <span class="n">size</span><span class="p">(</span><span class="n">this</span><span class="p">%</span><span class="n">buf_im</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-157"></a><span class="k">      deallocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span> <span class="p">)</span>
+<a name="ln-158"></a>      <span class="k">allocate</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span><span class="p">(</span> <span class="n">nd1p</span> <span class="p">)</span> <span class="p">)</span>
+<a name="ln-159"></a>    <span class="n">endif</span>
+<a name="ln-160"></a>  <span class="n">endif</span>
+<a name="ln-161"></a>
+<a name="ln-162"></a>  <span class="k">if</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-163"></a><span class="k">    do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-164"></a>      <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">f1_re</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-165"></a>    <span class="n">enddo</span>
+<a name="ln-166"></a>  <span class="n">elseif</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">.</span><span class="nb">and</span><span class="p">.</span> <span class="nb">present</span><span class="p">(</span><span class="n">q_im</span><span class="p">)</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-167"></a><span class="k">    do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-168"></a>      <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">f1_re</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-169"></a>      <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">f1_im</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-170"></a>    <span class="n">enddo</span>
+<a name="ln-171"></a>  <span class="k">else</span>
+<a name="ln-172"></a><span class="k">    call </span><span class="n">write_err</span><span class="p">(</span> <span class="s1">&#39;Invalid input arguments!&#39;</span> <span class="p">)</span>
+<a name="ln-173"></a>  <span class="n">endif</span>
+<a name="ln-174"></a>
+<a name="ln-175"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-176"></a>
+<a name="ln-177"></a><span class="k">end subroutine </span><span class="n">set_source</span>
+<a name="ln-178"></a>
+<a name="ln-179"></a><span class="k">subroutine </span><span class="n">get_solution</span><span class="p">(</span> <span class="n">this</span><span class="p">,</span> <span class="n">mode</span> <span class="p">)</span>
+<a name="ln-180"></a>
+<a name="ln-181"></a>  <span class="k">implicit none</span>
+<a name="ln-182"></a>
+<a name="ln-183"></a><span class="k">  class</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-184"></a>  <span class="kt">integer</span><span class="p">,</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">mode</span>
+<a name="ln-185"></a>
+<a name="ln-186"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">i</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-187"></a>  <span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:,:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">f1_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">f1_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-188"></a>  <span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">save</span> <span class="kd">::</span> <span class="n">sname</span> <span class="o">=</span> <span class="s1">&#39;get_solution&#39;</span>
+<a name="ln-189"></a>
+<a name="ln-190"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-191"></a>
+<a name="ln-192"></a>  <span class="n">nd1p</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">rf_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">get_ndp</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-193"></a>
+<a name="ln-194"></a>
+<a name="ln-195"></a>  <span class="n">f1_re</span> <span class="o">=&gt;</span> <span class="n">this</span><span class="p">%</span><span class="n">rf_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-196"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-197"></a>    <span class="n">f1_re</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-198"></a>  <span class="n">enddo</span>
+<a name="ln-199"></a>
+<a name="ln-200"></a>  <span class="k">if</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-201"></a><span class="k">    </span><span class="n">f1_im</span> <span class="o">=&gt;</span> <span class="n">this</span><span class="p">%</span><span class="n">rf_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-202"></a>    <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd1p</span>
+<a name="ln-203"></a>      <span class="n">f1_im</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-204"></a>    <span class="n">enddo</span>
+<a name="ln-205"></a>  <span class="n">endif</span>
+<a name="ln-206"></a>
+<a name="ln-207"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-208"></a>
+<a name="ln-209"></a><span class="k">end subroutine </span><span class="n">get_solution</span>
+<a name="ln-210"></a>
+<a name="ln-211"></a><span class="k">subroutine </span><span class="n">solve_field_psi</span><span class="p">(</span> <span class="n">this</span><span class="p">,</span> <span class="n">q</span> <span class="p">)</span>
+<a name="ln-212"></a>
+<a name="ln-213"></a>  <span class="k">implicit none</span>
+<a name="ln-214"></a>
+<a name="ln-215"></a><span class="k">  class</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">inout</span><span class="p">)</span> <span class="kd">::</span> <span class="n">this</span>
+<a name="ln-216"></a>  <span class="k">class</span><span class="p">(</span> <span class="n">field_rho</span> <span class="p">),</span> <span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span> <span class="kd">::</span> <span class="n">q</span>
+<a name="ln-217"></a>
+<a name="ln-218"></a>  <span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">q_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">q_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-219"></a>  <span class="kt">integer</span> <span class="kd">::</span> <span class="n">i</span>
+<a name="ln-220"></a>  <span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">20</span><span class="p">),</span> <span class="k">save</span> <span class="kd">::</span> <span class="n">sname</span> <span class="o">=</span> <span class="s1">&#39;solve_field_psi&#39;</span>
+<a name="ln-221"></a>
+<a name="ln-222"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-223"></a>
+<a name="ln-224"></a>  <span class="n">q_re</span> <span class="o">=&gt;</span> <span class="n">q</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-225"></a>  <span class="n">q_im</span> <span class="o">=&gt;</span> <span class="n">q</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-226"></a>
+<a name="ln-227"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">this</span><span class="p">%</span><span class="n">num_modes</span>
+<a name="ln-228"></a>
+<a name="ln-229"></a>    <span class="k">if</span> <span class="p">(</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">then</span>
+<a name="ln-230"></a><span class="k">      call </span><span class="n">this</span><span class="p">%</span><span class="n">set_source</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span class="n">q_re</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="p">)</span>
+<a name="ln-231"></a>      <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">solve</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span>
+<a name="ln-232"></a>      <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">get_solution</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-233"></a>      <span class="k">cycle</span>
+<a name="ln-234"></a><span class="k">    </span><span class="n">endif</span>
+<a name="ln-235"></a>
+<a name="ln-236"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">set_source</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span class="n">q_re</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">q_im</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="p">)</span>
+<a name="ln-237"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">solve</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_re</span> <span class="p">)</span>
+<a name="ln-238"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">solver</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">solve</span><span class="p">(</span> <span class="n">this</span><span class="p">%</span><span class="n">buf_im</span> <span class="p">)</span>
+<a name="ln-239"></a>    <span class="k">call </span><span class="n">this</span><span class="p">%</span><span class="n">get_solution</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-240"></a>
+<a name="ln-241"></a>  <span class="n">enddo</span>
+<a name="ln-242"></a>
+<a name="ln-243"></a>  <span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="n">cls_name</span><span class="p">,</span> <span class="n">sname</span><span class="p">,</span> <span class="n">cls_level</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-244"></a>
+<a name="ln-245"></a><span class="k">end subroutine </span><span class="n">solve_field_psi</span>
+<a name="ln-246"></a>
+<a name="ln-247"></a><span class="k">end module </span><span class="n">field_psi_class</span>
+</pre></div>
+
+    </section>
+    </div>
+  </div>
+
+  
+    <hr>    
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+      <div class="row">
+        <div class="col-xs-6 col-md-4"><p>&copy; 2018 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>
+                                          </p></div>
+        <div class="col-xs-6 col-md-4 col-md-push-4">
+          <p class="text-right">
+            Documentation generated by 
+            <a href="https://github.com/cmacmackin/ford">FORD</a>
+            
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4 col-md-pull-4"><p class="text-center"> QuickPIC wit Azimuzal Decomposition was developed by Fei Li and Weiming An</p></div>
+      </div>
+      <br>
+      </div> <!-- /container -->    
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+<!--
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+-->
+    <script src="../js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+    <!-- MathJax JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+        jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+        extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+      });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    
+    <script src="../tipuesearch/tipuesearch_content.js"></script>
+    <script src="../tipuesearch/tipuesearch_set.js"></script>
+    <script src="../tipuesearch/tipuesearch.js"></script>
+    
+    
+  </body>
+</html>

@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+   <meta name="description" content="">
+    
+    <meta name="author" content="Fei Li and Weiming An" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>TEST_field_eperp.f03 &ndash; QuickPIC wit Azimuzal Decomposition</title>
+
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+    
+    <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+    
+    
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    <script src="../js/jquery-2.1.3.min.js"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html">QuickPIC wit Azimuzal Decomposition </a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+        
+            <li class="dropdown hidden-xs visible-sm visible-md hidden-lg">
+              <a href="#" class="dropdown-toggle"
+              data-toggle="dropdown" role="button"
+              aria-haspopup="true"
+     aria-expanded="false">Contents <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+          
+              
+            <li><a href="../lists/files.html">Source Files</a></li>
+        
+        
+        
+            <li><a href="../lists/modules.html">Modules</a></li>
+        
+            
+                                
+            <li><a href="../lists/procedures.html">Procedures</a></li>
+        
+               
+            <li><a href="../lists/types.html">Derived Types</a></li>
+        
+        
+            <li><a href="../lists/programs.html">Programs</a></li>
+        
+            </ul>
+            </li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/files.html">Source Files</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/modules.html">Modules</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/procedures.html">Procedures</a></li>
+
+                             
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/types.html">Derived Types</a></li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/programs.html">Programs</a></li>
+
+          </ul>
+        
+        <form action="../search.html" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+        </div>
+<!--
+        <button type="submit" class="btn btn-default">Submit</button>
+-->
+        </form>
+        
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    
+  
+  <div class="row">
+    <h1>TEST_field_eperp.f03
+    <small>Source File</small>
+    
+    </h1>
+    
+<div class="row">
+  <div class="col-lg-12">
+<div class="well well-sm">
+  <ul class="list-inline" style="margin-bottom:0px;display:inline">
+     
+     
+     
+     
+    
+    
+     <li><i class="fa fa-list-ol"></i>
+       <a data-toggle="tooltip"
+    data-placement="bottom" data-html="true"
+    title=" 4.0% of total for source files.">140 statements</a>
+     </li> 
+     
+     
+     
+    <li><i class="fa fa-code"></i><a href="../src/TEST_field_eperp.f03"> Source File</a></li>
+     
+     
+  </ul>
+  <ol class="breadcrumb in-well text-right">
+  
+    
+  
+     <li class="active">TEST_field_eperp.f03</li>
+  </ol>
+</div>
+</div>
+</div>
+<script>
+  $(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+
+  </div>
+  <div class="row">
+    <div class="col-md-3 hidden-xs hidden-sm visible-md visible-lg">
+    
+<div id="sidebar">
+  
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#progs-0">Programs</a></h3></div>
+  <div id="progs-0" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../program/test_field_eperp.html">test_field_eperp</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/test_field_eperp.f03.html#src">TEST_field_eperp.f03</a>
+  </div>
+</div>
+
+
+
+</div>
+
+    </div>
+    <div class="col-md-9" id='text'>
+      
+      <br>
+    
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">This file depends on</h3>
+      </div>
+      <div class="panel-body">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: sourcefile~~test_field_eperp.f03~~EfferentGraph Pages: 1 -->
+<svg id="sourcefiletest_field_eperpf03EfferentGraph" width="641pt" height="336pt"
+ viewBox="0.00 0.00 641.00 336.04" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph" class="graph" transform="scale(.5501 .5501) rotate(0) translate(4 606.8114)">
+<title>sourcefile~~test_field_eperp.f03~~EfferentGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-606.8114 1161.1372,-606.8114 1161.1372,4 -4,4"/>
+<!-- sourcefile~test_field_eperp.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node1" class="node">
+<title>sourcefile~test_field_eperp.f03</title>
+<polygon fill="none" stroke="#000000" points="1157.2094,-328.8168 1042.9207,-328.8168 1042.9207,-306.806 1157.2094,-306.806 1157.2094,-328.8168"/>
+<text text-anchor="middle" x="1100.0651" y="-314.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">TEST_field_eperp.f03</text>
+</g>
+<!-- sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node2" class="node">
+<title>sourcefile~field_e_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node2"><a xlink:href=".././sourcefile/field_e_class.f03.html" xlink:title="field_e_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="1007.1016,-328.8168 916.6675,-328.8168 916.6675,-306.806 1007.1016,-306.806 1007.1016,-328.8168"/>
+<text text-anchor="middle" x="961.8845" y="-314.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_e_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge1" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_e_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1042.6645,-317.8114C1034.2299,-317.8114 1025.5559,-317.8114 1017.1653,-317.8114"/>
+<polygon fill="#000000" stroke="#000000" points="1017.1061,-314.3115 1007.1061,-317.8114 1017.1061,-321.3115 1017.1061,-314.3115"/>
+</g>
+<!-- sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node3" class="node">
+<title>sourcefile~param.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node3"><a xlink:href=".././sourcefile/param.f03.html" xlink:title="param.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="352.1173,-155.8168 292.5648,-155.8168 292.5648,-133.806 352.1173,-133.806 352.1173,-155.8168"/>
+<text text-anchor="middle" x="322.3411" y="-141.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">param.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge2" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-30.8114C419.4226,-40.0385 413.2514,-40.9367 396.7332,-54.8114 371.8086,-75.7471 348.8839,-105.8272 335.2559,-125.3441"/>
+<polygon fill="#000000" stroke="#000000" points="332.2673,-123.514 329.5096,-133.7437 338.0447,-127.4664 332.2673,-123.514"/>
+</g>
+<!-- sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node4" class="node">
+<title>sourcefile~debug_tool.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node4"><a xlink:href=".././sourcefile/debug_tool.f03.html" xlink:title="debug_tool.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="598.8325,-156.8168 516.8687,-156.8168 516.8687,-134.806 598.8325,-134.806 598.8325,-156.8168"/>
+<text text-anchor="middle" x="557.8506" y="-142.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">debug_tool.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge3" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-145.8114C755.3189,-130.9314 664.441,-135.1088 608.9775,-140.0379"/>
+<polygon fill="#000000" stroke="#000000" points="608.3403,-136.5821 598.7084,-140.9954 608.9902,-143.5518 608.3403,-136.5821"/>
+</g>
+<!-- sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node5" class="node">
+<title>sourcefile~system.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node5"><a xlink:href=".././sourcefile/system.f03.html" xlink:title="system.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="219.8065,-460.8168 157.2714,-460.8168 157.2714,-438.806 219.8065,-438.806 219.8065,-460.8168"/>
+<text text-anchor="middle" x="188.5389" y="-446.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">system.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge4" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1096.0909,-306.4625C1083.2895,-272.0978 1039.3885,-170.0452 961.8845,-145.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-30.8114C389.7849,-54.0632 369.8304,-41.3569 322.3411,-67.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-145.8114C752.9543,-129.3585 767.5199,-56.5287 690.7837,-31.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-31.8114C584.2352,2.5087 540.1045,17.0688 438.9218,-30.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-67.8114C302.1701,-79.0479 296.0167,-83.1265 283.949,-102.8114 216.4339,-212.9423 195.7403,-371.523 190.2773,-428.457"/>
+<polygon fill="#000000" stroke="#000000" points="186.7635,-428.4547 189.3547,-438.7277 193.7354,-429.081 186.7635,-428.4547"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M961.8845,-145.8114C906.7361,-128.5677 888.4417,-157.6036 831.8763,-145.8114"/>
+</g>
+<!-- sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node6" class="node">
+<title>sourcefile~field_src_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node6"><a xlink:href=".././sourcefile/field_src_class.f03.html" xlink:title="field_src_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="740.1582,-463.8168 641.4092,-463.8168 641.4092,-441.806 740.1582,-441.806 740.1582,-463.8168"/>
+<text text-anchor="middle" x="690.7837" y="-449.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_src_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge5" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M961.8845,-413.8114C884.5348,-434.0822 861.9207,-420.0945 782.9766,-432.8114 771.2284,-434.7039 758.7226,-437.1331 746.8357,-439.642"/>
+<polygon fill="#000000" stroke="#000000" points="746.0634,-436.228 737.0263,-441.7582 747.5396,-443.0706 746.0634,-436.228"/>
+</g>
+<!-- sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node7" class="node">
+<title>sourcefile~field_b_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node7"><a xlink:href=".././sourcefile/field_b_class.f03.html" xlink:title="field_b_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="877.0934,-233.8168 786.6593,-233.8168 786.6593,-211.806 877.0934,-211.806 877.0934,-233.8168"/>
+<text text-anchor="middle" x="831.8763" y="-219.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_b_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge6" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M961.8845,-145.8114C916.2777,-131.5512 869.7505,-176.5697 846.7036,-203.7277"/>
+<polygon fill="#000000" stroke="#000000" points="843.9668,-201.5454 840.3319,-211.4972 849.3794,-205.9842 843.9668,-201.5454"/>
+</g>
+<!-- sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node8" class="node">
+<title>sourcefile~ufield_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node8"><a xlink:href=".././sourcefile/ufield_class.f03.html" xlink:title="ufield_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="481.2998,-270.8168 396.5437,-270.8168 396.5437,-248.806 481.2998,-248.806 481.2998,-270.8168"/>
+<text text-anchor="middle" x="438.9218" y="-256.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">ufield_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge7" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-31.8114C606.2533,-8.1893 578.3342,-62.9223 517.1104,-125.8114 492.4307,-151.1623 498.9861,-166.2793 481.1104,-196.8114 472.4186,-211.6571 461.6064,-227.7637 453.1039,-239.975"/>
+<polygon fill="#000000" stroke="#000000" points="450.0194,-238.2763 447.1255,-248.4682 455.7436,-242.3055 450.0194,-238.2763"/>
+</g>
+<!-- sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node9" class="node">
+<title>sourcefile~field_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node9"><a xlink:href=".././sourcefile/field_class.f03.html" xlink:title="field_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="596.8895,-348.8168 518.8116,-348.8168 518.8116,-326.806 596.8895,-326.806 596.8895,-348.8168"/>
+<text text-anchor="middle" x="557.8506" y="-334.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge8" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M961.8845,-413.8114C920.6779,-425.4565 921.0316,-376.4092 880.7761,-361.8114 800.7624,-332.7962 775.1605,-326.6478 690.7837,-337.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1089.2329,-329.1299C1067.5458,-350.8446 1016.1957,-397.634 961.8845,-413.8114"/>
+</g>
+<!-- sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node10" class="node">
+<title>sourcefile~field_psi_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node10"><a xlink:href=".././sourcefile/field_psi_class.f03.html" xlink:title="field_psi_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="880.6761,-463.8168 783.0766,-463.8168 783.0766,-441.806 880.6761,-441.806 880.6761,-463.8168"/>
+<text text-anchor="middle" x="831.8763" y="-449.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_psi_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge9" class="edge">
+<title>sourcefile~test_field_eperp.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M961.8845,-413.8114C933.0073,-421.3792 900.8733,-431.0075 875.7775,-438.8038"/>
+<polygon fill="#000000" stroke="#000000" points="874.6808,-435.4795 866.1797,-441.8025 876.7685,-442.1609 874.6808,-435.4795"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge11" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-68.8114C401.1799,-80.9111 363.9377,-108.7108 342.0521,-127.1212"/>
+<polygon fill="#000000" stroke="#000000" points="339.7443,-124.4896 334.4471,-133.6652 344.3101,-129.7957 339.7443,-124.4896"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge13" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-68.8114C389.5799,-84.63 367.607,-42.5955 322.3411,-67.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M956.5461,-306.4712C945.4135,-283.9071 917.659,-232.9669 880.7761,-202.8114 844.0164,-172.7566 823.551,-184.4748 782.9766,-159.8114 765.42,-149.1395 765.5796,-139.5322 746.9766,-130.8114 620.523,-71.532 571.9132,-26.1754 438.9218,-68.8114"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge15" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-375.8114C788.6683,-391.242 742.7631,-418.6128 715.4474,-436.2221"/>
+<polygon fill="#000000" stroke="#000000" points="713.3848,-433.3889 706.9273,-441.7884 717.2133,-439.2491 713.3848,-433.3889"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge16" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M950.7738,-306.6802C935.7677,-292.0221 907.7818,-265.9838 880.7761,-247.8114 876.0298,-244.6176 870.8222,-241.5476 865.6303,-238.7188"/>
+<polygon fill="#000000" stroke="#000000" points="866.8905,-235.4289 856.4046,-233.9128 863.6564,-241.637 866.8905,-235.4289"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge17" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-261.8114C769.9671,-251.8354 753.2912,-256.8032 690.7837,-261.8114"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge18" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-337.8114C663.2347,-341.4563 632.1922,-341.6724 607.0373,-340.8789"/>
+<polygon fill="#000000" stroke="#000000" points="607.1248,-337.3798 596.9997,-340.4997 606.8605,-344.3748 607.1248,-337.3798"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-261.8114C788.1915,-254.772 786.2939,-293.512 746.9766,-313.8114 722.8458,-326.27 717.7062,-334.2494 690.7837,-337.8114"/>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge19" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_psi_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M951.2454,-328.859C928.9616,-351.9985 877.18,-405.7682 849.7184,-434.2843"/>
+<polygon fill="#000000" stroke="#000000" points="847.0781,-431.9803 842.6625,-441.6111 852.1202,-436.836 847.0781,-431.9803"/>
+</g>
+<!-- sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node11" class="node">
+<title>sourcefile~field_solver_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node11"><a xlink:href=".././sourcefile/field_solver_class.f03.html" xlink:title="field_solver_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="747.1701,-233.8168 634.3973,-233.8168 634.3973,-211.806 747.1701,-211.806 747.1701,-233.8168"/>
+<text text-anchor="middle" x="690.7837" y="-219.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_solver_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge10" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~field_solver_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-261.8114C797.9106,-256.3382 760.4126,-245.7476 732.6164,-236.9824"/>
+<polygon fill="#000000" stroke="#000000" points="733.4302,-233.5679 722.8391,-233.8486 731.2936,-240.2339 733.4302,-233.5679"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M943.8267,-306.5951C919.4983,-292.3099 874.3361,-268.6534 831.8763,-261.8114"/>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node12" class="node">
+<title>sourcefile~parallel_pipe_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node12"><a xlink:href=".././sourcefile/parallel_pipe_class.f03.html" xlink:title="parallel_pipe_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="247.8591,-575.8168 129.2187,-575.8168 129.2187,-553.806 247.8591,-553.806 247.8591,-575.8168"/>
+<text text-anchor="middle" x="188.5389" y="-561.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_pipe_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge12" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M955.5968,-328.8674C946.731,-344.5397 930.1452,-374.1655 916.7761,-399.8114 900.0539,-431.8896 904.4779,-445.4825 880.7761,-472.8114 813.7392,-550.1071 793.0997,-602.8114 690.7837,-602.8114 690.7837,-602.8114 690.7837,-602.8114 438.9218,-602.8114 371.2576,-602.8114 294.4604,-589.0784 243.9646,-578.1238"/>
+<polygon fill="#000000" stroke="#000000" points="244.4336,-574.6432 233.9142,-575.9047 242.9243,-581.4785 244.4336,-574.6432"/>
+</g>
+<!-- sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node13" class="node">
+<title>sourcefile~grid_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node13"><a xlink:href=".././sourcefile/grid_class.f03.html" xlink:title="grid_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="360.6255,-460.8168 284.0566,-460.8168 284.0566,-438.806 360.6255,-438.806 360.6255,-460.8168"/>
+<text text-anchor="middle" x="322.3411" y="-446.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">grid_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_e_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge14" class="edge">
+<title>sourcefile~field_e_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M939.764,-328.9343C914.2284,-341.4775 870.7463,-361.93 831.8763,-375.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M831.8763,-375.8114C666.6759,-434.8083 609.9328,-373.734 438.9218,-412.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-412.8114C411.7902,-417.658 382.2029,-427.101 359.6241,-435.2339"/>
+<polygon fill="#000000" stroke="#000000" points="358.2691,-432.0029 350.0915,-438.7392 360.6851,-438.5728 358.2691,-432.0029"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge20" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M660.6595,-441.7496C634.0361,-432.5681 593.9384,-420.1779 557.8506,-414.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-414.8114C534.7491,-411.3761 411.573,-297.8464 396.7332,-279.8114 366.8805,-243.5311 342.9846,-193.517 330.9162,-165.6715"/>
+<polygon fill="#000000" stroke="#000000" points="334.0089,-163.9994 326.8822,-156.1597 327.5645,-166.7325 334.0089,-163.9994"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge22" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-414.8114C517.7493,-407.8121 519.575,-451.4858 481.1104,-464.8114 398.2845,-493.5055 371.137,-478.8514 283.949,-469.8114 266.1049,-467.9613 246.6801,-464.2143 230.043,-460.4585"/>
+<polygon fill="#000000" stroke="#000000" points="230.6169,-456.9985 220.0833,-458.1358 229.027,-463.8156 230.6169,-456.9985"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge24" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M659.379,-441.7804C650.9062,-438.0399 642.0326,-433.3716 634.5908,-427.8114 607.9155,-407.8808 584.2423,-377.0867 570.4716,-357.1896"/>
+<polygon fill="#000000" stroke="#000000" points="573.3646,-355.2194 564.8662,-348.8926 567.5642,-359.1382 573.3646,-355.2194"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge21" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M641.252,-463.8569C548.2991,-484.5853 348.093,-529.231 248.0182,-551.5476"/>
+<polygon fill="#000000" stroke="#000000" points="247.0686,-548.1733 238.0702,-553.766 248.5923,-555.0055 247.0686,-548.1733"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge23" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-414.8114C505.5608,-407.0356 490.4581,-401.0349 438.9218,-412.8114"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge26" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-144.8114C413.8919,-138.551 384.8823,-138.5253 362.0627,-140.0776"/>
+<polygon fill="#000000" stroke="#000000" points="361.7365,-136.5924 352.0502,-140.8851 362.2992,-143.5698 361.7365,-136.5924"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge28" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-183.8114C660.4874,-177.5444 627.0008,-167.9553 601.2163,-159.978"/>
+<polygon fill="#000000" stroke="#000000" points="601.9698,-156.5464 591.3808,-156.898 599.8778,-163.2265 601.9698,-156.5464"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M796.819,-211.7371C768.4592,-203.115 727.3675,-191.379 690.7837,-183.8114"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge29" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M807.9962,-211.7309C799.8728,-207.6683 790.8593,-202.8287 782.9766,-197.8114 765.8768,-186.9274 765.0055,-179.0753 746.9766,-169.8114 685.7935,-138.3734 665.2804,-142.6702 598.5908,-125.8114 596.6904,-125.331 324.0678,-66.8836 322.3411,-67.8114"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge31" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M801.415,-233.8511C794.6338,-237.4554 787.9816,-242.0553 782.9766,-247.8114 750.8818,-284.7224 766.9429,-307.159 746.9766,-351.8114 733.8951,-381.0666 715.2655,-413.1285 703.1015,-433.1092"/>
+<polygon fill="#000000" stroke="#000000" points="700.1157,-431.2829 697.8564,-441.6341 706.0777,-434.9511 700.1157,-431.2829"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge32" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M804.8754,-233.841C776.8927,-244.4163 731.6138,-259.1575 690.7837,-261.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-261.8114C621.9971,-266.2824 542.4231,-264.4887 491.4298,-262.4504"/>
+<polygon fill="#000000" stroke="#000000" points="491.4478,-258.9482 481.3103,-262.0276 491.1555,-265.9421 491.4478,-258.9482"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge33" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-299.8114C663.217,-308.9138 632.0267,-317.8971 606.7897,-324.8423"/>
+<polygon fill="#000000" stroke="#000000" points="605.8007,-321.4841 597.0766,-327.4958 607.6455,-328.2366 605.8007,-321.4841"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge25" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_solver_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M786.4571,-222.8114C777.13,-222.8114 767.1287,-222.8114 757.2353,-222.8114"/>
+<polygon fill="#000000" stroke="#000000" points="756.9971,-219.3115 746.997,-222.8114 756.997,-226.3115 756.9971,-219.3115"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge27" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-183.8114C614.7909,-168.0918 593.4186,-179.9205 517.1104,-165.8114 481.728,-159.2693 473.8285,-153.5422 438.9218,-144.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-144.8114C370.7299,-131.6627 335.5415,-78.3223 283.949,-124.8114 226.6845,-176.4114 273.0305,-396.9232 247.949,-469.8114 238.1035,-498.4228 218.2891,-527.3378 204.2549,-545.6246"/>
+<polygon fill="#000000" stroke="#000000" points="201.3335,-543.6774 197.8988,-553.7001 206.834,-548.0069 201.3335,-543.6774"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge30" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-299.8114C617.0953,-324.1429 592.7874,-300.6358 517.1104,-317.8114 461.7075,-330.3856 443.3371,-328.3205 396.7332,-360.8114 370.0646,-379.4039 347.4479,-409.939 334.3778,-429.9612"/>
+<polygon fill="#000000" stroke="#000000" points="331.3039,-428.2733 328.9082,-438.5938 337.2169,-432.0199 331.3039,-428.2733"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M807.9962,-233.8919C799.8728,-237.9545 790.8593,-242.7941 782.9766,-247.8114 765.8768,-258.6954 764.4414,-265.5233 746.9766,-275.8114 723.5775,-289.5951 716.3114,-290.546 690.7837,-299.8114"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge35" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M416.9272,-248.6968C410.1191,-244.7651 402.8153,-240.0128 396.7332,-234.8114 371.9952,-213.6557 349.0229,-183.6315 335.3337,-164.187"/>
+<polygon fill="#000000" stroke="#000000" points="338.1201,-162.0624 329.5581,-155.8219 332.3597,-166.0397 338.1201,-162.0624"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge34" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-336.8114C273.2921,-359.5156 227.8457,-405.1738 204.6485,-430.9611"/>
+<polygon fill="#000000" stroke="#000000" points="201.9161,-428.7678 197.9224,-438.5811 207.1641,-433.4002 201.9161,-428.7678"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M419.4132,-270.9603C412.2128,-275.1825 404.0326,-280.1069 396.7332,-284.8114 362.8256,-306.6648 358.9491,-319.8659 322.3411,-336.8114"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge36" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M414.9831,-271.0146C408.5468,-274.7813 401.9358,-279.4202 396.7332,-284.8114 373.5307,-308.8549 383.6485,-326.4941 360.7332,-350.8114 346.9326,-365.4563 337.6313,-361.7294 322.3411,-374.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-374.8114C291.7747,-400.9635 227.6376,-501.6647 200.7792,-544.9018"/>
+<polygon fill="#000000" stroke="#000000" points="197.6402,-543.3231 195.3556,-553.6687 203.5932,-547.0059 197.6402,-543.3231"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge37" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M413.5032,-270.9998C407.352,-274.6749 401.2553,-279.271 396.7332,-284.8114 365.8042,-322.7046 381.8982,-344.7145 360.7332,-388.8114 353.8118,-403.2318 344.2303,-418.4602 336.3708,-430.0943"/>
+<polygon fill="#000000" stroke="#000000" points="333.3208,-428.3518 330.5206,-438.5699 339.0817,-432.3283 333.3208,-428.3518"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge38" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M551.3114,-326.5221C539.4413,-306.817 512.6385,-265.7739 481.1104,-239.8114 448.619,-213.0557 432.8192,-218.4759 396.7332,-196.8114 378.9443,-186.1317 359.7742,-172.6815 345.3498,-162.1361"/>
+<polygon fill="#000000" stroke="#000000" points="347.1599,-159.1219 337.0366,-155.9962 343.0012,-164.7526 347.1599,-159.1219"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge40" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M527.9725,-348.9006C504.175,-357.2936 469.8406,-368.4308 438.9218,-374.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-374.8114C385.5497,-385.8256 371.7964,-313.919 322.3411,-336.8114"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge42" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M541.0632,-326.8013C521.1662,-313.7518 487.7959,-291.8657 464.6364,-276.6765"/>
+<polygon fill="#000000" stroke="#000000" points="466.2903,-273.5756 456.0088,-271.018 462.4513,-279.429 466.2903,-273.5756"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge39" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-374.8114C388.1774,-385.2833 361.7113,-341.127 322.3411,-374.8114"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge41" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-374.8114C399.6304,-382.9198 362.0759,-412.2711 340.6573,-431.761"/>
+<polygon fill="#000000" stroke="#000000" points="338.1735,-429.2919 333.2686,-438.683 342.9593,-434.4004 338.1735,-429.2919"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge44" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-452.8114C514.3103,-422.8294 486.0774,-474.7076 438.9218,-450.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-450.8114C384.9924,-423.4826 340.2012,-230.3347 326.5907,-165.7714"/>
+<polygon fill="#000000" stroke="#000000" points="330.0042,-164.9948 324.5459,-155.9142 323.1501,-166.4167 330.0042,-164.9948"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge46" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-564.8114C267.147,-553.454 222.182,-499.0311 201.248,-469.3041"/>
+<polygon fill="#000000" stroke="#000000" points="204.0691,-467.2289 195.538,-460.9463 198.2892,-471.1777 204.0691,-467.2289"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-528.8114C528.6901,-557.033 483.4967,-597.9726 322.3411,-564.8114"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge48" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M782.925,-452.8114C772.43,-452.8114 761.2295,-452.8114 750.3828,-452.8114"/>
+<polygon fill="#000000" stroke="#000000" points="750.1264,-449.3115 740.1264,-452.8114 750.1264,-456.3115 750.1264,-449.3115"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge49" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-452.8114C540.5422,-440.8928 531.2165,-444.3886 517.1104,-428.8114 506.3852,-416.9677 465.5944,-322.6271 447.5715,-280.2715"/>
+<polygon fill="#000000" stroke="#000000" points="450.7358,-278.7684 443.6074,-270.9302 444.292,-281.5029 450.7358,-278.7684"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M818.5875,-463.8503C794.8047,-482.6656 742.5895,-519.7916 690.7837,-528.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-528.8114C623.7368,-540.4847 613.9023,-491.4087 557.8506,-452.8114"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge50" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M805.6016,-441.7847C756.3171,-421.1016 649.9357,-376.4566 593.9622,-352.9663"/>
+<polygon fill="#000000" stroke="#000000" points="595.0238,-349.6161 584.4484,-348.9737 592.3149,-356.0708 595.0238,-349.6161"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge43" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~field_solver_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.9193,-441.7197C809.7851,-429.842 792.8169,-409.9675 782.9766,-389.8114 754.4127,-331.304 788.9322,-297.5983 746.9766,-247.8114 744.1899,-244.5046 740.8785,-241.6183 737.2782,-239.1024"/>
+<polygon fill="#000000" stroke="#000000" points="738.8515,-235.9664 728.4641,-233.8801 735.2834,-241.9887 738.8515,-235.9664"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge45" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-564.8114C301.816,-559.6639 278.9562,-558.1797 258.0221,-558.4036"/>
+<polygon fill="#000000" stroke="#000000" points="257.8333,-554.9069 247.9187,-558.6421 257.9985,-561.905 257.8333,-554.9069"/>
+</g>
+<!-- sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge47" class="edge">
+<title>sourcefile~field_psi_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-450.8114C418.2701,-440.3461 392.7987,-439.0333 370.9377,-440.7833"/>
+<polygon fill="#000000" stroke="#000000" points="370.4454,-437.3154 360.8564,-441.8211 371.1622,-444.2786 370.4454,-437.3154"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge53" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-182.8114C414.4071,-170.8912 385.2485,-161.3884 362.2253,-154.867"/>
+<polygon fill="#000000" stroke="#000000" points="363.0128,-151.4536 352.4422,-152.1696 361.1522,-158.2018 363.0128,-151.4536"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge51" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M663.4438,-211.8043C654.1169,-207.7476 643.7382,-202.893 634.5908,-197.8114 615.7742,-187.3584 595.6721,-173.6338 580.7639,-162.9094"/>
+<polygon fill="#000000" stroke="#000000" points="582.7793,-160.0474 572.6354,-156.9892 578.6582,-165.7057 582.7793,-160.0474"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge52" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-182.8114C419.5215,-173.3781 413.2137,-172.7308 396.7332,-158.8114 356.8239,-125.1042 368.3589,-43.0872 322.3411,-67.8114"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M634.3831,-217.7036C570.9677,-211.291 472.4672,-199.1228 438.9218,-182.8114"/>
+</g>
+<!-- sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_node14" class="node">
+<title>sourcefile~parallel_class.f03</title>
+<g id="a_sourcefile~~test_field_eperp.f03~~EfferentGraph_node14"><a xlink:href=".././sourcefile/parallel_class.f03.html" xlink:title="parallel_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="93.1934,-575.8168 -.0645,-575.8168 -.0645,-553.806 93.1934,-553.806 93.1934,-575.8168"/>
+<text text-anchor="middle" x="46.5645" y="-561.6614" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge54" class="edge">
+<title>sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M129.1516,-564.8114C120.6163,-564.8114 111.851,-564.8114 103.3674,-564.8114"/>
+<polygon fill="#000000" stroke="#000000" points="103.1936,-561.3115 93.1935,-564.8114 103.1935,-568.3115 103.1936,-561.3115"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge55" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M283.9987,-449.8114C267.2437,-449.8114 247.5466,-449.8114 230.4098,-449.8114"/>
+<polygon fill="#000000" stroke="#000000" points="230.1198,-446.3115 220.1198,-449.8114 230.1197,-453.3115 230.1198,-446.3115"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_eperp.f03~~EfferentGraph_edge56" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M309.5116,-460.8381C286.2938,-480.7932 237.1245,-523.0531 209.1467,-547.0995"/>
+<polygon fill="#000000" stroke="#000000" points="206.8287,-544.4766 201.5262,-553.6491 211.3914,-549.7853 206.8287,-544.4766"/>
+</g>
+</g>
+</svg>
+</div><script>var pansourcefiletest_field_eperpf03EfferentGraph = svgPanZoom('#sourcefiletest_field_eperpf03EfferentGraph', {zoomEnabled: true,controlIconsEnabled: true, fit: true, center: true,}); </script><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="186pt" height="31pt"
+ viewBox="0.00 0.00 186.41 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 182.4064,-26.5 182.4064,4 -4,4"/>
+<!-- Source File -->
+<g id="node1" class="node">
+<title>Source File</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="65.1576,-22.2554 -.0526,-22.2554 -.0526,-.2446 65.1576,-.2446 65.1576,-22.2554"/>
+<text text-anchor="middle" x="32.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Source File</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node2" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="178.2607,-22.2554 82.8443,-22.2554 82.8443,-.2446 178.2607,-.2446 178.2607,-22.2554"/>
+<text text-anchor="middle" x="130.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a file to a file which it depends on. A file
+    is dependent upon another if the latter must be compiled before the former
+    can be.
+    </p>
+    </div></div></div></div>
+      </div>
+    </div>
+    
+      
+      <br>
+
+    <section class="visible-xs visible-sm hidden-md">
+      
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#progs-1">Programs</a></h3></div>
+  <div id="progs-1" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../program/test_field_eperp.html">test_field_eperp</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/test_field_eperp.f03.html#src">TEST_field_eperp.f03</a>
+  </div>
+</div>
+
+
+
+    </section>
+    <br class="visible-xs visible-sm hidden-md">
+
+    <section>
+      <h2><span class="anchor" id="src"></span>Source Code</h2>
+    <div class="hl"><pre><span></span><a name="ln-1"></a><span class="k">program </span><span class="n">test_field_eperp</span>
+<a name="ln-2"></a>
+<a name="ln-3"></a><span class="k">use </span><span class="n">field_b_class</span>
+<a name="ln-4"></a><span class="k">use </span><span class="n">field_e_class</span>
+<a name="ln-5"></a><span class="k">use </span><span class="n">field_psi_class</span>
+<a name="ln-6"></a><span class="k">use </span><span class="n">field_class</span>
+<a name="ln-7"></a><span class="k">use </span><span class="n">field_src_class</span>
+<a name="ln-8"></a><span class="k">use </span><span class="nb">system</span>
+<a name="ln-9"></a><span class="k">use </span><span class="n">param</span>
+<a name="ln-10"></a><span class="k">use </span><span class="n">mpi</span>
+<a name="ln-11"></a><span class="k">use </span><span class="n">ufield_class</span>
+<a name="ln-12"></a><span class="k">use </span><span class="n">debug_tool</span>
+<a name="ln-13"></a>
+<a name="ln-14"></a><span class="k">implicit none</span>
+<a name="ln-15"></a>
+<a name="ln-16"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_b</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">b</span>
+<a name="ln-17"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_e</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">e</span>
+<a name="ln-18"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_psi</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">psi</span>
+<a name="ln-19"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_rho</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">rho</span>
+<a name="ln-20"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_jay</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">jay</span>
+<a name="ln-21"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_djdxi</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">djdxi</span>
+<a name="ln-22"></a>
+<a name="ln-23"></a><span class="kt">integer</span> <span class="kd">::</span> <span class="n">num_modes</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="nb">dim</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">order</span> <span class="o">=</span> <span class="n">p_fs_2order</span><span class="p">,</span> <span class="n">part_shape</span> <span class="o">=</span> <span class="n">p_ps_linear</span>
+<a name="ln-24"></a><span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">nd</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">),</span> <span class="n">nvp</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-25"></a><span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">gc_num</span>
+<a name="ln-26"></a><span class="kt">real</span> <span class="kd">::</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">r</span>
+<a name="ln-27"></a>
+<a name="ln-28"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">uq_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">uq_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-29"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ue_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ue_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-30"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ujay_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ujay_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-31"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">udjdxi_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">udjdxi_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-32"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ub_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ub_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-33"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">upsi_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">upsi_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-34"></a><span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:,:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">p</span>
+<a name="ln-35"></a><span class="kt">integer</span> <span class="kd">::</span> <span class="n">ierr</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">mode</span>
+<a name="ln-36"></a>
+<a name="ln-37"></a><span class="k">call </span><span class="n">MPI_INIT</span><span class="p">(</span> <span class="n">ierr</span> <span class="p">)</span>
+<a name="ln-38"></a><span class="k">call </span><span class="n">init_errors</span><span class="p">(</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">)</span>
+<a name="ln-39"></a>
+<a name="ln-40"></a><span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;test_field_eperp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-41"></a>
+<a name="ln-42"></a><span class="n">dr</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>
+<a name="ln-43"></a><span class="n">dxi</span> <span class="o">=</span> <span class="mf">1.0</span>
+<a name="ln-44"></a>
+<a name="ln-45"></a><span class="n">gc_num</span><span class="p">(:,</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-46"></a><span class="n">gc_num</span><span class="p">(:,</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-47"></a>
+<a name="ln-48"></a><span class="k">call </span><span class="n">rho</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-49"></a><span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span><span class="p">,</span> <span class="n">p_entity_plasma</span> <span class="p">)</span>
+<a name="ln-50"></a><span class="k">call </span><span class="n">e</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span><span class="p">,</span> <span class="n">p_entity_plasma</span> <span class="p">)</span>
+<a name="ln-51"></a><span class="k">call </span><span class="n">psi</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-52"></a><span class="k">call </span><span class="n">jay</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-53"></a><span class="k">call </span><span class="n">djdxi</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-54"></a>
+<a name="ln-55"></a><span class="c">! solve psi</span>
+<a name="ln-56"></a><span class="n">uq_re</span> <span class="o">=&gt;</span> <span class="n">rho</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-57"></a><span class="n">uq_im</span> <span class="o">=&gt;</span> <span class="n">rho</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-58"></a>
+<a name="ln-59"></a><span class="k">do </span><span class="n">mode</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-60"></a>  
+<a name="ln-61"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-62"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-63"></a>    <span class="n">uq_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-64"></a>  <span class="n">enddo</span>
+<a name="ln-65"></a>
+<a name="ln-66"></a>  <span class="k">if</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">cycle</span>
+<a name="ln-67"></a>
+<a name="ln-68"></a><span class="k">  do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-69"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-70"></a>    <span class="n">uq_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-71"></a>  <span class="n">enddo</span>
+<a name="ln-72"></a>
+<a name="ln-73"></a><span class="n">enddo</span>
+<a name="ln-74"></a>
+<a name="ln-75"></a><span class="k">call </span><span class="n">psi</span><span class="p">%</span><span class="n">solve</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+<a name="ln-76"></a>
+<a name="ln-77"></a><span class="c">! solve b</span>
+<a name="ln-78"></a><span class="n">ujay_re</span> <span class="o">=&gt;</span> <span class="n">jay</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-79"></a><span class="n">ujay_im</span> <span class="o">=&gt;</span> <span class="n">jay</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-80"></a><span class="n">udjdxi_re</span> <span class="o">=&gt;</span> <span class="n">djdxi</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-81"></a><span class="n">udjdxi_im</span> <span class="o">=&gt;</span> <span class="n">djdxi</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-82"></a>
+<a name="ln-83"></a><span class="k">do </span><span class="n">mode</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-84"></a>  
+<a name="ln-85"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-86"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-87"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-88"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-89"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-90"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-91"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-92"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-93"></a>  <span class="n">enddo</span>
+<a name="ln-94"></a>
+<a name="ln-95"></a>  <span class="k">if</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">cycle</span>
+<a name="ln-96"></a>
+<a name="ln-97"></a><span class="k">  do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-98"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-99"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-100"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-101"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-102"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-103"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-104"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-105"></a>  <span class="n">enddo</span>
+<a name="ln-106"></a>
+<a name="ln-107"></a><span class="n">enddo</span>
+<a name="ln-108"></a>
+<a name="ln-109"></a><span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">solve</span><span class="p">(</span> <span class="n">djdxi</span><span class="p">,</span> <span class="n">jay</span> <span class="p">)</span>
+<a name="ln-110"></a>
+<a name="ln-111"></a><span class="c">! solve electric field</span>
+<a name="ln-112"></a><span class="k">call </span><span class="n">e</span><span class="p">%</span><span class="n">solve</span><span class="p">(</span> <span class="n">b</span><span class="p">,</span> <span class="n">psi</span> <span class="p">)</span>
+<a name="ln-113"></a>
+<a name="ln-114"></a><span class="n">ue_re</span> <span class="o">=&gt;</span> <span class="n">e</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-115"></a><span class="n">ue_im</span> <span class="o">=&gt;</span> <span class="n">e</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-116"></a>
+<a name="ln-117"></a><span class="n">ub_re</span> <span class="o">=&gt;</span> <span class="n">b</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-118"></a><span class="n">ub_im</span> <span class="o">=&gt;</span> <span class="n">b</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-119"></a>
+<a name="ln-120"></a><span class="n">upsi_re</span> <span class="o">=&gt;</span> <span class="n">psi</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-121"></a><span class="n">upsi_im</span> <span class="o">=&gt;</span> <span class="n">psi</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-122"></a>
+<a name="ln-123"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ue_re</span><span class="p">(</span><span class="mi">0</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-124"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;er-re-0.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-125"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;ephi-re-0.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-126"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ue_re</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-127"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;er-re-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-128"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;ephi-re-1.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-129"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ue_re</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-130"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;er-re-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-131"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;ephi-re-2.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-132"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ue_im</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-133"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;er-im-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-134"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;ephi-im-1.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-135"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ue_im</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-136"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;er-im-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-137"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;ephi-im-2.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-138"></a>
+<a name="ln-139"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_re</span><span class="p">(</span><span class="mi">0</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-140"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;br-re-0.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-141"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;bphi-re-0.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-142"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_re</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-143"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;br-re-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-144"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;bphi-re-1.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-145"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_re</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-146"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;br-re-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-147"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;bphi-re-2.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-148"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_im</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-149"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;br-im-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-150"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;bphi-im-1.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-151"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_im</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-152"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;br-im-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-153"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;bphi-im-2.txt&#39;</span><span class="p">,</span> <span class="mi">2</span> <span class="p">)</span>
+<a name="ln-154"></a>
+<a name="ln-155"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">upsi_re</span><span class="p">(</span><span class="mi">0</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-156"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;psi-re-0.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-157"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">upsi_re</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-158"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;psi-re-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-159"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">upsi_re</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-160"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;psi-re-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-161"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">upsi_im</span><span class="p">(</span><span class="mi">1</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-162"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;psi-im-1.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-163"></a><span class="n">p</span> <span class="o">=&gt;</span> <span class="n">upsi_im</span><span class="p">(</span><span class="mi">2</span><span class="p">)%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-164"></a><span class="k">call </span><span class="n">write_data</span><span class="p">(</span> <span class="n">p</span><span class="p">,</span> <span class="s1">&#39;psi-im-2.txt&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="p">)</span>
+<a name="ln-165"></a>
+<a name="ln-166"></a><span class="k">call </span><span class="n">rho</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-167"></a><span class="k">call </span><span class="n">psi</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-168"></a><span class="k">call </span><span class="n">jay</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-169"></a><span class="k">call </span><span class="n">djdxi</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-170"></a><span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-171"></a><span class="k">call </span><span class="n">e</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-172"></a>
+<a name="ln-173"></a><span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;test_field_eperp&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-174"></a>
+<a name="ln-175"></a><span class="k">call </span><span class="n">end_errors</span><span class="p">()</span>
+<a name="ln-176"></a><span class="k">call </span><span class="n">MPI_FINALIZE</span><span class="p">(</span> <span class="n">ierr</span> <span class="p">)</span>
+<a name="ln-177"></a>
+<a name="ln-178"></a><span class="k">end program </span><span class="n">test_field_eperp</span>
+</pre></div>
+
+    </section>
+    </div>
+  </div>
+
+  
+    <hr>    
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+      <div class="row">
+        <div class="col-xs-6 col-md-4"><p>&copy; 2018 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>
+                                          </p></div>
+        <div class="col-xs-6 col-md-4 col-md-push-4">
+          <p class="text-right">
+            Documentation generated by 
+            <a href="https://github.com/cmacmackin/ford">FORD</a>
+            
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4 col-md-pull-4"><p class="text-center"> QuickPIC wit Azimuzal Decomposition was developed by Fei Li and Weiming An</p></div>
+      </div>
+      <br>
+      </div> <!-- /container -->    
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+<!--
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+-->
+    <script src="../js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+    <!-- MathJax JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+        jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+        extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+      });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    
+    <script src="../tipuesearch/tipuesearch_content.js"></script>
+    <script src="../tipuesearch/tipuesearch_set.js"></script>
+    <script src="../tipuesearch/tipuesearch.js"></script>
+    
+    
+  </body>
+</html>

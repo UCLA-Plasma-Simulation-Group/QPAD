@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+   <meta name="description" content="">
+    
+    <meta name="author" content="Fei Li and Weiming An" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>TEST_field_bperp_iter.f03 &ndash; QuickPIC wit Azimuzal Decomposition</title>
+
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+    
+    <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+    
+    
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    <script src="../js/jquery-2.1.3.min.js"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html">QuickPIC wit Azimuzal Decomposition </a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+        
+            <li class="dropdown hidden-xs visible-sm visible-md hidden-lg">
+              <a href="#" class="dropdown-toggle"
+              data-toggle="dropdown" role="button"
+              aria-haspopup="true"
+     aria-expanded="false">Contents <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+          
+              
+            <li><a href="../lists/files.html">Source Files</a></li>
+        
+        
+        
+            <li><a href="../lists/modules.html">Modules</a></li>
+        
+            
+                                
+            <li><a href="../lists/procedures.html">Procedures</a></li>
+        
+               
+            <li><a href="../lists/types.html">Derived Types</a></li>
+        
+        
+            <li><a href="../lists/programs.html">Programs</a></li>
+        
+            </ul>
+            </li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/files.html">Source Files</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/modules.html">Modules</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/procedures.html">Procedures</a></li>
+
+                             
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/types.html">Derived Types</a></li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/programs.html">Programs</a></li>
+
+          </ul>
+        
+        <form action="../search.html" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+        </div>
+<!--
+        <button type="submit" class="btn btn-default">Submit</button>
+-->
+        </form>
+        
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    
+  
+  <div class="row">
+    <h1>TEST_field_bperp_iter.f03
+    <small>Source File</small>
+    
+    </h1>
+    
+<div class="row">
+  <div class="col-lg-12">
+<div class="well well-sm">
+  <ul class="list-inline" style="margin-bottom:0px;display:inline">
+     
+     
+     
+     
+    
+    
+     <li><i class="fa fa-list-ol"></i>
+       <a data-toggle="tooltip"
+    data-placement="bottom" data-html="true"
+    title=" 3.0% of total for source files.">105 statements</a>
+     </li> 
+     
+     
+     
+    <li><i class="fa fa-code"></i><a href="../src/TEST_field_bperp_iter.f03"> Source File</a></li>
+     
+     
+  </ul>
+  <ol class="breadcrumb in-well text-right">
+  
+    
+  
+     <li class="active">TEST_field_bperp_iter.f03</li>
+  </ol>
+</div>
+</div>
+</div>
+<script>
+  $(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+
+  </div>
+  <div class="row">
+    <div class="col-md-3 hidden-xs hidden-sm visible-md visible-lg">
+    
+<div id="sidebar">
+  
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#progs-0">Programs</a></h3></div>
+  <div id="progs-0" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../program/test_field_bperp_iter.html">test_field_bperp_iter</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/test_field_bperp_iter.f03.html#src">TEST_field_bperp_iter.f03</a>
+  </div>
+</div>
+
+
+
+</div>
+
+    </div>
+    <div class="col-md-9" id='text'>
+      
+      <br>
+    
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">This file depends on</h3>
+      </div>
+      <div class="panel-body">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: sourcefile~~test_field_bperp_iter.f03~~EfferentGraph Pages: 1 -->
+<svg id="sourcefiletest_field_bperp_iterf03EfferentGraph" width="641pt" height="270pt"
+ viewBox="0.00 0.00 641.00 270.15" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph" class="graph" transform="scale(.6098 .6098) rotate(0) translate(4 439.0204)">
+<title>sourcefile~~test_field_bperp_iter.f03~~EfferentGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-439.0204 1047.1892,-439.0204 1047.1892,4 -4,4"/>
+<!-- sourcefile~test_field_bperp_iter.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node1" class="node">
+<title>sourcefile~test_field_bperp_iter.f03</title>
+<polygon fill="none" stroke="#000000" points="1043.1871,-210.3251 909.1954,-210.3251 909.1954,-188.3143 1043.1871,-188.3143 1043.1871,-210.3251"/>
+<text text-anchor="middle" x="976.1913" y="-196.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">TEST_field_bperp_iter.f03</text>
+</g>
+<!-- sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node2" class="node">
+<title>sourcefile~param.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node2"><a xlink:href=".././sourcefile/param.f03.html" xlink:title="param.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="352.1173,-392.3251 292.5648,-392.3251 292.5648,-370.3143 352.1173,-370.3143 352.1173,-392.3251"/>
+<text text-anchor="middle" x="322.3411" y="-378.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">param.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge1" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M828.085,-391.3197C769.761,-409.2667 747.7058,-369.3276 690.7837,-391.3197"/>
+</g>
+<!-- sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node3" class="node">
+<title>sourcefile~debug_tool.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node3"><a xlink:href=".././sourcefile/debug_tool.f03.html" xlink:title="debug_tool.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="598.8325,-57.3251 516.8687,-57.3251 516.8687,-35.3143 598.8325,-35.3143 598.8325,-57.3251"/>
+<text text-anchor="middle" x="557.8506" y="-43.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">debug_tool.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge2" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-7.3197C656.7512,-9.8025 619.6117,-21.5117 593.2615,-31.4582"/>
+<polygon fill="#000000" stroke="#000000" points="591.7762,-28.2803 583.7198,-35.1611 594.3087,-34.8061 591.7762,-28.2803"/>
+</g>
+<!-- sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node4" class="node">
+<title>sourcefile~system.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node4"><a xlink:href=".././sourcefile/system.f03.html" xlink:title="system.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="219.8065,-237.3251 157.2714,-237.3251 157.2714,-215.3143 219.8065,-215.3143 219.8065,-237.3251"/>
+<text text-anchor="middle" x="188.5389" y="-223.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">system.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge3" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M968.4129,-188.1418C937.8873,-145.753 821.5185,2.218 690.7837,-7.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-7.3197C538.3498,-11.6652 534.2321,-16.0237 517.1104,-26.3197 479.8025,-48.7545 482.4522,-85.8687 438.9218,-85.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-85.3197C340.1905,-84.0747 244.4617,-169.0352 206.1077,-207.6489"/>
+<polygon fill="#000000" stroke="#000000" points="203.2839,-205.5318 198.8138,-215.1375 208.2984,-210.416 203.2839,-205.5318"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-7.3197C631.9526,-1.8872 615.5175,5.5307 557.8506,-7.3197"/>
+</g>
+<!-- sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node5" class="node">
+<title>sourcefile~field_src_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node5"><a xlink:href=".././sourcefile/field_src_class.f03.html" xlink:title="field_src_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="740.1582,-305.3251 641.4092,-305.3251 641.4092,-283.3143 740.1582,-283.3143 740.1582,-305.3251"/>
+<text text-anchor="middle" x="690.7837" y="-291.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_src_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge4" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M972.6682,-210.4683C960.2596,-247.3683 914.5933,-364.7001 828.085,-391.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M828.085,-391.3197C821.532,-393.3361 750.6051,-340.1162 713.3517,-311.6729"/>
+<polygon fill="#000000" stroke="#000000" points="715.1601,-308.6496 705.0918,-305.3511 710.9056,-314.2083 715.1601,-308.6496"/>
+</g>
+<!-- sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node6" class="node">
+<title>sourcefile~field_b_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node6"><a xlink:href=".././sourcefile/field_b_class.f03.html" xlink:title="field_b_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="873.302,-210.3251 782.8679,-210.3251 782.8679,-188.3143 873.302,-188.3143 873.302,-210.3251"/>
+<text text-anchor="middle" x="828.085" y="-196.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_b_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_b_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge5" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_b_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M909.0716,-199.3197C900.4743,-199.3197 891.7513,-199.3197 883.3715,-199.3197"/>
+<polygon fill="#000000" stroke="#000000" points="883.3517,-195.8198 873.3517,-199.3197 883.3517,-202.8198 883.3517,-195.8198"/>
+</g>
+<!-- sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node7" class="node">
+<title>sourcefile~ufield_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node7"><a xlink:href=".././sourcefile/ufield_class.f03.html" xlink:title="ufield_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="481.2998,-286.3251 396.5437,-286.3251 396.5437,-264.3143 481.2998,-264.3143 481.2998,-286.3251"/>
+<text text-anchor="middle" x="438.9218" y="-272.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">ufield_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge6" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-353.3197C614.8059,-337.298 589.286,-362.9552 517.1104,-334.3197 494.1707,-325.2185 472.1124,-307.4753 457.3082,-293.8132"/>
+<polygon fill="#000000" stroke="#000000" points="459.5239,-291.0899 449.8705,-286.7238 454.6942,-296.1569 459.5239,-291.0899"/>
+</g>
+<!-- sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node8" class="node">
+<title>sourcefile~field_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node8"><a xlink:href=".././sourcefile/field_class.f03.html" xlink:title="field_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="596.8895,-325.3251 518.8116,-325.3251 518.8116,-303.3143 596.8895,-303.3143 596.8895,-325.3251"/>
+<text text-anchor="middle" x="557.8506" y="-311.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge7" class="edge">
+<title>sourcefile~test_field_bperp_iter.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M828.085,-391.3197C767.5684,-409.9414 752.738,-366.3842 690.7837,-353.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-353.3197C659.8992,-346.807 625.7456,-336.7226 599.7909,-328.44"/>
+<polygon fill="#000000" stroke="#000000" points="600.8605,-325.1075 590.2688,-325.365 598.7093,-331.7687 600.8605,-325.1075"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge8" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M676.3767,-305.4258C644.7563,-329.7142 571.0387,-385.8307 557.8506,-391.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-391.3197C413.5084,-388.204 384.8601,-385.7322 362.3223,-384.0256"/>
+<polygon fill="#000000" stroke="#000000" points="362.3416,-380.5176 352.1113,-383.2729 361.8269,-387.4987 362.3416,-380.5176"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-391.3197C509.0513,-411.6303 491.3862,-397.752 438.9218,-391.3197"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge10" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M680.9505,-283.0726C642.5069,-239.6222 501.4238,-85.1445 438.9218,-85.3197"/>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge12" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M641.2843,-301.767C630.094,-303.4506 618.216,-305.2376 607.0385,-306.9193"/>
+<polygon fill="#000000" stroke="#000000" points="606.3783,-303.4792 597.0103,-308.4281 607.4198,-310.4013 606.3783,-303.4792"/>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node10" class="node">
+<title>sourcefile~parallel_pipe_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node10"><a xlink:href=".././sourcefile/parallel_pipe_class.f03.html" xlink:title="parallel_pipe_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="247.8591,-296.3251 129.2187,-296.3251 129.2187,-274.3143 247.8591,-274.3143 247.8591,-296.3251"/>
+<text text-anchor="middle" x="188.5389" y="-282.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_pipe_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge9" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M557.8506,-391.3197C445.3874,-438.1275 393.1575,-455.2867 283.949,-401.3197 242.5165,-380.8452 212.7223,-333.1207 198.3105,-305.6914"/>
+<polygon fill="#000000" stroke="#000000" points="201.3433,-303.933 193.7038,-296.5921 195.0981,-307.0948 201.3433,-303.933"/>
+</g>
+<!-- sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node11" class="node">
+<title>sourcefile~grid_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node11"><a xlink:href=".././sourcefile/grid_class.f03.html" xlink:title="grid_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="360.6255,-257.3251 284.0566,-257.3251 284.0566,-235.3143 360.6255,-235.3143 360.6255,-257.3251"/>
+<text text-anchor="middle" x="322.3411" y="-243.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">grid_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge11" class="edge">
+<title>sourcefile~field_src_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M666.9327,-283.2041C628.7195,-266.0733 550.962,-233.9788 481.1104,-222.3197 444.1211,-216.1457 433.7785,-216.4919 396.7332,-222.3197 384.2699,-224.2804 371.0477,-227.9822 359.2616,-231.902"/>
+<polygon fill="#000000" stroke="#000000" points="358.0417,-228.6206 349.7472,-235.2124 360.342,-235.2318 358.0417,-228.6206"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge14" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M825.6372,-210.3394C818.5688,-239.7529 795.464,-321.0192 746.9766,-367.3197 727.3358,-386.0747 715.3041,-379.6467 690.7837,-391.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-391.3197C620.8638,-424.6054 594.2452,-412.1709 517.1104,-405.3197 481.9456,-402.1964 473.9625,-395.6158 438.9218,-391.3197"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge16" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-45.3197C665.9813,-32.0754 634.6797,-31.6633 608.6818,-34.8693"/>
+<polygon fill="#000000" stroke="#000000" points="608.0356,-31.4262 598.6366,-36.3158 609.0334,-38.3547 608.0356,-31.4262"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge17" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-45.3197C663.6817,-30.8475 587.839,-.6371 557.8506,-7.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M821.8669,-187.9682C805.1147,-158.6151 755.8728,-80.0767 690.7837,-45.3197"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge19" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_src_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M812.066,-210.4033C788.1932,-226.9212 743.0991,-258.1222 715.1308,-277.4737"/>
+<polygon fill="#000000" stroke="#000000" points="712.9326,-274.7385 706.7006,-283.3067 716.9155,-280.495 712.9326,-274.7385"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge20" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-199.3197C609.0114,-203.3086 518.271,-238.9723 471.2122,-259.998"/>
+<polygon fill="#000000" stroke="#000000" points="469.512,-256.926 461.8523,-264.2458 472.4049,-263.3003 469.512,-256.926"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge21" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-199.3197C633.6362,-202.1074 588.8924,-262.4974 569.0374,-294.6195"/>
+<polygon fill="#000000" stroke="#000000" points="566.0214,-292.8435 563.8971,-303.2232 572.0306,-296.4337 566.0214,-292.8435"/>
+</g>
+<!-- sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node9" class="node">
+<title>sourcefile~field_solver_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node9"><a xlink:href=".././sourcefile/field_solver_class.f03.html" xlink:title="field_solver_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="747.1701,-133.3251 634.3973,-133.3251 634.3973,-111.3143 747.1701,-111.3143 747.1701,-133.3251"/>
+<text text-anchor="middle" x="690.7837" y="-119.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_solver_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_solver_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge13" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~field_solver_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M808.413,-188.2875C785.0649,-175.1936 745.9456,-153.2551 719.2839,-138.3029"/>
+<polygon fill="#000000" stroke="#000000" points="720.8532,-135.1702 710.4191,-133.3315 717.4292,-141.2757 720.8532,-135.1702"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge15" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-123.3197C435.6297,-123.7139 277.1723,-227.2804 214.0713,-268.5928"/>
+<polygon fill="#000000" stroke="#000000" points="211.9315,-265.8102 205.483,-274.2166 215.7663,-271.6664 211.9315,-265.8102"/>
+</g>
+<!-- sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge18" class="edge">
+<title>sourcefile~field_b_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M782.8613,-197.4048C756.0483,-196.7464 721.4239,-196.7262 690.7837,-199.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M690.7837,-199.3197C574.2764,-209.1815 552.4185,-95.2184 438.9218,-123.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-123.3197C384.3844,-129.8497 347.3916,-192.2674 331.3578,-225.5882"/>
+<polygon fill="#000000" stroke="#000000" points="328.0724,-224.3547 327.0585,-234.9009 334.4278,-227.2888 328.0724,-224.3547"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge23" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M417.521,-286.3764C410.6009,-290.3687 403.0812,-295.1714 396.7332,-300.3197 373.8761,-318.8571 351.5754,-344.4351 337.4468,-361.8558"/>
+<polygon fill="#000000" stroke="#000000" points="334.3388,-360.1399 330.8437,-370.1417 339.8131,-364.5025 334.3388,-360.1399"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge22" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M396.59,-282.0425C374.4803,-284.7703 346.9693,-286.9406 322.3411,-285.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-285.3197C281.098,-282.6054 238.1976,-259.4815 212.4281,-243.005"/>
+<polygon fill="#000000" stroke="#000000" points="214.3363,-240.0708 204.0584,-237.4986 210.4889,-245.9188 214.3363,-240.0708"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge24" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M322.3411,-285.3197C301.4253,-283.9432 278.6305,-283.5371 257.88,-283.5883"/>
+<polygon fill="#000000" stroke="#000000" points="257.8537,-280.0882 247.8748,-283.6479 257.8955,-287.0881 257.8537,-280.0882"/>
+</g>
+<!-- sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge25" class="edge">
+<title>sourcefile~ufield_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M396.5037,-264.768C388.0808,-262.6728 379.1794,-260.4585 370.579,-258.3191"/>
+<polygon fill="#000000" stroke="#000000" points="371.217,-254.8712 360.6678,-255.8537 369.5272,-261.6642 371.217,-254.8712"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge26" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-352.3197C413.1948,-357.4087 384.615,-364.495 362.1916,-370.3887"/>
+<polygon fill="#000000" stroke="#000000" points="361.1211,-367.0516 352.3546,-373.0012 362.918,-373.8171 361.1211,-367.0516"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge28" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-236.3197C368.6738,-212.1878 280.7551,-215.797 229.9837,-220.878"/>
+<polygon fill="#000000" stroke="#000000" points="229.6087,-217.398 220.037,-221.9405 230.3523,-224.3584 229.6087,-217.398"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M545.2061,-303.1107C530.5117,-290.4484 505.1921,-269.732 481.1104,-255.3197 463.4648,-244.7593 458.5354,-242.4999 438.9218,-236.3197"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge30" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~ufield_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M524.0885,-303.2482C511.1576,-299.0078 496.2187,-294.109 482.4979,-289.6095"/>
+<polygon fill="#000000" stroke="#000000" points="483.361,-286.2092 472.7683,-286.4189 481.1798,-292.8607 483.361,-286.2092"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge27" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M529.4935,-325.4013C505.6951,-334.2079 470.6047,-346.0526 438.9218,-352.3197"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-352.3197C356.9101,-368.5423 262.0638,-325.9315 216.2051,-301.3368"/>
+<polygon fill="#000000" stroke="#000000" points="217.6361,-298.1298 207.1851,-296.3897 214.2698,-304.2673 217.6361,-298.1298"/>
+</g>
+<!-- sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge29" class="edge">
+<title>sourcefile~field_class.f03&#45;&gt;sourcefile~grid_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M438.9218,-236.3197C417.1949,-228.856 391.9134,-229.9381 370.4578,-233.4722"/>
+<polygon fill="#000000" stroke="#000000" points="369.7713,-230.0397 360.5811,-235.3115 371.0529,-236.9214 369.7713,-230.0397"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge33" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~param.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M679.2155,-133.4376C648.6314,-162.4684 562.3978,-241.9949 481.1104,-295.3197 445.9172,-318.4065 433.7167,-318.2256 396.7332,-338.3197 380.927,-346.9076 363.5055,-356.9458 349.4975,-365.1625"/>
+<polygon fill="#000000" stroke="#000000" points="347.6755,-362.1736 340.8365,-370.2655 351.229,-368.2047 347.6755,-362.1736"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge31" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~debug_tool.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M671.4541,-111.2687C649.0075,-98.4356 611.7838,-77.1542 586.0965,-62.4684"/>
+<polygon fill="#000000" stroke="#000000" points="587.6221,-59.3089 577.2035,-57.3841 584.1477,-65.3859 587.6221,-59.3089"/>
+</g>
+<!-- sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge32" class="edge">
+<title>sourcefile~field_solver_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M644.2007,-111.2393C593.8752,-100.2657 511.1809,-85.1172 438.9218,-85.3197"/>
+</g>
+<!-- sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node12" class="node">
+<title>sourcefile~parallel_class.f03</title>
+<g id="a_sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_node12"><a xlink:href=".././sourcefile/parallel_class.f03.html" xlink:title="parallel_class.f03">
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="93.1934,-296.3251 -.0645,-296.3251 -.0645,-274.3143 93.1934,-274.3143 93.1934,-296.3251"/>
+<text text-anchor="middle" x="46.5645" y="-282.1697" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_class.f03</text>
+</a>
+</g>
+</g>
+<!-- sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge34" class="edge">
+<title>sourcefile~parallel_pipe_class.f03&#45;&gt;sourcefile~parallel_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M129.1516,-285.3197C120.6163,-285.3197 111.851,-285.3197 103.3674,-285.3197"/>
+<polygon fill="#000000" stroke="#000000" points="103.1936,-281.8198 93.1935,-285.3197 103.1935,-288.8198 103.1936,-281.8198"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge35" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~system.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M283.9987,-240.5885C267.2437,-238.0841 247.5466,-235.1399 230.4098,-232.5783"/>
+<polygon fill="#000000" stroke="#000000" points="230.5273,-229.0571 220.1198,-231.0402 229.4924,-235.9802 230.5273,-229.0571"/>
+</g>
+<!-- sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03 -->
+<g id="sourcefile~~test_field_bperp_iter.f03~~EfferentGraph_edge36" class="edge">
+<title>sourcefile~grid_class.f03&#45;&gt;sourcefile~parallel_pipe_class.f03</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M284.3566,-257.3912C269.3849,-261.7551 252.0206,-266.8164 236.2194,-271.422"/>
+<polygon fill="#000000" stroke="#000000" points="235.2394,-268.062 226.6183,-274.2205 237.1983,-274.7823 235.2394,-268.062"/>
+</g>
+</g>
+</svg>
+</div><script>var pansourcefiletest_field_bperp_iterf03EfferentGraph = svgPanZoom('#sourcefiletest_field_bperp_iterf03EfferentGraph', {zoomEnabled: true,controlIconsEnabled: true, fit: true, center: true,}); </script><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="186pt" height="31pt"
+ viewBox="0.00 0.00 186.41 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 182.4064,-26.5 182.4064,4 -4,4"/>
+<!-- Source File -->
+<g id="node1" class="node">
+<title>Source File</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="65.1576,-22.2554 -.0526,-22.2554 -.0526,-.2446 65.1576,-.2446 65.1576,-22.2554"/>
+<text text-anchor="middle" x="32.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Source File</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node2" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="178.2607,-22.2554 82.8443,-22.2554 82.8443,-.2446 178.2607,-.2446 178.2607,-22.2554"/>
+<text text-anchor="middle" x="130.5525" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a file to a file which it depends on. A file
+    is dependent upon another if the latter must be compiled before the former
+    can be.
+    </p>
+    </div></div></div></div>
+      </div>
+    </div>
+    
+      
+      <br>
+
+    <section class="visible-xs visible-sm hidden-md">
+      
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#progs-1">Programs</a></h3></div>
+  <div id="progs-1" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../program/test_field_bperp_iter.html">test_field_bperp_iter</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title">Source Code</h3></div>
+  <div class="list-group">
+    <a class="list-group-item" href="../sourcefile/test_field_bperp_iter.f03.html#src">TEST_field_bperp_iter.f03</a>
+  </div>
+</div>
+
+
+
+    </section>
+    <br class="visible-xs visible-sm hidden-md">
+
+    <section>
+      <h2><span class="anchor" id="src"></span>Source Code</h2>
+    <div class="hl"><pre><span></span><a name="ln-1"></a><span class="k">program </span><span class="n">test_field_bperp_iter</span>
+<a name="ln-2"></a>
+<a name="ln-3"></a><span class="k">use </span><span class="n">field_b_class</span>
+<a name="ln-4"></a><span class="k">use </span><span class="n">field_class</span>
+<a name="ln-5"></a><span class="k">use </span><span class="n">field_src_class</span>
+<a name="ln-6"></a><span class="k">use </span><span class="nb">system</span>
+<a name="ln-7"></a><span class="k">use </span><span class="n">param</span>
+<a name="ln-8"></a><span class="k">use </span><span class="n">mpi</span>
+<a name="ln-9"></a><span class="k">use </span><span class="n">ufield_class</span>
+<a name="ln-10"></a><span class="k">use </span><span class="n">debug_tool</span>
+<a name="ln-11"></a>
+<a name="ln-12"></a><span class="k">implicit none</span>
+<a name="ln-13"></a>
+<a name="ln-14"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_b</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">b</span>
+<a name="ln-15"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_jay</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">jay</span>
+<a name="ln-16"></a><span class="k">type</span><span class="p">(</span> <span class="n">field_djdxi</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">djdxi</span>
+<a name="ln-17"></a>
+<a name="ln-18"></a><span class="kt">integer</span> <span class="kd">::</span> <span class="n">num_modes</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">dim</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">part_shape</span> <span class="o">=</span> <span class="n">p_ps_linear</span>
+<a name="ln-19"></a><span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">nd</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">),</span> <span class="n">nvp</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-20"></a><span class="kt">integer</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="kd">::</span> <span class="n">gc_num</span>
+<a name="ln-21"></a><span class="kt">real</span> <span class="kd">::</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">r</span>
+<a name="ln-22"></a>
+<a name="ln-23"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ujay_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ujay_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-24"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">udjdxi_re</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">udjdxi_im</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-25"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ub_re_new</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ub_im_new</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-26"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">),</span> <span class="k">dimension</span><span class="p">(:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">ub_re_old</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">(),</span> <span class="n">ub_im_old</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-27"></a><span class="k">type</span><span class="p">(</span> <span class="n">ufield</span> <span class="p">)</span> <span class="kd">::</span> <span class="n">ub_res</span>
+<a name="ln-28"></a><span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:,:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">p</span>
+<a name="ln-29"></a><span class="kt">integer</span> <span class="kd">::</span> <span class="n">ierr</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">iter</span>
+<a name="ln-30"></a><span class="kt">integer</span> <span class="kd">::</span> <span class="n">num_iter</span> <span class="o">=</span> <span class="mi">10</span>
+<a name="ln-31"></a><span class="kt">real</span><span class="p">,</span> <span class="k">dimension</span><span class="p">(:,:),</span> <span class="k">pointer</span> <span class="kd">::</span> <span class="n">res</span> <span class="o">=&gt;</span> <span class="nb">null</span><span class="p">()</span>
+<a name="ln-32"></a>
+<a name="ln-33"></a><span class="k">call </span><span class="n">MPI_INIT</span><span class="p">(</span> <span class="n">ierr</span> <span class="p">)</span>
+<a name="ln-34"></a><span class="k">call </span><span class="n">init_errors</span><span class="p">(</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span> <span class="p">)</span>
+<a name="ln-35"></a>
+<a name="ln-36"></a><span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;test_field_bperp_iter&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;starts&#39;</span> <span class="p">)</span>
+<a name="ln-37"></a>
+<a name="ln-38"></a><span class="n">dr</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>
+<a name="ln-39"></a><span class="n">dxi</span> <span class="o">=</span> <span class="mf">1.0</span>
+<a name="ln-40"></a>
+<a name="ln-41"></a><span class="n">gc_num</span><span class="p">(:,</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-42"></a><span class="n">gc_num</span><span class="p">(:,</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="o">/</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="o">/</span><span class="p">)</span>
+<a name="ln-43"></a>
+<a name="ln-44"></a><span class="k">call </span><span class="n">jay</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-45"></a><span class="k">call </span><span class="n">djdxi</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span> <span class="p">)</span>
+<a name="ln-46"></a><span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="n">num_modes</span><span class="p">,</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dxi</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">part_shape</span><span class="p">,</span> <span class="n">p_entity_plasma</span> <span class="p">)</span>
+<a name="ln-47"></a>
+<a name="ln-48"></a>
+<a name="ln-49"></a><span class="n">ujay_re</span> <span class="o">=&gt;</span> <span class="n">jay</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-50"></a><span class="n">ujay_im</span> <span class="o">=&gt;</span> <span class="n">jay</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-51"></a><span class="n">udjdxi_re</span> <span class="o">=&gt;</span> <span class="n">djdxi</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-52"></a><span class="n">udjdxi_im</span> <span class="o">=&gt;</span> <span class="n">djdxi</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-53"></a>
+<a name="ln-54"></a><span class="c">! set the charge</span>
+<a name="ln-55"></a><span class="k">do </span><span class="n">mode</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-56"></a>  
+<a name="ln-57"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-58"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-59"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-60"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-61"></a>    <span class="n">ujay_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-62"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-63"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-64"></a>    <span class="n">udjdxi_re</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-65"></a>  <span class="n">enddo</span>
+<a name="ln-66"></a>
+<a name="ln-67"></a>  <span class="k">if</span> <span class="p">(</span> <span class="n">mode</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">cycle</span>
+<a name="ln-68"></a>
+<a name="ln-69"></a><span class="k">  do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nd</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<a name="ln-70"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">dr</span>
+<a name="ln-71"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-72"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-73"></a>    <span class="n">ujay_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a name="ln-74"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-75"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-76"></a>    <span class="n">udjdxi_im</span><span class="p">(</span><span class="n">mode</span><span class="p">)%</span><span class="n">f1</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="nb">exp</span><span class="p">(</span> <span class="o">-</span><span class="p">((</span><span class="n">r</span><span class="o">-</span><span class="mf">0.4</span><span class="p">)</span><span class="o">/</span><span class="mf">0.05</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+<a name="ln-77"></a>  <span class="n">enddo</span>
+<a name="ln-78"></a>
+<a name="ln-79"></a><span class="n">enddo</span>
+<a name="ln-80"></a>
+<a name="ln-81"></a><span class="c">! call HYPRE_StructMatrixGetBoxValues( psi%solver(0)%A, 1, nd(1), 3, &amp;</span>
+<a name="ln-82"></a><span class="c">!   psi%solver(0)%stencil_idx, values, ierr )</span>
+<a name="ln-83"></a>
+<a name="ln-84"></a><span class="c">! print *, &quot;A = &quot;, values(1:nd(1)*3)</span>
+<a name="ln-85"></a>
+<a name="ln-86"></a><span class="c">! call HYPRE_StructVectorGetBoxValues( psi%solver(0)%b )</span>
+<a name="ln-87"></a>
+<a name="ln-88"></a><span class="k">allocate</span><span class="p">(</span> <span class="n">res</span><span class="p">(</span><span class="n">num_iter</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">num_modes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="p">)</span> <span class="p">)</span>
+<a name="ln-89"></a><span class="k">allocate</span><span class="p">(</span> <span class="n">ub_re_old</span><span class="p">(</span><span class="mi">0</span><span class="p">:</span><span class="n">num_modes</span><span class="p">),</span> <span class="n">ub_im_old</span><span class="p">(</span><span class="n">num_modes</span><span class="p">)</span> <span class="p">)</span>
+<a name="ln-90"></a><span class="k">call </span><span class="n">ub_res</span><span class="p">%</span><span class="n">new</span><span class="p">(</span> <span class="nb">dim</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">gc_num</span><span class="p">,</span> <span class="n">has_2d</span><span class="o">=</span><span class="p">.</span><span class="n">true</span><span class="p">.</span> <span class="p">)</span>
+<a name="ln-91"></a>
+<a name="ln-92"></a><span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-93"></a>  <span class="k">call </span><span class="n">ub_re_old</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">new</span><span class="p">(</span> <span class="nb">dim</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">gc_num</span><span class="p">,</span> <span class="n">has_2d</span><span class="o">=</span><span class="p">.</span><span class="n">true</span><span class="p">.</span> <span class="p">)</span>
+<a name="ln-94"></a>  <span class="k">if</span> <span class="p">(</span><span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="k">cycle</span>
+<a name="ln-95"></a><span class="k">  call </span><span class="n">ub_im_old</span><span class="p">(</span><span class="n">i</span><span class="p">)%</span><span class="n">new</span><span class="p">(</span> <span class="nb">dim</span><span class="p">,</span> <span class="n">nd</span><span class="p">,</span> <span class="n">nvp</span><span class="p">,</span> <span class="n">gc_num</span><span class="p">,</span> <span class="n">has_2d</span><span class="o">=</span><span class="p">.</span><span class="n">true</span><span class="p">.</span> <span class="p">)</span>
+<a name="ln-96"></a><span class="n">enddo</span>
+<a name="ln-97"></a>
+<a name="ln-98"></a><span class="k">do </span><span class="n">iter</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_iter</span>
+<a name="ln-99"></a>
+<a name="ln-100"></a>  <span class="k">print</span> <span class="o">*</span><span class="p">,</span> <span class="s1">&#39;iter = &#39;</span><span class="p">,</span> <span class="n">iter</span>
+<a name="ln-101"></a>
+<a name="ln-102"></a>  <span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">solve</span><span class="p">(</span> <span class="n">djdxi</span><span class="p">,</span> <span class="n">jay</span> <span class="p">)</span>
+<a name="ln-103"></a>  <span class="n">ub_re_new</span> <span class="o">=&gt;</span> <span class="n">b</span><span class="p">%</span><span class="n">get_rf_re</span><span class="p">()</span>
+<a name="ln-104"></a>  <span class="n">ub_im_new</span> <span class="o">=&gt;</span> <span class="n">b</span><span class="p">%</span><span class="n">get_rf_im</span><span class="p">()</span>
+<a name="ln-105"></a>
+<a name="ln-106"></a>  <span class="k">do </span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_modes</span>
+<a name="ln-107"></a>    <span class="n">ub_res</span> <span class="o">=</span> <span class="n">ub_re_new</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="n">ub_re_old</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-108"></a>    <span class="n">ub_re_old</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">ub_re_new</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-109"></a>    <span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_res</span><span class="p">%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-110"></a>    <span class="k">if</span> <span class="p">(</span><span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="k">then</span>
+<a name="ln-111"></a><span class="k">      </span><span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">1</span><span class="p">,:)))</span>
+<a name="ln-112"></a>      <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">2</span><span class="p">,:)))</span>
+<a name="ln-113"></a>      <span class="k">cycle</span>
+<a name="ln-114"></a><span class="k">    </span><span class="n">endif</span>
+<a name="ln-115"></a>    <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">1</span><span class="p">,:)))</span>
+<a name="ln-116"></a>    <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="p">)</span>   <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">2</span><span class="p">,:)))</span>
+<a name="ln-117"></a>
+<a name="ln-118"></a>    <span class="n">ub_res</span> <span class="o">=</span> <span class="n">ub_im_new</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="n">ub_im_old</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-119"></a>    <span class="n">ub_im_old</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">=</span> <span class="n">ub_im_new</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<a name="ln-120"></a>    <span class="n">p</span> <span class="o">=&gt;</span> <span class="n">ub_res</span><span class="p">%</span><span class="n">get_f1</span><span class="p">()</span>
+<a name="ln-121"></a>    <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">1</span><span class="p">,:)))</span>
+<a name="ln-122"></a>    <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,</span><span class="mi">4</span><span class="o">*</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="nb">maxval</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="mi">2</span><span class="p">,:)))</span>
+<a name="ln-123"></a>  <span class="n">enddo</span>
+<a name="ln-124"></a>
+<a name="ln-125"></a><span class="n">enddo</span>
+<a name="ln-126"></a>
+<a name="ln-127"></a><span class="k">write</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="o">*</span><span class="p">)</span> <span class="s2">&quot;Residue of each iteration&quot;</span>
+<a name="ln-128"></a><span class="k">write</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="s1">&#39;(10A16)&#39;</span><span class="p">)</span> <span class="s2">&quot;Re(Br0)&quot;</span><span class="p">,</span><span class="s2">&quot;Re(Bp0)&quot;</span><span class="p">,</span><span class="s2">&quot;Re(Br1)&quot;</span><span class="p">,</span><span class="s2">&quot;Re(Bp1)&quot;</span><span class="p">,&amp;</span>
+<a name="ln-129"></a><span class="s2">&quot;Im(Br1)&quot;</span><span class="p">,</span><span class="s2">&quot;Im(Bp1)&quot;</span><span class="p">,</span><span class="s2">&quot;Re(Br2)&quot;</span><span class="p">,</span><span class="s2">&quot;Re(Bp2)&quot;</span><span class="p">,</span><span class="s2">&quot;Im(Br2)&quot;</span><span class="p">,</span><span class="s2">&quot;Im(Bp2)&quot;</span>
+<a name="ln-130"></a><span class="k">do </span><span class="n">iter</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_iter</span>
+<a name="ln-131"></a>  <span class="k">write</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="s1">&#39;(10E16.4)&#39;</span><span class="p">)</span> <span class="n">res</span><span class="p">(</span><span class="n">iter</span><span class="p">,:)</span>
+<a name="ln-132"></a><span class="n">enddo</span>
+<a name="ln-133"></a>
+<a name="ln-134"></a>
+<a name="ln-135"></a><span class="k">call </span><span class="n">jay</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-136"></a><span class="k">call </span><span class="n">djdxi</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-137"></a><span class="k">call </span><span class="n">b</span><span class="p">%</span><span class="n">del</span><span class="p">()</span>
+<a name="ln-138"></a><span class="k">deallocate</span><span class="p">(</span> <span class="n">ub_re_old</span><span class="p">,</span> <span class="n">ub_im_old</span> <span class="p">)</span>
+<a name="ln-139"></a>
+<a name="ln-140"></a><span class="k">call </span><span class="n">write_dbg</span><span class="p">(</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;test_field_bperp_iter&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;ends&#39;</span> <span class="p">)</span>
+<a name="ln-141"></a>
+<a name="ln-142"></a><span class="k">call </span><span class="n">end_errors</span><span class="p">()</span>
+<a name="ln-143"></a><span class="k">call </span><span class="n">MPI_FINALIZE</span><span class="p">(</span> <span class="n">ierr</span> <span class="p">)</span>
+<a name="ln-144"></a>
+<a name="ln-145"></a><span class="k">end program </span><span class="n">test_field_bperp_iter</span>
+</pre></div>
+
+    </section>
+    </div>
+  </div>
+
+  
+    <hr>    
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+      <div class="row">
+        <div class="col-xs-6 col-md-4"><p>&copy; 2018 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>
+                                          </p></div>
+        <div class="col-xs-6 col-md-4 col-md-push-4">
+          <p class="text-right">
+            Documentation generated by 
+            <a href="https://github.com/cmacmackin/ford">FORD</a>
+            
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4 col-md-pull-4"><p class="text-center"> QuickPIC wit Azimuzal Decomposition was developed by Fei Li and Weiming An</p></div>
+      </div>
+      <br>
+      </div> <!-- /container -->    
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+<!--
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+-->
+    <script src="../js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+    <!-- MathJax JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+        jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+        extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+      });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    
+    <script src="../tipuesearch/tipuesearch_content.js"></script>
+    <script src="../tipuesearch/tipuesearch_set.js"></script>
+    <script src="../tipuesearch/tipuesearch.js"></script>
+    
+    
+  </body>
+</html>

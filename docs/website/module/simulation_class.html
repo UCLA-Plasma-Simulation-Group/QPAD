@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+   <meta name="description" content="">
+    
+    <meta name="author" content="Fei Li and Weiming An" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>simulation_class &ndash; QuickPIC wit Azimuzal Decomposition</title>
+
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+    
+    <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+    
+    
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    
+    <script src="../js/jquery-2.1.3.min.js"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html">QuickPIC wit Azimuzal Decomposition </a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+        
+            <li class="dropdown hidden-xs visible-sm visible-md hidden-lg">
+              <a href="#" class="dropdown-toggle"
+              data-toggle="dropdown" role="button"
+              aria-haspopup="true"
+     aria-expanded="false">Contents <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+          
+              
+            <li><a href="../lists/files.html">Source Files</a></li>
+        
+        
+        
+            <li><a href="../lists/modules.html">Modules</a></li>
+        
+            
+                                
+            <li><a href="../lists/procedures.html">Procedures</a></li>
+        
+               
+            <li><a href="../lists/types.html">Derived Types</a></li>
+        
+        
+            <li><a href="../lists/programs.html">Programs</a></li>
+        
+            </ul>
+            </li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/files.html">Source Files</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/modules.html">Modules</a></li>
+
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/procedures.html">Procedures</a></li>
+
+                             
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/types.html">Derived Types</a></li>
+
+
+<li class="visible-xs hidden-sm visible-lg"><a href="../lists/programs.html">Programs</a></li>
+
+          </ul>
+        
+        <form action="../search.html" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+        </div>
+<!--
+        <button type="submit" class="btn btn-default">Submit</button>
+-->
+        </form>
+        
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    
+  
+  <div class="row">
+    <h1>simulation_class 
+    <small>Module</small>
+    
+    </h1>
+    
+<div class="row">
+  <div class="col-lg-12">
+<div class="well well-sm">
+  <ul class="list-inline" style="margin-bottom:0px;display:inline">
+     
+     
+     
+     
+    
+    
+     <li><i class="fa fa-list-ol"></i>
+       <a data-toggle="tooltip"
+    data-placement="bottom" data-html="true"
+    title=" 5.6% of total for modules and submodules.">162 statements</a>
+     </li> 
+     
+     
+     
+    <li><i class="fa fa-code"></i><a href="../src/simulation_class.f03"> Source File</a></li>
+     
+     
+  </ul>
+  <ol class="breadcrumb in-well text-right">
+  
+    
+     <li><a href='../sourcefile/simulation_class.f03.html'>simulation_class.f03</a></li>
+    
+  
+     <li class="active">simulation_class</li>
+  </ol>
+</div>
+</div>
+</div>
+<script>
+  $(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+
+  </div>
+  
+  <div class="row">
+    <div class="col-md-3 hidden-xs hidden-sm visible-md visible-lg">
+    
+<div id="sidebar">
+  
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#types-0">Derived Types</a></h3></div>
+  <div id="types-0" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/simulation_class.html#type-sim_fields">sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#type-simulation">simulation</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#subs-0">Subroutines</a></h3></div>
+  <div class="list-group">
+    <div id="subs-0" class="panel-collapse collapse">
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-init_sim_fields">init_sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-end_sim_fields">end_sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-init_simulation">init_simulation</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-end_simulation">end_simulation</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+</div>
+
+    </div>
+    
+    <div class="col-md-9" id='text'>
+    
+      <br>
+    
+  
+    <div class="panel panel-default">
+      <div class="panel-heading">
+  <h3 class="panel-title">Uses</h3>
+      </div>
+      <ul class="list-group">
+      
+      <li class="list-group-item">
+  <ul class="list-inline">
+    
+    <li><a href='../module/parallel_class.html'>parallel_class</a></li>
+    
+    <li><a href='../module/parallel_pipe_class.html'>parallel_pipe_class</a></li>
+    
+    <li><a href='../module/grid_class.html'>grid_class</a></li>
+    
+    <li><a href='../module/field_psi_class.html'>field_psi_class</a></li>
+    
+    <li><a href='../module/field_e_class.html'>field_e_class</a></li>
+    
+    <li><a href='../module/field_b_class.html'>field_b_class</a></li>
+    
+    <li><a href='../module/field_src_class.html'>field_src_class</a></li>
+    
+    <li><a href='../module/input_class.html'>input_class</a></li>
+    
+    <li><a href='../module/system.html'>system</a></li>
+    
+    <li><a href='../module/param.html'>param</a></li>
+    
+    <li><a href="http://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node410.htm">mpi</a></li>
+    
+  </ul>
+      </li>
+      
+      
+      
+      <li class="list-group-item">
+  <div class="depgraph"><?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: module~~simulation_class~~UsesGraph Pages: 1 -->
+<svg id="modulesimulation_classUsesGraph" width="641pt" height="493pt"
+ viewBox="0.00 0.00 641.00 492.74" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="module~~simulation_class~~UsesGraph" class="graph" transform="scale(.5816 .5816) rotate(0) translate(4 843.2625)">
+<title>module~~simulation_class~~UsesGraph</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-843.2625 1098.1848,-843.2625 1098.1848,4 -4,4"/>
+<!-- module~simulation_class -->
+<g id="module~~simulation_class~~UsesGraph_node1" class="node">
+<title>module~simulation_class</title>
+<polygon fill="none" stroke="#000000" points="1094.2011,-508.2806 1005.1361,-508.2806 1005.1361,-486.2697 1094.2011,-486.2697 1094.2011,-508.2806"/>
+<text text-anchor="middle" x="1049.6686" y="-494.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">simulation_class</text>
+</g>
+<!-- mpi -->
+<g id="module~~simulation_class~~UsesGraph_node2" class="node">
+<title>mpi</title>
+<g id="a_module~~simulation_class~~UsesGraph_node2"><a xlink:href="http://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node410.htm" xlink:title="mpi">
+<polygon fill="#337ab7" stroke="#337ab7" points="54,-625.2806 0,-625.2806 0,-603.2697 54,-603.2697 54,-625.2806"/>
+<text text-anchor="middle" x="27" y="-611.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">mpi</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;mpi -->
+<g id="module~~simulation_class~~UsesGraph_edge1" class="edge">
+<title>module~simulation_class&#45;&gt;mpi</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-824.2751C433.323,-820.1035 420.1911,-813.5091 374.6913,-824.2751"/>
+</g>
+<!-- module~field_src_class -->
+<g id="module~~simulation_class~~UsesGraph_node3" class="node">
+<title>module~field_src_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node3"><a xlink:href=".././module/field_src_class.html" xlink:title="field_src_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="737.0875,-566.2806 656.3671,-566.2806 656.3671,-544.2697 737.0875,-544.2697 737.0875,-566.2806"/>
+<text text-anchor="middle" x="696.7273" y="-552.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_src_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~field_src_class -->
+<g id="module~~simulation_class~~UsesGraph_edge2" class="edge">
+<title>module~simulation_class&#45;&gt;module~field_src_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.8008,-669.2751C886.3005,-687.6456 869.1411,-679.9948 820.3063,-669.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-669.2751C769.4604,-658.114 784.8346,-612.767 744.1633,-580.2751 740.0858,-577.0176 735.5193,-573.9879 730.8734,-571.2425"/>
+<polygon fill="#000000" stroke="#000000" points="732.3972,-568.086 721.9492,-566.328 729.0204,-574.2177 732.3972,-568.086"/>
+</g>
+<!-- module~input_class -->
+<g id="module~~simulation_class~~UsesGraph_node4" class="node">
+<title>module~input_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node4"><a xlink:href=".././module/input_class.html" xlink:title="input_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="511.9252,-758.2806 447.8602,-758.2806 447.8602,-736.2697 511.9252,-736.2697 511.9252,-758.2806"/>
+<text text-anchor="middle" x="479.8927" y="-744.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">input_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~input_class -->
+<g id="module~~simulation_class~~UsesGraph_edge3" class="edge">
+<title>module~simulation_class&#45;&gt;module~input_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-824.2751C543.4508,-823.7221 510.8566,-789.4462 493.4272,-766.8165"/>
+<polygon fill="#000000" stroke="#000000" points="496.0644,-764.4956 487.3111,-758.5265 490.4315,-768.6514 496.0644,-764.4956"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.8008,-669.2751C895.9709,-683.8252 895.4205,-702.6967 860.4492,-721.2751 743.6667,-783.3156 713.5329,-826.2066 581.3079,-824.2751"/>
+</g>
+<!-- module~parallel_class -->
+<g id="module~~simulation_class~~UsesGraph_node5" class="node">
+<title>module~parallel_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node5"><a xlink:href=".././module/parallel_class.html" xlink:title="parallel_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="165.4238,-605.2806 90.1914,-605.2806 90.1914,-583.2697 165.4238,-583.2697 165.4238,-605.2806"/>
+<text text-anchor="middle" x="127.8076" y="-591.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~parallel_class -->
+<g id="module~~simulation_class~~UsesGraph_edge4" class="edge">
+<title>module~simulation_class&#45;&gt;module~parallel_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.8008,-96.2751C885.7238,-79.4372 869.8156,-103.2453 820.3063,-96.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-37.2751C341.5801,-37.6182 335.7294,-21.7609 302.9216,-17.2751 258.3116,-11.1756 235.4123,12.4741 201.6152,-17.2751 158.9146,-54.8616 134.2041,-473.2584 128.8941,-573.0147"/>
+<polygon fill="#000000" stroke="#000000" points="125.3944,-572.9192 128.3667,-583.0885 132.3848,-573.2852 125.3944,-572.9192"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-96.2751C727.2534,-83.1746 706.3956,-66.0046 613.2913,-53.2751 507.9883,-38.8779 480.9109,-33.6171 374.6913,-37.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1048.6896,-486.1748C1042.9464,-424.3542 1011.1504,-124.2982 932.8008,-96.2751"/>
+</g>
+<!-- module~param -->
+<g id="module~~simulation_class~~UsesGraph_node6" class="node">
+<title>module~param</title>
+<g id="a_module~~simulation_class~~UsesGraph_node6"><a xlink:href=".././module/param.html" xlink:title="param">
+<polygon fill="#337ab7" stroke="#337ab7" points="401.6913,-259.2806 347.6913,-259.2806 347.6913,-237.2697 401.6913,-237.2697 401.6913,-259.2806"/>
+<text text-anchor="middle" x="374.6913" y="-245.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">param</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge5" class="edge">
+<title>module~simulation_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-96.2751C652.4393,-70.7318 463.5905,-186.7253 398.3414,-231.3762"/>
+<polygon fill="#000000" stroke="#000000" points="396.1933,-228.6066 389.9699,-237.181 400.182,-234.359 396.1933,-228.6066"/>
+</g>
+<!-- module~field_e_class -->
+<g id="module~~simulation_class~~UsesGraph_node7" class="node">
+<title>module~field_e_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node7"><a xlink:href=".././module/field_e_class.html" xlink:title="field_e_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="969.0045,-508.2806 896.5971,-508.2806 896.5971,-486.2697 969.0045,-486.2697 969.0045,-508.2806"/>
+<text text-anchor="middle" x="932.8008" y="-494.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_e_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~field_e_class -->
+<g id="module~~simulation_class~~UsesGraph_edge6" class="edge">
+<title>module~simulation_class&#45;&gt;module~field_e_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1004.8187,-497.2751C996.3983,-497.2751 987.5795,-497.2751 979.1156,-497.2751"/>
+<polygon fill="#000000" stroke="#000000" points="979.0181,-493.7752 969.018,-497.2751 979.018,-500.7752 979.0181,-493.7752"/>
+</g>
+<!-- module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_node8" class="node">
+<title>module~grid_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node8"><a xlink:href=".././module/grid_class.html" xlink:title="grid_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="404.4624,-566.2806 344.9202,-566.2806 344.9202,-544.2697 404.4624,-544.2697 404.4624,-566.2806"/>
+<text text-anchor="middle" x="374.6913" y="-552.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">grid_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge7" class="edge">
+<title>module~simulation_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-669.2751C701.13,-643.1148 666.017,-660.9149 549.3245,-625.2751 516.828,-615.3502 511.3156,-606.2027 479.8927,-593.2751"/>
+</g>
+<!-- module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_node9" class="node">
+<title>module~parallel_pipe_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node9"><a xlink:href=".././module/parallel_pipe_class.html" xlink:title="parallel_pipe_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="303.0753,-605.2806 201.4616,-605.2806 201.4616,-583.2697 303.0753,-583.2697 303.0753,-605.2806"/>
+<text text-anchor="middle" x="252.2684" y="-591.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">parallel_pipe_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge8" class="edge">
+<title>module~simulation_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-824.2751C536.4589,-819.7827 524.7863,-828.2966 479.8927,-824.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-824.2751C430.378,-819.8397 418.3373,-810.0743 374.6913,-786.2751"/>
+</g>
+<!-- module~field_b_class -->
+<g id="module~~simulation_class~~UsesGraph_node10" class="node">
+<title>module~field_b_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node10"><a xlink:href=".././module/field_b_class.html" xlink:title="field_b_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="856.51,-261.2806 784.1025,-261.2806 784.1025,-239.2697 856.51,-239.2697 856.51,-261.2806"/>
+<text text-anchor="middle" x="820.3063" y="-247.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_b_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~field_b_class -->
+<g id="module~~simulation_class~~UsesGraph_edge9" class="edge">
+<title>module~simulation_class&#45;&gt;module~field_b_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.8008,-96.2751C901.6366,-85.1287 850.5377,-185.3175 829.6479,-229.7422"/>
+<polygon fill="#000000" stroke="#000000" points="826.3728,-228.4851 825.3398,-239.0295 832.7229,-231.4307 826.3728,-228.4851"/>
+</g>
+<!-- module~system -->
+<g id="module~~simulation_class~~UsesGraph_node11" class="node">
+<title>module~system</title>
+<g id="a_module~~simulation_class~~UsesGraph_node11"><a xlink:href=".././module/system.html" xlink:title="system">
+<polygon fill="#337ab7" stroke="#337ab7" points="279.2684,-48.2806 225.2684,-48.2806 225.2684,-26.2697 279.2684,-26.2697 279.2684,-48.2806"/>
+<text text-anchor="middle" x="252.2684" y="-34.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">system</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge10" class="edge">
+<title>module~simulation_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-37.2751C346.1809,-37.5705 313.9338,-37.5563 289.695,-37.4759"/>
+<polygon fill="#000000" stroke="#000000" points="289.5119,-33.9753 279.4984,-37.4366 289.4848,-40.9752 289.5119,-33.9753"/>
+</g>
+<!-- module~field_psi_class -->
+<g id="module~~simulation_class~~UsesGraph_node12" class="node">
+<title>module~field_psi_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node12"><a xlink:href=".././module/field_psi_class.html" xlink:title="field_psi_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="860.5927,-528.2806 780.0199,-528.2806 780.0199,-506.2697 860.5927,-506.2697 860.5927,-528.2806"/>
+<text text-anchor="middle" x="820.3063" y="-514.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_psi_class</text>
+</a>
+</g>
+</g>
+<!-- module~simulation_class&#45;&gt;module~field_psi_class -->
+<g id="module~~simulation_class~~UsesGraph_edge11" class="edge">
+<title>module~simulation_class&#45;&gt;module~field_psi_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.8008,-669.2751C925.2073,-672.275 861.4723,-578.8073 833.444,-537.0018"/>
+<polygon fill="#000000" stroke="#000000" points="836.2051,-534.8345 827.7371,-528.4671 830.3862,-538.7255 836.2051,-534.8345"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M1046.6721,-508.7561C1037.1004,-542.5894 1003.6476,-641.2862 932.8008,-669.2751"/>
+</g>
+<!-- module~field_src_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge13" class="edge">
+<title>module~field_src_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M658.7734,-544.1464C604.1452,-526.2301 503.6506,-485.8727 446.4609,-417.2751 414.601,-379.0599 430.8346,-356.6664 410.4609,-311.2751 403.7961,-296.4262 394.7293,-280.4914 387.392,-268.3627"/>
+<polygon fill="#000000" stroke="#000000" points="390.1838,-266.2217 381.9573,-259.5452 384.2248,-269.8946 390.1838,-266.2217"/>
+</g>
+<!-- module~field_src_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge14" class="edge">
+<title>module~field_src_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-555.2751C458.4634,-553.3058 434.4749,-553.1493 414.8224,-553.554"/>
+<polygon fill="#000000" stroke="#000000" points="414.5914,-550.0587 404.6865,-553.8193 414.7747,-557.0563 414.5914,-550.0587"/>
+</g>
+<!-- module~field_src_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge15" class="edge">
+<title>module~field_src_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M667.4074,-566.3145C631.6428,-579.1389 569.0514,-599.5277 513.3245,-607.2751 445.1315,-616.7556 366.0737,-610.4324 312.9821,-603.708"/>
+<polygon fill="#000000" stroke="#000000" points="313.4204,-600.2356 303.0504,-602.407 312.5111,-607.1763 313.4204,-600.2356"/>
+</g>
+<!-- module~field_src_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge16" class="edge">
+<title>module~field_src_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M656.263,-557.4812C612.6323,-559.3454 541.1838,-560.9076 479.8927,-555.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-555.2751C392.7586,-545.5324 381.7331,-493.7895 338.9216,-417.2751 269.8582,-293.8422 255.806,-118.6335 252.9744,-58.4933"/>
+<polygon fill="#000000" stroke="#000000" points="256.465,-58.1908 252.555,-48.3439 249.471,-58.4799 256.465,-58.1908"/>
+</g>
+<!-- module~field_class -->
+<g id="module~~simulation_class~~UsesGraph_node14" class="node">
+<title>module~field_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node14"><a xlink:href=".././module/field_class.html" xlink:title="field_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="611.8318,-450.2806 550.7839,-450.2806 550.7839,-428.2697 611.8318,-428.2697 611.8318,-450.2806"/>
+<text text-anchor="middle" x="581.3079" y="-436.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_class</text>
+</a>
+</g>
+</g>
+<!-- module~field_src_class&#45;&gt;module~field_class -->
+<g id="module~~simulation_class~~UsesGraph_edge12" class="edge">
+<title>module~field_src_class&#45;&gt;module~field_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M668.8029,-544.018C661.8816,-540.3435 654.86,-535.7648 649.2913,-530.2751 625.4961,-506.8181 634.902,-489.7588 613.2913,-464.2751 611.1033,-461.695 608.6114,-459.2036 606.0065,-456.8582"/>
+<polygon fill="#000000" stroke="#000000" points="607.9926,-453.9602 598.0435,-450.3179 603.5496,-459.3696 607.9926,-453.9602"/>
+</g>
+<!-- module~input_class&#45;&gt;mpi -->
+<g id="module~~simulation_class~~UsesGraph_edge17" class="edge">
+<title>module~input_class&#45;&gt;mpi</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M470.9643,-758.4936C454.4743,-777.9906 417.0354,-816.7703 374.6913,-824.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-824.2751C266.649,-843.4239 235.5866,-844.8544 127.8076,-824.2751"/>
+</g>
+<!-- module~input_class&#45;&gt;module~parallel_class -->
+<g id="module~~simulation_class~~UsesGraph_edge18" class="edge">
+<title>module~input_class&#45;&gt;module~parallel_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M454.288,-736.1485C392.1714,-709.1555 233.3996,-640.1605 162.6901,-609.4334"/>
+<polygon fill="#000000" stroke="#000000" points="163.8828,-606.1356 153.3163,-605.36 161.0929,-612.5556 163.8828,-606.1356"/>
+</g>
+<!-- module~input_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge19" class="edge">
+<title>module~input_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M474.0325,-736.1856C462.1829,-713.8073 434.459,-661.6783 410.4609,-618.2751 402.4894,-603.8576 393.311,-587.7008 386.2476,-575.3589"/>
+<polygon fill="#000000" stroke="#000000" points="389.1117,-573.3176 381.0998,-566.3849 383.0397,-576.8007 389.1117,-573.3176"/>
+</g>
+<!-- module~input_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge20" class="edge">
+<title>module~input_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M467.732,-758.3188C447.6219,-775.1727 406.5003,-803.6199 374.6913,-786.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-786.2751C358.8869,-777.6574 351.4973,-780.1552 338.9216,-767.2751 294.8987,-722.1863 268.8638,-650.2813 258.0935,-615.073"/>
+<polygon fill="#000000" stroke="#000000" points="261.4249,-613.9956 255.2381,-605.3948 254.711,-615.9765 261.4249,-613.9956"/>
+</g>
+<!-- module~input_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge21" class="edge">
+<title>module~input_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M466.7308,-735.9105C438.1544,-710.4053 370.4706,-645.3312 338.9216,-575.2751 295.8439,-479.6188 262.37,-145.9233 254.1905,-58.4181"/>
+<polygon fill="#000000" stroke="#000000" points="257.6674,-58.0066 253.262,-48.3711 250.6971,-58.6508 257.6674,-58.0066"/>
+</g>
+<!-- json_module -->
+<g id="module~~simulation_class~~UsesGraph_node18" class="node">
+<title>json_module</title>
+<g id="a_module~~simulation_class~~UsesGraph_node18"><a xlink:href="http://jacobwilliams.github.io/json-fortran/" xlink:title="json_module">
+<polygon fill="#337ab7" stroke="#337ab7" points="410.2321,-758.2806 339.1505,-758.2806 339.1505,-736.2697 410.2321,-736.2697 410.2321,-758.2806"/>
+<text text-anchor="middle" x="374.6913" y="-744.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">json_module</text>
+</a>
+</g>
+</g>
+<!-- module~input_class&#45;&gt;json_module -->
+<g id="module~~simulation_class~~UsesGraph_edge22" class="edge">
+<title>module~input_class&#45;&gt;json_module</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M447.7572,-747.2751C439.1522,-747.2751 429.6816,-747.2751 420.4925,-747.2751"/>
+<polygon fill="#000000" stroke="#000000" points="420.2985,-743.7752 410.2985,-747.2751 420.2985,-750.7752 420.2985,-743.7752"/>
+</g>
+<!-- module~parallel_class&#45;&gt;mpi -->
+<g id="module~~simulation_class~~UsesGraph_edge23" class="edge">
+<title>module~parallel_class&#45;&gt;mpi</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M89.9838,-601.7793C81.4839,-603.4656 72.4742,-605.2531 64.0081,-606.9328"/>
+<polygon fill="#000000" stroke="#000000" points="63.1495,-603.5348 54.0218,-608.914 64.5118,-610.401 63.1495,-603.5348"/>
+</g>
+<!-- omp_lib -->
+<g id="module~~simulation_class~~UsesGraph_node16" class="node">
+<title>omp_lib</title>
+<g id="a_module~~simulation_class~~UsesGraph_node16"><a xlink:href="https://gcc.gnu.org/onlinedocs/gcc-4.4.3/libgomp/Runtime-Library-Routines.html" xlink:title="omp_lib">
+<polygon fill="#337ab7" stroke="#337ab7" points="54,-584.2806 0,-584.2806 0,-562.2697 54,-562.2697 54,-584.2806"/>
+<text text-anchor="middle" x="27" y="-570.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">omp_lib</text>
+</a>
+</g>
+</g>
+<!-- module~parallel_class&#45;&gt;omp_lib -->
+<g id="module~~simulation_class~~UsesGraph_edge24" class="edge">
+<title>module~parallel_class&#45;&gt;omp_lib</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M89.9838,-586.3957C81.4839,-584.6251 72.4742,-582.7482 64.0081,-580.9846"/>
+<polygon fill="#000000" stroke="#000000" points="64.5255,-577.5173 54.0218,-578.9042 63.0979,-584.3702 64.5255,-577.5173"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~field_src_class -->
+<g id="module~~simulation_class~~UsesGraph_edge26" class="edge">
+<title>module~field_e_class&#45;&gt;module~field_src_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-594.2751C803.3205,-599.1141 760.6855,-583.3476 730.2524,-570.4306"/>
+<polygon fill="#000000" stroke="#000000" points="731.4162,-567.1207 720.8483,-566.3666 728.6394,-573.5464 731.4162,-567.1207"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M925.1697,-508.4804C909.0347,-530.924 868.9169,-580.4266 820.3063,-594.2751"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge27" class="edge">
+<title>module~field_e_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-248.2751C457.3506,-248.9414 432.0797,-248.9649 411.9565,-248.8107"/>
+<polygon fill="#000000" stroke="#000000" points="411.977,-245.3109 401.9444,-248.7164 411.9109,-252.3106 411.977,-245.3109"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-134.2751C770.608,-97.75 605.1406,-168.0347 549.3245,-194.2751 513.9462,-210.9072 518.9685,-247.1202 479.8927,-248.2751"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge29" class="edge">
+<title>module~field_e_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-594.2751C767.484,-609.3235 750.2776,-582.0681 696.7273,-594.2751"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge30" class="edge">
+<title>module~field_e_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M932.1447,-508.7419C929.5879,-541.8203 917.3602,-637.9377 860.4492,-683.2751 802.9276,-729.099 766.8529,-685.1173 696.7273,-707.2751"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~field_b_class -->
+<g id="module~~simulation_class~~UsesGraph_edge32" class="edge">
+<title>module~field_e_class&#45;&gt;module~field_b_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M927.6748,-486.0202C910.102,-447.4362 852.134,-320.1581 829.4868,-270.4325"/>
+<polygon fill="#000000" stroke="#000000" points="832.6639,-268.9638 825.3338,-261.3139 826.2934,-271.8652 832.6639,-268.9638"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge33" class="edge">
+<title>module~field_e_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-151.2751C325.3598,-134.2553 284.9663,-84.9637 265.2676,-57.0889"/>
+<polygon fill="#000000" stroke="#000000" points="267.9415,-54.7995 259.3976,-48.5343 262.1696,-58.7601 267.9415,-54.7995"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-134.2751C776.6584,-102.7374 635.1326,-95.9058 581.3079,-94.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-94.2751C486.8169,-82.1957 464.7424,-182.3436 374.6913,-151.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M931.2332,-485.8972C923.0945,-428.7628 883.5874,-174.3153 820.3063,-134.2751"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~field_psi_class -->
+<g id="module~~simulation_class~~UsesGraph_edge34" class="edge">
+<title>module~field_e_class&#45;&gt;module~field_psi_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M896.5876,-503.7133C888.3702,-505.1743 879.4965,-506.7519 870.8077,-508.2966"/>
+<polygon fill="#000000" stroke="#000000" points="869.976,-504.8895 860.7431,-510.086 871.2013,-511.7815 869.976,-504.8895"/>
+</g>
+<!-- module~field_e_class&#45;&gt;module~field_class -->
+<g id="module~~simulation_class~~UsesGraph_edge25" class="edge">
+<title>module~field_e_class&#45;&gt;module~field_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-478.2751C752.5738,-457.3422 670.3742,-447.0648 622.1546,-442.4878"/>
+<polygon fill="#000000" stroke="#000000" points="622.3851,-438.9944 612.1082,-441.5704 621.7484,-445.9654 622.3851,-438.9944"/>
+</g>
+<!-- module~ufield_class -->
+<g id="module~~simulation_class~~UsesGraph_node15" class="node">
+<title>module~ufield_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node15"><a xlink:href=".././module/ufield_class.html" xlink:title="ufield_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="513.2564,-336.2806 446.529,-336.2806 446.529,-314.2697 513.2564,-314.2697 513.2564,-336.2806"/>
+<text text-anchor="middle" x="479.8927" y="-322.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">ufield_class</text>
+</a>
+</g>
+</g>
+<!-- module~field_e_class&#45;&gt;module~ufield_class -->
+<g id="module~~simulation_class~~UsesGraph_edge28" class="edge">
+<title>module~field_e_class&#45;&gt;module~ufield_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-478.2751C770.5868,-460.6979 790.1053,-413.1657 744.1633,-387.2751 680.3682,-351.3233 652.7551,-378.3266 581.3079,-362.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M896.4155,-493.9391C874.0544,-491.2042 845.0483,-486.4134 820.3063,-478.2751"/>
+</g>
+<!-- module~field_solver_class -->
+<g id="module~~simulation_class~~UsesGraph_node17" class="node">
+<title>module~field_solver_class</title>
+<g id="a_module~~simulation_class~~UsesGraph_node17"><a xlink:href=".././module/field_solver_class.html" xlink:title="field_solver_class">
+<polygon fill="#337ab7" stroke="#337ab7" points="744.0995,-222.2806 649.3551,-222.2806 649.3551,-200.2697 744.0995,-200.2697 744.0995,-222.2806"/>
+<text text-anchor="middle" x="696.7273" y="-208.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">field_solver_class</text>
+</a>
+</g>
+</g>
+<!-- module~field_e_class&#45;&gt;module~field_solver_class -->
+<g id="module~~simulation_class~~UsesGraph_edge31" class="edge">
+<title>module~field_e_class&#45;&gt;module~field_solver_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M820.3063,-134.2751C782.1156,-106.2074 733.5786,-160.5553 710.3357,-191.6534"/>
+<polygon fill="#000000" stroke="#000000" points="707.2617,-189.9306 704.2263,-200.0814 712.9292,-194.039 707.2617,-189.9306"/>
+</g>
+<!-- module~grid_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge36" class="edge">
+<title>module~grid_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M344.7433,-564.8156C330.3226,-569.4096 312.7374,-575.0117 296.7889,-580.0923"/>
+<polygon fill="#000000" stroke="#000000" points="295.579,-576.8044 287.1132,-583.1747 297.7038,-583.4741 295.579,-576.8044"/>
+</g>
+<!-- module~grid_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge35" class="edge">
+<title>module~grid_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M352.9523,-544.1128C347.6092,-540.3942 342.4234,-535.7699 338.9216,-530.2751 287.4602,-449.5257 260.3857,-142.4774 253.8462,-58.5732"/>
+<polygon fill="#000000" stroke="#000000" points="257.3254,-58.1658 253.0743,-48.4612 250.3457,-58.6987 257.3254,-58.1658"/>
+</g>
+<!-- module~parallel_pipe_class&#45;&gt;mpi -->
+<g id="module~~simulation_class~~UsesGraph_edge38" class="edge">
+<title>module~parallel_pipe_class&#45;&gt;mpi</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M251.5792,-605.3749C247.9806,-653.7988 227.4805,-843.3066 127.8076,-824.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M127.8076,-824.2751C87.1059,-816.5036 46.9714,-686.6114 32.5766,-635.0896"/>
+<polygon fill="#000000" stroke="#000000" points="35.9273,-634.0737 29.9047,-625.3571 29.177,-635.9269 35.9273,-634.0737"/>
+</g>
+<!-- module~parallel_pipe_class&#45;&gt;module~parallel_class -->
+<g id="module~~simulation_class~~UsesGraph_edge37" class="edge">
+<title>module~parallel_pipe_class&#45;&gt;module~parallel_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M201.2863,-594.2751C192.791,-594.2751 184.0064,-594.2751 175.5944,-594.2751"/>
+<polygon fill="#000000" stroke="#000000" points="175.5631,-590.7752 165.563,-594.2751 175.563,-597.7752 175.5631,-590.7752"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~field_src_class -->
+<g id="module~~simulation_class~~UsesGraph_edge41" class="edge">
+<title>module~field_b_class&#45;&gt;module~field_src_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M818.4843,-261.4711C810.713,-308.1211 779.1342,-486.642 744.1633,-530.2751 741.6799,-533.3737 738.7071,-536.1337 735.4769,-538.5821"/>
+<polygon fill="#000000" stroke="#000000" points="733.5395,-535.6668 727.0494,-544.0411 737.3453,-541.5419 733.5395,-535.6668"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge42" class="edge">
+<title>module~field_b_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-286.2751C533.2568,-289.0927 528.0257,-248.0378 479.8927,-248.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-250.2751C643.1278,-254.087 634.9506,-283.1296 581.3079,-286.2751"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge44" class="edge">
+<title>module~field_b_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-326.2751C677.4158,-336.7757 668.1881,-329.0454 649.2913,-340.2751 629.8394,-351.8347 633.8439,-366.8099 613.2913,-376.2751 545.7392,-407.3854 506.9799,-346.0479 446.4609,-389.2751 398.3002,-423.6751 382.1517,-497.4175 376.9841,-533.9135"/>
+<polygon fill="#000000" stroke="#000000" points="373.4961,-533.5982 375.7096,-543.9592 380.4405,-534.4793 373.4961,-533.5982"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge45" class="edge">
+<title>module~field_b_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-325.2751C292.4015,-389.6024 263.573,-521.7148 255.2157,-573.1372"/>
+<polygon fill="#000000" stroke="#000000" points="251.7449,-572.6805 253.6936,-583.0946 258.6645,-573.7383 251.7449,-572.6805"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-286.2751C488.017,-291.7455 448.3164,-267.7212 374.6913,-325.2751"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge47" class="edge">
+<title>module~field_b_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M810.8242,-238.8707C781.174,-204.5035 685.9279,-103.7152 581.3079,-94.2751"/>
+</g>
+<!-- module~debug_tool -->
+<g id="module~~simulation_class~~UsesGraph_node13" class="node">
+<title>module~debug_tool</title>
+<g id="a_module~~simulation_class~~UsesGraph_node13"><a xlink:href=".././module/debug_tool.html" xlink:title="debug_tool">
+<polygon fill="#337ab7" stroke="#337ab7" points="613.2747,-258.2806 549.3411,-258.2806 549.3411,-236.2697 613.2747,-236.2697 613.2747,-258.2806"/>
+<text text-anchor="middle" x="581.3079" y="-244.1251" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">debug_tool</text>
+</a>
+</g>
+</g>
+<!-- module~field_b_class&#45;&gt;module~debug_tool -->
+<g id="module~~simulation_class~~UsesGraph_edge39" class="edge">
+<title>module~field_b_class&#45;&gt;module~debug_tool</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-250.2751C672.6716,-251.9859 645.7338,-251.426 623.9363,-250.3519"/>
+<polygon fill="#000000" stroke="#000000" points="623.86,-246.8426 613.6837,-249.791 623.4776,-253.8321 623.86,-246.8426"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M784.0285,-248.9235C759.3767,-248.3367 726.0462,-248.1901 696.7273,-250.2751"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~field_class -->
+<g id="module~~simulation_class~~UsesGraph_edge40" class="edge">
+<title>module~field_b_class&#45;&gt;module~field_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M812.6252,-261.5253C799.8905,-279.6254 772.9415,-315.6688 744.1633,-340.2751 703.0164,-375.4572 647.9416,-406.1076 613.5504,-423.6476"/>
+<polygon fill="#000000" stroke="#000000" points="611.7859,-420.6174 604.4275,-428.24 614.9334,-426.8698 611.7859,-420.6174"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~ufield_class -->
+<g id="module~~simulation_class~~UsesGraph_edge43" class="edge">
+<title>module~field_b_class&#45;&gt;module~ufield_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-326.2751C673.1236,-339.1096 607.4172,-368.6123 581.3079,-362.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M803.4536,-261.4365C779.976,-276.8 735.8932,-304.9788 696.7273,-326.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-362.2751C558.5599,-356.7538 533.8687,-347.8128 514.5452,-340.1033"/>
+<polygon fill="#000000" stroke="#000000" points="515.8279,-336.8466 505.2459,-336.3236 513.192,-343.3314 515.8279,-336.8466"/>
+</g>
+<!-- module~field_b_class&#45;&gt;module~field_solver_class -->
+<g id="module~~simulation_class~~UsesGraph_edge46" class="edge">
+<title>module~field_b_class&#45;&gt;module~field_solver_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M785.2241,-239.2036C771.6571,-234.922 755.963,-229.9692 741.5923,-225.434"/>
+<polygon fill="#000000" stroke="#000000" points="742.487,-222.0462 731.8972,-222.3743 740.3802,-228.7217 742.487,-222.0462"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~field_src_class -->
+<g id="module~~simulation_class~~UsesGraph_edge49" class="edge">
+<title>module~field_psi_class&#45;&gt;module~field_src_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M784.2299,-528.3684C771.1592,-532.3876 756.2201,-536.9813 742.43,-541.2217"/>
+<polygon fill="#000000" stroke="#000000" points="741.1645,-537.9491 732.6349,-544.2337 743.2219,-544.6399 741.1645,-537.9491"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge50" class="edge">
+<title>module~field_psi_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M795.6098,-506.2625C789.7608,-502.586 784.0893,-497.9453 780.1633,-492.2751 733.7212,-425.1996 805.6355,-365.9144 744.1633,-312.2751 678.792,-255.2336 630.759,-330.2011 549.3245,-300.2751 513.1371,-286.9768 518.4458,-248.085 479.8927,-248.2751"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge52" class="edge">
+<title>module~field_psi_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M809.6889,-528.2818C789.7733,-547.8293 744.491,-587.2188 696.7273,-594.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-594.2751C601.3901,-608.3597 570.3368,-626.5531 479.8927,-593.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-593.2751C458.3844,-584.4264 433.9754,-575.5402 414.0873,-568.5882"/>
+<polygon fill="#000000" stroke="#000000" points="415.0247,-565.2089 404.43,-565.2397 412.7315,-571.8226 415.0247,-565.2089"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge53" class="edge">
+<title>module~field_psi_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-707.2751C619.4506,-733.5453 380.8641,-645.2541 288.9203,-609.0544"/>
+<polygon fill="#000000" stroke="#000000" points="290.055,-605.7393 279.4687,-605.3129 287.4784,-612.2479 290.055,-605.7393"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M813.1149,-528.5381C787.1005,-569.2552 699.2834,-706.4675 696.7273,-707.2751"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge55" class="edge">
+<title>module~field_psi_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-516.2751C692.0516,-515.4964 378.0028,-406.6666 374.6913,-403.2751"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~field_class -->
+<g id="module~~simulation_class~~UsesGraph_edge48" class="edge">
+<title>module~field_psi_class&#45;&gt;module~field_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M779.9599,-520.1168C755.6782,-521.0434 724.2404,-520.8572 696.7273,-516.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M696.7273,-516.2751C673.4208,-512.3936 669.2431,-504.9313 649.2913,-492.2751 648.6693,-491.8806 623.08,-471.9103 603.4803,-456.601"/>
+<polygon fill="#000000" stroke="#000000" points="605.5725,-453.794 595.5374,-450.3958 601.2631,-459.3103 605.5725,-453.794"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~ufield_class -->
+<g id="module~~simulation_class~~UsesGraph_edge51" class="edge">
+<title>module~field_psi_class&#45;&gt;module~ufield_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M802.2685,-506.1587C795.336,-501.8557 787.3613,-496.8685 780.1633,-492.2751 691.1528,-435.4732 683.919,-387.1807 581.3079,-362.2751"/>
+</g>
+<!-- module~field_psi_class&#45;&gt;module~field_solver_class -->
+<g id="module~~simulation_class~~UsesGraph_edge54" class="edge">
+<title>module~field_psi_class&#45;&gt;module~field_solver_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M794.9689,-506.1482C789.2726,-502.5116 783.8346,-497.9185 780.1633,-492.2751 717.5092,-395.964 810.2416,-330.27 744.1633,-236.2751 742.0017,-233.2003 739.3421,-230.4736 736.3952,-228.0615"/>
+<polygon fill="#000000" stroke="#000000" points="738.3037,-225.1267 728.0686,-222.389 734.3625,-230.9118 738.3037,-225.1267"/>
+</g>
+<!-- module~field_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge56" class="edge">
+<title>module~field_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M550.6464,-428.5158C530.5087,-421.4186 503.6026,-411.8777 479.8927,-403.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-403.2751C464.8212,-397.8068 410.5491,-308.7966 386.4096,-268.1902"/>
+<polygon fill="#000000" stroke="#000000" points="389.3268,-266.2474 381.2206,-259.4254 383.3032,-269.8135 389.3268,-266.2474"/>
+</g>
+<!-- module~field_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge58" class="edge">
+<title>module~field_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M561.4966,-450.3977C524.7034,-471.0543 445.7063,-515.4054 403.1829,-539.2792"/>
+<polygon fill="#000000" stroke="#000000" points="401.4489,-536.2388 394.4426,-544.1862 404.8758,-542.3426 401.4489,-536.2388"/>
+</g>
+<!-- module~field_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge59" class="edge">
+<title>module~field_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-403.2751C429.2475,-384.8997 309.7155,-523.6589 267.4218,-575.371"/>
+<polygon fill="#000000" stroke="#000000" points="264.6872,-573.1863 261.1017,-583.156 270.1218,-577.5983 264.6872,-573.1863"/>
+</g>
+<!-- module~field_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge60" class="edge">
+<title>module~field_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M479.8927,-403.2751C435.5261,-388.5189 407.3565,-436.7284 374.6913,-403.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M374.6913,-403.2751C276.202,-302.4096 256.9104,-120.1099 253.1627,-58.3715"/>
+<polygon fill="#000000" stroke="#000000" points="256.653,-58.094 252.6283,-48.2934 249.6629,-58.4648 256.653,-58.094"/>
+</g>
+<!-- module~field_class&#45;&gt;module~ufield_class -->
+<g id="module~~simulation_class~~UsesGraph_edge57" class="edge">
+<title>module~field_class&#45;&gt;module~ufield_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M571.213,-427.9276C553.824,-408.3807 518.0461,-368.163 496.8012,-344.2819"/>
+<polygon fill="#000000" stroke="#000000" points="499.2084,-341.7219 489.9467,-336.5768 493.9784,-346.3745 499.2084,-341.7219"/>
+</g>
+<!-- module~ufield_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge61" class="edge">
+<title>module~ufield_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M465.3669,-314.1787C451.3904,-303.5538 429.616,-287.1363 410.4609,-273.2751 406.8702,-270.6768 403.0527,-267.9605 399.2996,-265.3158"/>
+<polygon fill="#000000" stroke="#000000" points="400.9957,-262.2308 390.796,-259.3641 396.9818,-267.9657 400.9957,-262.2308"/>
+</g>
+<!-- module~ufield_class&#45;&gt;module~grid_class -->
+<g id="module~~simulation_class~~UsesGraph_edge62" class="edge">
+<title>module~ufield_class&#45;&gt;module~grid_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M461.8724,-336.3358C456.3179,-340.4586 450.5855,-345.5469 446.4609,-351.2751 404.4401,-409.6349 385.122,-494.8677 378.0579,-534.0887"/>
+<polygon fill="#000000" stroke="#000000" points="374.5852,-533.6326 376.3479,-544.0798 381.4848,-534.8136 374.5852,-533.6326"/>
+</g>
+<!-- module~ufield_class&#45;&gt;module~parallel_pipe_class -->
+<g id="module~~simulation_class~~UsesGraph_edge63" class="edge">
+<title>module~ufield_class&#45;&gt;module~parallel_pipe_class</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M446.1004,-315.3811C423.5675,-310.9651 394.5486,-309.7524 374.6913,-325.2751"/>
+</g>
+<!-- module~ufield_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge64" class="edge">
+<title>module~ufield_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M446.2339,-319.6755C414.6169,-312.76 367.9469,-298.0461 338.9216,-268.2751 279.7948,-207.6293 260.3092,-102.847 254.5026,-58.2971"/>
+<polygon fill="#000000" stroke="#000000" points="257.9733,-57.8432 253.3052,-48.3322 251.0233,-58.6783 257.9733,-57.8432"/>
+</g>
+<!-- module~field_solver_class&#45;&gt;mpi -->
+<g id="module~~simulation_class~~UsesGraph_edge66" class="edge">
+<title>module~field_solver_class&#45;&gt;mpi</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M693.3374,-200.0758C684.7759,-173.9368 659.5982,-108.953 613.2913,-80.2751 509.0424,-15.7138 450.3254,-102.5116 338.9216,-51.2751 318.9271,-42.0793 323.3724,-25.4059 302.9216,-17.2751 261.0821,-.6406 237.1858,10.3291 201.6152,-17.2751 -7.165,-179.2969 198.8976,-372.2662 54,-593.2751 53.3976,-594.1939 52.7414,-595.0895 52.0421,-595.9606"/>
+<polygon fill="#000000" stroke="#000000" points="49.4941,-593.5585 44.8828,-603.0972 54.436,-598.5161 49.4941,-593.5585"/>
+</g>
+<!-- module~field_solver_class&#45;&gt;module~param -->
+<g id="module~~simulation_class~~UsesGraph_edge65" class="edge">
+<title>module~field_solver_class&#45;&gt;module~param</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-208.2751C532.8568,-207.8844 528.3448,-248.0362 479.8927,-248.2751"/>
+</g>
+<!-- module~field_solver_class&#45;&gt;module~system -->
+<g id="module~~simulation_class~~UsesGraph_edge67" class="edge">
+<title>module~field_solver_class&#45;&gt;module~system</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M649.2826,-209.6589C628.4333,-209.0477 603.6572,-208.4553 581.3079,-208.2751"/>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M581.3079,-208.2751C486.051,-207.507 466.0937,-178.1088 374.6913,-151.2751"/>
+</g>
+<!-- module~field_solver_class&#45;&gt;module~debug_tool -->
+<g id="module~~simulation_class~~UsesGraph_edge68" class="edge">
+<title>module~field_solver_class&#45;&gt;module~debug_tool</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M661.1559,-222.3701C649.135,-226.1194 635.6037,-230.3399 623.143,-234.2265"/>
+<polygon fill="#000000" stroke="#000000" points="621.9329,-230.9376 613.4287,-237.2565 624.0173,-237.62 621.9329,-230.9376"/>
+</g>
+</g>
+</svg>
+</div><script>var panmodulesimulation_classUsesGraph = svgPanZoom('#modulesimulation_classUsesGraph', {zoomEnabled: true,controlIconsEnabled: true, fit: true, center: true,}); </script><div><a type="button" class="graph-help" data-toggle="modal" href="#graph-help-text">Help</a></div><div class="modal fade" id="graph-help-text" tabindex="-1" role="dialog"><div class="modal-dialog modal-lg" role="document"><div class="modal-content"><div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button><h4 class="modal-title" id="-graph-help-label">Graph Key</h4></div><div class="modal-body">
+    <p>Nodes of different colours represent the following: </p>
+    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.40.1 (20161225.0304)
+ -->
+<!-- Title: Graph Key Pages: 1 -->
+<svg width="484pt" height="31pt"
+ viewBox="0.00 0.00 483.85 30.50" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 26.5)">
+<title>Graph Key</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-26.5 479.8539,-26.5 479.8539,4 -4,4"/>
+<!-- Module -->
+<g id="node1" class="node">
+<title>Module</title>
+<polygon fill="#337ab7" stroke="#337ab7" points="54,-22.2554 0,-22.2554 0,-.2446 54,-.2446 54,-22.2554"/>
+<text text-anchor="middle" x="27" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Module</text>
+</g>
+<!-- Submodule -->
+<g id="node2" class="node">
+<title>Submodule</title>
+<polygon fill="#5bc0de" stroke="#5bc0de" points="137.6205,-22.2554 72.3795,-22.2554 72.3795,-.2446 137.6205,-.2446 137.6205,-22.2554"/>
+<text text-anchor="middle" x="105" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Submodule</text>
+</g>
+<!-- Subroutine -->
+<g id="node3" class="node">
+<title>Subroutine</title>
+<polygon fill="#d9534f" stroke="#d9534f" points="218.288,-22.2554 155.712,-22.2554 155.712,-.2446 218.288,-.2446 218.288,-22.2554"/>
+<text text-anchor="middle" x="187" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Subroutine</text>
+</g>
+<!-- Function -->
+<g id="node4" class="node">
+<title>Function</title>
+<polygon fill="#d94e8f" stroke="#d94e8f" points="290,-22.2554 236,-22.2554 236,-.2446 290,-.2446 290,-22.2554"/>
+<text text-anchor="middle" x="263" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Function</text>
+</g>
+<!-- Program -->
+<g id="node5" class="node">
+<title>Program</title>
+<polygon fill="#f0ad4e" stroke="#f0ad4e" points="362,-22.2554 308,-22.2554 308,-.2446 362,-.2446 362,-22.2554"/>
+<text text-anchor="middle" x="335" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#ffffff">Program</text>
+</g>
+<!-- This Page&#39;s Entity -->
+<g id="node6" class="node">
+<title>This Page&#39;s Entity</title>
+<polygon fill="none" stroke="#000000" points="475.7082,-22.2554 380.2918,-22.2554 380.2918,-.2446 475.7082,-.2446 475.7082,-22.2554"/>
+<text text-anchor="middle" x="428" y="-8.1" font-family="Helvetica,sans-Serif" font-size="10.50" fill="#000000">This Page&#39;s Entity</text>
+</g>
+</g>
+</svg>
+
+    
+    <p>Solid arrows point from a submodule to the (sub)module which it is
+    descended from. Dashed arrows point from a module or program unit to 
+    modules which it uses.
+    </p>
+    </div></div></div></div>
+      </li>
+      
+      </ul>
+    </div>
+    
+
+    
+    
+
+    <br>
+
+    <section class="visible-xs visible-sm hidden-md">
+      
+<h3>Contents</h3>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#types-1">Derived Types</a></h3></div>
+  <div id="types-1" class="panel-collapse collapse">
+    <div class="list-group">
+      
+      <a class="list-group-item" href="../module/simulation_class.html#type-sim_fields">sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#type-simulation">simulation</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="panel panel-primary">
+  <div class="panel-heading text-left"><h3 class="panel-title"><a data-toggle="collapse" href="#subs-1">Subroutines</a></h3></div>
+  <div class="list-group">
+    <div id="subs-1" class="panel-collapse collapse">
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-init_sim_fields">init_sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-end_sim_fields">end_sim_fields</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-init_simulation">init_simulation</a>
+      
+      <a class="list-group-item" href="../module/simulation_class.html#proc-end_simulation">end_simulation</a>
+      
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+    </section>
+    <br class="visible-xs visible-sm hidden-md">
+
+    
+
+    
+    
+    
+    
+    
+
+    
+    
+    
+    <section>
+     <h2>Derived Types</h2>
+   
+     
+<div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="type-sim_fields"></span><h3>type, private :: <a href='../type/sim_fields.html'>sim_fields</a>
+    
+  </h3></div>
+  <div class="panel-body">
+    
+     
+     <h4>Components</h4>
+    
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th><th>Visibility</th>
+
+<th>Attributes</th><th></th><th>Name</th><th></th><th>Initial</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-pp%7E2"></span>class(<a href='../type/parallel_pipe.html'>parallel_pipe</a>),</td>
+  
+  <td>private,</td>
+  <td>pointer</td><td>::</td>
+  <td><strong>pp</strong></td><td>=> </td><td>null()</td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-gp%7E2"></span>class(<a href='../type/grid.html'>grid</a>),</td>
+  
+  <td>private,</td>
+  <td>pointer</td><td>::</td>
+  <td><strong>gp</strong></td><td>=> </td><td>null()</td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-psi"></span>type(<a href='../type/field_psi.html'>field_psi</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>psi</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-b_spe"></span>type(<a href='../type/field_b.html'>field_b</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>b_spe</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-b_beam"></span>type(<a href='../type/field_b.html'>field_b</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>b_beam</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-e_spe"></span>type(<a href='../type/field_e.html'>field_e</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>e_spe</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-e_beam"></span>type(<a href='../type/field_e.html'>field_e</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>e_beam</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-jay"></span>type(<a href='../type/field_jay.html'>field_jay</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>jay</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-q_spe"></span>type(<a href='../type/field_rho.html'>field_rho</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>q_spe</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-q_beam"></span>type(<a href='../type/field_rho.html'>field_rho</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>q_beam</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-djdxi"></span>type(<a href='../type/field_djdxi.html'>field_djdxi</a>),</td>
+  
+  <td>private,</td>
+  <td>allocatable</td><td>::</td>
+  <td><strong>djdxi</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+     
+     
+          
+     
+     <h4>Type-Bound Procedures</h4>
+      <table class="table table-striped varlist">
+      <tbody>
+      
+       <tr><td>generic, public :: <strong><a href='../type/sim_fields.html#boundprocedure-new%7E4'>new</a></strong>  => init_sim_fields </td>
+       <td></td></tr>
+      
+       <tr><td>generic, public :: <strong><a href='../type/sim_fields.html#boundprocedure-del%7E3'>del</a></strong>  => end_sim_fields </td>
+       <td></td></tr>
+      
+       <tr><td>procedure, private :: <strong><a href='../type/sim_fields.html#boundprocedure-end_sim_fields'>end_sim_fields</a></strong>  </td>
+       <td></td></tr>
+      
+       <tr><td>procedure, private :: <strong><a href='../type/sim_fields.html#boundprocedure-init_sim_fields'>init_sim_fields</a></strong>  </td>
+       <td></td></tr>
+      
+       </tbody>
+       </table>
+     
+  </div>
+</div>
+
+     
+     
+<div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="type-simulation"></span><h3>type, public :: <a href='../type/simulation.html'>simulation</a>
+    
+  </h3></div>
+  <div class="panel-body">
+    
+     
+     <h4>Components</h4>
+    
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th><th>Visibility</th>
+
+<th>Attributes</th><th></th><th>Name</th><th></th><th>Initial</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-input%7E2"></span>type(<a href='../type/input_json.html'>input_json</a>),</td>
+  
+  <td>private,</td>
+  <td>pointer</td><td>::</td>
+  <td><strong>input</strong></td><td>=> </td><td>null()</td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-pp%7E3"></span>class(<a href='../type/parallel_pipe.html'>parallel_pipe</a>),</td>
+  
+  <td>private,</td>
+  <td>pointer</td><td>::</td>
+  <td><strong>pp</strong></td><td>=> </td><td>null()</td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-gp%7E3"></span>class(<a href='../type/grid.html'>grid</a>),</td>
+  
+  <td>private,</td>
+  <td>pointer</td><td>::</td>
+  <td><strong>gp</strong></td><td>=> </td><td>null()</td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-fields"></span>type(<a href='../type/sim_fields.html'>sim_fields</a>),</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>fields</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-dr%7E2"></span>real,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>dr</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-dxi%7E2"></span>real,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>dxi</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-dt"></span>real,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>dt</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-iter"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>iter</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-nstep3d"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>nstep3d</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-nstep2d"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>nstep2d</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-start3d"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>start3d</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-nbeams"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>nbeams</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-nspecies"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>nspecies</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-tstep"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>tstep</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-num_modes%7E2"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>num_modes</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" id="variable-interp"></span>integer,</td>
+  
+  <td>private</td>
+  <td></td><td>::</td>
+  <td><strong>interp</strong></td><td></td><td></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+     
+     
+          
+     
+     <h4>Type-Bound Procedures</h4>
+      <table class="table table-striped varlist">
+      <tbody>
+      
+       <tr><td>generic, public :: <strong><a href='../type/simulation.html#boundprocedure-new%7E5'>new</a></strong>  => init_simulation </td>
+       <td></td></tr>
+      
+       <tr><td>generic, public :: <strong><a href='../type/simulation.html#boundprocedure-del%7E4'>del</a></strong>  => end_simulation </td>
+       <td></td></tr>
+      
+       <tr><td>procedure, private :: <strong><a href='../type/simulation.html#boundprocedure-end_simulation'>end_simulation</a></strong>  </td>
+       <td></td></tr>
+      
+       <tr><td>procedure, private :: <strong><a href='../type/simulation.html#boundprocedure-init_simulation'>init_simulation</a></strong>  </td>
+       <td></td></tr>
+      
+       </tbody>
+       </table>
+     
+  </div>
+</div>
+
+     
+    </section>
+  <br>
+    
+    
+    
+
+    
+    <section>
+    <h2>Subroutines</h2>
+    
+    
+  <div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="proc-init_sim_fields"></span><h3>
+private subroutine <a href='../proc/init_sim_fields.html'>init_sim_fields</a>(this, input, dr, dxi, num_modes, part_shape)
+    
+    
+   
+</h3></div>
+  <div class="panel-body">
+       
+    
+    
+    <h4>Arguments</h4>
+    
+      
+      
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th>
+<th>Intent</th><th>Optional</th>
+<th>Attributes</th><th></th><th>Name</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>class(<a href='../type/sim_fields.html'>sim_fields</a>),</td>
+  <td>intent(inout)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>this</strong></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>type(<a href='../type/input_json.html'>input_json</a>),</td>
+  <td>intent(inout),</td>
+  <td></td>
+  
+  <td>pointer</td><td>::</td>
+  <td><strong>input</strong></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>real,</td>
+  <td>intent(in)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>dr</strong></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>real,</td>
+  <td>intent(in)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>dxi</strong></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>integer,</td>
+  <td>intent(in)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>num_modes</strong></td><td></td>
+  
+</tr>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>integer,</td>
+  <td>intent(in)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>part_shape</strong></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+      
+    
+    
+
+  </div>
+  </div>
+
+    
+    
+  <div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="proc-end_sim_fields"></span><h3>
+private subroutine <a href='../proc/end_sim_fields.html'>end_sim_fields</a>(this)
+    
+    
+   
+</h3></div>
+  <div class="panel-body">
+       
+    
+    
+    <h4>Arguments</h4>
+    
+      
+      
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th>
+<th>Intent</th><th>Optional</th>
+<th>Attributes</th><th></th><th>Name</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>class(<a href='../type/sim_fields.html'>sim_fields</a>),</td>
+  <td>intent(inout)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>this</strong></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+      
+    
+    
+
+  </div>
+  </div>
+
+    
+    
+  <div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="proc-init_simulation"></span><h3>
+private subroutine <a href='../proc/init_simulation.html'>init_simulation</a>(this)
+    
+    
+   
+</h3></div>
+  <div class="panel-body">
+       
+    
+    
+    <h4>Arguments</h4>
+    
+      
+      
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th>
+<th>Intent</th><th>Optional</th>
+<th>Attributes</th><th></th><th>Name</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>class(<a href='../type/simulation.html'>simulation</a>),</td>
+  <td>intent(inout)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>this</strong></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+      
+    
+    
+
+  </div>
+  </div>
+
+    
+    
+  <div class="panel panel-default">
+  <div class="panel-heading codesum"><span class="anchor" id="proc-end_simulation"></span><h3>
+private subroutine <a href='../proc/end_simulation.html'>end_simulation</a>(this)
+    
+    
+   
+</h3></div>
+  <div class="panel-body">
+       
+    
+    
+    <h4>Arguments</h4>
+    
+      
+      
+<table class="table table-striped varlist">
+<thead><tr><th>Type</th>
+<th>Intent</th><th>Optional</th>
+<th>Attributes</th><th></th><th>Name</th><th></th></thead>
+
+
+
+<tbody>
+
+  
+  
+  
+  
+<tr>
+  
+  <td><span class="anchor" ></span>class(<a href='../type/simulation.html'>simulation</a>),</td>
+  <td>intent(inout)</td>
+  <td></td>
+  
+  <td></td><td>::</td>
+  <td><strong>this</strong></td><td></td>
+  
+</tr>
+
+</tbody>
+</table>
+
+      
+    
+    
+
+  </div>
+  </div>
+
+    
+    </section>    
+    <br>
+    
+    
+    
+    </div>
+  </div>
+
+  
+    <hr>    
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+      <div class="row">
+        <div class="col-xs-6 col-md-4"><p>&copy; 2018 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/80x15.png" /></a>
+                                          </p></div>
+        <div class="col-xs-6 col-md-4 col-md-push-4">
+          <p class="text-right">
+            Documentation generated by 
+            <a href="https://github.com/cmacmackin/ford">FORD</a>
+            
+          </p>
+        </div>
+        <div class="col-xs-12 col-md-4 col-md-pull-4"><p class="text-center"> QuickPIC wit Azimuzal Decomposition was developed by Fei Li and Weiming An</p></div>
+      </div>
+      <br>
+      </div> <!-- /container -->    
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+<!--
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+-->
+    <script src="../js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+    <!-- MathJax JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+        jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+        extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+      });
+    </script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    
+    <script src="../tipuesearch/tipuesearch_content.js"></script>
+    <script src="../tipuesearch/tipuesearch_set.js"></script>
+    <script src="../tipuesearch/tipuesearch.js"></script>
+    
+    
+  </body>
+</html>
