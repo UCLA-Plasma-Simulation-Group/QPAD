@@ -33,19 +33,21 @@ end interface
 
 contains
 
-subroutine init_errors( eunit, monitor )
+subroutine init_errors( eunit, idproc, monitor )
 
   implicit none
 
-  ! class( parallel ), intent(in), pointer :: prl
-  integer, intent(in) :: eunit, monitor
+  integer, intent(in) :: eunit, idproc, monitor
+
+  character(len=32) :: filename
 
   fid = eunit
   class_monitor = monitor
 
   call system( 'mkdir ./ELOG' )
 
-  open( unit=fid, file='./ELOG/elog-000', form='formatted', status='replace' )
+  write( filename, '(A,I0.6,A)') './ELOG/elog-', idproc, '.log'
+  open( unit=fid, file=trim(filename), form='formatted', status='replace' )
 
   call dtimer( dtime, itime, -1 )
 
