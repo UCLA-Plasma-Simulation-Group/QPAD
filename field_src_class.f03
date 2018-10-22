@@ -10,9 +10,6 @@ implicit none
 
 private
 
-character(len=20), parameter :: cls_name = "field_src"
-integer, parameter :: cls_level = 1
-
 public :: field_rho, field_jay, field_djdxi
 
 type, extends( field ) :: field_rho
@@ -56,6 +53,8 @@ subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
+  character(len=20), save :: cls_name = "field_rho"
+  integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_rho"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -97,6 +96,8 @@ subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
+  character(len=20), save :: cls_name = "field_jay"
+  integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_jay"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -138,6 +139,8 @@ subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
+  character(len=20), save :: cls_name = "field_djdxi"
+  integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_djdxi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

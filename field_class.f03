@@ -13,7 +13,7 @@ private
 public :: field
 
 character(len=20), parameter :: cls_name = "field"
-integer, parameter :: cls_level = 1
+integer, parameter :: cls_level = 3
 
 type :: field
 

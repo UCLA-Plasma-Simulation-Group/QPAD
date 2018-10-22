@@ -1,8 +1,13 @@
-# Compiler configuration
+# Fortran compiler configuration
 FC = mpif90
 FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -I$(JSON_INC) -fopenmp -ffree-form
+
+# C compiler configuration
 CC = gcc
 CC_OPTS = -O3 -std=c99
+
+# Python 2 configuration. Used for automatically generate compile rules
+PYTHON = python 
 
 # Linker configuration
 LINKER = mpif90
