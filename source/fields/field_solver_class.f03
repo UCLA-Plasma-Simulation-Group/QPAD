@@ -52,7 +52,6 @@ type :: field_solver ! class for HYPRE solver
   procedure, private :: set_struct_stencil
   procedure, private :: set_struct_matrix
   procedure, private :: set_ij_matrix
-  procedure, private :: set_ij_vector
   procedure, private :: set_ij_solver
 
 end type field_solver
@@ -107,15 +106,13 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
     call this%set_ij_matrix( pp, gp, dr )
 
-    ! call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%b, ierr )
-    ! call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
-    ! call HYPRE_IJVectorInitialize( this%b, ierr )
+    call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%b, ierr )
+    call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
+    call HYPRE_IJVectorInitialize( this%b, ierr )
      
-    ! call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%x, ierr )
-    ! call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
-    ! call HYPRE_IJVectorInitialize( this%x, ierr )
-
-    call this%set_ij_vector( pp, gp )
+    call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%x, ierr )
+    call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
+    call HYPRE_IJVectorInitialize( this%x, ierr )
 
     call this%set_ij_solver( pp )
 
@@ -277,7 +274,7 @@ subroutine solve_equation( this, src_sol )
     if ( .not. associated(rows) ) then
       allocate( rows(local_size) )
       do i = this%ilower, this%iupper
-        rows(i) = i
+        rows(i-this%ilower+1) = i
       enddo
     endif
     call HYPRE_IJVectorSetValues( this%b, local_size, rows, src_sol, ierr )
@@ -522,7 +519,6 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   real, intent(in) :: dr
 
   integer :: local_size, ierr, m, m2, i, nr, noff
-  integer :: col_ilower, col_iupper
   integer :: comm
   integer, dimension(:), pointer :: cols
   real :: idr2, k0, k_minus, k_plus
@@ -538,13 +534,8 @@ subroutine set_ij_matrix( this, pp, gp, dr )
 
   local_size = this%iupper - this%ilower + 1
 
-  col_ilower = this%ilower - 4
-  col_iupper = this%iupper + 4
-  if ( this%ilower == 1 ) col_ilower = this%ilower
-  if ( this%iupper == 4*nr ) col_iupper = this%iupper
-
   call HYPRE_IJMatrixCreate( comm, this%ilower, this%iupper, &
-      col_ilower, col_iupper, this%A, ierr )
+      this%ilower, this%iupper, this%A, ierr )
   call HYPRE_IJMatrixSetObjectType( this%A, HYPRE_PARCSR, ierr )
   call HYPRE_IJMatrixInitialize( this%A, ierr )
 
@@ -649,33 +640,5 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_ij_matrix
-
-subroutine set_ij_vector( this, pp, gp )
-
-  implicit none
-
-  class( field_solver ), intent(inout) :: this
-  class( parallel_pipe ), intent(in) :: pp
-  class( grid ), intent(in) :: gp
-
-  integer :: nr, ilower, iupper, comm, ierr
-
-  comm = pp%getlgrp()
-  nr = gp%get_nd(1)
-
-  ilower = this%ilower - 4
-  iupper = this%iupper + 4
-  if ( this%ilower == 1 ) ilower = this%ilower
-  if ( this%iupper == 4*nr ) iupper = this%iupper
-
-  call HYPRE_IJVectorCreate( comm, ilower, iupper, this%b, ierr )
-  call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
-  call HYPRE_IJVectorInitialize( this%b, ierr )
-   
-  call HYPRE_IJVectorCreate( comm, ilower, iupper, this%x, ierr )
-  call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
-  call HYPRE_IJVectorInitialize( this%x, ierr )
-
-  end subroutine set_ij_vector
 
 end module field_solver_class
