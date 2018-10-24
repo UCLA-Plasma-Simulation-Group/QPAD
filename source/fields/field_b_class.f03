@@ -167,62 +167,77 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nd1p
+  integer :: i, nrp, noff, idproc, nvp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, a1, a2, a3, b
+  real :: idrh, idr, k0, a1, a2, a3, b
+  character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = jay_re%get_ndp(1)
+  nrp = jay_re%get_ndp(1)
   idr = 1.0 / this%dr
   idrh = 0.5 * idr
+  noff = jay_re%get_noff(1)
+  nvp = jay_re%pp%getlnvp()
+  idproc = jay_re%pp%getlidproc()
   
   f1_re => jay_re%get_f1()
   if ( .not. associated( this%buf_re ) ) then
-    allocate( this%buf_re( nd1p ) )
-  elseif ( size(this%buf_re) < nd1p ) then
+    allocate( this%buf_re( nrp ) )
+  elseif ( size(this%buf_re) < nrp ) then
     deallocate( this%buf_re )
-    allocate( this%buf_re( nd1p ) )
+    allocate( this%buf_re( nrp ) )
   endif
 
   if ( present(jay_im) ) then
     f1_im => jay_im%get_f1()
     if ( .not. associated( this%buf_im ) ) then
-      allocate( this%buf_im( nd1p ) )
-    elseif ( size(this%buf_im) < nd1p ) then
+      allocate( this%buf_im( nrp ) )
+    elseif ( size(this%buf_im) < nrp ) then
       deallocate( this%buf_im )
-      allocate( this%buf_im( nd1p ) )
+      allocate( this%buf_im( nrp ) )
     endif
   endif
 
+  this%buf_re = 0.0
+  if ( present(jay_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      a1 = idrh * (i-1.0) / (i-0.5)
-      a2 = -idrh / (i-0.5)
-      a3 = -idrh * i / (i-0.5)
+      k0 = real(i+noff) - 0.5
+
+      a1 =  idrh * (k0-0.5) / k0
+      a2 = -idrh / k0
+      a3 = -idrh * (k0+0.5) / k0
 
       this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
 
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
-    a2 = -idr * (nd1p+0.5) / (nd1p-0.5)
-    this%buf_re(nd1p) = idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p)
+    if ( idproc == 0 ) then
+      this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
+    endif
+    if ( idproc == nvp-1 ) then
+      a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
+      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp)
+    endif
 
-    ! call write_data( this%buf_re, 'bsource-re-0.txt' )
+    ! write( filename, '(A,I0.3,A)' ) 'src-re-0-', idproc, '.txt'
+    ! call write_data( this%buf_re, filename )
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      a1 = idrh * (i-1.0) / (i-0.5)
-      a2 = -idrh / (i-0.5)
-      a3 = -idrh * i / (i-0.5)
-      b  = idr * real(mode) / (i-0.5)
+      k0 = real(i+noff) - 0.5
+
+      a1 =  idrh * (k0-0.5) / k0
+      a2 = -idrh / k0
+      a3 = -idrh * (k0+0.5) / k0
+      b  =  idr * real(mode) / k0
 
       this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1) - &
                         b * f1_im(1,i)
@@ -232,12 +247,17 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
-    this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
-    a2 = -idr * (nd1p+0.5) / (nd1p-0.5)
-    b  = idr * real(mode) / (nd1p-0.5)
-    this%buf_re(nd1p) = idr * f1_re(2,nd1p-1) + a2 * f1_re(2,nd1p) - b * f1_im(1,nd1p)
-    this%buf_im(nd1p) = idr * f1_im(2,nd1p-1) + a2 * f1_im(2,nd1p) + b * f1_re(1,nd1p)
+    if ( idproc == 0 ) then
+      this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
+      this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
+    endif
+    if ( idproc == nvp-1 ) then
+      k0 = real(nrp+noff) - 0.5
+      a2 = -idr * (k0+1.0) / k0
+      b  =  idr * real(mode) / k0
+      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
+      this%buf_im(nrp) = idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
+    endif
 
   else
 
@@ -258,20 +278,23 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nd1p
+  integer :: i, nrp, idproc, nvp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, a1, a2, a3, b, ir
   character(len=20), save :: sname = 'set_source_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = q_re%get_ndp(1)
+  idproc = q_re%pp%getlidproc()
+  nvp = q_re%pp%getlnvp()
+  nrp = q_re%get_ndp(1)
+  noff = q_re%get_noff(1)
   idr = 1.0 / this%dr
   idrh = 0.5 * idr
   
   f1_re => q_re%get_f1()
   if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nd1p*4 ) )
+    allocate( this%buf( nrp*4 ) )
   endif
 
   if ( present(q_im) ) then
@@ -281,9 +304,8 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   this%buf = 0.0
   if ( mode == 0 ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      ir = idr / (i-0.5)
       ! Re(Br)
       this%buf(4*i-3) = 0.0
       ! Im(Br)
@@ -296,23 +318,20 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    this%buf(1) = 0.0
-    this%buf(2) = 0.0
-    this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
-    this%buf(4) = 0.0
-
-    this%buf(4*nd1p-3) = 0.0
-    this%buf(4*nd1p-2) = 0.0
-    this%buf(4*nd1p-1) = idr * ( f1_re(1,nd1p)-f1_re(1,nd1p-1) )
-    this%buf(4*nd1p)   = 0.0
+    if ( idproc == 0 ) then
+      this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+    endif
+    if ( idproc == nvp-1 ) then
+      this%buf(4*nrp-1) = idr * ( f1_re(1,nrp)-f1_re(1,nrp-1) )
+    endif
 
     ! call write_data( this%buf, 'bsource-re-0.txt' )
 
   elseif ( mode > 0 .and. present( q_im ) ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      ir = idr / (i-0.5)
+      ir = idr / (real(i+noff)-0.5)
       this%buf(4*i-3) =  mode * f1_im(1,i) * ir
       this%buf(4*i-2) = -mode * f1_re(1,i) * ir
       this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
@@ -321,17 +340,16 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    ir = 2.0 * idr
-    this%buf(1) =  mode * f1_im(1,1) * ir
-    this%buf(2) = -mode * f1_re(1,1) * ir
-    this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
-    this%buf(4) = idr * ( f1_im(1,2)-f1_im(1,1) )
-
-    ir = idr / (nd1p-0.5)
-    this%buf(4*nd1p-3) =  mode * f1_im(1,nd1p) * ir
-    this%buf(4*nd1p-2) = -mode * f1_re(1,nd1p) * ir
-    this%buf(4*nd1p-1) = idr * ( f1_re(1,nd1p)-f1_re(1,nd1p-1) )
-    this%buf(4*nd1p)   = idr * ( f1_im(1,nd1p)-f1_im(1,nd1p-1) )
+    if ( idproc == 0 ) then
+      ir = 2.0 * idr
+      this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+      this%buf(4) = idr * ( f1_im(1,2)-f1_im(1,1) )
+    endif
+    if ( idproc == nvp-1 ) then
+      ir = idr / (real(nrp+noff)-0.5)
+      this%buf(4*nrp-1) = idr * ( f1_re(1,nrp)-f1_re(1,nrp-1) )
+      this%buf(4*nrp)   = idr * ( f1_im(1,nrp)-f1_im(1,nrp-1) )
+    endif
 
   else
 
@@ -352,7 +370,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   class( ufield ), intent(in), optional :: djdxi_im, jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nd1p
+  integer :: i, nrp, nvp, idproc, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
@@ -361,7 +379,10 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = jay_re%get_ndp(1)
+  nvp = jay_re%pp%getlnvp()
+  idproc = jay_re%pp%getlidproc()
+  nrp = jay_re%get_ndp(1)
+  noff = jay_re%get_noff(1)
   idr = 1.0 / this%dr
   idrh = 0.5 * idr
   
@@ -369,7 +390,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   f2_re => jay_re%get_f1()
   f3_re => this%rf_re(mode)%get_f1()
   if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nd1p*4 ) )
+    allocate( this%buf( nrp*4 ) )
   endif
 
   if ( present(djdxi_im) .and. present(jay_im) ) then
@@ -381,9 +402,8 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   this%buf = 0.0
   if ( mode == 0 ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      ir = idr / (i-0.5)
       ! Re(Br)
       this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
       ! Im(Br)
@@ -396,23 +416,24 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    this%buf(1) = -f1_re(2,1) - f3_re(1,1)
-    this%buf(2) = 0.0
-    this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
-    this%buf(4) = 0.0
-
-    this%buf(4*nd1p-3) = -f1_re(2,nd1p) - f3_re(1,nd1p)
-    this%buf(4*nd1p-2) = 0.0
-    this%buf(4*nd1p-1) = f1_re(1,nd1p) + idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
-    this%buf(4*nd1p)   = 0.0
-
-    ! call write_data( this%buf, 'bsource-re-0.txt' )
+    if ( idproc == 0 ) then
+      this%buf(1) = -f1_re(2,1) - f3_re(1,1)
+      this%buf(2) = 0.0
+      this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
+      this%buf(4) = 0.0
+    endif
+    if ( idproc == nvp-1 ) then
+      this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
+      this%buf(4*nrp-2) = 0.0
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( f2_re(3,nrp)-f2_re(3,nrp-1) ) - f3_re(2,nrp)
+      this%buf(4*nrp)   = 0.0
+    endif
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
     
-    do i = 2, nd1p-1
+    do i = 1, nrp
 
-      ir = idr / (i-0.5)
+      ir = idr / (real(i+noff)-0.5)
       this%buf(4*i-3) = -f1_re(2,i) + mode * f2_im(3,i) * ir - f3_re(1,i)
       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i)
       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
@@ -421,17 +442,20 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    ir = 2.0 * idr
-    this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
-    this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
-    this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
-    this%buf(4) = f1_im(1,1) + idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
-
-    ir = idr / (nd1p-0.5)
-    this%buf(4*nd1p-3) = -f1_re(2,nd1p) + mode * f2_im(3,nd1p) * ir - f3_re(1,nd1p)
-    this%buf(4*nd1p-2) = -f1_im(2,nd1p) - mode * f2_re(3,nd1p) * ir - f3_im(1,nd1p)
-    this%buf(4*nd1p-1) = f1_re(1,nd1p) + idr * ( f2_re(3,nd1p)-f2_re(3,nd1p-1) ) - f3_re(2,nd1p)
-    this%buf(4*nd1p)   = f1_im(1,nd1p) + idr * ( f2_im(3,nd1p)-f2_im(3,nd1p-1) ) - f3_im(2,nd1p)
+    if ( idproc == 0 ) then
+      ir = 2.0 * idr
+      this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
+      this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
+      this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
+      this%buf(4) = f1_im(1,1) + idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
+    endif
+    if ( idproc == nvp-1 ) then
+      ir = idr / (real(nrp+noff)-0.5)
+      this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp)
+      this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp)
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( f2_re(3,nrp)-f2_re(3,nrp-1) ) - f3_re(2,nrp)
+      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( f2_im(3,nrp)-f2_im(3,nrp-1) ) - f3_im(2,nrp)
+    endif
 
   else
 
@@ -546,13 +570,15 @@ subroutine solve_field_bz( this, jay )
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( field_jay ), intent(in) :: jay
+  class( field_jay ), intent(inout) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   integer :: i
   character(len=20), save :: sname = 'solve_field_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call jay%copy_gc()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -582,13 +608,15 @@ subroutine solve_field_bperp( this, rho )
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( field_rho ), intent(in) :: rho
+  class( field_rho ), intent(inout) :: rho
 
   type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
   integer :: i
   character(len=20), save :: sname = 'solve_field_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call rho%copy_gc()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
@@ -618,7 +646,7 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   class( field_b ), intent(inout) :: this
   class( field_djdxi ), intent(in) :: djdxi
-  class( field_jay ), intent(in) :: jay
+  class( field_jay ), intent(inout) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   type( ufield ), dimension(:), pointer :: djdxi_re => null(), djdxi_im => null()
@@ -626,6 +654,9 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
   character(len=20), save :: sname = 'solve_field_bperp_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call jay%copy_gc()
+  ! call djdxi%copy_gc() ! no need for djdxi to copy guard cells
 
   djdxi_re => djdxi%get_rf_re()
   djdxi_im => djdxi%get_rf_im()

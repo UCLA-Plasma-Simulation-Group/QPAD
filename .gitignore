@@ -9,3 +9,5 @@
 *.mod
 *elog*
 .depend
+bin
+source/build

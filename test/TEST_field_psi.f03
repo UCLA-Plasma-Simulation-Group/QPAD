@@ -1,8 +1,10 @@
 program test_field_psi
 
 use field_psi_class
-use field_class
 use field_src_class
+
+use parallel_pipe_class
+use grid_class
 use system
 use param
 use mpi
@@ -11,34 +13,37 @@ use debug_tool
 
 implicit none
 
+type( parallel_pipe ), pointer :: pp => null()
+type( grid ), pointer :: gp => null()
+
 type( field_psi ) :: psi
 type( field_rho ) :: q
 
-integer :: num_modes = 2, dim = 1, order = p_fs_2order, part_shape = p_ps_linear
-integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
-integer, dimension(2,2) :: gc_num
+integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: nr = 512, nz = 1, nrp, noff
 real :: dr, dxi, r
 
 type( ufield ), dimension(:), pointer :: uq_re => null(), uq_im => null()
 type( ufield ), dimension(:), pointer :: upsi_re => null(), upsi_im => null()
 real, dimension(:,:), pointer :: p
 integer :: ierr, i, mode
-real, dimension(1024) :: values = 0.0
+character(len=32) :: filename
 
-call MPI_INIT( ierr )
-call init_errors( 2, 3 )
+allocate( pp, gp )
+call pp%new(nst=1)
 
+call init_errors( eunit=2, idproc=pp%getlidproc(), monitor=3 )
 call write_dbg( 'main', 'test_field_psi', 0, 'starts' )
 
-dr = 1.0 / (nd(1)-0.5)
+call gp%new( pp, nr, nz )
+
+dr = 1.0 / (nr-0.5)
 dxi = 1.0
+nrp = gp%get_ndp(1)
+noff = gp%get_noff(1)
 
-gc_num(:,1) = (/0,0/)
-gc_num(:,2) = (/0,0/)
-
-call q%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call psi%new( num_modes, dr, dxi, nd, nvp, part_shape )
-
+call q%new( pp, gp, dr, dxi, num_modes, part_shape )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
 
 uq_re => q%get_rf_re()
 uq_im => q%get_rf_im()
@@ -46,44 +51,42 @@ uq_im => q%get_rf_im()
 ! set the charge
 do mode = 0, num_modes
   
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp 
+    r = (real(i+noff)-0.5)*dr
     uq_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
   if ( mode == 0 ) cycle
 
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (i+noff-0.5)*dr
     uq_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
 enddo
-
-! call HYPRE_StructMatrixGetBoxValues( psi%solver(0)%A, 1, nd(1), 3, &
-!   psi%solver(0)%stencil_idx, values, ierr )
-
-! print *, "A = ", values(1:nd(1)*3)
-
-! call HYPRE_StructVectorGetBoxValues( psi%solver(0)%b )
 
 call psi%solve(q)
 
 upsi_re => psi%get_rf_re()
 upsi_im => psi%get_rf_im()
 
+
+! output
 p => upsi_re(0)%get_f1()
-call write_data( p, 'psi-re-0.txt', 1 )
+write( filename, '(A,I0.3,A)' ) 'psi-re-0-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
 p => upsi_re(1)%get_f1()
-call write_data( p, 'psi-re-1.txt', 1 )
+write( filename, '(A,I0.3,A)' ) 'psi-re-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
 p => upsi_re(2)%get_f1()
-call write_data( p, 'psi-re-2.txt', 1 )
+write( filename, '(A,I0.3,A)' ) 'psi-re-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
 p => upsi_im(1)%get_f1()
-call write_data( p, 'psi-im-1.txt', 1 )
+write( filename, '(A,I0.3,A)' ) 'psi-im-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
 p => upsi_im(2)%get_f1()
-call write_data( p, 'psi-im-2.txt', 1 )
-
-
+write( filename, '(A,I0.3,A)' ) 'psi-im-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
 
 call q%del()
 call psi%del()
@@ -91,6 +94,7 @@ call psi%del()
 call write_dbg( 'main', 'test_field_psi', 0, 'ends' )
 
 call end_errors()
-call MPI_FINALIZE( ierr )
+call gp%del()
+call pp%del()
 
 end program test_field_psi

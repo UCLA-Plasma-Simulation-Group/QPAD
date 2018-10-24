@@ -1392,7 +1392,7 @@ function detect_precision()
     detect_precision = H5T_NATIVE_REAL
  endif       
 
-end function detect_precision     
+end function detect_precision
 !      
 end module hdf5io_class
 

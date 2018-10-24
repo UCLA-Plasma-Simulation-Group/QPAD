@@ -52,6 +52,7 @@ type :: field_solver ! class for HYPRE solver
   procedure, private :: set_struct_stencil
   procedure, private :: set_struct_matrix
   procedure, private :: set_ij_matrix
+  procedure, private :: set_ij_vector
   procedure, private :: set_ij_solver
 
 end type field_solver
@@ -92,7 +93,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
     call this%set_struct_grid( pp, gp )
     call this%set_struct_stencil()
-    call this%set_struct_matrix( pp, dr )
+    call this%set_struct_matrix( pp, gp, dr )
 
     call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
     call HYPRE_StructVectorInitialize( this%b, ierr )
@@ -106,13 +107,15 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
     call this%set_ij_matrix( pp, gp, dr )
 
-    call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%b, ierr )
-    call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
-    call HYPRE_IJVectorInitialize( this%b, ierr )
+    ! call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%b, ierr )
+    ! call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
+    ! call HYPRE_IJVectorInitialize( this%b, ierr )
      
-    call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%x, ierr )
-    call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
-    call HYPRE_IJVectorInitialize( this%x, ierr )
+    ! call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%x, ierr )
+    ! call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
+    ! call HYPRE_IJVectorInitialize( this%x, ierr )
+
+    call this%set_ij_vector( pp, gp )
 
     call this%set_ij_solver( pp )
 
@@ -280,6 +283,7 @@ subroutine solve_equation( this, src_sol )
     call HYPRE_IJVectorSetValues( this%b, local_size, rows, src_sol, ierr )
     call HYPRE_IJVectorAssemble( this%b, ierr )
     call HYPRE_IJVectorGetObject( this%b, this%par_b, ierr )
+    call HYPRE_IJVectorAssemble( this%x, ierr )
     call HYPRE_IJVectorGetObject( this%x, this%par_x, ierr )
   end select
 
@@ -346,10 +350,6 @@ subroutine set_struct_stencil( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ! select case ( this%kind )
-
-  ! case ( p_fk_psi, p_fk_ez, p_fk_bz )
-
   this%num_stencil = 3
   if ( .not. associated( this%offsets ) ) then
     allocate( this%offsets( this%num_stencil ) )
@@ -373,15 +373,16 @@ subroutine set_struct_stencil( this )
 
 end subroutine set_struct_stencil
 
-subroutine set_struct_matrix( this, pp, dr )
+subroutine set_struct_matrix( this, pp, gp, dr )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
   class( parallel_pipe ), intent(in) :: pp
+  class( grid ), intent(in) :: gp
   real, intent(in) :: dr
 
-  integer :: i, j, ierr, local_vol, nr
+  integer :: i, j, ierr, local_vol, nr, noff
   integer :: comm, lidproc, lnvp
   real :: idr2, m, m2, k1, k2, k0
   character(len=20), save :: sname = "set_struct_matrix"
@@ -391,6 +392,7 @@ subroutine set_struct_matrix( this, pp, dr )
   comm = pp%getlgrp()
   lidproc = pp%getlidproc()
   lnvp = pp%getlnvp()
+  noff = gp%get_noff(1)
 
   idr2 = 1.0 / (dr*dr)
   m = this%mode
@@ -408,7 +410,7 @@ subroutine set_struct_matrix( this, pp, dr )
   call HYPRE_StructMatrixCreate( comm, this%grid, this%stencil, this%A, ierr )
   call HYPRE_StructMatrixInitialize( this%A, ierr )
 
-  k0 = -0.5  
+  k0 = noff - 0.5
   do i = 1, local_vol, this%num_stencil
     k0 = k0 + 1.0
     k1 = k0 - 0.5
@@ -519,7 +521,8 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   class( grid ), intent(in) :: gp
   real, intent(in) :: dr
 
-  integer :: local_size, ierr, m, m2, i, nr
+  integer :: local_size, ierr, m, m2, i, nr, noff
+  integer :: col_ilower, col_iupper
   integer :: comm
   integer, dimension(:), pointer :: cols
   real :: idr2, k0, k_minus, k_plus
@@ -529,13 +532,19 @@ subroutine set_ij_matrix( this, pp, gp, dr )
 
   comm = pp%getlgrp()
   nr = gp%get_nd(1)
-  this%ilower = 4*gp%get_noff(1) + 1
-  this%iupper = 4*gp%get_noff(1) + 4*gp%get_ndp(1)
+  noff = gp%get_noff(1)
+  this%ilower = 4*noff + 1
+  this%iupper = 4*noff + 4*gp%get_ndp(1)
 
   local_size = this%iupper - this%ilower + 1
 
+  col_ilower = this%ilower - 4
+  col_iupper = this%iupper + 4
+  if ( this%ilower == 1 ) col_ilower = this%ilower
+  if ( this%iupper == 4*nr ) col_iupper = this%iupper
+
   call HYPRE_IJMatrixCreate( comm, this%ilower, this%iupper, &
-    this%ilower, this%iupper, this%A, ierr )
+      col_ilower, col_iupper, this%A, ierr )
   call HYPRE_IJMatrixSetObjectType( this%A, HYPRE_PARCSR, ierr )
   call HYPRE_IJMatrixInitialize( this%A, ierr )
 
@@ -640,5 +649,33 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_ij_matrix
+
+subroutine set_ij_vector( this, pp, gp )
+
+  implicit none
+
+  class( field_solver ), intent(inout) :: this
+  class( parallel_pipe ), intent(in) :: pp
+  class( grid ), intent(in) :: gp
+
+  integer :: nr, ilower, iupper, comm, ierr
+
+  comm = pp%getlgrp()
+  nr = gp%get_nd(1)
+
+  ilower = this%ilower - 4
+  iupper = this%iupper + 4
+  if ( this%ilower == 1 ) ilower = this%ilower
+  if ( this%iupper == 4*nr ) iupper = this%iupper
+
+  call HYPRE_IJVectorCreate( comm, ilower, iupper, this%b, ierr )
+  call HYPRE_IJVectorSetObjectType( this%b, HYPRE_PARCSR, ierr )
+  call HYPRE_IJVectorInitialize( this%b, ierr )
+   
+  call HYPRE_IJVectorCreate( comm, ilower, iupper, this%x, ierr )
+  call HYPRE_IJVectorSetObjectType( this%x, HYPRE_PARCSR, ierr )
+  call HYPRE_IJVectorInitialize( this%x, ierr )
+
+  end subroutine set_ij_vector
 
 end module field_solver_class

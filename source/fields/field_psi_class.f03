@@ -67,7 +67,7 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape )
   
   case ( p_ps_linear )
   
-    gc_num(:,1) = (/0, 1/)
+    gc_num(:,1) = (/1, 1/)
     gc_num(:,2) = (/0, 1/)
   
   case ( p_ps_quadratic )
@@ -129,38 +129,40 @@ subroutine set_source( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nd1p
+  integer :: i, nrp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   character(len=20), save :: sname = 'set_source'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = q_re%get_ndp(1)
+  nrp = q_re%get_ndp(1)
 
   f1_re => q_re%get_f1()
   if ( .not. associated( this%buf_re ) ) then
-    allocate( this%buf_re( nd1p ) )
-  elseif ( size(this%buf_re) < nd1p ) then
+    allocate( this%buf_re( nrp ) )
+  elseif ( size(this%buf_re) < nrp ) then
     deallocate( this%buf_re )
-    allocate( this%buf_re( nd1p ) )
+    allocate( this%buf_re( nrp ) )
   endif
 
   if ( present(q_im) ) then
     f1_im => q_im%get_f1()
     if ( .not. associated( this%buf_im ) ) then
-      allocate( this%buf_im( nd1p ) )
-    elseif ( size(this%buf_im) < nd1p ) then
+      allocate( this%buf_im( nrp ) )
+    elseif ( size(this%buf_im) < nrp ) then
       deallocate( this%buf_im )
-      allocate( this%buf_im( nd1p ) )
+      allocate( this%buf_im( nrp ) )
     endif
   endif
 
+  this%buf_re = 0.0
+  if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
-    do i = 1, nd1p
+    do i = 1, nrp
       this%buf_re(i) = f1_re(1,i)
     enddo
   elseif ( mode > 0 .and. present(q_im) ) then
-    do i = 1, nd1p
+    do i = 1, nrp
       this%buf_re(i) = f1_re(1,i)
       this%buf_im(i) = f1_im(1,i)
     enddo

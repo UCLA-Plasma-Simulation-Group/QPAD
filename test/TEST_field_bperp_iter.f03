@@ -1,7 +1,8 @@
 program test_field_bperp_iter
 
+use parallel_pipe_class
+use grid_class
 use field_b_class
-use field_class
 use field_src_class
 use system
 use param
@@ -11,14 +12,17 @@ use debug_tool
 
 implicit none
 
+type( parallel_pipe ), pointer :: pp => null()
+type( grid ), pointer :: gp => null()
+
 type( field_b ) :: b
 type( field_jay ) :: jay
 type( field_djdxi ) :: djdxi
 
-integer :: num_modes = 2, dim = 3, part_shape = p_ps_linear
-integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
-integer, dimension(2,2) :: gc_num
+integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: nr = 128, nz = 1, nrp, noff
 real :: dr, dxi, r
+integer, dimension(2,2) :: gc_num
 
 type( ufield ), dimension(:), pointer :: ujay_re => null(), ujay_im => null()
 type( ufield ), dimension(:), pointer :: udjdxi_re => null(), udjdxi_im => null()
@@ -29,22 +33,24 @@ real, dimension(:,:), pointer :: p
 integer :: ierr, i, mode, iter
 integer :: num_iter = 10
 real, dimension(:,:), pointer :: res => null()
+character(len=32) :: filename
 
-call MPI_INIT( ierr )
-call init_errors( 2, 3 )
+allocate( pp, gp )
+call pp%new(nst=1)
 
+call init_errors( eunit=2, idproc=pp%getlidproc(), monitor=3 )
 call write_dbg( 'main', 'test_field_bperp_iter', 0, 'starts' )
 
-dr = 1.0 / (nd(1)-0.5)
+call gp%new( pp, nr, nz )
+
+dr = 1.0 / (nr-0.5)
 dxi = 1.0
+nrp = gp%get_ndp(1)
+noff = gp%get_noff(1)
 
-gc_num(:,1) = (/0,0/)
-gc_num(:,2) = (/0,0/)
-
-call jay%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call djdxi%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call b%new( num_modes, dr, dxi, nd, nvp, part_shape, p_entity_plasma )
-
+call jay%new( pp, gp, dr, dxi, num_modes, part_shape )
+call djdxi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
 
 ujay_re => jay%get_rf_re()
 ujay_im => jay%get_rf_im()
@@ -54,8 +60,8 @@ udjdxi_im => djdxi%get_rf_im()
 ! set the charge
 do mode = 0, num_modes
   
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     ujay_re(mode)%f1(1,i) = 0.0
     ujay_re(mode)%f1(2,i) = 0.0
     ujay_re(mode)%f1(3,i) = 0.0
@@ -66,8 +72,8 @@ do mode = 0, num_modes
 
   if ( mode == 0 ) cycle
 
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     ujay_im(mode)%f1(1,i) = 0.0
     ujay_im(mode)%f1(2,i) = 0.0
     ujay_im(mode)%f1(3,i) = 0.0
@@ -78,21 +84,15 @@ do mode = 0, num_modes
 
 enddo
 
-! call HYPRE_StructMatrixGetBoxValues( psi%solver(0)%A, 1, nd(1), 3, &
-!   psi%solver(0)%stencil_idx, values, ierr )
-
-! print *, "A = ", values(1:nd(1)*3)
-
-! call HYPRE_StructVectorGetBoxValues( psi%solver(0)%b )
-
+gc_num = 0
 allocate( res(num_iter, (2*num_modes+1)*2) )
 allocate( ub_re_old(0:num_modes), ub_im_old(num_modes) )
-call ub_res%new( dim, nd, nvp, gc_num, has_2d=.true. )
+call ub_res%new( pp, gp, 3, gc_num, has_2d=.true. )
 
 do i = 0, num_modes
-  call ub_re_old(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+  call ub_re_old(i)%new( pp, gp, 3, gc_num, has_2d=.true. )
   if (i==0) cycle
-  call ub_im_old(i)%new( dim, nd, nvp, gc_num, has_2d=.true. )
+  call ub_im_old(i)%new( pp, gp, 3, gc_num, has_2d=.true. )
 enddo
 
 do iter = 1, num_iter
@@ -140,6 +140,7 @@ deallocate( ub_re_old, ub_im_old )
 call write_dbg( 'main', 'test_field_bperp_iter', 0, 'ends' )
 
 call end_errors()
-call MPI_FINALIZE( ierr )
+call gp%del()
+call pp%del()
 
 end program test_field_bperp_iter
