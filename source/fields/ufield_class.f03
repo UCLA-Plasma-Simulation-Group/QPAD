@@ -180,7 +180,7 @@ subroutine copy_slice( this, idx, dir )
   ub = this%ndp(1)+this%gc_num(p_upper,1)
 
   if ( .not. this%has_2d ) then
-    print *, "The field has no 2D layout."
+    call write_err( "The field has no 2D layout." )
     stop
   endif
 
@@ -367,7 +367,7 @@ subroutine assign_array( this, that )
 
     class default
 
-      print *, "invalid assignment type!"
+      call write_err( "invalid assignment type!" )
       stop
 
   end select

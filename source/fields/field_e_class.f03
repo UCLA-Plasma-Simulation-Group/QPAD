@@ -76,13 +76,11 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   
   case ( p_ps_quadratic )
 
-    print *, "Quadratic particle shape not implemented."
-    stop
+    call write_err( "Quadratic particle shape not implemented." )
 
   case default
 
-    print *, "Invalid particle shape."
-    stop
+    call write_err( "Invalid particle shape." )
 
   end select
 

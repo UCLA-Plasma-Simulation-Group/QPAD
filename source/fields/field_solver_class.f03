@@ -186,13 +186,13 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_cycred )
 
-    print *, "Using Cyclic Reduction solver"
+    call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
     call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
     call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
 
   case ( p_hypre_smg )
 
-    print *, 'Using SMG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using SMG solver' )
     call HYPRE_StructSMGCreate( comm, this%solver, ierr )
     call HYPRE_StructSMGSetMemoryUse( this%solver, 0, ierr )
     call HYPRE_StructSMGSetMaxIter( this%solver, maxiter, ierr )
@@ -206,7 +206,7 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_pcg )
 
-    print *, 'Using PCG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using PCG solver' )
     call HYPRE_StructPCGCreate( comm, this%solver, ierr )
     call HYPRE_StructPCGSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_StructPCGSetTol( this%solver, this%tol, ierr )
@@ -230,7 +230,7 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_gmres )
 
-    print *, 'Using GMRES solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using GMRES solver' )
     call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
     call HYPRE_StructGMRESSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_StructGMRESSetTol( this%solver, this%tol, ierr )
@@ -451,7 +451,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_amg )
 
-    print *, "Using Boomer AMG solver"
+    call write_stdout( 'mode '//num2str(this%mode)//": Using Boomer AMG solver" )
     call HYPRE_BoomerAMGCreate( this%solver, ierr )
     call HYPRE_BoomerAMGSetMaxLevels( this%solver, 20, ierr )
     call HYPRE_BoomerAMGSetMaxIter( this%solver, 100, ierr )
@@ -468,7 +468,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_smg )
 
-    print *, 'Using SMG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using SMG solver' )
     call HYPRE_StructSMGCreate( comm, this%solver, ierr )
     call HYPRE_StructSMGSetMemoryUse( this%solver, 0, ierr )
     call HYPRE_StructSMGSetMaxIter( this%solver, maxiter, ierr )
@@ -482,7 +482,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_parpcg )
 
-    print *, 'Using ParCSR PCG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using ParCSR PCG solver' )
     call HYPRE_ParCSRPCGCreate( comm, this%solver, ierr )
     call HYPRE_ParCSRPCGSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_ParCSRPCGSetTol( this%solver, this%tol, ierr)

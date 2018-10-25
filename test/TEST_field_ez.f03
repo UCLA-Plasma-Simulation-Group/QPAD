@@ -32,6 +32,7 @@ character(len=32) :: filename
 allocate( pp, gp )
 call pp%new(nst=1)
 
+call init_stdout( pp%getidproc() )
 call init_errors( eunit=2, idproc=pp%getlidproc(), monitor=3 )
 call write_dbg( 'main', 'test_field_ez', 0, 'starts' )
 
