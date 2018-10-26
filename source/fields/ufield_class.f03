@@ -4,6 +4,7 @@ use parallel_pipe_class
 use grid_class
 use param
 use system
+use mpi
 
 implicit none
 
@@ -18,6 +19,7 @@ type :: ufield
 
   private
 
+  class( parallel_pipe ), pointer, public :: pp => null()
   real, dimension(:,:), pointer, public :: f1 => null()
   real, dimension(:,:,:), pointer :: f2 => null()
   integer, dimension(2) :: nd ! number of global grid points
@@ -40,6 +42,7 @@ type :: ufield
   generic :: get_gc_num => get_gc_num_all, get_gc_num_dim
   generic :: get_nvp => get_nvp_all, get_nvp_dim
   generic :: get_noff => get_noff_all, get_noff_dim
+  generic :: copy_gc => copy_gc_f1, copy_gc_f2
   procedure :: get_dim
   procedure :: copy_slice
   procedure :: get_f1
@@ -56,6 +59,7 @@ type :: ufield
   procedure, private :: get_gc_num_all, get_gc_num_dim
   procedure, private :: get_nvp_all, get_nvp_dim
   procedure, private :: get_noff_all, get_noff_dim
+  procedure, private :: copy_gc_f1, copy_gc_f2
 
   procedure, private, pass(a1) :: add_array, add_scalar1, add_scalar2
   procedure, private, pass(a1) :: dot_array, dot_scalar1, dot_scalar2
@@ -81,6 +85,7 @@ subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  this%pp => pp
   this%nd = gp%get_nd()
   this%nvp = gp%get_nvp()
   this%dim = dim
@@ -117,6 +122,7 @@ subroutine init_ufield_cp( this, that, has_2d )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  this%pp => that%pp
   this%nd = that%get_nd()
   this%nvp = that%get_nvp()
   this%dim = that%dim
@@ -174,7 +180,7 @@ subroutine copy_slice( this, idx, dir )
   ub = this%ndp(1)+this%gc_num(p_upper,1)
 
   if ( .not. this%has_2d ) then
-    print *, "The field has no 2D layout."
+    call write_err( "The field has no 2D layout." )
     stop
   endif
 
@@ -201,6 +207,136 @@ subroutine copy_slice( this, idx, dir )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
   
 end subroutine copy_slice
+
+subroutine copy_gc_f1( this )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+
+  integer :: idproc, idproc_left, idproc_right, nvp, comm
+  integer :: nrp, count, dtype
+  integer :: tag = 1, msgid, ierr
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+
+
+  idproc = this%pp%getlidproc()
+  idproc_left =  idproc - 1
+  idproc_right = idproc + 1
+  nrp = this%ndp(1)
+  nvp = this%pp%getlnvp()
+  comm = this%pp%getlgrp()
+  dtype = this%pp%getmreal()
+
+  ! forward message passing
+  if ( this%gc_num(p_lower,1) > 0 ) then
+    count = this%dim * this%gc_num(p_lower,1)
+    ! receiver
+    if ( idproc > 0 ) then
+      call MPI_IRECV( this%f1(1,1-this%gc_num(p_lower,1)), count, dtype, &
+        idproc_left, tag, comm, msgid, ierr )
+    endif
+    ! sender
+    if ( idproc < nvp-1 ) then
+      call MPI_SEND( this%f1(1,nrp+1-this%gc_num(p_lower,1)), count, dtype, &
+        idproc_right, tag, comm, ierr )
+    endif
+    ! wait receiving finish
+    if ( idproc > 0 ) then
+      call MPI_WAIT( msgid, stat, ierr )
+    endif
+  endif
+
+  ! backward message passing
+  if ( this%gc_num(p_upper,1) > 0 ) then
+    count = this%dim * this%gc_num(p_upper,1)
+    ! receiver
+    if ( idproc < nvp-1 ) then
+      call MPI_IRECV( this%f1(1,nrp+1), count, dtype, &
+        idproc_right, tag, comm, msgid, ierr )
+    endif
+    ! sender
+    if ( idproc > 0 ) then
+      call MPI_SEND( this%f1(1,1), count, dtype, &
+        idproc_left, tag, comm, ierr )
+    endif
+    ! wait receiving finish
+    if ( idproc < nvp-1 ) then
+      call MPI_WAIT( msgid, stat, ierr )
+    endif
+  endif
+
+end subroutine copy_gc_f1
+
+subroutine copy_gc_f2( this, dir )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  integer, intent(in) :: dir
+
+  integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
+  integer :: nzp, count, dtype
+  integer :: tag = 1, msgid, ierr
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+
+  nvp = this%nvp(1)
+  nstage = this%pp%getnstage()
+  stageid = this%pp%getstageid()
+  idproc = this%pp%getidproc()
+  idproc_last = idproc - nvp
+  idproc_next = idproc + nvp
+  nzp = this%ndp(2)
+  comm = this%pp%getlworld()
+  dtype = this%pp%getmreal()
+
+  select case (dir)
+
+  ! forward message passing
+  case ( p_mpi_forward )
+  
+    if ( this%gc_num(p_lower,2) > 0 ) then
+      count = this%dim * size(this%f2,2) * this%gc_num(p_lower,2)
+      ! receiver
+      if ( stageid > 0 ) then
+        call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),1-this%gc_num(p_lower,2)), &
+          count, dtype, idproc_last, tag, comm, msgid, ierr )
+      endif
+      ! sender
+      if ( stageid < nstage-1 ) then
+        call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
+          count, dtype, idproc_next, tag, comm, ierr )
+      endif
+      ! wait receiving finish
+      if ( stageid > 0 ) then
+        call MPI_WAIT( msgid, stat, ierr )
+      endif
+    endif
+
+  ! backward message passing
+  case ( p_mpi_backward )
+
+    if ( this%gc_num(p_upper,2) > 0 ) then
+      count = this%dim * size(this%f2,2) * this%gc_num(p_upper,2)
+      ! receiver
+      if ( stageid < nstage-1 ) then
+        call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
+          count, dtype, idproc_next, tag, comm, msgid, ierr )
+      endif
+      ! sender
+      if ( stageid > 0 ) then
+        call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
+          count, dtype, idproc_last, tag, comm, ierr )
+      endif
+      ! wait receiving finish
+      if ( stageid < nstage-1 ) then
+        call MPI_WAIT( msgid, stat, ierr )
+      endif
+    endif
+
+  end select
+
+end subroutine copy_gc_f2
 
 subroutine assign_array( this, that )
 
@@ -231,7 +367,7 @@ subroutine assign_array( this, that )
 
     class default
 
-      print *, "invalid assignment type!"
+      call write_err( "invalid assignment type!" )
       stop
 
   end select

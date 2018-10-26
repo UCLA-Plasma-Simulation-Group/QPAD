@@ -26,7 +26,7 @@ Possible depType values:
 
 """
 
-import re, sys, os, glob
+import re, sys, os, glob, fnmatch
 from optparse import OptionParser
 
 #------------------------------------------------------------------------------------------------
@@ -34,7 +34,11 @@ from optparse import OptionParser
 #------------------------------------------------------------------------------------------------
 
 def mod_source_files( sourceDir ):
-    sourceFiles = glob.glob( sourceDir+'/*.f03' )
+    # sourceFiles = glob.glob( sourceDir+'/*.f03' )
+    sourceFiles = []
+    for root, dirnames, filenames in os.walk( sourceDir ):
+        for filename in fnmatch.filter( filenames, '*.f03'):
+            sourceFiles.append( os.path.join(root, filename) )
     modules = dict()
     for fname in sourceFiles:
         file = open( fname, 'r' )

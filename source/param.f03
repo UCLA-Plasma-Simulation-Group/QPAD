@@ -58,4 +58,9 @@ integer, parameter :: p_hypre_cycred = 1, p_hypre_pcg = 2, p_hypre_smg = 3, &
 ! ================================================================
 integer, parameter :: p_copy_1to2 = 1, p_copy_2to1 = -1
 
+! ================================================================
+! parameters for copy guard cells
+! ================================================================
+integer, parameter :: p_mpi_forward = 1, p_mpi_backward = -1, p_mpi_bothway = 0
+
 end module param

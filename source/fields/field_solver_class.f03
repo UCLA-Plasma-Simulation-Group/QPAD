@@ -92,7 +92,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
     call this%set_struct_grid( pp, gp )
     call this%set_struct_stencil()
-    call this%set_struct_matrix( pp, dr )
+    call this%set_struct_matrix( pp, gp, dr )
 
     call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
     call HYPRE_StructVectorInitialize( this%b, ierr )
@@ -186,13 +186,13 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_cycred )
 
-    print *, "Using Cyclic Reduction solver"
+    call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
     call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
     call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
 
   case ( p_hypre_smg )
 
-    print *, 'Using SMG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using SMG solver' )
     call HYPRE_StructSMGCreate( comm, this%solver, ierr )
     call HYPRE_StructSMGSetMemoryUse( this%solver, 0, ierr )
     call HYPRE_StructSMGSetMaxIter( this%solver, maxiter, ierr )
@@ -206,7 +206,7 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_pcg )
 
-    print *, 'Using PCG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using PCG solver' )
     call HYPRE_StructPCGCreate( comm, this%solver, ierr )
     call HYPRE_StructPCGSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_StructPCGSetTol( this%solver, this%tol, ierr )
@@ -230,7 +230,7 @@ subroutine set_struct_solver( this, pp )
 
   case ( p_hypre_gmres )
 
-    print *, 'Using GMRES solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using GMRES solver' )
     call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
     call HYPRE_StructGMRESSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_StructGMRESSetTol( this%solver, this%tol, ierr )
@@ -274,12 +274,13 @@ subroutine solve_equation( this, src_sol )
     if ( .not. associated(rows) ) then
       allocate( rows(local_size) )
       do i = this%ilower, this%iupper
-        rows(i) = i
+        rows(i-this%ilower+1) = i
       enddo
     endif
     call HYPRE_IJVectorSetValues( this%b, local_size, rows, src_sol, ierr )
     call HYPRE_IJVectorAssemble( this%b, ierr )
     call HYPRE_IJVectorGetObject( this%b, this%par_b, ierr )
+    call HYPRE_IJVectorAssemble( this%x, ierr )
     call HYPRE_IJVectorGetObject( this%x, this%par_x, ierr )
   end select
 
@@ -346,10 +347,6 @@ subroutine set_struct_stencil( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ! select case ( this%kind )
-
-  ! case ( p_fk_psi, p_fk_ez, p_fk_bz )
-
   this%num_stencil = 3
   if ( .not. associated( this%offsets ) ) then
     allocate( this%offsets( this%num_stencil ) )
@@ -373,15 +370,16 @@ subroutine set_struct_stencil( this )
 
 end subroutine set_struct_stencil
 
-subroutine set_struct_matrix( this, pp, dr )
+subroutine set_struct_matrix( this, pp, gp, dr )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
   class( parallel_pipe ), intent(in) :: pp
+  class( grid ), intent(in) :: gp
   real, intent(in) :: dr
 
-  integer :: i, j, ierr, local_vol, nr
+  integer :: i, j, ierr, local_vol, nr, noff
   integer :: comm, lidproc, lnvp
   real :: idr2, m, m2, k1, k2, k0
   character(len=20), save :: sname = "set_struct_matrix"
@@ -391,6 +389,7 @@ subroutine set_struct_matrix( this, pp, dr )
   comm = pp%getlgrp()
   lidproc = pp%getlidproc()
   lnvp = pp%getlnvp()
+  noff = gp%get_noff(1)
 
   idr2 = 1.0 / (dr*dr)
   m = this%mode
@@ -408,7 +407,7 @@ subroutine set_struct_matrix( this, pp, dr )
   call HYPRE_StructMatrixCreate( comm, this%grid, this%stencil, this%A, ierr )
   call HYPRE_StructMatrixInitialize( this%A, ierr )
 
-  k0 = -0.5  
+  k0 = noff - 0.5
   do i = 1, local_vol, this%num_stencil
     k0 = k0 + 1.0
     k1 = k0 - 0.5
@@ -452,7 +451,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_amg )
 
-    print *, "Using Boomer AMG solver"
+    call write_stdout( 'mode '//num2str(this%mode)//": Using Boomer AMG solver" )
     call HYPRE_BoomerAMGCreate( this%solver, ierr )
     call HYPRE_BoomerAMGSetMaxLevels( this%solver, 20, ierr )
     call HYPRE_BoomerAMGSetMaxIter( this%solver, 100, ierr )
@@ -469,7 +468,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_smg )
 
-    print *, 'Using SMG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using SMG solver' )
     call HYPRE_StructSMGCreate( comm, this%solver, ierr )
     call HYPRE_StructSMGSetMemoryUse( this%solver, 0, ierr )
     call HYPRE_StructSMGSetMaxIter( this%solver, maxiter, ierr )
@@ -483,7 +482,7 @@ subroutine set_ij_solver( this, pp )
 
   case ( p_hypre_parpcg )
 
-    print *, 'Using ParCSR PCG solver'
+    call write_stdout( 'mode '//num2str(this%mode)//': Using ParCSR PCG solver' )
     call HYPRE_ParCSRPCGCreate( comm, this%solver, ierr )
     call HYPRE_ParCSRPCGSetMaxIter( this%solver, maxiter, ierr )
     call HYPRE_ParCSRPCGSetTol( this%solver, this%tol, ierr)
@@ -519,7 +518,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   class( grid ), intent(in) :: gp
   real, intent(in) :: dr
 
-  integer :: local_size, ierr, m, m2, i, nr
+  integer :: local_size, ierr, m, m2, i, nr, noff
   integer :: comm
   integer, dimension(:), pointer :: cols
   real :: idr2, k0, k_minus, k_plus
@@ -529,13 +528,14 @@ subroutine set_ij_matrix( this, pp, gp, dr )
 
   comm = pp%getlgrp()
   nr = gp%get_nd(1)
-  this%ilower = 4*gp%get_noff(1) + 1
-  this%iupper = 4*gp%get_noff(1) + 4*gp%get_ndp(1)
+  noff = gp%get_noff(1)
+  this%ilower = 4*noff + 1
+  this%iupper = 4*noff + 4*gp%get_ndp(1)
 
   local_size = this%iupper - this%ilower + 1
 
   call HYPRE_IJMatrixCreate( comm, this%ilower, this%iupper, &
-    this%ilower, this%iupper, this%A, ierr )
+      this%ilower, this%iupper, this%A, ierr )
   call HYPRE_IJMatrixSetObjectType( this%A, HYPRE_PARCSR, ierr )
   call HYPRE_IJMatrixInitialize( this%A, ierr )
 

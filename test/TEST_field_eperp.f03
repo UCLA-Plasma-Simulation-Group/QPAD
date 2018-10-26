@@ -1,9 +1,10 @@
 program test_field_eperp
 
+use parallel_pipe_class
+use grid_class
 use field_b_class
 use field_e_class
 use field_psi_class
-use field_class
 use field_src_class
 use system
 use param
@@ -13,6 +14,9 @@ use debug_tool
 
 implicit none
 
+type( parallel_pipe ), pointer :: pp => null()
+type( grid ), pointer :: gp => null()
+
 type( field_b ) :: b
 type( field_e ) :: e
 type( field_psi ) :: psi
@@ -20,9 +24,8 @@ type( field_rho ) :: rho
 type( field_jay ) :: jay
 type( field_djdxi ) :: djdxi
 
-integer :: num_modes = 3, dim = 3, order = p_fs_2order, part_shape = p_ps_linear
-integer, dimension(2) :: nd = (/128, 1/), nvp = (/1, 1/)
-integer, dimension(2,2) :: gc_num
+integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: nr = 128, nz = 1, nrp, noff
 real :: dr, dxi, r
 
 type( ufield ), dimension(:), pointer :: uq_re => null(), uq_im => null()
@@ -33,24 +36,28 @@ type( ufield ), dimension(:), pointer :: ub_re => null(), ub_im => null()
 type( ufield ), dimension(:), pointer :: upsi_re => null(), upsi_im => null()
 real, dimension(:,:), pointer :: p
 integer :: ierr, i, mode
+character(len=32) :: filename
 
-call MPI_INIT( ierr )
-call init_errors( 2, 3 )
+allocate( pp, gp )
+call pp%new(nst=1)
 
+call init_stdout( pp%getidproc() )
+call init_errors( eunit=2, idproc=pp%getlidproc(), monitor=3 )
 call write_dbg( 'main', 'test_field_eperp', 0, 'starts' )
 
-dr = 1.0 / (nd(1)-0.5)
+call gp%new( pp, nr, nz )
+
+dr = 1.0 / (nr-0.5)
 dxi = 1.0
+nrp = gp%get_ndp(1)
+noff = gp%get_noff(1)
 
-gc_num(:,1) = (/0,0/)
-gc_num(:,2) = (/0,0/)
-
-call rho%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call b%new( num_modes, dr, dxi, nd, nvp, part_shape, p_entity_plasma )
-call e%new( num_modes, dr, dxi, nd, nvp, part_shape, p_entity_plasma )
-call psi%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call jay%new( num_modes, dr, dxi, nd, nvp, part_shape )
-call djdxi%new( num_modes, dr, dxi, nd, nvp, part_shape )
+call rho%new( pp, gp, dr, dxi, num_modes, part_shape )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call jay%new( pp, gp, dr, dxi, num_modes, part_shape )
+call djdxi%new( pp, gp, dr, dxi, num_modes, part_shape )
 
 ! solve psi
 uq_re => rho%get_rf_re()
@@ -58,15 +65,15 @@ uq_im => rho%get_rf_im()
 
 do mode = 0, num_modes
   
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     uq_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
   if ( mode == 0 ) cycle
 
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     uq_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
   enddo
 
@@ -82,8 +89,8 @@ udjdxi_im => djdxi%get_rf_im()
 
 do mode = 0, num_modes
   
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     ujay_re(mode)%f1(1,i) = 0.0
     ujay_re(mode)%f1(2,i) = 0.0
     ujay_re(mode)%f1(3,i) = 0.0
@@ -94,8 +101,8 @@ do mode = 0, num_modes
 
   if ( mode == 0 ) cycle
 
-  do i = 1, nd(1)
-    r = (i-0.5)*dr
+  do i = 1, nrp
+    r = (real(i+noff)-0.5)*dr
     ujay_im(mode)%f1(1,i) = 0.0
     ujay_im(mode)%f1(2,i) = 0.0
     ujay_im(mode)%f1(3,i) = 0.0
@@ -121,47 +128,57 @@ upsi_re => psi%get_rf_re()
 upsi_im => psi%get_rf_im()
 
 p => ue_re(0)%get_f1()
-call write_data( p, 'er-re-0.txt', 1 )
-call write_data( p, 'ephi-re-0.txt', 2 )
+write( filename, '(A,I0.3,A)' ) 'er-re-0-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'ephi-re-0-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
 p => ue_re(1)%get_f1()
-call write_data( p, 'er-re-1.txt', 1 )
-call write_data( p, 'ephi-re-1.txt', 2 )
+write( filename, '(A,I0.3,A)' ) 'er-re-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'ephi-re-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
 p => ue_re(2)%get_f1()
-call write_data( p, 'er-re-2.txt', 1 )
-call write_data( p, 'ephi-re-2.txt', 2 )
+write( filename, '(A,I0.3,A)' ) 'er-re-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'ephi-re-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
 p => ue_im(1)%get_f1()
-call write_data( p, 'er-im-1.txt', 1 )
-call write_data( p, 'ephi-im-1.txt', 2 )
+write( filename, '(A,I0.3,A)' ) 'er-im-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'ephi-im-1-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
 p => ue_im(2)%get_f1()
-call write_data( p, 'er-im-2.txt', 1 )
-call write_data( p, 'ephi-im-2.txt', 2 )
+write( filename, '(A,I0.3,A)' ) 'er-im-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'ephi-im-2-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
 
-p => ub_re(0)%get_f1()
-call write_data( p, 'br-re-0.txt', 1 )
-call write_data( p, 'bphi-re-0.txt', 2 )
-p => ub_re(1)%get_f1()
-call write_data( p, 'br-re-1.txt', 1 )
-call write_data( p, 'bphi-re-1.txt', 2 )
-p => ub_re(2)%get_f1()
-call write_data( p, 'br-re-2.txt', 1 )
-call write_data( p, 'bphi-re-2.txt', 2 )
-p => ub_im(1)%get_f1()
-call write_data( p, 'br-im-1.txt', 1 )
-call write_data( p, 'bphi-im-1.txt', 2 )
-p => ub_im(2)%get_f1()
-call write_data( p, 'br-im-2.txt', 1 )
-call write_data( p, 'bphi-im-2.txt', 2 )
+! p => ub_re(0)%get_f1()
+! call write_data( p, 'br-re-0.txt', 1 )
+! call write_data( p, 'bphi-re-0.txt', 2 )
+! p => ub_re(1)%get_f1()
+! call write_data( p, 'br-re-1.txt', 1 )
+! call write_data( p, 'bphi-re-1.txt', 2 )
+! p => ub_re(2)%get_f1()
+! call write_data( p, 'br-re-2.txt', 1 )
+! call write_data( p, 'bphi-re-2.txt', 2 )
+! p => ub_im(1)%get_f1()
+! call write_data( p, 'br-im-1.txt', 1 )
+! call write_data( p, 'bphi-im-1.txt', 2 )
+! p => ub_im(2)%get_f1()
+! call write_data( p, 'br-im-2.txt', 1 )
+! call write_data( p, 'bphi-im-2.txt', 2 )
 
-p => upsi_re(0)%get_f1()
-call write_data( p, 'psi-re-0.txt', 1 )
-p => upsi_re(1)%get_f1()
-call write_data( p, 'psi-re-1.txt', 1 )
-p => upsi_re(2)%get_f1()
-call write_data( p, 'psi-re-2.txt', 1 )
-p => upsi_im(1)%get_f1()
-call write_data( p, 'psi-im-1.txt', 1 )
-p => upsi_im(2)%get_f1()
-call write_data( p, 'psi-im-2.txt', 1 )
+! p => upsi_re(0)%get_f1()
+! call write_data( p, 'psi-re-0.txt', 1 )
+! p => upsi_re(1)%get_f1()
+! call write_data( p, 'psi-re-1.txt', 1 )
+! p => upsi_re(2)%get_f1()
+! call write_data( p, 'psi-re-2.txt', 1 )
+! p => upsi_im(1)%get_f1()
+! call write_data( p, 'psi-im-1.txt', 1 )
+! p => upsi_im(2)%get_f1()
+! call write_data( p, 'psi-im-2.txt', 1 )
 
 call rho%del()
 call psi%del()
@@ -173,6 +190,7 @@ call e%del()
 call write_dbg( 'main', 'test_field_eperp', 0, 'ends' )
 
 call end_errors()
-call MPI_FINALIZE( ierr )
+call gp%del()
+call pp%del()
 
 end program test_field_eperp

@@ -30,20 +30,12 @@ call a3%new( pp, gp, dim, gc_num )
 a1%f1 = 1.0
 a2%f1 = 2.0
 
-print *, "a1 = ", a1%f1
-print *, "a2 = ", a2%f1
-
-
-! call cpu_time( start )
-! do i = 1, 100000
-!     a3 = a1 + a2
-! enddo
-! call cpu_time( finish )
-! print *, '("Time = ",f6.3," seconds.")', finish-start
+print *, "a1 = ", a1%f1(1,:)
+print *, "a2 = ", a2%f1(1,:)
 
 a3 = k*(a1+a2)+(a1+k)*a2
 
-print *, "a3 = ", a3%f1
+print *, "a3 = ", a3%f1(1,:)
 
 call pp%del()
 call gp%del()

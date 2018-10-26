@@ -35,14 +35,16 @@ type :: field
   procedure :: del => end_field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
+  generic :: copy_gc => copy_gc_local, copy_gc_stage
   ! generic :: solve => solve_field
   ! generic :: write_hdf5
   ! generic :: smooth
+  procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
 
   procedure, private :: init_field, end_field 
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
-  ! procedure :: read_input_field
+  procedure, private :: copy_gc_local, copy_gc_stage
 
 end type field
 
@@ -112,6 +114,71 @@ subroutine end_field( this )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_field
+
+subroutine copy_slice( this, idx, dir )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: idx, dir
+
+  integer :: i
+  character(len=20), save :: sname = "copy_slice"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%copy_slice( idx, dir )
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%copy_slice( idx, dir )
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine copy_slice
+
+subroutine copy_gc_local( this )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+
+  integer :: i
+  character(len=20), save :: sname = "copy_gc_local"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%copy_gc()
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%copy_gc()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine copy_gc_local
+
+subroutine copy_gc_stage( this, dir )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: dir
+
+  integer :: i
+  character(len=20), save :: sname = "copy_gc_stage"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%copy_gc( dir )
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%copy_gc( dir )
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine copy_gc_stage
 
 function get_dr( this )
 
