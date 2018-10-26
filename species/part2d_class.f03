@@ -63,6 +63,7 @@ end type
 
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
+character(len=128) :: erstr
 
 ! sbufl/sbufr = particle buffers sent to nearby processors
 ! rbufl/rbufr = particle buffers received from nearby processors
