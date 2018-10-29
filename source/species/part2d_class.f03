@@ -3,7 +3,8 @@
 module part2d_class
 
 use parallel_pipe_class
-use grid_class
+use field_class
+use ufield_class
 use param
 use system
 use fdist2d_class
@@ -24,17 +25,17 @@ type part2d
 ! dt = time interval between successive calculations
 ! xdim = dimension of the particle coordinates
 ! nbmax = size of buffer for passing particles between processors
-! np = total number of particles
 ! npp = number of particles in current partition
 ! npmax = maximum number of particles in each partition
 ! part(:,:) = initial particle coordinates
 ! ppart(:,:,:) = particle coordinates for OpenMP
 ! nppmx, nppmx0, nbmaxp, ntmaxp, npbmx, irc, ncl, ihole, kpic = parameters for OpenMP
 !         
-   real :: qbm, dt
+   real :: qbm, dt, dex
    integer :: xdim
-   integer(kind=LG) :: npmax, nbmax, np, npp = 0
+   integer(kind=LG) :: npmax, nbmax, npp = 0
    real, dimension(:,:), pointer :: part => null()
+   class(parallel_pipe), pointer :: pp => null()
    
    contains
    
@@ -72,288 +73,179 @@ integer :: szbufs = 0
 
 contains
 !
-subroutine init_part2d(this,pp,pf,gd,qbm,dt,xdim,s)
+subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
 
    implicit none
    
    class(part2d), intent(inout) :: this
    class(parallel_pipe), intent(in), pointer :: pp
    class(fdist2d), intent(inout) :: pf
-   class(grid), intent(in), pointer :: gd
+   class(field), intent(in), pointer :: fd
    real, intent(in) :: qbm, dt, s
    integer, intent(in) :: xdim
 
 ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: xtras, noff, nxyp, nx, npmax, nbmax
+   class(ufield), dimension(:) pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%qbm = qbm
    this%dt = dt
    this%xdim = xdim
    npmax = pf%getnpmax()
+   this%dex = pf%getdex()
    this%npmax = npmax
    nbmax = max(int(0.01*npmax),100)
    this%nbmax = nbmax
-   
+   ud => fd%get_rf_re()
+   this%pp => pp
+
    allocate(this%part(xdim,npmax))
-   call pf%dist(this%part,this%npp,gd,s)
+   call pf%dist(this%part,this%npp,ud(0),s)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-   end subroutine init_part2d
+end subroutine init_part2d
 !
-      subroutine end_part2d(this)
-          
-         implicit none
-         
-         class(part2d), intent(inout) :: this
-         character(len=18), save :: sname = 'end_part2d:'
-
-         call this%err%werrfl2(class//sname//' started')
-         deallocate(this%part,this%ppart,this%ncl,this%ihole,this%kpic)
-         call this%err%werrfl2(class//sname//' ended')
-         
-         return
-         
-      end subroutine end_part2d
+subroutine end_part2d(this)
+    
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   character(len=18), save :: sname = 'end_part2d'
+   
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   deallocate(this%part)
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+      
+end subroutine end_part2d
 !
-      subroutine renew_part2d(this,pf,fd,s)
-      
-         implicit none
-         
-         class(part2d), intent(inout) :: this
-         class(fdist2d), intent(inout) :: pf
-         class(ufield2d), pointer, intent(in) :: fd
-         real, intent(in) :: s
+subroutine renew_part2d(this,pf,fd,s)
 
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(fdist2d), intent(inout) :: pf
+   class(field), pointer, intent(in) :: fd
+   real, intent(in) :: s
 ! local data
-         character(len=18), save :: sname = 'renew_part2d:'
-         integer :: noff, prof
-                  
-         call this%err%werrfl2(class//sname//' started')
+   character(len=18), save :: sname = 'renew_part2d'
+   integer :: noff, prof
+   class(ufield), dimension(:) pointer :: ud
          
-         noff = fd%getnoff()
-         prof = pf%getnpf()         
-         
-         call pf%dist(this%part,this%npp,fd,s)
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   
+   ud => fd%get_rf_re()
+   call pf%dist(this%part,this%npp,ud(0),s)
 
-         call PPDBLKP2L(this%part,this%kpic,this%npp,noff,this%nppmx,&
-         &this%xdim,this%npmax,mx,my,mx1,mxyp1,this%irc)
-! check for errors
-         if (this%irc /= 0) then
-            write (erstr,*) 'PPDBLKP2L error, irc=', this%irc
-            call this%err%equit(class//sname//erstr); return
-         endif
-         
-! copy ordered particle data for OpenMP
-         call PPPMOVIN2L(this%part,this%ppart,this%kpic,this%npp,noff,&
-         &this%nppmx0,this%xdim,this%npmax,mx,my,mx1,mxyp1,this%irc)
-! check for errors
-         if (this%irc /= 0) then
-            write (erstr,*) 'PPPMOVIN2L overflow error, irc=', this%irc
-            call this%err%equit(class//sname//erstr); return
-         endif
+   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-
-         call this%err%werrfl2(class//sname//' ended')
-
-      end subroutine renew_part2d
+end subroutine renew_part2d
 !      
-      subroutine qdeposit(this,q)
-! deposit the charge density      
+subroutine qdeposit(this,q)
+! deposit the charge density (rho - Jz)     
       
-         implicit none
-         
-         class(part2d), intent(in) :: this
-         class(ufield2d), pointer, intent(in) :: q
+   implicit none
+   
+   class(part2d), intent(in) :: this
+   class(field), pointer, intent(in) :: q
 ! local data
-         character(len=18), save :: sname = 'qdeposit:'
-         real, dimension(:,:,:), pointer :: pq => null()
-         integer :: noff, nxv, nypmx
-                  
-         call this%err%werrfl2(class//sname//' started')
-         
-         pq => q%getrf()
-         noff = q%getnoff()
-         nxv = size(pq,2)
-         nypmx = size(pq,3)
-         
-         call PPGPPOST2L(this%ppart,pq(1,:,:),this%kpic,noff,&
-         &this%xdim,this%nppmx0,mx,my,nxv,nypmx,mx1,mxyp1)         
-         
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine qdeposit
+   character(len=18), save :: sname = 'qdeposit'
+   class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
+            
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   
+   q_re => q%get_rf_re()
+   q_im => q%get_rf_im()
+   
+   call part2d_qdeposit(this%part,this%npp,q_re,q_im,q%get_num_modes())         
+   
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   
+end subroutine qdeposit
 !      
-      subroutine amjdeposit(this,ef,bf,psit,cu,amu,dcu,dex)
+subroutine amjdeposit(this,ef,bf,cu,amu,dcu)
 ! deposit the current, acceleration and momentum flux      
       
-         implicit none
-         
-         class(part2d), intent(inout) :: this
-         class(ufield2d), pointer, intent(in) :: cu, amu, dcu
-         class(ufield2d), pointer, intent(in) :: ef, bf, psit
-         real, intent(in) :: dex
-         character(len=18), save :: sname = 'amjdeposit'
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(field), pointer, intent(in) :: cu, amu, dcu
+   class(field), pointer, intent(in) :: ef, bf
 ! local data
-         real, dimension(:,:,:), pointer :: pef => null(), pbf => null()
-         real, dimension(:,:,:), pointer :: ppsit => null(), pcu => null()
-         real, dimension(:,:,:), pointer :: pamu => null(), pdcu => null()
-         integer :: noff, nyp, nx, nxv, nypmx
+   character(len=18), save :: sname = 'amjdeposit'
+   class(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+   class(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+   class(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
+   class(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
+   class(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
 
-         call this%err%werrfl2(class//sname//' started')
-         
-         pef => ef%getrf(); pbf => bf%getrf()
-         ppsit => psit%getrf(); pcu => cu%getrf()
-         pamu => amu%getrf(); pdcu => dcu%getrf()
-         noff = ef%getnoff()
-         nxv = size(pef,2); nypmx = size(pef,3)
-         nx = ef%getnd1(); nyp = ef%getnd2p()
-         
-         call PPGRDCJPPOST2L_QP(this%ppart,pef,pbf,ppsit(1,:,:),pcu,pdcu,&
-         &pamu,this%kpic,noff,nyp,this%qbm, this%dt,this%ci,this%xdim,&
-         &this%nppmx0,nx,mx,my,nxv,nypmx,mx1,mxyp1,dex)
-         
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine amjdeposit
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   
+   ef_re => ef%get_rf_re()
+   ef_im => ef%get_rf_im()
+   bf_re => bf%get_rf_re()
+   bf_im => bf%get_rf_im()
+   cu_re => cu%get_rf_re()
+   cu_im => cu%get_rf_im()
+   dcu_re => dcu%get_rf_re()
+   dcu_im => dcu%get_rf_im()
+   amu_re => amu%get_rf_re()
+   amu_im => amu%get_rf_im()
+   
+   call part2d_amjdeposit(this%part,this%npp,this%dt,this%qbm,&
+   &ef_re,ef_im,bf_re,bf_im,cu_re,cu_im,dcu_re,dcu_im,amu_re,amu_im,&
+   &ef%get_num_modes())
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   
+end subroutine amjdeposit
 !      
-      subroutine partpush(this,ef,bf,psit,dex)
+subroutine partpush(this,ef,bf)
+! deposit the current, acceleration and momentum flux      
       
-         implicit none
-         
-         class(part2d), intent(inout) :: this
-         class(ufield2d), pointer, intent(in) :: ef, bf, psit
-         real, intent(in) :: dex
-         character(len=18), save :: sname = 'partpush'
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(field), pointer, intent(in) :: ef, bf
 ! local data
-         real, dimension(:,:,:), pointer :: pef => null(), pbf => null()
-         real, dimension(:,:,:), pointer :: ppsit => null()
-         integer :: noff, nyp, nx, ny, nxv, nypmx
-         real :: ek
-         
-         call this%err%werrfl2(class//sname//' started')
+   character(len=18), save :: sname = 'partpush'
+   class(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+   class(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+   
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   
+   ef_re => ef%get_rf_re()
+   ef_im => ef%get_rf_im()
+   bf_re => bf%get_rf_re()
+   bf_im => bf%get_rf_im()
+   
+   call part2d_push(this%part,this%npp,this%dt,this%qbm,this%dex,&
+   &ef_re,ef_im,bf_re,bf_im,ef%get_num_modes())
 
-         pef => ef%getrf(); pbf => bf%getrf()
-         ppsit => psit%getrf()
-         noff = ef%getnoff(); ny = ef%getnd2()
-         nxv = size(pef,2); nypmx = size(pef,3)
-         nx = ef%getnd1(); nyp = ef%getnd2p()
-
-         call PPGRBPPUSHF23L_QP(this%ppart,pef,pbf,ppsit(1,:,:),this%kpic,&
-         &this%ncl,this%ihole,noff,nyp,this%qbm,this%dt,this%dt,this%ci,ek,&
-         &this%xdim,this%nppmx0,nx,ny,mx,my,nxv,nypmx,mx1,mxyp1,this%ntmaxp,&
-         &this%irc,dex)
-         if (this%irc /= 0) then
-            write (erstr,*) 'PPGRBPPUSHF23L_QP error, irc=', this%irc
-            call this%err%equit(class//sname//erstr); return
-         endif
-
-! check for errors
-         if (this%irc /= 0) then
-            write (erstr,*) 'PPGRBPPUSHF23L_QP error, irc=', this%irc
-            call this%err%equit(class//sname//erstr); return
-         endif
-
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine partpush
-!
-      subroutine pmove(this,fd)
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   
+end subroutine partpush
+!      
+subroutine pmove(this,fd)
       
-         implicit none
+   implicit none
          
-         class(part2d), intent(inout) :: this
-         class(ufield2d), pointer, intent(in) :: fd
-         character(len=18), save :: sname = 'pmove:'
-! local data
-! list = (true,false) = list of particles leaving tiles found in push
-         integer :: noff, nyp, nx, ny, nxv, nypmx, kstrt, nvp
-         integer :: npbmx, nbmax, idimp, nppmx, ntmax, irc
-         real, dimension(:,:,:), pointer :: ppart => null()
-         integer, dimension(:,:), pointer :: ncl => null()
-         integer, dimension(:,:,:), pointer :: ihole => null()
-         integer, dimension(:), pointer :: kpic => null()
-         logical :: list = .true.
-         
-         call this%err%werrfl2(class//sname//' started')
-         
-         noff = fd%getnoff(); ny = fd%getnd2()
-         nx = fd%getnd1(); nyp = fd%getnd2p()
-         npbmx = this%npbmx; nbmax = this%nbmaxp
-         idimp = this%xdim; nppmx = this%nppmx0
-         ntmax = this%ntmaxp; ppart => this%ppart
-         kstrt = this%p%getlkstrt(); nvp = this%p%getlnvp()
-         ncl => this%ncl; ihole => this%ihole; kpic => this%kpic
-         irc = this%irc
-! check if required size of buffer has increased
-         if (szpbuf < idimp*npbmx*mxyp1) then
-            if (szpbuf /= 0) deallocate(ppbuff)
-! allocate new buffer
-            allocate(ppbuff(idimp,npbmx,mxyp1))
-            szpbuf = idimp*npbmx*mxyp1
-         endif
-! check if required size of buffers has increased
-         if (szbufs < idimp*nbmax) then
-            if (szbufs /= 0) deallocate(sbufl,sbufr,rbufl,rbufr)
-! allocate new buffers
-            allocate(sbufl(idimp,nbmax),sbufr(idimp,nbmax))
-            allocate(rbufl(idimp,nbmax),rbufr(idimp,nbmax))
-            szbufs = idimp*nbmax
-         endif
-! check if required size of buffers has increased
-         if (sznbufs < 3*mx1) then
-            if (sznbufs /= 0) deallocate(ncll,nclr,mcll,mclr)
-! allocate new buffers
-            allocate(ncll(3,mx1),nclr(3,mx1),mcll(3,mx1),mclr(3,mx1))
-            sznbufs = 3*mx1
-         endif
-!
-! first part of particle reorder on x and y cell with mx, my tiles:
-! list of particles leaving tile already calculated by push
-         if (list) then
-! updates: ppart, ppbuff, sbufl, sbufr, ncl, ncll, nclr, irc
-            call PPPORDERF2LA(ppart,ppbuff,sbufl,sbufr,ncl,ihole,ncll,nclr,&
-            &idimp,nppmx,mx1,myp1,npbmx,ntmax,nbmax,irc)
-            if (irc /= 0) then
-               write (erstr,*) kstrt,'mporderf2a error: ntmax, irc=',ntmax,irc            
-            endif
-! calculate list of particles leaving tile
-         else
-! updates ppart, ppbuff, sbufl, sbufr, ncl, ihole, ncll, nclr, irc
-            call PPPORDER2LA(ppart,ppbuff,sbufl,sbufr,kpic,ncl,ihole,ncll,nclr&
-            &,noff,nyp,idimp,nppmx,nx,ny,mx,my,mx1,myp1,npbmx,ntmax,nbmax,irc)
-            if (irc /= 0) then
-               write (erstr,*) kstrt,'mporder2a error: ntmax, irc=',ntmax,irc
-            endif
-         endif
-         if (irc /= 0) then
-               call this%err%equit(class//sname//erstr)
-               return
-         endif
-!
-! move particles into appropriate spatial regions with MPI:
-! updates rbufr, rbufl, mcll, mclr
-         call PPPMOVE2(sbufr,sbufl,rbufr,rbufl,ncll,nclr,mcll,mclr,kstrt,&
-         &nvp,idimp,nbmax,mx1)
-!
-! second part of particle reorder on x and y cell with mx, my tiles:
-! updates ppart, kpic
-         call PPPORDER2LB(ppart,ppbuff,rbufl,rbufr,kpic,ncl,ihole,mcll,mclr,&
-         &idimp,nppmx,mx1,myp1,npbmx,ntmax,nbmax,irc)
-         
-         if (irc /= 0) then
-            write (erstr,*) kstrt,'mporder2b error: nppmx, irc=',nppmx,irc
-            call this%err%equit(class//sname//erstr)
-            stop
-         endif
+   class(part2d), intent(inout) :: this
+   class(field), pointer, intent(in) :: fd
+! local data   
+   character(len=18), save :: sname = 'pmove'
+   class(ufield), dimension(:) pointer :: ud
 
-         this%irc = irc
+   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine pmove
+   ud => fd%get_rf_re()
+   call part2d_pmove(this%part,this%pp,this%npp,ud(0))
+   
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine pmove
 !      
       subroutine extractpsi(this,psi,dex)
       

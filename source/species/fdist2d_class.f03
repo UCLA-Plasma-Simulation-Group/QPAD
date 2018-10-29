@@ -3,7 +3,7 @@
 module fdist2d_class
 
 use parallel_pipe_class
-use grid_class
+use ufield_class
 use input_class
 
 implicit none
@@ -18,6 +18,7 @@ type, abstract :: fdist2d
 !
 ! ndprof = profile type 
    integer :: npf, npmax
+   real :: dex
                           
    contains
    generic :: new => init_fdist2d         
@@ -26,20 +27,20 @@ type, abstract :: fdist2d
    procedure(ab_init_fdist2d), deferred, private :: init_fdist2d
    procedure, private :: end_fdist2d
    procedure(ab_dist2d), deferred, private :: dist2d
-   procedure :: getnpf, getnpmax
+   procedure :: getnpf, getnpmax, getdex
                   
 end type fdist2d
 
 abstract interface
 !
-subroutine ab_dist2d(this,part2d,npp,gd,s)
+subroutine ab_dist2d(this,part2d,npp,ud,s)
    import fdist2d
-   import grid
+   import ufield
    implicit none
    class(fdist2d), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
    integer, intent(inout) :: npp
-   class(grid), intent(in), pointer :: gd         
+   class(grid), intent(in), pointer :: ud         
    real, intent(in) :: s
 end subroutine ab_dist2d
 !
@@ -97,6 +98,17 @@ function getnpmax(this)
       
 end function getnpmax
 !
+function getdex(this)
+
+   implicit none
+
+   class(fdist2d), intent(in) :: this
+   real :: getdex
+   
+   getdex = this%dex
+
+end function getdex
+!
 subroutine end_fdist2d(this)
     
    implicit none
@@ -121,7 +133,7 @@ subroutine init_fdist2d_000(this,input,i)
 ! local data
    integer :: npf,ppc1,ppc2,n1,nmode
    integer(kind=LG) :: npmax
-   real :: qm, den
+   real :: qm, den, lr, ur
    character(len=20) :: sn,s1
    character(len=18), save :: sname = 'init_fdist2d_000'
    
@@ -129,6 +141,8 @@ subroutine init_fdist2d_000(this,input,i)
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
+   call input%get('simulation.box.r(1)',lr)
+   call input%get('simulation.box.r(2)',ur)
    call input%get('simulation.max_mode',nmode)
    call input%get(trim(s1)//'.profile',npf)
    call input%get(trim(s1)//'.ppc(1)',ppc1)
@@ -141,6 +155,7 @@ subroutine init_fdist2d_000(this,input,i)
       call input%get(trim(s1)//'.piecewise_density',this%fs)
       call input%get(trim(s1)//'.piecewise_s',this%s)
    end if
+   this%dex = (ur - lr)/real(n1)
    this%npf = npf
    this%nmode = nmode
    this%ppc1 = ppc1
@@ -151,12 +166,12 @@ subroutine init_fdist2d_000(this,input,i)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine init_fdist2d_000
 !
-subroutine dist2d_000(this,part2d,npp,gd,s)
+subroutine dist2d_000(this,part2d,npp,ud,s)
    implicit none
    class(fdist2d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
    integer, intent(inout) :: npp
-   class(grid), intent(in), pointer :: gd
+   class(ufield), intent(in) :: ud
    real, intent(in) :: s 
 ! local data
    character(len=18), save :: sname = 'dist2d_000'
@@ -169,7 +184,7 @@ subroutine dist2d_000(this,part2d,npp,gd,s)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
-   n1 = gd%get_nd(1); n1p = gd%get_ndp(1); noff1 = gd%get_noff(1)
+   n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
    ppc1 = this%ppc1; ppc2 = this%ppc2
    t0 = 2.0*pi/ppc2 
    den_temp = 1.0
