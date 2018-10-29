@@ -517,4 +517,58 @@ subroutine part2d_pmove(part,pp,npp,ud)
 
 end subroutine part2d_pmove
 !
+subroutine part2d_extractpsi(part,npp,qbm,dex,psi_re,psi_im)
+
+   implicit none
+
+   real, dimension(:,:), pointer, intent(inout) :: part
+   integer(kind=LG), intent(in) :: npp
+   class(ufield), dimension(:), pointer, intent(in) :: psi_re, psi_im
+! local data
+   character(len=20), save :: sname = "part2d_extractpsi"
+   real, dimension(:,:), pointer :: psi0,psir,psii
+   real :: dx2, r0, r, th, vx, vy, dx, dxx
+   complex(kind=DB) :: rc, rc0
+   integer(kind=LG) :: ii
+   integer :: i, noff, n1p
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   noff = psi_re(0)%get_noff(1)
+   n1p = psi_re(0)%get_ndp(1)
+   psi0 => psi_re(0)%get_f1()
+   psir => null(); psii => null
+
+   dx2 = dex * dex
+   do ii = 1, npp
+      r0 = part(1,ii)
+      th = part(2,ii)
+      vx = ppart(3,j,k)
+      vy = ppart(4,j,k)
+      rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
+      r = r0 + 0.5      
+      nn = r - noff
+      dd = r - real(nn)
+      ad = 1.0 - dd
+      dx = ad*psi0(1,nn)
+      dx = dd*psi0(1,nn+1) + dx
+      rc = rc0
+      do i = 1, num_modes
+         rcr = real(rc)
+         rci = aimag(rc)
+         psir => psi_re(i)%get_f1()
+         psii => psi_im(i)%get_f1()
+         dx = (ad*psir(1,nn)+dd*psir(1,nn+1))*rcr + dx
+         dx = (ad*psii(1,nn)+dd*psii(1,nn+1))*rci + dx
+         rc = rc*rc
+      end do
+      dx = - dx*qbm
+      ppart(7,ii) = 1.0 + dx
+      ppart(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5
+   end do
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine part2d_extractpsi
+!
 end module part2d_lib

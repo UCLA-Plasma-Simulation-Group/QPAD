@@ -149,7 +149,6 @@ subroutine init_fdist2d_000(this,input,i)
    call input%get(trim(s1)//'.ppc(2)',ppc2)
    call input%get(trim(s1)//'.q',qm)
    call input%get(trim(s1)//'.density',den)
-   npmax = n1*ppc1*ppc2*2
    call input%get(trim(s1)//'.longitudinal_profile',this%long_prof)
    if (trim(this%long_prof) == 'piecewise') then
       call input%get(trim(s1)//'.piecewise_density',this%fs)
@@ -159,9 +158,11 @@ subroutine init_fdist2d_000(this,input,i)
    this%npf = npf
    this%nmode = nmode
    this%ppc1 = ppc1
+   if (nmode == 0) ppc2 = 1
    this%ppc2 = ppc2
    this%qm = qm
    this%den = den
+   npmax = n1*ppc1*ppc2*4
    this%npmax = npmax
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine init_fdist2d_000

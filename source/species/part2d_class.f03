@@ -2,14 +2,14 @@
 
 module part2d_class
 
+use param
+use system
 use parallel_pipe_class
 use field_class
 use ufield_class
-use param
-use system
 use fdist2d_class
+use hdf5io_class
 use part2d_lib
-use mpi
          
 implicit none
 
@@ -247,127 +247,126 @@ subroutine pmove(this,fd)
 
 end subroutine pmove
 !      
-      subroutine extractpsi(this,psi,dex)
+subroutine extractpsi(this,psi)
       
-         implicit none
-         
-         class(part2d), intent(inout) :: this
-         class(ufield2d), pointer, intent(in) :: psi
-         real, intent(in) :: dex
-         character(len=18), save :: sname = 'extractpsi'
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(field), pointer, intent(in) :: psi
 ! local data
-         real, dimension(:,:,:), pointer :: ppsi
-         integer :: noff, nyp, nx, nxv, nypmx
-         
-         call this%err%werrfl2(class//sname//' started')
+   character(len=18), save :: sname = 'extractpsi'
+   class(ufield), dimension(:), pointer :: psi_re => null(), psi_im => null()
+   
+   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-         ppsi => psi%getrf(); noff = psi%getnoff()
-         nyp = psi%getnd2p(); nx = psi%getnd1()
-         nxv = size(ppsi,2); nypmx = size(ppsi,3)
-         
-         call WPGPSIPOST2L_QP(this%ppart,ppsi(1,:,:),this%kpic,this%qbm,noff,&
-         &nyp,this%xdim,this%nppmx0,nx,mx,my,nxv,nypmx,mx1,mxyp1,dex)
+   psi_re => psi%get_rf_re()
+   psi_im => psi%get_rf_im()
+   call part2d_extractpsi(this%part,this%npp,this%qbm,this%dex,psi_re,psi_im)
 
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine extractpsi
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   
+end subroutine extractpsi
 !
-      subroutine pipesend_part2d(this,tag,id)
+subroutine pipesend_part2d(this)
       
-         implicit none
+   implicit none
          
-         class(part2d), intent(inout) :: this
-         integer, intent(in) :: tag
-         integer, intent(inout) :: id
-! local data
-         character(len=18), save :: sname = 'pipesend_part2d:'
-         integer :: des, ierr
+   class(part2d), intent(inout) :: this
+
+   return
+!          integer, intent(in) :: tag
+!          integer, intent(inout) :: id
+! ! local data
+!          character(len=18), save :: sname = 'pipesend_part2d:'
+!          integer :: des, ierr
          
          
-         call this%err%werrfl2(class//sname//' started')
+!          call this%err%werrfl2(class//sname//' started')
          
-         des = this%p%getidproc()+this%p%getlnvp()
+!          des = this%p%getidproc()+this%p%getlnvp()
          
-         if (des >= this%p%getnvp()) then
-            id = MPI_REQUEST_NULL         
-            call this%err%werrfl2(class//sname//' ended')
-            return
-         endif
+!          if (des >= this%p%getnvp()) then
+!             id = MPI_REQUEST_NULL         
+!             call this%err%werrfl2(class//sname//' ended')
+!             return
+!          endif
          
-         call this%pcb()
+!          call this%pcb()
                   
-         call MPI_ISEND(this%part,this%npp*this%xdim,this%p%getmreal(),&
-         &des,tag,this%p%getlworld(),id,ierr)
+!          call MPI_ISEND(this%part,this%npp*this%xdim,this%p%getmreal(),&
+!          &des,tag,this%p%getlworld(),id,ierr)
 
-! check for errors
-         if (ierr /= 0) then
-            write (erstr,*) 'MPI_ISEND failed'
-            call this%err%equit(class//sname//erstr); return
-         endif
+! ! check for errors
+!          if (ierr /= 0) then
+!             write (erstr,*) 'MPI_ISEND failed'
+!             call this%err%equit(class//sname//erstr); return
+!          endif
 
-         call this%err%werrfl2(class//sname//' ended')
+!          call this%err%werrfl2(class//sname//' ended')
          
-      end subroutine pipesend_part2d
+end subroutine pipesend_part2d
 !      
-      subroutine piperecv_part2d(this,fd,tag)
+subroutine piperecv_part2d(this)
       
-         implicit none
+   implicit none
          
-         class(part2d), intent(inout) :: this
-         class(ufield2d), pointer, intent(in) :: fd
-         integer, intent(in) :: tag
-! local data
-         character(len=18), save :: sname = 'piperecv_part2d:'
-         integer, dimension(10) :: istat
-         integer :: nps, id, des, ierr
-         
-         
-         call this%err%werrfl2(class//sname//' started')
+   class(part2d), intent(inout) :: this
 
-         des = this%p%getidproc()-this%p%getlnvp()
+   return
+!          class(ufield2d), pointer, intent(in) :: fd
+!          integer, intent(in) :: tag
+! ! local data
+!          character(len=18), save :: sname = 'piperecv_part2d:'
+!          integer, dimension(10) :: istat
+!          integer :: nps, id, des, ierr
          
-         if (des < 0) then
-            call this%err%werrfl2(class//sname//' ended')
-            return
-         endif
+         
+!          call this%err%werrfl2(class//sname//' started')
 
-         call MPI_IRECV(this%part,this%npmax*this%xdim,this%p%getmreal(),&
-         &des,tag,this%p%getlworld(),id,ierr)
+!          des = this%p%getidproc()-this%p%getlnvp()
+         
+!          if (des < 0) then
+!             call this%err%werrfl2(class//sname//' ended')
+!             return
+!          endif
 
-         call MPI_WAIT(id,istat,ierr)
-         
-         call MPI_GET_COUNT(istat,this%p%getmreal(),nps,ierr)
+!          call MPI_IRECV(this%part,this%npmax*this%xdim,this%p%getmreal(),&
+!          &des,tag,this%p%getlworld(),id,ierr)
 
-         this%npp = nps/this%xdim
+!          call MPI_WAIT(id,istat,ierr)
          
-         call this%pcp(fd)
+!          call MPI_GET_COUNT(istat,this%p%getmreal(),nps,ierr)
+
+!          this%npp = nps/this%xdim
          
-! check for errors
-         if (ierr /= 0) then
-            write (erstr,*) 'MPI failed'
-            call this%err%equit(class//sname//erstr); return
-         endif
+!          call this%pcp(fd)
          
-         call this%err%werrfl2(class//sname//' ended')
+! ! check for errors
+!          if (ierr /= 0) then
+!             write (erstr,*) 'MPI failed'
+!             call this%err%equit(class//sname//erstr); return
+!          endif
          
-      end subroutine piperecv_part2d
+!          call this%err%werrfl2(class//sname//' ended')
+         
+end subroutine piperecv_part2d
 !      
-      subroutine writehdf5_part2d(this,file,delta)
+subroutine writehdf5_part2d(this,file)
 
-         implicit none
+   implicit none
          
-         class(part2d), intent(inout) :: this
-         class(hdf5file), intent(in) :: file
-         real, dimension(2), intent(in) :: delta
+   class(part2d), intent(inout) :: this
+   class(hdf5file), intent(in) :: file
 ! local data
-         character(len=18), save :: sname = 'writehdf5_part2d:'
-         integer :: ierr
+   character(len=18), save :: sname = 'writehdf5_part2d'
+   integer :: ierr
 
-         call this%err%werrfl2(class//sname//' started')                  
-         call this%pcb()
-         call pwpart(this%p,this%err,file,this%part,this%npp,1,delta,ierr)
-         call this%err%werrfl2(class//sname//' ended')
-      
-      end subroutine writehdf5_part2d
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   call pwpart(this%pp,file,this%part,this%npp,1,this%dex,ierr)
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine writehdf5_part2d
 !      
-      end module part2d_class
+end module part2d_class
