@@ -170,17 +170,25 @@ subroutine write_dbg( clsname, sname, level, msg )
 
 end subroutine write_dbg
 
-function num2str_int( number ) result( str )
+function num2str_int( number, width ) result( str )
 
   implicit none
 
   integer, intent(in) :: number
+  integer, intent(in), optional :: width
   character(len=:), allocatable :: str
 
   integer :: clen
-  character(len=32) :: tmp_str
+  character(len=32) :: tmp_str, format_str
 
-  write( tmp_str, * ) number
+  if ( present(width) ) then
+    write( format_str, * ) width
+    write( format_str, * ) '(I'//trim(adjustl(format_str))//'.'&
+    //trim(adjustl(format_str))//')'
+    write( tmp_str, format_str ) number
+  else
+    write( tmp_str, * ) number
+  endif
   clen = len( trim(adjustl(tmp_str)) )
   allocate( character(len=clen) :: str )
   str = trim(adjustl(tmp_str))

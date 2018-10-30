@@ -3,6 +3,7 @@ module field_class
 use parallel_pipe_class
 use grid_class
 use ufield_class
+use hdf5io_class
 use param
 use system
 
@@ -36,8 +37,8 @@ type :: field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
   generic :: copy_gc => copy_gc_local, copy_gc_stage
+  generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   ! generic :: solve => solve_field
-  ! generic :: write_hdf5
   ! generic :: smooth
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
@@ -45,6 +46,7 @@ type :: field
   procedure, private :: init_field, end_field 
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
   procedure, private :: copy_gc_local, copy_gc_stage
+  procedure, private :: write_hdf5_single, write_hdf5_pipe
 
 end type field
 
@@ -179,6 +181,65 @@ subroutine copy_gc_stage( this, dir )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_stage
+
+subroutine write_hdf5_single( this, files, dim )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class( hdf5file ), intent(in), dimension(:) :: files
+  integer, intent(in) :: dim
+
+  integer :: i
+  character(len=32), save :: sname = 'write_hdf5_single'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+
+    if ( i == 0 ) then
+      call this%rf_re(i)%write_hdf5( files(1), dim )
+      cycle
+    endif
+
+    call this%rf_re(i)%write_hdf5( files(2*i), dim )
+    call this%rf_im(i)%write_hdf5( files(2*i+1), dim )
+
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine write_hdf5_single
+
+subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class( hdf5file ), intent(in), dimension(:) :: files
+  integer, intent(in) :: dim, rtag, stag
+  integer, intent(inout) :: id
+
+  integer :: i
+  character(len=32), save :: sname = 'write_hdf5_pipe'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+
+    if ( i == 0 ) then
+      call this%rf_re(i)%write_hdf5( files(1), dim, rtag, stag, id )
+      cycle
+    endif
+
+    call this%rf_re(i)%write_hdf5( files(2*i), dim, rtag, stag, id )
+    call this%rf_im(i)%write_hdf5( files(2*i+1), dim, rtag, stag, id )
+
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine write_hdf5_pipe
 
 function get_dr( this )
 
