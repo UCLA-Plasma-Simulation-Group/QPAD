@@ -103,9 +103,9 @@ subroutine read_input_json(this)
    
    this%pp => pp
                
-   call this%get('simulation.nr',nr)
+   call this%get('simulation.grid(1)',nr)
 
-   call this%get('simulation.nz',nz)
+   call this%get('simulation.grid(2)',nz)
 
    ! call this%get('simulation.boundary',boundary)
    
