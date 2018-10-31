@@ -8,6 +8,7 @@
         "z" : [0,10.0]},
     "boundary" : "conducting",
     "max_mode" : 0,
+    "interpolation" : "linear",
     "n0" : 1.0e16,
     "time" : 30.1,
     "dt" : 10.0,
