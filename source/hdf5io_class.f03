@@ -1,9 +1,7 @@
-! hdf5io module for QuickPIC Open Source 1.0
-! update: 04/18/2016
-
 module hdf5io_class
 
 use parallel_pipe_class
+use system
 use HDF5
 use mpi
  
@@ -11,15 +9,15 @@ implicit none
 
 private
 
-public :: hdf5file, pwfield, pwfield_pipe, wfield_pipe, pwpart_pipe, pwpart,&
-&wpart,rpart
+public :: hdf5file, pwfield, pwfield_pipe
+! public ::  wfield_pipe, pwpart_pipe, pwpart, wpart, rpart
 
 type hdf5file
  
   private
 
   character(len=100) :: filename = 'file.h5', &
-                        timeunits = 'a.u.', &
+                        timeunit = 'a.u.', &
                         dataname = 'Data', &
                         units = 'a.u.', &
                         label = 'Data'
@@ -36,49 +34,49 @@ type hdf5file
   generic :: new => init_hdf5file
   procedure, private :: init_hdf5file
  
-end type
+end type hdf5file
 
 interface add_h5_atribute
- module procedure add_h5_atribute_str
- module procedure add_h5_atribute_str_v1
- module procedure add_h5_atribute_single
- module procedure add_h5_atribute_v1_single
- module procedure add_h5_atribute_int
- module procedure add_h5_atribute_v1_int
+  module procedure add_h5_atribute_str
+  module procedure add_h5_atribute_str_v1
+  module procedure add_h5_atribute_single
+  module procedure add_h5_atribute_v1_single
+  module procedure add_h5_atribute_int
+  module procedure add_h5_atribute_v1_int
 end interface
 
 interface pwfield
-module procedure pwfield_3d
-module procedure pwfield_2d
+  module procedure pwfield_3d
+  module procedure pwfield_2d
 end interface
 
 interface pwfield_pipe
-module procedure pwfield_3d_pipe
-module procedure pwfield_2d_pipe
+  module procedure pwfield_3d_pipe
+  module procedure pwfield_2d_pipe
 end interface
 
 interface wfield_pipe
-module procedure wfield_2d_pipe
+  module procedure wfield_2d_pipe
 end interface      
 
 interface pwpart_pipe
-module procedure pwpart_3d_pipe
+  module procedure pwpart_3d_pipe
 end interface
 
 interface pwpart
-module procedure pwpart_2d
-module procedure pwpart_2d_r
+  module procedure pwpart_2d
+  module procedure pwpart_2d_r
 end interface
 
 contains
 
-subroutine init_hdf5file( this, filename, timeunits, ty, n, t, dt, axisname,&
+subroutine init_hdf5file( this, filename, timeunit, ty, n, t, dt, axisname,&
   axislabel, axisunits, axismax, axismin, dataname, units, label, rank )
 
   implicit none
 
   class(hdf5file), intent(inout) :: this
-  character(len=*), intent(in), optional :: filename, timeunits
+  character(len=*), intent(in), optional :: filename, timeunit
   character(len=*), intent(in), optional :: ty, dataname, units, label
   integer, intent(in), optional :: n, rank
   real, intent(in), optional :: t, dt
@@ -90,7 +88,7 @@ subroutine init_hdf5file( this, filename, timeunits, ty, n, t, dt, axisname,&
   if (present(dataname)) this%dataname = dataname
   if (present(units)) this%units = units
   if (present(label)) this%label = label
-  if (present(timeunits)) this%timeunits = timeunits
+  if (present(timeunit)) this%timeunit = timeunit
   if (present(ty)) this%ty = ty
   if (present(n)) this%n = n
   if (present(rank)) this%rank = rank
@@ -98,7 +96,7 @@ subroutine init_hdf5file( this, filename, timeunits, ty, n, t, dt, axisname,&
   if (present(dt)) this%dt = dt
   if (present(axisname)) this%axisname = axisname
   if (present(axislabel)) this%axislabel = axislabel
-  if (present(axisunits)) this%xisunits = axisunits
+  if (present(axisunits)) this%axisunits = axisunits
   if (present(axismax)) this%axismax = axismax
   if (present(axismin)) this%axismin = axismin
 
@@ -138,8 +136,8 @@ subroutine add_h5_atribute_str_v1( objID, name, attribute )
  implicit none
   
  integer(hid_t), intent(in) :: objID
- character( len = * ), intent(in) :: name
- character( len = * ), dimension(:), intent(in) :: attribute
+ character(len=*), intent(in) :: name
+ character(len=*), dimension(:), intent(in) :: attribute
   
  integer(hid_t) :: dataspaceID, typeID, attrID
  integer(hsize_t), dimension(1) :: dims
@@ -255,13 +253,14 @@ subroutine add_h5_atribute_v1_int( objID, name, attribute )
 
 end subroutine add_h5_atribute_v1_int
 !      
-subroutine wrattr_file(this,file_id,xferID)
+subroutine wrattr_file( this, file_id, xferID )
 
- implicit none
- 
- class(hdf5file), intent(in) :: this
- integer(hid_t), intent(in) :: file_id
-! local data
+  implicit none
+
+  class(hdf5file), intent(in) :: this
+  integer(hid_t), intent(in) :: file_id
+
+  ! local data
   integer(hid_t) :: rootID, aid, dspace_id, dset_id, treal, xferID
   integer(hsize_t), dimension(1) :: dims
   integer, parameter :: zero = ichar('0')          
@@ -276,7 +275,7 @@ subroutine wrattr_file(this,file_id,xferID)
   call add_h5_atribute(rootID, 'TIME', this%t)
   call add_h5_atribute(rootID, 'ITER', this%n) 
   call add_h5_atribute(rootID, 'DT', this%dt)
-  call add_h5_atribute(rootID, 'TIME UNITS', this%timeunits) 
+  call add_h5_atribute(rootID, 'TIME UNIT', this%timeunit) 
   
   if (this%ty == 'grid') then
      call h5gcreate_f(rootID, 'AXIS', aid, ierr) 
@@ -287,10 +286,10 @@ subroutine wrattr_file(this,file_id,xferID)
         call h5dcreate_f(aid, 'AXIS'//char(zero+i), treal, dspace_id,&
         &dset_id, ierr )
 
-        call add_h5_atribute(dset_id, 'TYPE', 'linear') 
-        call add_h5_atribute(dset_id, 'UNITS', trim(this%axisunits(i))) 
-        call add_h5_atribute(dset_id, 'NAME', trim(this%axisname(i))) 
-        call add_h5_atribute(dset_id, 'LONG_NAME', trim(this%axislabel(i))) 
+        call add_h5_atribute( dset_id, 'TYPE', 'linear') 
+        call add_h5_atribute( dset_id, 'UNITS', trim(this%axisunits(i))) 
+        call add_h5_atribute( dset_id, 'NAME', trim(this%axisname(i))) 
+        call add_h5_atribute( dset_id, 'LONG_NAME', trim(this%axislabel(i))) 
 
         call h5dwrite_f(dset_id, treal, (/this%axismin(i),this%axismax(i)/),&
         &dims, ierr, xfer_prp=xferID)
@@ -305,13 +304,13 @@ subroutine wrattr_file(this,file_id,xferID)
 
 end subroutine wrattr_file
 !
-subroutine wrattr_dataset(this,dset_id,unit,name)
+subroutine wrattr_dataset( this, dset_id, unit, name )
 
  implicit none
  
  class(hdf5file), intent(in) :: this
  integer(hid_t), intent(in) :: dset_id
- character(len=*), intent(in), optional :: unit,name
+ character(len=*), intent(in), optional :: unit, name
 
  if (present(unit)) then
     call add_h5_atribute(dset_id, 'UNITS', unit)
@@ -327,6 +326,7 @@ subroutine wrattr_dataset(this,dset_id,unit,name)
 
 end subroutine wrattr_dataset
 !
+
 subroutine pwfield_3d(pp,file,fd,gs,ls,noff,ierr)
 
  implicit none
@@ -400,7 +400,7 @@ subroutine pwfield_3d(pp,file,fd,gs,ls,noff,ierr)
        
 end subroutine pwfield_3d
 !
-subroutine pwfield_2d(pp,file,fd,gs,ls,noff,ierr)
+subroutine pwfield_2d( pp, file, fd, gs, ls, noff, ierr )
 
  implicit none
 
@@ -583,65 +583,65 @@ subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  endif
                 
 end subroutine pwfield_3d_pipe
-!
-subroutine pwfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
-&stag,id,ierr)
+! !
+subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
+  stag, id, ierr )
 
- implicit none
+  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
- class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(in) :: fd
- integer, dimension(2), intent(in) :: gs, ls
- integer, dimension(2), intent(in) :: noff
- integer, intent(in) :: rtag, stag
- integer, intent(inout) :: id, ierr
- 
-! local data
- integer(hid_t) :: treal,flplID, xferID, dcplID, memspaceID 
- integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aid
- integer(hid_t) :: tstring
- integer(hsize_t), dimension(2) :: gsize, lsize
- integer(hsize_t), dimension(2) :: lnoff
- character(len=80) :: string
- integer(hsize_t) :: lstr
- integer(hsize_t), dimension(2) :: start
- integer :: ori, des, nvyp, stageid, mid, message, info
- integer, dimension(10) :: istat
- integer(hsize_t), dimension(1) :: dims 
- character(len=:), allocatable :: filename
- character(len=8) :: st
+  class(parallel_pipe), intent(in), pointer :: pp
+  class(hdf5file), intent(in) :: file
+  real, dimension(:,:), intent(in) :: fd
+  integer, dimension(2), intent(in) :: gs, ls
+  integer, dimension(2), intent(in) :: noff
+  integer, intent(in) :: rtag, stag
+  integer, intent(inout) :: id, ierr
 
-          
- allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
- write (st,'(I8.8)') file%n
- filename = trim(file%filename)//trim(file%dataname)//'_'//st//'.h5'
- 
- ierr = 0
- gsize = gs
- lsize = ls
- lnoff = noff
- nvyp = pp%getlnvp()
- ori = pp%getkstrt() - nvyp - 1
- des = pp%getkstrt() + nvyp - 1
- dims = 1
- 
- if (ori >= 0) then
+  ! local data
+  integer(hid_t) :: treal,flplID, xferID, dcplID, memspaceID 
+  integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aid
+  integer(hid_t) :: tstring
+  integer(hsize_t), dimension(2) :: gsize, lsize
+  integer(hsize_t), dimension(2) :: lnoff
+  character(len=80) :: string
+  integer(hsize_t) :: lstr
+  integer(hsize_t), dimension(2) :: start
+  integer :: ori, des, nvyp, stageid, mid, message, info
+  integer, dimension(10) :: istat
+  integer(hsize_t), dimension(1) :: dims 
+  character(len=:), allocatable :: filename
+  character(len=8) :: st
+
+  
+  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
+  write (st,'(I8.8)') file%n
+  filename = trim(file%filename)//trim(file%dataname)//'_'//st//'.h5'
+
+  ierr = 0
+  gsize = gs
+  lsize = ls
+  lnoff = noff
+  nvyp = pp%getlnvp()
+  ori = pp%getkstrt() - nvyp - 1
+  des = pp%getkstrt() + nvyp - 1
+  dims = 1
+
+  if (ori >= 0) then
     call MPI_IRECV(message,1,pp%getmint(),ori,rtag,pp%getlworld(),&
     &mid,ierr)
     call MPI_WAIT(mid,istat,ierr)
- endif
- 
- call h5open_f(ierr)
- treal = detect_precision()
- call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)         
- call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)         
- call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)  
- info = MPI_INFO_NULL
- call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
- call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)    
- 
- if (ori >= 0) then
+  endif
+
+  call h5open_f(ierr)
+  treal = detect_precision()
+  call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)         
+  call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)         
+  call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)  
+  info = MPI_INFO_NULL
+  call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+  call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)    
+
+  if (ori >= 0) then
     call h5fopen_f(filename,H5F_ACC_RDWR_F, file_id, ierr,&
     &access_prp=flplID)
     call h5aopen_by_name_f(file_id, "/", "NAME", aid, ierr)
@@ -652,46 +652,46 @@ subroutine pwfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
     call h5dopen_f(file_id, string, dset_id, ierr, H5P_DEFAULT_F)
     call h5aclose_f(aid, ierr)
     call h5tclose_f(tstring, ierr)
- else
+  else
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,ierr,&
     &access_prp=flplID) 
     call wrattr_file(file,file_id,xferID)
- endif
- 
- call h5screate_simple_f(2, gsize, dspace_id, ierr)
- call h5screate_simple_f(2, lsize, memspaceID, ierr )
- call h5gopen_f(file_id, '/', rootID, ierr)
- if (ori < 0) then
+  endif
+
+  call h5screate_simple_f(2, gsize, dspace_id, ierr)
+  call h5screate_simple_f(2, lsize, memspaceID, ierr )
+  call h5gopen_f(file_id, '/', rootID, ierr)
+  if (ori < 0) then
     call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id,&
     &ierr, dcplID)
     call wrattr_dataset(file,dset_id)
- endif
- 
- start = lnoff
+  endif
 
- call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
- &ierr)
+  start = lnoff
 
- call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
- &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
+  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
+  &ierr)
+
+  call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
+  &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
 
 
- call h5sclose_f(memspaceID, ierr)
- call h5sclose_f(dspace_id, ierr)
- call h5pclose_f(xferID, ierr)
- call h5pclose_f(dcplID, ierr)
- call h5pclose_f(flplID, ierr)
- call h5gclose_f(rootID, ierr)
- call h5dclose_f(dset_id, ierr)
- call h5fclose_f(file_id, ierr)
- call h5close_f(ierr)
+  call h5sclose_f(memspaceID, ierr)
+  call h5sclose_f(dspace_id, ierr)
+  call h5pclose_f(xferID, ierr)
+  call h5pclose_f(dcplID, ierr)
+  call h5pclose_f(flplID, ierr)
+  call h5gclose_f(rootID, ierr)
+  call h5dclose_f(dset_id, ierr)
+  call h5fclose_f(file_id, ierr)
+  call h5close_f(ierr)
 
- if (des < pp%getnvp()) then
+  if (des < pp%getnvp()) then
     call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
     &id,ierr)
- else
+  else
     id = MPI_REQUEST_NULL         
- endif
+  endif
                 
 end subroutine pwfield_2d_pipe
 !
@@ -1425,7 +1425,7 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,delta,rtag,stag,&
  call h5close_f(ierr)
  
 end subroutine pwpart_3d_pipe
-!
+! !
 subroutine wpart(pp,file,part,npp,dspl,ierr)
 
  implicit none

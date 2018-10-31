@@ -63,7 +63,7 @@ subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
   
   case ( p_ps_linear )
   
-    gc_num(:,1) = (/0, 1/)
+    gc_num(:,1) = (/1, 1/)
     gc_num(:,2) = (/0, 1/)
   
   case ( p_ps_quadratic )
@@ -106,7 +106,7 @@ subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
   
   case ( p_ps_linear )
   
-    gc_num(:,1) = (/0, 1/)
+    gc_num(:,1) = (/1, 1/)
     gc_num(:,2) = (/0, 1/)
   
   case ( p_ps_quadratic )

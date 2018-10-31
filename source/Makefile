@@ -33,13 +33,15 @@ src = dtimer.c param.f03 system.f03 parallel_class.f03 debug_tool.f03
 src += parallel_pipe_class.f03
 src += grid_class.f03
 src += input_class.f03
+src += sim_fields_class.f03 sim_beams_class.f03 sim_species_class.f03
+src += diagnostics_class.f03
+src += hdf5io_class.f03
 src += simulation_class.f03
 # fields code
 include fields/Makefile
 # species code
 # include species/Makefile
 
-# src += simulation_class.f03
 main_src = main.f03
 # ------------------------------------------------------------------------------
 
@@ -93,7 +95,7 @@ $(builddir) :
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
-	@cd $(builddir) && $(FC) $(FC_OPTS) -c $(<F) -o $(@F)
+	@cd $(builddir) && $(FC) $(INCF) $(FC_OPTS) -c $(<F) -o $(@F)
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"

@@ -2,6 +2,7 @@ module ufield_class
 
 use parallel_pipe_class
 use grid_class
+use hdf5io_class
 use param
 use system
 use mpi
@@ -34,19 +35,19 @@ type :: ufield
 
   contains
 
-  generic :: new => init_ufield, init_ufield_cp
-  generic :: del => end_ufield
-  ! generic :: write_hdf5
-  generic :: get_nd => get_nd_all, get_nd_dim
-  generic :: get_ndp => get_ndp_all, get_ndp_dim
+  generic :: new        => init_ufield, init_ufield_cp
+  generic :: del        => end_ufield
+  generic :: get_nd     => get_nd_all, get_nd_dim
+  generic :: get_ndp    => get_ndp_all, get_ndp_dim
   generic :: get_gc_num => get_gc_num_all, get_gc_num_dim
-  generic :: get_nvp => get_nvp_all, get_nvp_dim
-  generic :: get_noff => get_noff_all, get_noff_dim
-  generic :: copy_gc => copy_gc_f1, copy_gc_f2
+  generic :: get_nvp    => get_nvp_all, get_nvp_dim
+  generic :: get_noff   => get_noff_all, get_noff_dim
+  generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   procedure :: get_dim
   procedure :: copy_slice
   procedure :: get_f1
   procedure :: get_f2
+  procedure :: copy_gc_f1, copy_gc_f2, acopy_gc_f1
 
   generic :: assignment(=) => assign_array
   generic :: operator(+) => add_array, add_scalar1, add_scalar2
@@ -59,7 +60,7 @@ type :: ufield
   procedure, private :: get_gc_num_all, get_gc_num_dim
   procedure, private :: get_nvp_all, get_nvp_dim
   procedure, private :: get_noff_all, get_noff_dim
-  procedure, private :: copy_gc_f1, copy_gc_f2
+  procedure, private :: write_hdf5_single, write_hdf5_pipe
 
   procedure, private, pass(a1) :: add_array, add_scalar1, add_scalar2
   procedure, private, pass(a1) :: dot_array, dot_scalar1, dot_scalar2
@@ -164,6 +165,78 @@ subroutine end_ufield( this )
   
 end subroutine end_ufield
 
+subroutine write_hdf5_single( this, file, dim )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class( hdf5file ), intent(in) :: file
+  integer, intent(in) :: dim
+
+  ! local data
+  integer :: ierr
+  integer, dimension(2) :: lsize, gsize
+  integer :: noff
+  character(len=32), save :: sname = 'write_hdf5_single'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  gsize = this%nd
+  lsize = this%ndp
+  noff = this%noff(1)
+
+  call pwfield( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, ierr )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine write_hdf5_single
+
+subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class( hdf5file ), intent(in) :: file
+  integer, intent(in) :: dim, rtag, stag
+  integer, intent(inout) :: id
+
+  ! local data
+  integer :: nstage, stageid, ierr, start_pos
+  integer, dimension(2) :: lsize, gsize, noff
+  character(len=32), save :: sname = 'write_hdf5_pipe'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nstage = this%pp%getnstage()
+  stageid = this%pp%getstageid()
+
+  gsize = this%nd
+  lsize = this%ndp
+  noff = this%noff
+
+  if ( nstage == 1 ) then
+    call pwfield_pipe( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, &
+      rtag, stag, id, ierr )
+  else
+    if ( stageid == 0 ) then
+      lsize(2) = lsize(2) + 1
+      start_pos = 1
+    elseif ( stageid == nstage-1 ) then
+      lsize(2) = lsize(2) - 1
+      noff(2) = noff(2) + 1
+      start_pos = 2
+    else
+      noff(2) = noff(2) + 1
+      start_pos = 2
+    endif
+    call pwfield_pipe( this%pp, file, this%f2(dim,1:,start_pos:), gsize, lsize, noff, &
+      rtag, stag, id, ierr )
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine write_hdf5_pipe
+
 subroutine copy_slice( this, idx, dir )
 
   implicit none
@@ -267,6 +340,69 @@ subroutine copy_gc_f1( this )
   endif
 
 end subroutine copy_gc_f1
+
+subroutine acopy_gc_f1( this )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+
+  integer :: idproc, idproc_left, idproc_right, nvp, comm
+  integer :: nrp, count, dtype
+  integer :: tag = 1, msgid, ierr, i
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:), save, allocatable :: buf
+
+  idproc = this%pp%getlidproc()
+  idproc_left =  idproc - 1
+  idproc_right = idproc + 1
+  nrp = this%ndp(1)
+  nvp = this%pp%getlnvp()
+  comm = this%pp%getlgrp()
+  dtype = this%pp%getmreal()
+
+  count = this%dim
+  if ( .not. allocated(buf) ) allocate( buf(count) )
+
+  if ( this%gc_num(p_upper,1) == 0 ) then
+    write_err( 'Upper guard cells must be set up for deposition' )
+  endif
+  ! forward message passing
+  ! receiver
+  if ( idproc > 0 ) then
+    call MPI_IRECV( buf, count, dtype, &
+      idproc_left, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc < nvp-1 ) then
+    call MPI_SEND( this%f1(1,nrp+1), count, dtype, &
+      idproc_right, tag, comm, ierr )
+  endif
+  ! wait receiving finish and add up guard cells
+  if ( idproc > 0 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do i = 1, count
+      this%f1(i,1) = this%f1(i,1) + buf(i)
+    enddo
+  endif
+
+  ! backward message passing
+  ! receiver
+  if ( idproc < nvp-1 ) then
+    call MPI_IRECV( this%f1(1,nrp+1), count, dtype, &
+      idproc_right, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc > 0 ) then
+    call MPI_SEND( this%f1(1,1), count, dtype, &
+      idproc_left, tag, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( idproc < nvp-1 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+  endif
+
+end subroutine acopy_gc_f1
 
 subroutine copy_gc_f2( this, dir )
 
