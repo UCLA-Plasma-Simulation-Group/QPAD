@@ -32,19 +32,22 @@ type simulation
   type( sim_beams ) :: beams
   type( sim_diag ) :: diag
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, tstep
+  integer :: iter, nstep2d, nstep1d, start2d, nbeams, nspecies, tstep
   integer :: num_modes, interp
 
   contains
 
   generic :: new => init_simulation
   generic :: del => end_simulation
-  ! generic :: run => run_simulation
+  generic :: run => run_simulation
 
   procedure, private :: init_simulation, end_simulation
-  ! procedure, private :: run_simulation
+  procedure, private :: run_simulation
 
 end type simulation
+
+character(len=18), save :: cls_name = 'simulation'
+integer, save :: cls_level = 1
 
 contains
 
@@ -55,8 +58,6 @@ subroutine init_simulation(this)
   class(simulation), intent(inout) :: this
   ! local data
   character(len=18), save :: sname = 'init_simulation:'
-  character(len=18), save :: cls_name = 'simulation'
-  integer, save :: cls_level = 1
 
   real :: min, max, n0, dr, dxi, dt, time
   integer :: nr, nz
@@ -84,7 +85,7 @@ subroutine init_simulation(this)
   this%dr = dr
   this%dxi = dxi
 
-  this%nstep2d = this%gp%get_ndp(2)
+  this%nstep1d = this%gp%get_ndp(2)
 
   call this%input%get( 'simulation.time', time )
   call this%input%get( 'simulation.dt', dt )
@@ -93,10 +94,10 @@ subroutine init_simulation(this)
 
   call this%input%get( 'simulation.read_restart', read_rst )
   if (read_rst) then
-    call this%input%get( 'simulation.restart_timestep', this%start3d )
-    this%start3d = this%start3d + 1
+    call this%input%get( 'simulation.restart_timestep', this%start2d )
+    this%start2d = this%start2d + 1
   else
-    this%start3d = 1
+    this%start2d = 1
   endif
 
   call this%input%get( 'simulation.iter', this%iter )
@@ -124,7 +125,7 @@ subroutine init_simulation(this)
 
   call this%diag%new( this%pp, this%input, this%fields, this%beams, this%species )
   ! call this%beams%new(this%in,this%fields)
-  ! call this%species%new(this%in,this%fields,(this%start3d-1)*dt)
+  ! call this%species%new(this%in,this%fields,(this%start2d-1)*dt)
 
   ! call this%init_diag()                 
 
@@ -150,8 +151,6 @@ subroutine end_simulation(this)
 
   ! local data
   character(len=18), save :: sname = 'end_simulation'
-  character(len=18), save :: cls_name = 'simulation'
-  integer, save :: cls_level = 1
   integer :: ierr
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -171,5 +170,22 @@ subroutine end_simulation(this)
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_simulation
+
+subroutine run_simulation( this )
+
+  implicit none
+
+  class( simulation ), intent(inout) :: this
+
+  integer :: i, j
+  character(len=32), save :: sname = 'run_simulation'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  ! do nothing right now
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine run_simulation
 
 end module simulation_class
