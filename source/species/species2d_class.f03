@@ -1,121 +1,112 @@
-! species2d class for QuickPIC Open Source 1.0
-! update: 04/18/2016
+! species2d class for QPAD
 
-      module species2d_class
+module species2d_class
 
-      use perrors_class
-      use parallel_pipe_class
-      use spect2d_class
-      use spect3d_class
-      use fdist2d_class
-      use field2d_class
-      use field3d_class
-      use part2d_class
-      use hdf5io_class
-               
-      implicit none
-
-      private
-
-      public :: species2d
-
-      type species2d
-
-         private
-
-         class(spect2d), pointer, public :: sp => null()
-         class(perrors), pointer, public :: err => null()
-         class(parallel_pipe), pointer, public :: p => null()
-         class(part2d), pointer :: pd => null()
-         class(field2d), pointer :: q => null(), qn => null(), cu => null()
-         class(field2d), pointer :: amu => null(), dcu => null()
-         class(field3d), pointer :: q3 => null()
-         class(fdist2d), pointer :: pf => null()
+use parallel_pipe_class
+use param
+use system
+use fdist2d_class
+use field_src_class
+use field_class
+use part2d_class
+use hdf5io_class
          
-         contains
-         
-         generic :: new => init_species2d
-         generic :: renew => renew_species2d
-         generic :: del => end_species2d
-         generic :: qdp => qdp_species2d
-         generic :: amjdp => amjdp_species2d
-         generic :: push => push_species2d
-         generic :: pmv => pmove_species2d
-         generic :: extpsi => extpsi_species2d
-         generic :: pcp => pcp_species2d
-         generic :: pcb => pcb_species2d
-         generic :: psend => psend_species2d
-         generic :: precv => precv_species2d
-         generic :: wr => writehdf5_species2d
-         generic :: wrq => writeq_species2d, writeqslice_species2d
-         generic :: cbq => cbq_species2d
-         procedure, private :: init_species2d, renew_species2d
-         procedure, private :: end_species2d
-         procedure, private :: qdp_species2d
-         procedure, private :: amjdp_species2d
-         procedure, private :: push_species2d
-         procedure, private :: pmove_species2d
-         procedure, private :: extpsi_species2d
-         procedure, private :: pcp_species2d
-         procedure, private :: pcb_species2d
-         procedure, private :: psend_species2d
-         procedure, private :: precv_species2d, writehdf5_species2d
-         procedure, private :: cbq_species2d, writeq_species2d, writeqslice_species2d
-                           
-      end type 
+implicit none
 
-      save      
+private
 
-      character(len=10) :: class = 'species2d:'
-      character(len=128) :: erstr
-      
-      contains
+public :: species2d
+
+type species2d
+
+   private
+
+   class(part2d), pointer :: pd => null()
+   class(field_rho), pointer :: q => null(), qn => null()
+   class(field_jay), pointer :: cu => null()
+   class(field_djdxi), pointer :: amu => null(), dcu => null()
+   class(fdist2d), pointer :: pf => null()
+   
+   contains
+   
+   generic :: new => init_species2d
+   generic :: renew => renew_species2d
+   generic :: del => end_species2d
+   generic :: qdp => qdp_species2d
+   generic :: amjdp => amjdp_species2d
+   generic :: push => push_species2d
+   generic :: pmv => pmove_species2d
+   generic :: extpsi => extpsi_species2d
+   generic :: psend => psend_species2d
+   generic :: precv => precv_species2d
+   generic :: wr => writehdf5_species2d
+   generic :: wrq => writeq_species2d, writeqslice_species2d
+   generic :: cbq => cbq_species2d
+   procedure, private :: init_species2d, renew_species2d
+   procedure, private :: end_species2d
+   procedure, private :: qdp_species2d
+   procedure, private :: amjdp_species2d
+   procedure, private :: push_species2d
+   procedure, private :: pmove_species2d
+   procedure, private :: extpsi_species2d
+   procedure, private :: psend_species2d
+   procedure, private :: precv_species2d, writehdf5_species2d
+   procedure, private :: cbq_species2d, writeq_species2d, writeqslice_species2d
+                     
+end type 
+
+save
+
+character(len=10) :: class = 'species2d'
+character(len=128) :: erstr
+
+contains
 !
-      subroutine init_species2d(this,pp,perr,psp,pf,qbm,dt,ci,xdim,s)
+subroutine init_species2d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,s)
 
-         implicit none
-         
-         class(species2d), intent(inout) :: this
-         class(spect3d), intent(in), pointer :: psp
-         class(perrors), intent(in), pointer :: perr
-         class(parallel_pipe), intent(in), pointer :: pp
-         class(fdist2d), intent(inout), target :: pf
-         real, intent(in) :: qbm, dt, ci, s
-         integer, intent(in) :: xdim
-
+   implicit none
+   
+   class(species2d), intent(inout) :: this
+   class(parallel_pipe), intent(in), pointer :: pp
+   class(grid), intent(in), pointer :: gd
+   class(field), intent(in), pointer :: fd
+   class(fdist2d), intent(inout), target :: pf
+   real, intent(in) :: qbm, dt, s
+   integer, intent(in) :: xdim, part_shape
 ! local data
-         character(len=18), save :: sname = 'init_species2d:'
-                  
-         this%sp => psp
-         this%err => perr
-         this%p => pp
-         this%pf => pf
+   character(len=18), save :: sname = 'init_species2d'
+   real :: dr, dxi
+   integer :: number_modes
 
-         call this%err%werrfl2(class//sname//' started')
-         
-         allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu,this%q3)
-         call this%q%new(this%p,this%err,this%sp,dim=1,fftflag=.true.)
-         call this%q3%new(this%p,this%err,psp,dim=1)
-         call this%qn%new(this%p,this%err,this%sp,dim=1,fftflag=.false.)
-         call this%cu%new(this%p,this%err,this%sp,dim=3,fftflag=.false.)
-         call this%dcu%new(this%p,this%err,this%sp,dim=2,fftflag=.false.)
-         call this%amu%new(this%p,this%err,this%sp,dim=3,fftflag=.false.)
-         call this%pd%new(pp,perr,this%sp,pf,this%q%getrs(),qbm,dt,ci,xdim,s)
-         call this%qn%as(0.0)
-         call this%cu%as(0.0)
-         call this%pd%qdp(this%qn%getrs())
-         call this%qn%ag()
-         call this%q%as(this%qn)
-         if (this%p%getstageid() == 0) then
-            call this%q%fftrk(1)
-            call this%q%smooth(this%q)
-            call this%q%fftkr(1)
-            call this%q%cb(this%q3,1,(/1/),(/1/))         
-         end if
-         call this%qn%mult(this%qn,-1.0)
-         call this%err%werrfl2(class//sname//' ended')
+   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-      end subroutine init_species2d
+   this%pf => pf
+   dr = fd%get_dr()
+   dxi = fd%get_dxi()
+   num_modes = fd%get_num_modes()
+   
+   allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu)
+   call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
+   call this%qn%new(pp,gd,dr,dxi,num_modes,part_shape)
+   call this%cu%new(pp,gd,dr,dxi,num_modes,part_shape)
+   call this%dcu%new(pp,gd,dr,dxi,num_modes,part_shape)
+   call this%amu%new(pp,gd,dr,dxi,num_modes,part_shape)
+   call this%pd%new(pp,pf,fd,qbm,dt,xdim,s)
+
+   call this%qn%as(0.0)
+   call this%cu%as(0.0)
+   call this%pd%qdp(this%qn)
+   call this%qn%acopy_gc()
+   call this%q%as(this%qn)
+   if (this%p%getstageid() == 0) then
+      call this%q%fftrk(1)
+      call this%q%smooth(this%q)
+      call this%q%fftkr(1)
+      call this%q%cb(this%q3,1,(/1/),(/1/))         
+   end if
+   call this%qn%mult(this%qn,-1.0)
+   call this%err%werrfl2(class//sname//' ended')
+end subroutine init_species2d
 !
       subroutine end_species2d(this)
           
@@ -270,39 +261,6 @@
          call this%err%werrfl2(class//sname//' ended')
          
       end subroutine extpsi_species2d
-!
-      subroutine pcp_species2d(this,fd)
-      
-         implicit none
-         
-         class(species2d), intent(inout) :: this
-         class(field2d), intent(in) :: fd
-! local data
-         character(len=18), save :: sname = 'pcp_species2d:'
-         
-         call this%err%werrfl2(class//sname//' started')
-         
-         call this%pd%pcp(fd%getrs())
-
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine pcp_species2d
-!
-      subroutine pcb_species2d(this)
-      
-         implicit none
-         
-         class(species2d), intent(inout) :: this
-! local data
-         character(len=18), save :: sname = 'pcb_species2d:'
-         
-         call this%err%werrfl2(class//sname//' started')
-         
-         call this%pd%pcb()
-
-         call this%err%werrfl2(class//sname//' ended')
-         
-      end subroutine pcb_species2d
 !
       subroutine psend_species2d(this,tag,id)
       

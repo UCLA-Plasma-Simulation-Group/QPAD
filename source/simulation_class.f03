@@ -103,9 +103,9 @@ subroutine init_simulation(this)
   call this%input%get( 'simulation.iter', this%iter )
   call this%input%get( 'simulation.nbeams', this%nbeams )
   call this%input%get( 'simulation.nspecies', this%nspecies )
-  call this%input%get( 'simulation.num_modes', this%num_modes )
+  call this%input%get( 'simulation.max_mode', this%num_modes )
 
-  call this%input%get( 'simulation.interp', interp_str )
+  call this%input%get( 'simulation.interpolation', interp_str )
   select case ( trim(interp_str) )
   case ( 'linear' )
     this%interp = p_ps_linear
