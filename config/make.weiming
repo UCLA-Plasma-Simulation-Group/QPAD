@@ -15,7 +15,7 @@ PYTHON = python
 # Linker configuration
 LINKER = mpif90
 LINKER_OPTS = -fopenmp -O3
-LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran
+LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
 HYPRE_LIB = /Users/anweiming/work/codes/hypre-2.11.2/src/hypre/lib
