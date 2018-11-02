@@ -365,7 +365,7 @@ subroutine acopy_gc_f1( this )
   if ( .not. allocated(buf) ) allocate( buf(count) )
 
   if ( this%gc_num(p_upper,1) == 0 ) then
-    write_err( 'Upper guard cells must be set up for deposition' )
+    call write_err( 'Upper guard cells must be set up for deposition' )
   endif
   ! forward message passing
   ! receiver
