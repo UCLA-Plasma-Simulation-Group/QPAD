@@ -68,6 +68,9 @@ subroutine read_input_json(this)
    call p%new()
    
    this%p => p
+
+   call init_stdout( p%getidproc() )
+   call init_errors( eunit=2, idproc=p%getidproc(), monitor=5 )
    
    call write_dbg( cls_name, sname, cls_level, 'starts' )
    

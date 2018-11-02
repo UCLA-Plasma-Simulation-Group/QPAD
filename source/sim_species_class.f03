@@ -13,7 +13,7 @@ public :: sim_species
 
 type sim_species
 
-  private
+  ! private
 
   class( parallel_pipe ), pointer :: pp => null()
   class( grid ), pointer :: gp => null()

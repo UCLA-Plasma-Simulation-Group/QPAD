@@ -271,7 +271,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
   !           num_modes = num_modes, &
   !           df        = ndump, &
   !           dim       = dim, &
-  !           filename  = './Species'//num2str(i)//trim(sn1)//'/', &
+            ! filename  = './Species'//num2str(i)//'/'//trim(sn1)//'/', &
   !           dataname  = trim(sn2), &
   !           timeunit  = '1 / \omega_p', &
   !           dt        = dt, &
@@ -355,7 +355,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           num_modes = num_modes, &
           df        = ndump, &
           dim       = dim, &
-          filename  = './Fields'//num2str(i)//trim(sn1)//'/', &
+          filename  = './Fields/'//trim(sn1)//'/', &
           dataname  = trim(sn2), &
           timeunit  = '1 / \omega_p', &
           dt        = dt, &
