@@ -83,7 +83,7 @@ subroutine end_grid( this )
 
   class( grid ), intent(inout) :: this
   
-  character(len=18), save :: sname = 'init_grid'
+  character(len=18), save :: sname = 'end_grid'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   ! this routine is only a place-holder now, do nothing.

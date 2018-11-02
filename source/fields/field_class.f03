@@ -31,23 +31,38 @@ type :: field
 
   contains
 
-  generic :: new => init_field
-  ! generic :: read_input => read_input_field
+  generic :: new => init_field, init_field_cp
   procedure :: del => end_field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
   generic :: copy_gc => copy_gc_local, copy_gc_stage
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
-  ! generic :: solve => solve_field
   ! generic :: smooth
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
   procedure :: acopy_gc
 
-  procedure, private :: init_field, end_field 
+  procedure, private :: init_field, init_field_cp, end_field 
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
   procedure, private :: copy_gc_local, copy_gc_stage
   procedure, private :: write_hdf5_single, write_hdf5_pipe
+
+  generic :: assignment(=)   => assign_f1
+  generic :: as              => assign_f2
+  generic :: operator(+)     => add_f1_v1, add_f1_v2
+  generic :: operator(-)     => sub_f1_v1, sub_f1_v2
+  generic :: operator(*)     => dot_f1_v1, dot_f1_v2
+  generic :: operator(.add.) => add_f2_v1, add_f2_v2
+  generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
+  generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
+
+  procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
+  procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
+  procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
+  procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
+  procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
+  procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
+  procedure, private :: assign_f1, assign_f2
 
 end type field
 
@@ -86,15 +101,38 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
 
   allocate( this%rf_re(0:num_modes) )
   allocate( this%rf_im(num_modes) )
-  call this%rf_re(0)%new( pp, gp, dim, gc_num, has_2d=.true. )
-  do i = 1, this%num_modes
+  do i = 0, this%num_modes
     call this%rf_re(i)%new( pp, gp, dim, gc_num, has_2d=.true. )
+    if (i==0) cycle
     call this%rf_im(i)%new( pp, gp, dim, gc_num, has_2d=.true. )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field
+
+subroutine init_field_cp( this, that )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class( field ), intent(in) :: that
+
+  integer :: i
+
+  this%num_modes = that%get_num_modes()
+  this%dr        = that%get_dr()
+  this%dxi       = that%get_dxi()
+
+  allocate( this%rf_re(0:this%num_modes) )
+  allocate( this%rf_im(this%num_modes) )
+  do i = 0, this%num_modes
+    call this%rf_re(i)%new( that%get_rf_re(i) )
+    if (i==0) cycle
+    call this%rf_im(i)%new( that%get_rf_im(i) )
+  enddo
+
+end subroutine init_field_cp
 
 subroutine end_field( this )
 
@@ -341,5 +379,429 @@ function get_rf_im_mode( this, mode )
   get_rf_im_mode => this%rf_im(mode)
 
 end function get_rf_im_mode
+
+subroutine assign_f1( this, that )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class(*), intent(in) :: that
+
+  integer :: i
+
+  select type (that)
+
+  type is (real)
+
+    do i = 0, this%num_modes
+      this%rf_re(i) = that
+      if (i == 0) cycle
+      this%rf_im(i) = that
+    enddo
+
+  class is (field)
+
+    do i = 0, this%num_modes
+      this%rf_re(i) = that%rf_re(i)
+      if (i == 0) cycle
+      this%rf_im(i) = that%rf_im(i)
+    enddo
+
+  class default
+
+    call write_err( "invalid assignment type!" )
+
+  end select
+
+end subroutine assign_f1
+
+subroutine assign_f2( this, that )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class(*), intent(in) :: that
+
+  integer :: i
+
+  select type (that)
+
+  type is (real)
+
+    do i = 0, this%num_modes
+      call this%rf_re(i)%as( that )
+      if (i == 0) cycle
+      call this%rf_im(i)%as( that )
+    enddo
+
+  class is (field)
+
+    do i = 0, this%num_modes
+      call this%rf_re(i)%as( that%get_rf_re(i) )
+      if (i == 0) cycle
+      call this%rf_im(i)%as( that%get_rf_im(i) )
+    enddo
+
+  class default
+
+    call write_err( "invalid assignment type!" )
+
+  end select
+
+end subroutine assign_f2
+
+function add_f1_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) + a2
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) + a2
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) + a2%get_rf_re(i)
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) + a2%get_rf_im(i)
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function add_f1_v1
+
+function add_f1_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    ua3_re(i) = a1%rf_re(i) + a2
+    if (i==0) cycle
+    ua3_im(i) = a1%rf_im(i) + a2
+  enddo
+
+end function add_f1_v2
+
+function dot_f1_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) * a2
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) * a2
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) * a2%get_rf_re(i)
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) * a2%get_rf_im(i)
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function dot_f1_v1
+
+function dot_f1_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    ua3_re(i) = a1%rf_re(i) * a2
+    if (i==0) cycle
+    ua3_im(i) = a1%rf_im(i) * a2
+  enddo
+
+end function dot_f1_v2
+
+function sub_f1_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) - a2
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) - a2
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      ua3_re(i) = a1%rf_re(i) - a2%get_rf_re(i)
+      if (i==0) cycle
+      ua3_im(i) = a1%rf_im(i) - a2%get_rf_im(i)
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function sub_f1_v1
+
+function sub_f1_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    ua3_re(i) = a1%rf_re(i) - a2
+    if (i==0) cycle
+    ua3_im(i) = a1%rf_im(i) - a2
+  enddo
+
+end function sub_f1_v2
+
+function add_f2_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .add. a2%get_rf_re(i) )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .add. a2%get_rf_im(i) )
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function add_f2_v1
+
+function add_f2_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
+    if (i==0) cycle
+    call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
+  enddo
+
+end function add_f2_v2
+
+function dot_f2_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .dot. a2%get_rf_re(i) )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .dot. a2%get_rf_im(i) )
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function dot_f2_v1
+
+function dot_f2_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
+    if (i==0) cycle
+    call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
+  enddo
+
+end function dot_f2_v2
+
+function sub_f2_v1( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class(*), intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  select type (a2)
+  type is (real)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .sub. a2 )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .sub. a2 )
+    enddo
+  class is (field)
+    do i = 0, a1%num_modes
+      call ua3_re(i)%as( a1%rf_re(i) .sub. a2%get_rf_re(i) )
+      if (i==0) cycle
+      call ua3_im(i)%as( a1%rf_im(i) .sub. a2%get_rf_im(i) )
+    enddo
+  class default
+    call write_err( "invalid assignment type!" )
+  end select
+
+end function sub_f2_v1
+
+function sub_f2_v2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( field ), allocatable :: a3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  allocate(a3)
+  call a3%new(a1)
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call ua3_re(i)%as( a2 .sub. a1%rf_re(i) )
+    if (i==0) cycle
+    call ua3_im(i)%as( a2 .sub. a1%rf_im(i) )
+  enddo
+
+end function sub_f2_v2
 
 end module field_class

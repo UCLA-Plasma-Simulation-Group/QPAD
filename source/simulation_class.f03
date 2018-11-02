@@ -21,7 +21,7 @@ public :: simulation
 
 type simulation
 
-  private
+  ! private
 
   type( input_json ), pointer :: input => null()
   class( parallel_pipe ), pointer :: pp => null()
@@ -89,7 +89,7 @@ subroutine init_simulation(this)
 
   call this%input%get( 'simulation.time', time )
   call this%input%get( 'simulation.dt', dt )
-  this%nstep3d = time/dt
+  this%nstep2d = time/dt
   this%dt = dt
 
   call this%input%get( 'simulation.read_restart', read_rst )

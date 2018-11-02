@@ -22,7 +22,7 @@ type :: ufield
 
   class( parallel_pipe ), pointer, public :: pp => null()
   real, dimension(:,:), pointer, public :: f1 => null()
-  real, dimension(:,:,:), pointer :: f2 => null()
+  real, dimension(:,:,:), pointer, public :: f2 => null()
   integer, dimension(2) :: nd ! number of global grid points
   integer, dimension(2) :: ndp ! number of local grid points
   integer, dimension(2) :: nvp
@@ -48,11 +48,16 @@ type :: ufield
   procedure :: get_f1
   procedure :: get_f2
   procedure :: copy_gc_f1, copy_gc_f2, acopy_gc_f1
+  procedure :: has2d
 
-  generic :: assignment(=) => assign_array
-  generic :: operator(+) => add_array, add_scalar1, add_scalar2
-  generic :: operator(-) => sub_array, sub_scalar1, sub_scalar2
-  generic :: operator(*) => dot_array, dot_scalar1, dot_scalar2
+  generic :: assignment(=)   => assign_f1
+  generic :: as              => assign_f2
+  generic :: operator(+)     => add_array_f1, add_scalar1_f1, add_scalar2_f1
+  generic :: operator(-)     => sub_array_f1, sub_scalar1_f1, sub_scalar2_f1
+  generic :: operator(*)     => dot_array_f1, dot_scalar1_f1, dot_scalar2_f1
+  generic :: operator(.add.) => add_array_f2, add_scalar1_f2, add_scalar2_f2
+  generic :: operator(.sub.) => sub_array_f2, sub_scalar1_f2, sub_scalar2_f2
+  generic :: operator(.dot.) => dot_array_f2, dot_scalar1_f2, dot_scalar2_f2
 
   procedure, private :: init_ufield, init_ufield_cp, end_ufield
   procedure, private :: get_nd_all, get_nd_dim
@@ -62,10 +67,13 @@ type :: ufield
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
-  procedure, private, pass(a1) :: add_array, add_scalar1, add_scalar2
-  procedure, private, pass(a1) :: dot_array, dot_scalar1, dot_scalar2
-  procedure, private, pass(a1) :: sub_array, sub_scalar1, sub_scalar2
-  procedure, private :: assign_array
+  procedure, private, pass(a1) :: add_array_f1, add_scalar1_f1, add_scalar2_f1
+  procedure, private, pass(a1) :: dot_array_f1, dot_scalar1_f1, dot_scalar2_f1
+  procedure, private, pass(a1) :: sub_array_f1, sub_scalar1_f1, sub_scalar2_f1
+  procedure, private, pass(a1) :: add_array_f2, add_scalar1_f2, add_scalar2_f2
+  procedure, private, pass(a1) :: dot_array_f2, dot_scalar1_f2, dot_scalar2_f2
+  procedure, private, pass(a1) :: sub_array_f2, sub_scalar1_f2, sub_scalar2_f2
+  procedure, private :: assign_f1, assign_f2
 
 end type ufield
 
@@ -111,17 +119,12 @@ subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
 
 end subroutine init_ufield
 
-subroutine init_ufield_cp( this, that, has_2d )
+subroutine init_ufield_cp( this, that )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
   class( ufield ), intent(in) :: that
-  logical, intent(in), optional :: has_2d
-
-  character(len=20), save :: sname = "init_ufield_cp"
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%pp => that%pp
   this%nd = that%get_nd()
@@ -134,8 +137,8 @@ subroutine init_ufield_cp( this, that, has_2d )
   allocate( this%f1( this%dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
 
-  if ( present(has_2d) ) then
-    this%has_2d = has_2d
+  if ( that%has2d() ) then
+    this%has_2d = .true.
     allocate( this%f2( this%dim, &
               1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1), &
               1-this%gc_num(p_lower,2):this%ndp(2)+this%gc_num(p_upper,2) ) )
@@ -143,8 +146,6 @@ subroutine init_ufield_cp( this, that, has_2d )
   else
     this%has_2d = .false.
   endif
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_ufield_cp
 
@@ -474,7 +475,7 @@ subroutine copy_gc_f2( this, dir )
 
 end subroutine copy_gc_f2
 
-subroutine assign_array( this, that )
+subroutine assign_f1( this, that )
 
   implicit none
 
@@ -508,9 +509,49 @@ subroutine assign_array( this, that )
 
   end select
 
-end subroutine assign_array
+end subroutine assign_f1
 
-function add_array( a1, a2 ) result( a3 )
+subroutine assign_f2( this, that )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class(*), intent(in) :: that
+
+  integer :: i, j, k
+
+  select type (that)
+    
+    type is (real)
+
+      do k = 1, this%ndp(2)
+        do j = 1, this%ndp(1)
+          do i = 1, this%dim
+            this%f2(i,j,k) = that
+          enddo
+        enddo
+      enddo
+
+    class is (ufield)
+
+      do k = 1, this%ndp(2)
+        do j = 1, this%ndp(1)
+          do i = 1, this%dim
+            this%f2(i,j,k) = that%f2(i,j,k)
+          enddo
+        enddo
+      enddo
+
+    class default
+
+      call write_err( "invalid assignment type!" )
+      stop
+
+  end select
+
+end subroutine assign_f2
+
+function add_array_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -530,9 +571,32 @@ function add_array( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function add_array
+end function add_array_f1
 
-function add_scalar1( a1, a2 ) result( a3 )
+function add_array_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  class( ufield ), intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate(a3)
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) + a2%f2(i,j,k)
+      enddo
+    enddo
+  enddo
+
+end function add_array_f2
+
+function add_scalar1_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -543,8 +607,6 @@ function add_scalar1( a1, a2 ) result( a3 )
   integer :: i, j
 
   allocate( a3 )
-  ! note that buffer has no 2D array
-  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
   call a3%new(a1)
 
   do j = 1, a1%ndp(1)
@@ -553,9 +615,32 @@ function add_scalar1( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function add_scalar1
+end function add_scalar1_f1
 
-function add_scalar2( a2, a1 ) result( a3 )
+function add_scalar1_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) + a2
+      enddo
+    enddo
+  enddo
+
+end function add_scalar1_f2
+
+function add_scalar2_f1( a2, a1 ) result( a3 )
 
   implicit none
 
@@ -566,8 +651,6 @@ function add_scalar2( a2, a1 ) result( a3 )
   integer :: i, j
 
   allocate( a3 )
-  ! note that buffer has no 2D array
-  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
   call a3%new(a1)
 
   do j = 1, a1%ndp(1)
@@ -576,9 +659,32 @@ function add_scalar2( a2, a1 ) result( a3 )
     enddo
   enddo
     
-end function add_scalar2
+end function add_scalar2_f1
 
-function sub_array( a1, a2 ) result( a3 )
+function add_scalar2_f2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  real, intent(in) :: a2
+  class( ufield ), intent(in) :: a1
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) + a2
+      enddo
+    enddo
+  enddo
+    
+end function add_scalar2_f2
+
+function sub_array_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -598,9 +704,32 @@ function sub_array( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function sub_array
+end function sub_array_f1
 
-function sub_scalar1( a1, a2 ) result( a3 )
+function sub_array_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  class( ufield ), intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate(a3)
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) - a2%f2(i,j,k)
+      enddo
+    enddo
+  enddo
+
+end function sub_array_f2
+
+function sub_scalar1_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -621,9 +750,32 @@ function sub_scalar1( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function sub_scalar1
+end function sub_scalar1_f1
 
-function sub_scalar2( a2, a1 ) result( a3 )
+function sub_scalar1_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) - a2
+      enddo
+    enddo
+  enddo
+
+end function sub_scalar1_f2
+
+function sub_scalar2_f1( a2, a1 ) result( a3 )
 
   implicit none
 
@@ -644,9 +796,32 @@ function sub_scalar2( a2, a1 ) result( a3 )
     enddo
   enddo
     
-end function sub_scalar2
+end function sub_scalar2_f1
 
-function dot_array( a1, a2 ) result( a3 )
+function sub_scalar2_f2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  real, intent(in) :: a2
+  class( ufield ), intent(in) :: a1
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a2 - a1%f2(i,j,k)
+      enddo
+    enddo
+  enddo
+    
+end function sub_scalar2_f2
+
+function dot_array_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -666,9 +841,32 @@ function dot_array( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function dot_array
+end function dot_array_f1
 
-function dot_scalar1( a1, a2 ) result( a3 )
+function dot_array_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  class( ufield ), intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate(a3)
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) * a2%f2(i,j,k)
+      enddo
+    enddo
+  enddo
+
+end function dot_array_f2
+
+function dot_scalar1_f1( a1, a2 ) result( a3 )
 
   implicit none
 
@@ -679,8 +877,6 @@ function dot_scalar1( a1, a2 ) result( a3 )
   integer :: i, j
 
   allocate( a3 )
-  ! note that buffer has no 2D array
-  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
   call a3%new(a1)
 
   do j = 1, a1%ndp(1)
@@ -689,9 +885,32 @@ function dot_scalar1( a1, a2 ) result( a3 )
     enddo
   enddo
 
-end function dot_scalar1
+end function dot_scalar1_f1
 
-function dot_scalar2( a2, a1 ) result( a3 )
+function dot_scalar1_f2( a1, a2 ) result( a3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1
+  real, intent(in) :: a2
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) * a2
+      enddo
+    enddo
+  enddo
+
+end function dot_scalar1_f2
+
+function dot_scalar2_f1( a2, a1 ) result( a3 )
 
   implicit none
 
@@ -712,7 +931,30 @@ function dot_scalar2( a2, a1 ) result( a3 )
     enddo
   enddo
     
-end function dot_scalar2
+end function dot_scalar2_f1
+
+function dot_scalar2_f2( a2, a1 ) result( a3 )
+
+  implicit none
+
+  real, intent(in) :: a2
+  class( ufield ), intent(in) :: a1
+  class( ufield ), allocatable :: a3
+
+  integer :: i, j, k
+
+  allocate( a3 )
+  call a3%new(a1)
+
+  do k = 1, a1%ndp(2)
+    do j = 1, a1%ndp(1)
+      do i = 1, a1%dim
+        a3%f2(i,j,k) = a1%f2(i,j,k) * a2
+      enddo
+    enddo
+  enddo
+    
+end function dot_scalar2_f2
 
 function get_dim( this )
 
@@ -861,5 +1103,16 @@ function get_f2( this )
   get_f2 => this%f2
   
 end function get_f2
+
+function has2d( this )
+
+  implicit none
+
+  class( ufield ), intent(in) :: this
+  logical :: has2d
+
+  has2d = this%has_2d
+
+end function has2d
 
 end module ufield_class
