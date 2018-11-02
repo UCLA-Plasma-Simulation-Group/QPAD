@@ -1,4 +1,4 @@
-! part2d_lib_h module for QuickPIC Open Source 1.0
+! part2d_lib module for QPAD
 ! update: 04/18/2016
 
 module part2d_lib

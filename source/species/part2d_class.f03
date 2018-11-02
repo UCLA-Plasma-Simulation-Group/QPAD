@@ -28,8 +28,6 @@ type part2d
 ! npp = number of particles in current partition
 ! npmax = maximum number of particles in each partition
 ! part(:,:) = initial particle coordinates
-! ppart(:,:,:) = particle coordinates for OpenMP
-! nppmx, nppmx0, nbmaxp, ntmaxp, npbmx, irc, ncl, ihole, kpic = parameters for OpenMP
 !         
    real :: qbm, dt, dex
    integer :: xdim
@@ -65,11 +63,7 @@ end type
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 character(len=128) :: erstr
-
-! sbufl/sbufr = particle buffers sent to nearby processors
-! rbufl/rbufr = particle buffers received from nearby processors
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-integer :: szbufs = 0
+real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr, ihole
 
 contains
 !
@@ -103,6 +97,11 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
 
    allocate(this%part(xdim,npmax))
    call pf%dist(this%part,this%npp,ud(0),s)
+   if (.not. allocated(sbufl)) then
+      allocate(sbufl(xdim,nbmax),sbufr(xdim,nbmax))
+      allocate(rbufl(xdim,nbmax),rbufr(xdim,nbmax))
+      allocate(ihole(xdim,nbmax*2))
+   end if
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -221,7 +220,7 @@ subroutine partpush(this,ef,bf)
    bf_re => bf%get_rf_re()
    bf_im => bf%get_rf_im()
    
-   call part2d_push(this%part,this%npp,this%dt,this%qbm,this%dex,&
+   call part2d_push(this%part,this%npp,this%xdim,this%dt,this%qbm,this%dex,&
    &ef_re,ef_im,bf_re,bf_im,ef%get_num_modes())
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -241,7 +240,8 @@ subroutine pmove(this,fd)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ud => fd%get_rf_re()
-   call part2d_pmove(this%part,this%pp,this%npp,ud(0))
+   call part2d_pmove(this%part,this%pp,this%npp,this%xdim,this%npmax,&
+   &this%nbmax,ud(0),sbufl,sbufr,rbufl,rbufr,ihole)
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
