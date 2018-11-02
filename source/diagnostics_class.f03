@@ -485,9 +485,8 @@ subroutine add_diag_cym( this, obj, num_modes, df, dim, filename, dataname, time
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag%next )
-    call this%diag%next%new( obj, df, num_files=2*num_modes+1, dim=dim )
-    call this%to_next()
+    allocate( this%diag )
+    call this%diag%new( obj, df, num_files=2*num_modes+1, dim=dim )
   endif
 
   do i = 1, 2*num_modes+1
@@ -542,9 +541,8 @@ subroutine add_diag_rst( this, obj, df, filename, dataname, ty )
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag%next )
-    call this%diag%next%new( obj, df, num_files=1 )
-    call this%to_next()
+    allocate( this%diag )
+    call this%diag%new( obj, df, num_files=1 )
   endif
 
   call this%diag%files(1)%new( &
@@ -582,9 +580,8 @@ subroutine add_diag_raw( this, obj, df, psample, filename, dataname, timeunit, d
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag%next )
-    call this%diag%next%new( obj, df, num_files=1, psample=psample )
-    call this%to_next()
+    allocate( this%diag )
+    call this%diag%new( obj, df, num_files=1, psample=psample )
   endif
 
   call this%diag%files(1)%new( &
@@ -621,8 +618,8 @@ subroutine set_ndump_gcd( this )
   this%ndump_gcd = this%diag%df
   do while ( .not. this%is_tail() )
     ! use Euclidean algorithm to calculate GCD
-    a = this%diag%df
-    b = this%diag%next%df
+    a = this%ndump_gcd
+    b = this%diag%df
     do while ( .not. ( mod(a,b) == 0 ) )
       a = b
       b = mod(a,b)
@@ -681,7 +678,7 @@ function is_tail( this )
   class( sim_diag ), intent(in) :: this
   logical :: is_tail
 
-  is_tail = ( .not. associated( this%diag%next ) )
+  is_tail = ( .not. associated( this%diag ) )
 
 end function is_tail
 
