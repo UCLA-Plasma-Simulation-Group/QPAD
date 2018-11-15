@@ -5,6 +5,9 @@ module fdist2d_class
 use parallel_pipe_class
 use ufield_class
 use input_class
+use param
+use system
+
 
 implicit none
 
@@ -14,7 +17,7 @@ public :: fdist2d, fdist2d_000
 
 type, abstract :: fdist2d
    private
-   class(parallel_pipe), pointer, public :: p => null()
+   class(parallel_pipe), pointer :: p => null()
 !
 ! ndprof = profile type 
    integer :: npf, npmax
@@ -138,6 +141,7 @@ subroutine init_fdist2d_000(this,input,i)
    character(len=18), save :: sname = 'init_fdist2d_000'
    
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   this%p => input%p
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
