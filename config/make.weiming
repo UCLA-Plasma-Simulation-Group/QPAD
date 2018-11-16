@@ -18,7 +18,7 @@ LINKER_OPTS = -fopenmp -O3
 LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
-HYPRE_LIB = /Users/anweiming/work/codes/hypre-2.11.2/src/hypre/lib
+HYPRE_LIB = /Users/anweiming/work/codes/hypre-2.14.0/src/hypre/lib
 JSON_LIB = /usr/local/jsonfortran-gnu-6.3.0/lib/
 JSON_INC = /usr/local/jsonfortran-gnu-6.3.0/lib/
 HDF5_INC = /usr/local/hdf5/include

@@ -2,6 +2,7 @@ module hdf5io_class
 
 use parallel_pipe_class
 use system
+use param
 use HDF5
 use mpi
  
