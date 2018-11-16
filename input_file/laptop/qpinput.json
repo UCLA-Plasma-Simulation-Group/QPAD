@@ -1,7 +1,7 @@
 {
 "simulation" : !note
 {
-    "nodes" : [,1], 
+    "nodes" : [1,1], 
     "grid" : [200,200],
     "box" : {
         "r" : [0.0,12.0],

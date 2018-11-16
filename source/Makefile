@@ -40,7 +40,7 @@ src += simulation_class.f03
 # fields code
 include fields/Makefile
 # species code
-# include species/Makefile
+include species/Makefile
 
 main_src = main.f03
 # ------------------------------------------------------------------------------
