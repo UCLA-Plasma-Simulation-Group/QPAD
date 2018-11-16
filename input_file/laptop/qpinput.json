@@ -1,7 +1,7 @@
 {
 "simulation" : !note
 {
-    "nodes" : [32,1], 
+    "nodes" : [,1], 
     "grid" : [200,200],
     "box" : {
         "r" : [0.0,12.0],
@@ -238,15 +238,9 @@
     "diag" :
     [
         {
-        "name" : ["ex","ez"],
-        "ndump" : 1
-        },
-        {
-        "name" : ["ex","by","ez","psi"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz", 129]]
+            "name" : ["psi_cyl_m"],
+            "ndump" : 1
         }
-    ]    
-    
+    ]
 }
 }
