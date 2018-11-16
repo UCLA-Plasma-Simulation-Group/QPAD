@@ -63,7 +63,8 @@ end type
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 character(len=128) :: erstr
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr, ihole
+real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
+integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 !
@@ -100,7 +101,7 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
    if (.not. allocated(sbufl)) then
       allocate(sbufl(xdim,nbmax),sbufr(xdim,nbmax))
       allocate(rbufl(xdim,nbmax),rbufr(xdim,nbmax))
-      allocate(ihole(xdim,nbmax*2))
+      allocate(ihole(nbmax*2))
    end if
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -202,7 +203,6 @@ subroutine amjdeposit(this,ef,bf,cu,amu,dcu)
 end subroutine amjdeposit
 !      
 subroutine partpush(this,ef,bf)
-! deposit the current, acceleration and momentum flux      
       
    implicit none
    

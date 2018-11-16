@@ -42,7 +42,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    noff = q_re(0)%get_noff(1)
    n1p = q_re(0)%get_ndp(1)
    q0 => q_re(0)%get_f1()
-   qr => null(); qi => null
+   qr => null(); qi => null()
 
    do ii = 1, npp
       r = part(1,ii)
@@ -400,11 +400,11 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    real, dimension(:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, nn, noff, n1p
    real :: idex, edge, qtmh, qtmh1, qtmh2, dti, p6, p7, ip7
-   real :: r0, r, rn, qc, qc1, th, th1 dd, ad, rcr, rci
+   real :: r0, r, rn, qc, qc1, th, th1, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx, om
    real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
-   real :: dtc1, v1, v2
+   real :: dtc1, v1, v2, dtx
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -414,9 +414,10 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    n1 = ef_re(0)%get_nd(1)
    e0 => ef_re(0)%get_f1()
    b0 => bf_re(0)%get_f1()
-   er => null(); ei => null; br => null(); bi => null
+   er => null(); ei => null; br => null(); bi => null()
 
    idex = 1.0/dex
+   dtx = dt * idex
    qtmh = 0.5*qbm*dt
    edge = real(n1) - 0.5
 
@@ -462,8 +463,8 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       dx(1:3) = qtmh2*dx(1:3)
 ! half acceleration
       acx = part(3,ii) + dx(1)
-      acy = ppart(4,ii) + dx(2)
-      acz = ppart(5,ii) + dx(3)
+      acy = part(4,ii) + dx(2)
+      acz = part(5,ii) + dx(3)
 
       om(1:3) = qtmh1*ox(1:3)
       omt = om(1)*om(1) + om(2)*om(2) + om(3)*om(3)
@@ -485,7 +486,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       dx(1) = (rot1*acx + rot2*acy + rot3*acz)*anorm + dx(1)
       dx(2) = (rot4*acx + rot5*acy + rot6*acz)*anorm + dx(2)
       dx(3) = (rot7*acx + rot8*acy + rot9*acz)*anorm + dx(3)
-      dtc1 = dt/dex/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
+      dtc1 = dtx/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
       v1 = r0 + dx(1)*dtc1
       v2 = dx(2)*dtc1
       rn = sqrt(v1*v1+v2*v2)
@@ -584,7 +585,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          else
             jss(2) = 1
             exit
-         endif
+         end if
 ! particles going up
       else if (xt >= edger) then
          if (jsr(1,m).lt.nbmax) then
@@ -598,8 +599,8 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          else
             jss(2) = 1
             exit
-         endif
-      endif
+         end if
+      end if
       end do
    jss(1) = jsl(1) + jsr(1)
 ! check for full buffer condition
@@ -619,10 +620,10 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
 ! wait for particles to arrive
       call MPI_WAIT(msid(1),istatus,ierr)
       call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-      jsl(2) = nps/idimp
+      jsl(2) = nps/xdim
       call MPI_WAIT(msid(2),istatus,ierr)
       call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-      jsr(2) = nps/idimp
+      jsr(2) = nps/xdim
 ! check if particles must be passed further
       nps = 0
 ! check if any particles coming from above belong here
@@ -636,7 +637,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       if (jsr(1) /= 0) then
          write (erstr,*) 'Info:',jsr(1),' particles returning above'
          call write_dbg(cls_name, sname, cls_level, erstr)
-      endif
+      end if
 ! check if any particles coming from below belong here
       do j = 1, jsl(2)
          if (rbufl(1,j) >= edger) jsr(1) = jsr(1) + 1
@@ -645,7 +646,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       if (jss(2) /= 0) then
          write (erstr,*) 'Info:',jss(2),' particles returning below'
          call write_dbg(cls_name, sname, cls_level, erstr)
-      endif
+      end if
       jsl(1) = jsl(1) + jss(2)
       nps = max0(nps,jsl(1)+jsr(1))
   
@@ -654,7 +655,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       call MPI_WAIT(msid(3),istatus,ierr)
       call MPI_WAIT(msid(4),istatus,ierr)
 
-      if (nps.eq.0) go to 240
+      if (nps / = 0) then
 ! remove particles which do not belong here
 ! first check particles coming from above
       jsl(1) = 0
@@ -680,7 +681,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          do i = 1, xdim
             rbufr(i,jss(2)) = rbufr(i,j)
          end do
-      endif
+      end if
       end do
       jsr(2) = jss(2)
 ! next check particles coming from below
@@ -698,8 +699,8 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
             end do
          else
             jss(2) = 2*npmax
-            go to 210
-         endif
+            exit
+         end if
 ! particles going down back, should not happen
       else if (xt < edgel) then
          if (jsl(1).lt.nbmax) then
@@ -709,19 +710,20 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
             end do
          else
             jss(2) = 2*npmax
-            go to 210
-         endif
+            exit
+         end if
 ! particles staying here
       else
          jss(2) = jss(2) + 1
          do i = 1, xdim
             rbufl(i,jss(2)) = rbufl(i,j)
          end do
-      endif
+      end if
    end do
-  210 jsl(2) = jss(2)
+   jsl(2) = jss(2)
+   end if
 ! check if move would overflow particle array
-  240 nps = 0
+      nps = 0
       npt = npmax
       jss(2) = npp + jsl(2) + jsr(2) - jss(1)
       nps = max0(nps,jss(2))
@@ -738,7 +740,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          call write_dbg(cls_name, sname, cls_level, erstr)
          info(1) = ierr
          return
-      endif
+      end if
 ! distribute incoming particles from buffers
 ! distribute particles coming from below into holes
       jss(2) = min0(jss(1),jsl(2))
@@ -751,7 +753,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          jss(2) = min0(jss(1)-jsl(2),jsr(2))
       else
          jss(2) = jsl(2) - jss(1)
-      endif
+      end if
       do j = 1, jss(2)
 ! no more particles coming from below or back
 ! distribute particles coming from above or front into holes
@@ -765,12 +767,12 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          do i = 1, xdim
             part(i,j+npp) = rbufl(i,j+jss(1))
          end do
-      endif
+      end if
       end do
       if (jss(1) <= jsl(2)) then
          npp = npp + (jsl(2) - jss(1))
          jss(1) = jsl(2)
-      endif
+      end if
       jss(2) = jss(1) - (jsl(2) + jsr(2))
       if (jss(2) > 0) then
          jss(1) = (jsl(2) + jsr(2))
@@ -778,7 +780,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       else
          jss(1) = jss(1) - jsl(2)
          jsr(2) = -jss(2)
-      endif
+      end if
       do j = 1, jsr(2)
 ! holes left over
 ! fill up remaining holes in particle array with particles from bottom
@@ -790,35 +792,34 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
             do i = 1, xdim
                part(i,ihole(j2)) = part(i,j1)
             end do
-         endif
+         end if
       else
 ! no more holes
 ! distribute remaining particles from above or front into bottom
          do i = 1, xdim
             part(i,j+npp) = rbufr(i,j+jss(1))
          end do
-      endif
+      end if
       end do
       if (jss(2) > 0) then
          npp = npp - jsr(2)
       else
          npp = npp + jsr(2)
-      endif
+      end if
       jss(1) = 0
 
 ! check if any particles have to be passed further
       info(6) = max0(info(6),mter)
       if (ibflg(2) <= 0) exit
-
-         write (erstr,*) 'Info: particles being passed further = ', ibflg(2)
-         call write_dbg(cls_name, sname, cls_level, erstr)
-         if (ibflg(3) > 0) ibflg(3) = 1
-         if (iter >= itermax) then
+      write (erstr,*) 'Info: particles being passed further = ', ibflg(2)
+      call write_dbg(cls_name, sname, cls_level, erstr)
+      if (ibflg(3) > 0) ibflg(3) = 1
+      if (iter >= itermax) then
          ierr = -((iter-2)/2)
          write (erstr,*) 'Iteration overflow, iter = ', ierr
          call write_err(erstr)
          return
-         end if
+      end if
    end do
 ! check if buffer overflowed and more particles remain to be checked
       if (ibflg(3) <=  0) exit
@@ -827,8 +828,12 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       write (erstr,*) "new loop, nter=", nter 
       call write_dbg(cls_name, sname, cls_level, erstr)
    end do
+   if (nter > 0) then
+      write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
+      call write_dbg(cls_name, sname, cls_level, erstr)
+   end if
    call write_dbg(cls_name, sname, cls_level, 'ends')
-
+   return
 end subroutine part2d_pmove
 !
 subroutine part2d_extractpsi(part,npp,qbm,dex,psi_re,psi_im)
@@ -857,8 +862,8 @@ subroutine part2d_extractpsi(part,npp,qbm,dex,psi_re,psi_im)
    do ii = 1, npp
       r0 = part(1,ii)
       th = part(2,ii)
-      vx = ppart(3,j,k)
-      vy = ppart(4,j,k)
+      vx = part(3,j,k)
+      vy = part(4,j,k)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r - noff
@@ -877,8 +882,8 @@ subroutine part2d_extractpsi(part,npp,qbm,dex,psi_re,psi_im)
          rc = rc*rc0
       end do
       dx = - dx*qbm
-      ppart(7,ii) = 1.0 + dx
-      ppart(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5
+      part(7,ii) = 1.0 + dx
+      part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5
    end do
 
    call write_dbg(cls_name, sname, cls_level, 'ends')

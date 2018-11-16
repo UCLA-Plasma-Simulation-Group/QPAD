@@ -977,7 +977,8 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: part
  real, intent(in) :: delta
- integer, intent(in) :: npp,dspl
+ integer(kind=LG), intent(in) :: npp
+ integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
 ! local data
  integer :: tnpp, tp, color, pgrp, pid, pnvp, i, j
@@ -1145,7 +1146,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
  
 end subroutine pwpart_2d_r
 !
-subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,delta,rtag,stag,&
+subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,dx,dz,z0,rtag,stag,&
 &id,ierr)
 
  implicit none
@@ -1153,8 +1154,9 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,delta,rtag,stag,&
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: part
- real, dimension(3), intent(in) :: delta
- integer, intent(in) :: npp,dspl
+ real, intent(in) :: dx, dz, z0
+ integer(kind=LG), intent(in) :: npp
+ integer, intent(in) :: dspl
  integer, intent(in) :: rtag, stag
  integer, intent(inout) :: id, ierr
 ! local data
@@ -1275,7 +1277,15 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,delta,rtag,stag,&
        endif               
 
        do i = 1, 3
-          buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*delta(i)
+          if (i == 1) then
+             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             &cos(part(i,1:((tnpp-1)*dspl+1):dspl))
+          else if (i == 2) then
+             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             &sin(part(i,1:((tnpp-1)*dspl+1):dspl))
+          else
+             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dz+z0
+          end if
 
           if (ori >=0 .and. tpo /= 0) then
              call h5dopen_f(rootID, 'x'//char(iachar('0')+i), dset_id, ierr)
@@ -1433,7 +1443,8 @@ subroutine wpart(pp,file,part,npp,dspl,ierr)
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: part
- integer, intent(in) :: npp,dspl
+ integer(kind=LG), intent(in) :: npp
+ integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
 ! local data
  integer :: tp
