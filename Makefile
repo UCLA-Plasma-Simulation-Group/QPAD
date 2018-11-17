@@ -8,11 +8,11 @@ SHELL = /bin/bash
 
 .PHONY: all
 all:
-	@cd source && make
+	@cd source && make depend && make
 
 .PHONY: module
 module:
-	@cd source && make module
+	@cd source && make depend && make module
 
 .PHONY: TEST_%
 TEST_%:

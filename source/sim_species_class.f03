@@ -1,5 +1,6 @@
 module sim_species_class
 
+use species2d_class
 use parallel_pipe_class
 use grid_class
 

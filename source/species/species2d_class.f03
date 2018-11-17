@@ -6,6 +6,7 @@ use parallel_pipe_class
 use param
 use system
 use fdist2d_class
+use field_psi_class
 use field_src_class
 use field_class
 use part2d_class

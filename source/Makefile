@@ -69,7 +69,7 @@ DATESTAMP = $$(date +%s)
 
 # Targets and rules
 .DEFAULT_GOAL := all
-# .PHONY:
+.PHONY: all module clean depend
 
 $(quickpic) : $(objs) $(main_obj)
 	@echo "[LINK] $(@F)"
@@ -121,6 +121,8 @@ clean :
 	@echo "[CLEAN] Removing build directory"
 	@rm -rf $(builddir)
 
-$(depfile) : $(src) $(main_src)
+depend : $(depfile)
+
+$(depfile) : $(main_src)
 	@echo "Automatically generating module dependencies."
 	@$(PYTHON) $(MAKEDEPEND) $(main_src) > $(depfile)
