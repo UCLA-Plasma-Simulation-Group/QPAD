@@ -6,8 +6,11 @@ use parallel_pipe_class
 use param
 use system
 use fdist3d_class
+use grid_class
 use field_src_class
 use field_class
+use field_e_class
+use field_b_class
 use part3d_class
 use hdf5io_class
 use mpi
@@ -24,7 +27,7 @@ type beam3d
 
    class(parallel_pipe), pointer, public :: pp => null()
    class(part3d), pointer :: pd => null()
-   class(field_rho), pointer :: q => null()
+   class(field_rho), allocatable :: q
    class(fdist3d), pointer :: pf => null()
    logical :: evol
    contains
@@ -34,7 +37,7 @@ type beam3d
    generic :: push => push_beam3d
    generic :: qdp => qdeposit_beam3d, qdpcopy_beam3d  
    generic :: wr => writehdf5_beam3d
-   generic :: wrq => writeq_beam3d, writeqslice_beam3d
+   generic :: wrq => writeq_beam3d
    generic :: wrst => writerst_beam3d       
    generic :: rrst => readrst_beam3d       
    procedure, private :: init_beam3d
@@ -42,18 +45,19 @@ type beam3d
    procedure, private :: push_beam3d
    procedure, private :: qdeposit_beam3d, writehdf5_beam3d
    procedure, private :: writerst_beam3d, readrst_beam3d
-   procedure, private :: writeq_beam3d, writeqslice_beam3d 
+   procedure, private :: writeq_beam3d
    procedure, private :: qdpcopy_beam3d                 
 end type
 
 save      
 
-character(len=10) :: class = 'beam3d'
+character(len=10) :: cls_name = 'beam3d'
+integer, parameter :: cls_level = 2
 character(len=128) :: erstr
 
 contains
 !
-subroutine init_beam3d(this,pp,fd,gc,part_shape,pf,qbm,dt,xdim)
+subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim)
 
    implicit none
    
@@ -66,7 +70,7 @@ subroutine init_beam3d(this,pp,fd,gc,part_shape,pf,qbm,dt,xdim)
    integer, intent(in) :: xdim, part_shape
 ! local data
    character(len=18), save :: sname = 'init_beam3d'
-   integer :: id, number_modes, ierr
+   integer :: id, num_modes, ierr
    integer, dimension(10) :: istat
    real :: dr, dxi
             
@@ -81,7 +85,7 @@ subroutine init_beam3d(this,pp,fd,gc,part_shape,pf,qbm,dt,xdim)
    this%evol = pf%getevol()
    call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
    call this%pd%new(pp,pf,fd,qbm,dt,xdim)
-   call this%pmv(this%q,1,1,id)
+   call this%pd%pmv(this%q,1,1,id)
    call MPI_WAIT(id,istat,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -177,7 +181,7 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
       return
    end if
    call this%pd%push(ef,bf)
-   call this%pmv(ef,rtag,stag,sid)
+   call this%pd%pmv(ef,rtag,stag,sid)
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine push_beam3d
@@ -222,7 +226,7 @@ subroutine writeq_beam3d(this,file,rtag,stag,id)
 ! local data
    character(len=18), save :: sname = 'writeq_beam3d:'
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%q%write_hdf(file,1,rtag,stag,id)
+   call this%q%write_hdf5(file,1,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writeq_beam3d

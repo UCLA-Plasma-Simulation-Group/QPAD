@@ -5,8 +5,11 @@ module species2d_class
 use parallel_pipe_class
 use param
 use system
+use grid_class
 use fdist2d_class
 use field_psi_class
+use field_e_class
+use field_b_class
 use field_src_class
 use field_class
 use part2d_class
@@ -23,9 +26,9 @@ type species2d
    private
 
    class(part2d), pointer :: pd => null()
-   class(field_rho), pointer :: q => null(), qn => null()
-   class(field_jay), pointer :: cu => null()
-   class(field_djdxi), pointer :: amu => null(), dcu => null()
+   class(field_rho), allocatable :: q, qn
+   class(field_jay), allocatable :: cu
+   class(field_djdxi), allocatable :: amu, dcu
    class(fdist2d), pointer :: pf => null()
    class(parallel_pipe), pointer :: pp => null()
 
@@ -57,7 +60,8 @@ end type
 
 save
 
-character(len=10) :: class = 'species2d'
+character(len=10) :: cls_name = 'species2d'
+integer, parameter :: cls_level = 2
 character(len=128) :: erstr
 
 contains
@@ -76,7 +80,7 @@ subroutine init_species2d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,s)
 ! local data
    character(len=18), save :: sname = 'init_species2d'
    real :: dr, dxi
-   integer :: number_modes
+   integer :: num_modes
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -135,7 +139,7 @@ subroutine renew_species2d(this,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
    call this%qn%acopy_gc()
-   this%q% = this%qn
+   this%q = this%qn
    if (this%pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
       call this%q%copy_slice(1,p_copy_1to2)
@@ -150,7 +154,7 @@ subroutine qdp_species2d(this,q)
 
    implicit none
    
-   class(species2d), intent(in) :: this
+   class(species2d), intent(inout) :: this
    class(field_rho), intent(inout) :: q
 ! local data
    character(len=18), save :: sname = 'qdp_species2d'
@@ -184,7 +188,7 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   call this%pd%amjdp(this%pd,ef,bf,this%cu,this%amu,this%dcu)
+   call this%pd%amjdp(ef,bf,this%cu,this%amu,this%dcu)
    call this%cu%acopy_gc()
    call this%dcu%acopy_gc()
    call this%amu%acopy_gc()
@@ -209,7 +213,7 @@ subroutine push_species2d(this,ef,bf)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    call this%pd%push(ef,bf)
-   call this%pmv(this%q)
+   call this%pd%pmv(this%q)
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
    

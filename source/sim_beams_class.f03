@@ -1,5 +1,6 @@
 module sim_beams_class
 
+use beam3d_class
 use parallel_pipe_class
 use grid_class
 

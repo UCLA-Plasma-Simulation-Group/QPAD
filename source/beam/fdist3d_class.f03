@@ -45,10 +45,11 @@ abstract interface
 subroutine ab_dist3d(this,part3d,npp,ud)
    import fdist3d
    import ufield
+   import LG
    implicit none
    class(fdist3d), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
-   integer, intent(inout) :: npp
+   integer(kind=LG), intent(inout) :: npp
    class(ufield), intent(in), pointer :: ud
 end subroutine ab_dist3d
 !
@@ -80,7 +81,7 @@ type, extends(fdist3d) :: fdist3d_000
 
 end type fdist3d_000
 !
-character(len=10), save :: class = 'fdist3d'
+character(len=10), save :: cls_name = 'fdist3d'
 integer, save :: cls_level = 2
 character(len=128), save :: erstr
       
@@ -128,7 +129,7 @@ function getdx(this)
    
    getdx = this%dx
 
-end function getdex
+end function getdx
 !      
 function getdz(this)
 
@@ -150,7 +151,7 @@ function getz0(this)
    
    getz0 = this%z0
 
-end function getdex
+end function getz0
 !      
 subroutine end_fdist3d(this)
     
@@ -261,7 +262,6 @@ subroutine init_fdist3d_000(this,input,i)
    this%np = np
    this%quiet = quiet
    this%evol = evol
-   this%dex = dr
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -273,7 +273,7 @@ subroutine dist3d_000(this,part3d,npp,ud)
    
    class(fdist3d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
-   integer, intent(inout) :: npp
+   integer(kind=LG), intent(inout) :: npp
    class(ufield), intent(in), pointer :: ud
 ! local data1
 ! edges(1) = lower boundary in y of particle partition
@@ -287,13 +287,14 @@ subroutine dist3d_000(this,part3d,npp,ud)
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
    integer, dimension(2) :: noff
-   integer :: nps=1
+   integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
-   integer :: idimp, npmax, ierr = 0
+   integer :: idimp, ierr
    character(len=18), save :: sname = 'dist3d_000'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
+   ierr = 0; nps = 1
    npx = this%npx; npy = this%npy; npz = this%npz
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
    pt => part3d

@@ -41,6 +41,8 @@ src += simulation_class.f03
 include fields/Makefile
 # species code
 include species/Makefile
+# beam code
+include beam/Makefile
 
 main_src = main.f03
 # ------------------------------------------------------------------------------
