@@ -17,7 +17,7 @@ public :: fdist2d, fdist2d_000
 
 type, abstract :: fdist2d
    private
-   class(parallel_pipe), pointer :: p => null()
+   class(parallel_pipe), pointer :: pp => null()
 !
 ! ndprof = profile type 
    integer :: npf, npmax
@@ -39,11 +39,12 @@ abstract interface
 subroutine ab_dist2d(this,part2d,npp,ud,s)
    import fdist2d
    import ufield
+   import LG
    implicit none
    class(fdist2d), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
-   integer, intent(inout) :: npp
-   class(grid), intent(in), pointer :: ud         
+   integer(kind=LG), intent(inout) :: npp
+   class(ufield), intent(in), pointer :: ud         
    real, intent(in) :: s
 end subroutine ab_dist2d
 !
@@ -141,7 +142,7 @@ subroutine init_fdist2d_000(this,input,i)
    character(len=18), save :: sname = 'init_fdist2d_000'
    
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%p => input%p
+   this%pp => input%pp
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
@@ -175,7 +176,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    implicit none
    class(fdist2d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
-   integer, intent(inout) :: npp
+   integer(kind=LG), intent(inout) :: npp
    class(ufield), intent(in) :: ud
    real, intent(in) :: s 
 ! local data
@@ -197,13 +198,13 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
       prof_l = size(this%fs)
       if (s<this%s(1) .or. s>this%s(prof_l)) then
          write (erstr,*) 'The s is out of the bound!'
-         call write_err(cls_name, sname, cls_level, trim(erstr))
+         call write_err(trim(erstr))
          return
       end if
       do i = 2, prof_l
          if (this%s(i) < this%s(i-1)) then
             write (erstr,*) 's is not monotonically increasing!'
-            call write_err(cls_name, sname, cls_level, trim(erstr))
+            call write_err(trim(erstr))
             return
          end if
          if (s<=this%s(i)) then

@@ -10,28 +10,94 @@ use mpi
 
 implicit none
 
-character(len=10), private, save :: class = 'part3d_lib'
+character(len=10), private, save :: cls_name = 'part3d_lib'
 character(len=128), private, save :: erstr
 integer, private, save :: cls_level = 2
 
 contains
+!
+function ranorm()
+! this program calculates a random number y from a gaussian distribution
+! with zero mean and unit variance, according to the method of
+! mueller and box:
+!    y(k) = (-2*ln(x(k)))**1/2*sin(2*pi*x(k+1))
+!    y(k+1) = (-2*ln(x(k)))**1/2*cos(2*pi*x(k+1)),
+! where x is a random number uniformly distributed on (0,1).
+! written for the ibm by viktor k. decyk, ucla
+   integer, save :: r1 = 885098780, r2 = 1824280461
+   integer, save :: iflg = 0, r4 = 1396483093, r5 = 55318673
+   real(kind=DB), save :: h1l = 65531.0d0, h1u = 32767.0d0
+   real(kind=DB), save :: h2l = 65525.0d0,r0 = 0.0d0
+   real(kind=DB) :: ranorm,r3,asc,bsc,temp
+   integer :: isc, i1
 
+   if (iflg == 0) then
+      isc = 65536
+      asc = dble(isc)
+      bsc = asc*asc
+      i1 = r1 - (r1/isc)*isc
+      r3 = h1l*dble(r1) + asc*h1u*dble(i1)
+      i1 = r3/bsc
+      r3 = r3 - dble(i1)*bsc
+      bsc = 0.5d0*bsc
+      i1 = r2/isc
+      isc = r2 - i1*isc
+      r0 = h1l*dble(r2) + asc*h1u*dble(isc)
+      asc = 1.0d0/bsc
+      isc = r0*asc
+      r2 = r0 - dble(isc)*bsc
+      r3 = r3 + (dble(isc) + 2.0d0*h1u*dble(i1))
+      isc = r3*asc
+      r1 = r3 - dble(isc)*bsc
+      temp = dsqrt(-2.0d0*dlog((dble(r1) + dble(r2)*asc)*asc))
+      isc = 65536
+      asc = dble(isc)
+      bsc = asc*asc
+      i1 = r4 - (r4/isc)*isc
+      r3 = h2l*dble(r4) + asc*h1u*dble(i1)
+      i1 = r3/bsc
+      r3 = r3 - dble(i1)*bsc
+      bsc = 0.5d0*bsc
+      i1 = r5/isc
+      isc = r5 - i1*isc
+      r0 = h2l*dble(r5) + asc*h1u*dble(isc)
+      asc = 1.0d0/bsc
+      isc = r0*asc
+      r5 = r0 - dble(isc)*bsc
+      r3 = r3 + (dble(isc) + 2.0d0*h1u*dble(i1))
+      isc = r3*asc
+      r4 = r3 - dble(isc)*bsc
+      r0 = 6.28318530717959d0*((dble(r4) + dble(r5)*asc)*asc)
+      ranorm = temp*dsin(r0)
+      r0 = temp*dcos(r0)
+      iflg = 1
+      return
+   else
+      ranorm = r0
+      r0 = 0.0d0
+      iflg = 0
+      return
+   end if
+end function ranorm
+!
 subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
 &vdy,vdz,npx,npy,npz,n1,n2,idimp,npmax,sigx,&
 &sigy,sigz,x0,y0,z0,cx,cy,lquiet,ierr)
 
    implicit none
 
-   integer, intent(in) :: nps,npp,npmax,npx,npy,npz,idimp,n1,n2,ierr
+   integer, intent(in) :: npx,npy,npz,idimp,n1,n2
+   integer, intent(inout) :: ierr
+   integer(kind=LG), intent(inout) :: npp
+   integer(kind=LG), intent(in) :: npmax,nps
    real, intent(in) :: qm,sigx,sigy,sigz,x0,y0,z0
    real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz
-   real, dimension(:,:), intent(in) :: part
+   real, dimension(:,:), intent(inout) :: part
    real, dimension(4), intent(in) :: edges
    real, dimension(3), intent(in) :: cx,cy
    logical, intent(in) :: lquiet
 ! local data
    character(len=20), save :: sname = "part2d_qdeposit"
-   double precision :: random,ranorm
    integer(kind=LG) :: i, np, npt
    integer :: j,k,l
    real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
@@ -50,7 +116,8 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
    borderz = min((z0+5.0*sigz),real(n2-1))
    np = npx*npy*npz
    
-   do i = 1, np
+   do
+      if (i > np) exit
       do
          tempz = z0+sigz*ranorm()
          if (tempz < borderz .and. tempz > borderlz) then
@@ -75,9 +142,9 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
          if (npt < npmax) then
             npt = npp + 1
             part(3,npt) = tempz
-            tempxx = -cx(0)*(tempz-z0)**2-cx(1)*(tempz-z0)-cx(2)                
+            tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)                
             tempx = tempx + tempxx
-            tempyy = -cy(2)*(tempz-z0)**2-cy(1)*(tempz-z0)-cy(2)
+            tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
             tempy = tempy + tempyy
             part(1,npt) = sqrt(tempx**2+tempy**2)
             if (tempx == 0.0) then
@@ -93,7 +160,7 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
             part(5,npt) = tvty
             part(6,npt) = tvtz 
             part(7,npt) = qm
-            npp(m) = npt
+            npp = npt
          else
             ierr = ierr + 1
          end if
@@ -138,9 +205,9 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
    integer, intent(in) :: num_modes
 ! local data
    character(len=20), save :: sname = "part3d_qdeposit"
-   integer :: i, nn, mm, noff1, noff2, n1p, n2p
+   integer :: i, j, nn, mm, noff1, noff2, n1p, n2p
    integer(kind=LG) :: ii
-   real, dimension(:,:), pointer :: q0, qr, qi
+   real, dimension(:,:,:), pointer :: q0, qr, qi
    real :: r, qc, th, zz, dd, ad, zd, za, rcr, rci
    complex(kind=DB) :: rc, rc0
 
@@ -215,7 +282,7 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
    do i = 1, num_modes
       qr => q_re(i)%get_f2()
       qi => q_im(i)%get_f2()
-      do j = 1, num_modes
+      do j = 1, n1p
          r = 0.5 + j + noff1 - 1
          qr(1,j,:) = qr(1,j,:)/r
          qi(1,j,:) = qi(1,j,:)/r
@@ -225,14 +292,14 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
 
 end subroutine part3d_qdeposit
 !
-subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
+subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
 &bf_re,bf_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: dt, qbm, dx, dz
+   real, intent(in) :: dt, qbm, dx0, dz0
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
    &bf_re, bf_im
    integer, intent(in) :: xdim, num_modes
@@ -240,7 +307,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
    character(len=20), save :: sname = "part3d_push"
    integer :: i
    integer(kind=LG) :: ii
-   real, dimension(:,:), pointer :: e0,b0,er,ei,br,bi
+   real, dimension(:,:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, n2, nn, mm, noff1, n1p, noff2, n2p
    real :: idex, edge1, edge2, qtmh, qtmh1, qtmh2, dti
    real :: r0, r, rn, qc, qc1, th, th1, dd, ad, za, zd, rcr, rci
@@ -261,11 +328,11 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
    n2 = ef_re(0)%get_nd(2)
    e0 => ef_re(0)%get_f2()
    b0 => bf_re(0)%get_f2()
-   er => null(); ei => null; br => null(); bi => null()
+   er => null(); ei => null(); br => null(); bi => null()
 
-   idex = 1.0/dx
-   dtx = dt/dx
-   dtz = dt/dz
+   idex = 1.0/dx0
+   dtx = dt/dx0
+   dtz = dt/dz0
    qtmh = qbm*dt
    edge1 = real(n1) - 0.5
    edge2 = real(n2) - 1.0
@@ -299,15 +366,15 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
       do i = 1, num_modes
          rcr = real(rc)
          rci = aimag(rc)
-         er => ef_re(i)%get_f1()
-         ei => ef_im(i)%get_f1()
+         er => ef_re(i)%get_f2()
+         ei => ef_im(i)%get_f2()
          dxx(1:3) = ad*(er(1:3,nn,mm)*rcr + ei(1:3,nn,mm)*rci)
          dxx(1:3) = za*(dd*(er(1:3,nn+1,mm)*rcr+ei(1:3,nn+1,mm)*rci) + dxx(1:3))
          tmp(1:3) = ad*(er(1:3,nn,mm+1)*rcr + ei(1:3,nn,mm+1)*rci)
          dxx(1:3) = dxx(1:3) + zd*(dd*(er(1:3,nn+1,mm+1)*rcr+ei(1:3,nn+1,mm+1)*rci) + tmp(1:3))
          dx(1:3) = dx(1:3) + dxx(1:3)
-         br => bf_re(i)%get_f1()
-         bi => bf_im(i)%get_f1()
+         br => bf_re(i)%get_f2()
+         bi => bf_im(i)%get_f2()
          oxx(1:3) = ad*(br(1:3,nn,mm)*rcr + bi(1:3,nn,mm)*rci)
          oxx(1:3) = za*(dd*(br(1:3,nn+1,mm)*rcr + bi(1:3,nn+1,mm)*rci) + oxx(1:3))
          tmp(1:3) = ad*(br(1:3,nn,mm+1)*rcr + bi(1:3,nn,mm+1)*rci)
@@ -329,7 +396,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
       p2 = acx**2 + acy**2
       ngamma = sqrt(1.0 + p2 + acz**2)
       dtx1 = dtx/ngamma
-      dtz1 = dtz*(1.0+p2t)/(acz*(acz+ngamma))
+      dtz1 = dtz*(1.0+p2)/(acz*(acz+ngamma))
 
       v1 = r0 + acx*dtx1
       v2 = acy*dtx1
@@ -370,79 +437,16 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx,dz,ef_re,ef_im,&
 
 end subroutine part3d_push
 !
-function ranorm()
-! this program calculates a random number y from a gaussian distribution
-! with zero mean and unit variance, according to the method of
-! mueller and box:
-!    y(k) = (-2*ln(x(k)))**1/2*sin(2*pi*x(k+1))
-!    y(k+1) = (-2*ln(x(k)))**1/2*cos(2*pi*x(k+1)),
-! where x is a random number uniformly distributed on (0,1).
-! written for the ibm by viktor k. decyk, ucla
-   integer, save :: r1 = 885098780, r2 = 1824280461
-   integer, save :: iflg = 0, r4 = 1396483093, r5 = 55318673
-   double precision, save :: h1l = 65531.0d0, h1u = 32767.0d0
-   double precision, save :: h2l = 65525.0d0,r0 = 0.0d0
-   double precision :: ranorm,r3,asc,bsc,temp
-
-   if (iflg == 0) then
-      isc = 65536
-      asc = dble(isc)
-      bsc = asc*asc
-      i1 = r1 - (r1/isc)*isc
-      r3 = h1l*dble(r1) + asc*h1u*dble(i1)
-      i1 = r3/bsc
-      r3 = r3 - dble(i1)*bsc
-      bsc = 0.5d0*bsc
-      i1 = r2/isc
-      isc = r2 - i1*isc
-      r0 = h1l*dble(r2) + asc*h1u*dble(isc)
-      asc = 1.0d0/bsc
-      isc = r0*asc
-      r2 = r0 - dble(isc)*bsc
-      r3 = r3 + (dble(isc) + 2.0d0*h1u*dble(i1))
-      isc = r3*asc
-      r1 = r3 - dble(isc)*bsc
-      temp = dsqrt(-2.0d0*dlog((dble(r1) + dble(r2)*asc)*asc))
-      isc = 65536
-      asc = dble(isc)
-      bsc = asc*asc
-      i1 = r4 - (r4/isc)*isc
-      r3 = h2l*dble(r4) + asc*h1u*dble(i1)
-      i1 = r3/bsc
-      r3 = r3 - dble(i1)*bsc
-      bsc = 0.5d0*bsc
-      i1 = r5/isc
-      isc = r5 - i1*isc
-      r0 = h2l*dble(r5) + asc*h1u*dble(isc)
-      asc = 1.0d0/bsc
-      isc = r0*asc
-      r5 = r0 - dble(isc)*bsc
-      r3 = r3 + (dble(isc) + 2.0d0*h1u*dble(i1))
-      isc = r3*asc
-      r4 = r3 - dble(isc)*bsc
-      r0 = 6.28318530717959d0*((dble(r4) + dble(r5)*asc)*asc)
-      ranorm = temp*dsin(r0)
-      r0 = temp*dcos(r0)
-      iflg = 1
-      return
-   else
-      ranorm = r0
-      r0 = 0.0d0
-      iflg = 0
-      return
-   end if
-end function ranorm
-!
 subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
 &xdim,npmax,nbmax,tag1,tag2,id,info)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
-   real, dimension(:,:), pointer, intent(in) :: sbufl,sbufr,rbufl,rbufr
+   real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr,pbuff
    integer(kind=LG), intent(inout) :: npp
    integer(kind=LG), intent(in) :: npmax, nbmax
-   integer(kind=LG), dimension(:), intent(in) :: ihole
+   integer(kind=LG), dimension(:), intent(inout) :: ihole
    integer, intent(in) :: xdim
    class(parallel_pipe), pointer, intent(in) :: pp
    class(ufield), intent(in) :: ud
@@ -450,15 +454,16 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    integer, intent(inout) :: id
    integer, dimension(:), intent(inout) :: info
 ! local data
+   character(len=20), save :: sname = "part3d_pmove"
    real, dimension(4) :: edges
    integer, dimension(2) :: noff         
    integer, dimension(2) :: jsr, jsl, jss
    integer :: n1, n2, kstrt, nvpy, nvpz
    integer :: nproc, lgrp, mreal, mint, mcplx, mdouble, lworld
-   integer, parameter :: iy = 2, iz = 3
+   integer, parameter :: iy = 1, iz = 3
    integer :: ierr, ic, js, ks, mnblok, i, n, m, my, mz, moff, nvp, iter
    integer :: npr, nps, npt, kl, kr, j, j1, j2, nter, mter
-   integer(kind=LG) :: nbsize
+   integer :: nbsize
    integer :: itermax
    integer, dimension(10) :: istatus
    integer, dimension(4) :: ibflg, iwork, msid
@@ -466,8 +471,8 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    real(kind=DB), dimension(2) :: bflg, work
    real :: an, xt
 
-   n1 = ud(0)%get_nd(1); n2 = ud(0)%get_nd(2)
-   noff = ud(0)%get_noff()
+   n1 = ud%get_nd(1); n2 = ud%get_nd(2)
+   noff = ud%get_noff()
    if (noff(1) == 0) then
       edges(1) = noff(1)
       edges(2) = edges(1) + ud%get_ndp(1)
@@ -485,7 +490,7 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    mreal = pp%getmreal()
    mint = pp%getmint()
    lworld = pp%getlworld()
-   lgrp = pp%getlgrp
+   lgrp = pp%getlgrp()
 
    ks = (kstrt - 1)/nvpy
    js = kstrt - nvpy*ks - 2
@@ -514,9 +519,9 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
          end do
          npp = jss(2)
       else
-         write (erstr,*) 'particle overflow', jss(2,1)
+         write (erstr,*) 'particle overflow', jss(2)
          call write_dbg(cls_name, sname, cls_level, erstr)
-         info(1) = jss(2,1)
+         info(1) = jss(2)
          return
       end if
    end if
@@ -605,7 +610,6 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
             do i = 1, xdim
                sbufl(i,jsl(1)) = part(i,j)
             end do
-            sbufl(ic,jsl(1)) = xt
             ihole(jsl(1)+jsr(1)) = j
          else
             jss(2) = 1
@@ -618,7 +622,6 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
             do i = 1, xdim
                sbufr(i,jsr(1)) = part(i,j)
             end do
-            sbufr(ic,jsr(1)) = xt
             ihole(jsl(1)+jsr(1)) = j
          else
             jss(2) = 1
@@ -669,7 +672,7 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
       if (rbufr(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
    end do
    if (jsr(1) /= 0) then
-      write (erstr,*) 'Info:',jsr(1,m),' particles returning above'
+      write (erstr,*) 'Info:',jsr(1),' particles returning above'
       call write_dbg(cls_name, sname, cls_level, erstr)
    end if
 ! check if any particles coming from below or back belong here
@@ -678,7 +681,7 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
       if (rbufl(ic,j) < edges(2*n-1)) jss(2) = jss(2) + 1
    end do
    if (jss(2) /= 0) then
-      write (erstr,*) 'Info:',jss(2,m),' particles returning below'
+      write (erstr,*) 'Info:',jss(2),' particles returning below'
       call write_dbg(cls_name, sname, cls_level, erstr)
    end if
    jsl(1) = jsl(1) + jss(2)
@@ -700,14 +703,12 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
 ! particles going down or back
          if (xt < edges(2*n-1)) then
             jsl(1) = jsl(1) + 1
-            rbufr(ic,j) = xt
             do i = 1, xdim
                sbufl(i,jsl(1)) = rbufr(i,j)
             end do
 ! particles going up or front, should not happen
          else if (xt >= edges(2*n)) then
             jsr(1) = jsr(1) + 1
-            rbufr(ic,j) = xt
             do i = 1, xdim
                sbufr(i,jsr(1)) = rbufr(i,j)
             end do
@@ -728,7 +729,6 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
          if (xt >= edges(2*n)) then
             if (jsr(1) < nbmax) then
                jsr(1) = jsr(1) + 1
-               rbufl(ic,j) = xt
                do i = 1, xdim
                   sbufr(i,jsr(1)) = rbufl(i,j)
                end do
@@ -740,7 +740,6 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
          elseif (xt < edges(2*n-1)) then
             if (jsl(1) < nbmax) then
                jsl(1) = jsl(1) + 1
-               rbufl(ic,j) = xt
                do i = 1, xdim
                   sbufl(i,jsl(1)) = rbufl(i,j)
                end do

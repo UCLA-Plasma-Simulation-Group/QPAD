@@ -11,8 +11,9 @@ implicit none
 
 private
 
-public :: hdf5file, pwfield, pwfield_pipe
-! public ::  wfield_pipe, pwpart_pipe, pwpart, wpart, rpart
+public :: hdf5file, pwfield, pwfield_pipe, pwpart, wpart, rpart
+public :: pwpart_pipe
+! public ::  wfield_pipe
 
 type hdf5file
  
@@ -1509,7 +1510,7 @@ subroutine rpart(pp,file,part,npp,ierr)
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(inout) :: part
- integer, intent(out) :: npp
+ integer(kind=LG), intent(out) :: npp
  integer, intent(inout) :: ierr
 ! local data
  integer :: tp

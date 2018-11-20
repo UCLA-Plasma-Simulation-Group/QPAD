@@ -84,7 +84,7 @@ subroutine init_part3d(this,pp,pf,fd,qbm,dt,xdim)
 ! local data
    character(len=18), save :: sname = 'init_part3d'
    integer :: noff, nxyp, nx, prof, npmax, nbmax
-   class(ufield), dimension(:) pointer :: ud
+   class(ufield), dimension(:), pointer :: ud
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
@@ -130,8 +130,8 @@ subroutine qdeposit(this,q)
 
    implicit none
    
-   class(part3d), intent(in) :: this
-   class(field),  pointer, intent(in) :: q
+   class(part3d), intent(inout) :: this
+   class(field), intent(in) :: q
 ! local data
    character(len=18), save :: sname = 'qdeposit'
    class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
@@ -151,8 +151,8 @@ subroutine partpush(this,ef,bf)
       
    implicit none
    
-   class(part2d), intent(inout) :: this
-   class(field), pointer, intent(in) :: ef, bf
+   class(part3d), intent(inout) :: this
+   class(field), intent(in) :: ef, bf
 ! local data
    character(len=18), save :: sname = 'partpush'
    class(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
@@ -177,12 +177,14 @@ subroutine pmove(this,fd,rtag,stag,sid)
    implicit none
    
    class(part3d), intent(inout) :: this
-   class(field), pointer, intent(in) :: fd
+   class(field), intent(in) :: fd
    integer, intent(in) :: rtag, stag
    integer, intent(inout) :: sid
 ! local data
    character(len=18), save :: sname = 'pmove:'
-   class(ufield), dimension(:) pointer :: ud
+   class(ufield), dimension(:), pointer :: ud
+   integer, dimension(9) :: info
+
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -193,7 +195,7 @@ subroutine pmove(this,fd,rtag,stag,sid)
 
    if (info(1) /= 0) then
       write (erstr,*) 'part3d_pmove error'
-      call write_err(class//sname//erstr)
+      call write_err(cls_name//sname//erstr)
    endif
    
    if (this%pp%getstageid() == this%pp%getnstage() - 1) sid = MPI_REQUEST_NULL
@@ -226,7 +228,7 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call pwpart_pipe(this%p,this%err,file,this%part,this%npp,dspl,this%dx,this%dz,&
+   call pwpart_pipe(this%pp,file,this%part,this%npp,dspl,this%dx,this%dz,&
    &this%z0,rtag,stag,id,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

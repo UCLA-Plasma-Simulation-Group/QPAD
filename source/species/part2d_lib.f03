@@ -31,7 +31,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    integer, intent(in) :: num_modes
 ! local data
    character(len=20), save :: sname = "part2d_qdeposit"
-   integer :: i, nn, noff, n1p
+   integer :: i, nn, noff, n1p, j
    integer(kind=LG) :: ii
    real, dimension(:,:), pointer :: q0, qr, qi
    real :: r, qc, th, dd, ad, rcr, rci
@@ -101,7 +101,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    do i = 1, num_modes
       qr => q_re(i)%get_f1()
       qi => q_im(i)%get_f1()
-      do j = 1, num_modes
+      do j = 1, n1p
          r = 0.5 + j + noff - 1
          qr(1,j) = qr(1,j)/r
          qi(1,j) = qi(1,j)/r
@@ -145,9 +145,9 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    cu0 => cu_re(0)%get_f1()
    dcu0 => dcu_re(0)%get_f1()
    amu0 => amu_re(0)%get_f1()
-   er => null(); ei => null; br => null(); bi => null
-   cur => null(); cui => null; dcur => null(); dcui => null
-   amur => null(); amui => null
+   er => null(); ei => null(); br => null(); bi => null()
+   cur => null(); cui => null(); dcur => null(); dcui => null()
+   amur => null(); amui => null()
 
    qtmh = 0.5*qbm*dt
    dti = 1.0/dt
@@ -213,7 +213,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
       ox(1) = 0.5*(v1 + vx)
       ox(2) = 0.5*(v2 + vy)
-      ox(3) = 0.5*(1.0+ox(1)*ox(1)+oy(1)*oy(1))*ip7-0.5*p7
+      ox(3) = 0.5*(1.0+ox(1)*ox(1)+ox(2)*ox(2))*ip7-0.5*p7
 
       part(6,ii) = p7 + ox(3)
       vx = (v1 - vx)*dti
@@ -403,7 +403,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    real :: r0, r, rn, qc, qc1, th, th1, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx, om
    real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
-   real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
+   real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8, rot9
    real :: dtc1, v1, v2, dtx
    complex(kind=DB) :: rc, rc0
 
@@ -414,7 +414,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    n1 = ef_re(0)%get_nd(1)
    e0 => ef_re(0)%get_f1()
    b0 => bf_re(0)%get_f1()
-   er => null(); ei => null; br => null(); bi => null()
+   er => null(); ei => null(); br => null(); bi => null()
 
    idex = 1.0/dex
    dtx = dt * idex
@@ -521,23 +521,23 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
-   real, dimension(:,:), pointer, intent(in) :: sbufl,sbufr,rbufl,rbufr
+   real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr
    integer(kind=LG), intent(inout) :: npp
    integer(kind=LG), intent(in) :: npmax, nbmax
-   integer(kind=LG), dimension(:), intent(in) :: ihole
+   integer(kind=LG), dimension(:), intent(inout) :: ihole
    integer, intent(in) :: xdim
    class(parallel_pipe), pointer, intent(in) :: pp
    class(ufield), intent(in) :: ud
 ! local data
    character(len=20), save :: sname = "part2d_pmove"
-   integer :: i
+   integer :: i, j1, j2
    integer(kind=LG) :: ii, j, npt
    integer, dimension(2) :: jsr, jsl, jss
    integer, dimension(4) :: ibflg, msid, iwork
    integer, dimension(10) :: istatus, info
    integer :: itermax, nvp, n1, n1p, noff, iter, nter, nps
    integer :: id, idl, idr, mter, nbsize, n
-   integer :: mreal, mint, mcplx, mdouble, lworld, ierr
+   integer :: mreal, mint, mcplx, mdouble, lworld, lgrp, ierr
    real :: edgel,edger,an,xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -548,6 +548,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    mreal = pp%getmreal()
    mint = pp%getmint()
    lworld = pp%getlgrp()
+   lgrp = pp%getlgrp()
    id = pp%getlidproc()
    idl = id - 1
    if (idl < 0) idl = idl + nvp
@@ -588,7 +589,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          end if
 ! particles going up
       else if (xt >= edger) then
-         if (jsr(1,m).lt.nbmax) then
+         if (jsr(1) < nbmax) then
             jsr(1) = jsr(1) + 1
             ! if ((kb(n)+1).eq.nvp) xt = xt - an
             ! rbufl(ic,j,m) = xt
@@ -604,6 +605,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       end do
    jss(1) = jsl(1) + jsr(1)
 ! check for full buffer condition
+      nps = 0
       nps = jss(2)
       ibflg(3) = nps
 ! copy particle buffers
@@ -655,7 +657,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       call MPI_WAIT(msid(3),istatus,ierr)
       call MPI_WAIT(msid(4),istatus,ierr)
 
-      if (nps / = 0) then
+      if (nps /= 0) then
 ! remove particles which do not belong here
 ! first check particles coming from above
       jsl(1) = 0
@@ -703,7 +705,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
          end if
 ! particles going down back, should not happen
       else if (xt < edgel) then
-         if (jsl(1).lt.nbmax) then
+         if (jsl(1) < nbmax) then
             jsl(1) = jsl(1) + 1
             do i = 1, xdim
                sbufl(i,jsl(1)) = rbufl(i,j)
@@ -836,34 +838,35 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    return
 end subroutine part2d_pmove
 !
-subroutine part2d_extractpsi(part,npp,qbm,dex,psi_re,psi_im)
+subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    integer(kind=LG), intent(in) :: npp
+   integer, intent(in) :: num_modes
+   real, intent(in) :: qbm
    class(ufield), dimension(:), pointer, intent(in) :: psi_re, psi_im
 ! local data
    character(len=20), save :: sname = "part2d_extractpsi"
    real, dimension(:,:), pointer :: psi0,psir,psii
-   real :: dx2, r0, r, th, vx, vy, dx, dxx
+   real :: r0, r, th, vx, vy, dx, dxx, ad, dd, rci, rcr
    complex(kind=DB) :: rc, rc0
    integer(kind=LG) :: ii
-   integer :: i, noff, n1p
+   integer :: i, noff, n1p, nn
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    noff = psi_re(0)%get_noff(1)
    n1p = psi_re(0)%get_ndp(1)
    psi0 => psi_re(0)%get_f1()
-   psir => null(); psii => null
+   psir => null(); psii => null()
 
-   dx2 = dex * dex
    do ii = 1, npp
       r0 = part(1,ii)
       th = part(2,ii)
-      vx = part(3,j,k)
-      vy = part(4,j,k)
+      vx = part(3,ii)
+      vy = part(4,ii)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r - noff

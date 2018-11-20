@@ -75,14 +75,14 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
    class(part2d), intent(inout) :: this
    class(parallel_pipe), intent(in), pointer :: pp
    class(fdist2d), intent(inout) :: pf
-   class(field), intent(in), pointer :: fd
+   class(field), intent(in) :: fd
    real, intent(in) :: qbm, dt, s
    integer, intent(in) :: xdim
 
 ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: xtras, noff, nxyp, nx, npmax, nbmax
-   class(ufield), dimension(:) pointer :: ud
+   class(ufield), dimension(:), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%qbm = qbm
@@ -127,12 +127,12 @@ subroutine renew_part2d(this,pf,fd,s)
    
    class(part2d), intent(inout) :: this
    class(fdist2d), intent(inout) :: pf
-   class(field), pointer, intent(in) :: fd
+   class(field), intent(in) :: fd
    real, intent(in) :: s
 ! local data
    character(len=18), save :: sname = 'renew_part2d'
    integer :: noff, prof
-   class(ufield), dimension(:) pointer :: ud
+   class(ufield), dimension(:), pointer :: ud
          
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
@@ -149,7 +149,7 @@ subroutine qdeposit(this,q)
    implicit none
    
    class(part2d), intent(in) :: this
-   class(field), pointer, intent(in) :: q
+   class(field), intent(in) :: q
 ! local data
    character(len=18), save :: sname = 'qdeposit'
    class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
@@ -171,8 +171,8 @@ subroutine amjdeposit(this,ef,bf,cu,amu,dcu)
    implicit none
    
    class(part2d), intent(inout) :: this
-   class(field), pointer, intent(in) :: cu, amu, dcu
-   class(field), pointer, intent(in) :: ef, bf
+   class(field), intent(in) :: cu, amu, dcu
+   class(field), intent(in) :: ef, bf
 ! local data
    character(len=18), save :: sname = 'amjdeposit'
    class(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
@@ -207,7 +207,7 @@ subroutine partpush(this,ef,bf)
    implicit none
    
    class(part2d), intent(inout) :: this
-   class(field), pointer, intent(in) :: ef, bf
+   class(field), intent(in) :: ef, bf
 ! local data
    character(len=18), save :: sname = 'partpush'
    class(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
@@ -232,10 +232,10 @@ subroutine pmove(this,fd)
    implicit none
          
    class(part2d), intent(inout) :: this
-   class(field), pointer, intent(in) :: fd
+   class(field), intent(in) :: fd
 ! local data   
    character(len=18), save :: sname = 'pmove'
-   class(ufield), dimension(:) pointer :: ud
+   class(ufield), dimension(:), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -252,7 +252,7 @@ subroutine extractpsi(this,psi)
    implicit none
    
    class(part2d), intent(inout) :: this
-   class(field), pointer, intent(in) :: psi
+   class(field), intent(in) :: psi
 ! local data
    character(len=18), save :: sname = 'extractpsi'
    class(ufield), dimension(:), pointer :: psi_re => null(), psi_im => null()
@@ -261,7 +261,7 @@ subroutine extractpsi(this,psi)
 
    psi_re => psi%get_rf_re()
    psi_im => psi%get_rf_im()
-   call part2d_extractpsi(this%part,this%npp,this%qbm,this%dex,psi_re,psi_im)
+   call part2d_extractpsi(this%part,this%npp,this%qbm,psi_re,psi_im,psi%get_num_modes())
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
