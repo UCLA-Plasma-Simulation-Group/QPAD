@@ -5,6 +5,7 @@ use system
 use param
 use HDF5
 use mpi
+use param
  
 implicit none
 

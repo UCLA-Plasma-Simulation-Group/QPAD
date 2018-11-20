@@ -281,7 +281,7 @@ subroutine solve_field_ez( this, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call jay%copy_gc()
+  call jay%copy_gc_f1()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -325,7 +325,7 @@ subroutine solve_field_eperp( this, b, psi )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call psi%copy_gc()
+  call psi%copy_gc_f1()
 
   idr = 1.0 / this%dr
   idrh = idr * 0.5
