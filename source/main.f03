@@ -1,13 +1,14 @@
 program quickpic
 
 use simulation_class
-use debug_tool
 use system
-use param
-
 
 implicit none
 
-! Placeholder now
+type( simulation ) :: sim
+
+call sim%new()
+call sim%run()
+call sim%end()
 
 end program quickpic
