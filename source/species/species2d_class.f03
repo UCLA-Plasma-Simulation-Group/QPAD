@@ -101,7 +101,7 @@ subroutine init_species2d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,s)
    this%qn = 0.0
    this%cu = 0.0
    call this%pd%qdp(this%qn)
-   call this%qn%acopy_gc()
+   call this%qn%acopy_gc_f1()
    this%q = this%qn
    if (pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -138,7 +138,7 @@ subroutine renew_species2d(this,s)
    call this%pd%renew(this%pf,this%qn,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
-   call this%qn%acopy_gc()
+   call this%qn%acopy_gc_f1()
    this%q = this%qn
    if (this%pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -163,7 +163,7 @@ subroutine qdp_species2d(this,q)
 
    this%q = 0.0
    call this%pd%qdp(this%q)
-   call this%q%acopy_gc()
+   call this%q%acopy_gc_f1()
    q = this%q + q + this%qn
             
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -189,9 +189,9 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%dcu = 0.0
    this%amu = 0.0
    call this%pd%amjdp(ef,bf,this%cu,this%amu,this%dcu)
-   call this%cu%acopy_gc()
-   call this%dcu%acopy_gc()
-   call this%amu%acopy_gc()
+   call this%cu%acopy_gc_f1()
+   call this%dcu%acopy_gc_f1()
+   call this%amu%acopy_gc_f1()
    cu = cu + this%cu
    dcu = dcu + this%dcu
    amu = amu + this%amu

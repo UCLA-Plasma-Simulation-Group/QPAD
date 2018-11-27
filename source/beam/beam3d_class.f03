@@ -117,7 +117,7 @@ subroutine qdeposit_beam3d(this)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%q%as(0.0)
    call this%pd%qdp(this%q)
-   call this%q%acopy_gc()
+   call this%q%acopy_gc_f2()
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine qdeposit_beam3d
