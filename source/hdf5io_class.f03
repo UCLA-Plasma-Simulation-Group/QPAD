@@ -5,6 +5,7 @@ use system
 use param
 use HDF5
 use mpi
+use param
  
 implicit none
 
@@ -450,8 +451,10 @@ subroutine pwfield_2d( pp, file, fd, gs, ls, noff, ierr )
  call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id,&
  &ierr, dcplID)
 
- start(1) = 0
- start(2) = lnoff
+ ! start(1) = 0
+ ! start(2) = lnoff
+ start(1) = lnoff
+ start(2) = 0
 
  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
  &ierr)

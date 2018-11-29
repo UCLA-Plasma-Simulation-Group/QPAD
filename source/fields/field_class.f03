@@ -35,16 +35,15 @@ type :: field
   procedure :: del => end_field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
-  generic :: copy_gc => copy_gc_local, copy_gc_stage
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   ! generic :: smooth
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
-  procedure :: acopy_gc
+  procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
+  procedure :: acopy_gc_f1, acopy_gc_f2, acopy_gc_stage
 
   procedure, private :: init_field, init_field_cp, end_field 
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
-  procedure, private :: copy_gc_local, copy_gc_stage
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
   generic :: assignment(=)   => assign_f1
@@ -178,14 +177,14 @@ subroutine copy_slice( this, idx, dir )
 
 end subroutine copy_slice
 
-subroutine copy_gc_local( this )
+subroutine copy_gc_f1( this )
 
   implicit none
 
   class( field ), intent(inout) :: this
 
   integer :: i
-  character(len=20), save :: sname = "copy_gc_local"
+  character(len=20), save :: sname = "copy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -197,7 +196,28 @@ subroutine copy_gc_local( this )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine copy_gc_local
+end subroutine copy_gc_f1
+
+subroutine copy_gc_f2( this )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+
+  integer :: i
+  character(len=20), save :: sname = "copy_gc_f2"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%copy_gc_f2()
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%copy_gc_f2()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine copy_gc_f2
 
 subroutine copy_gc_stage( this, dir )
 
@@ -212,23 +232,23 @@ subroutine copy_gc_stage( this, dir )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_f2( dir )
+    call this%rf_re(i)%copy_gc_stage(dir)
     if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_f2( dir )
+    call this%rf_im(i)%copy_gc_stage(dir)
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_stage
 
-subroutine acopy_gc( this )
+subroutine acopy_gc_f1( this )
 
   implicit none
 
   class( field ), intent(inout) :: this
 
   integer :: i
-  character(len=20), save :: sname = "acopy_gc"
+  character(len=20), save :: sname = "acopy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -240,7 +260,49 @@ subroutine acopy_gc( this )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine acopy_gc
+end subroutine acopy_gc_f1
+
+subroutine acopy_gc_f2( this )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+
+  integer :: i
+  character(len=20), save :: sname = "acopy_gc_f2"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%acopy_gc_f2()
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%acopy_gc_f2()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine acopy_gc_f2
+
+subroutine acopy_gc_stage( this )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+
+  integer :: i
+  character(len=20), save :: sname = "acopy_gc_stage"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+    call this%rf_re(i)%acopy_gc_stage()
+    if ( i == 0 ) cycle
+    call this%rf_im(i)%acopy_gc_stage()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine acopy_gc_stage
 
 subroutine write_hdf5_single( this, files, dim )
 

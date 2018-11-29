@@ -576,7 +576,7 @@ subroutine solve_field_bz( this, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call jay%copy_gc()
+  call jay%copy_gc_f1()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -614,7 +614,7 @@ subroutine solve_field_bperp( this, rho )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call rho%copy_gc()
+  call rho%copy_gc_f1()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
@@ -653,8 +653,8 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call jay%copy_gc()
-  ! call djdxi%copy_gc() ! no need for djdxi to copy guard cells
+  call jay%copy_gc_f1()
+  ! call djdxi%copy_gc_f1() ! no need for djdxi to copy guard cells
 
   djdxi_re => djdxi%get_rf_re()
   djdxi_im => djdxi%get_rf_im()

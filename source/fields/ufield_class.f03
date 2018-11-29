@@ -47,7 +47,8 @@ type :: ufield
   procedure :: copy_slice
   procedure :: get_f1
   procedure :: get_f2
-  procedure :: copy_gc_f1, copy_gc_f2, acopy_gc_f1
+  procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
+  procedure :: acopy_gc_f1, acopy_gc_f2, acopy_gc_stage
   procedure :: has2d
 
   generic :: assignment(=)   => assign_f1
@@ -342,70 +343,97 @@ subroutine copy_gc_f1( this )
 
 end subroutine copy_gc_f1
 
-subroutine acopy_gc_f1( this )
+subroutine copy_gc_f2( this )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, count, dtype
-  integer :: tag = 1, msgid, ierr, i
+  integer :: nrp, nzp, count, dtype
+  integer :: tag = 1, msgid, ierr, i, j, k
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:), save, allocatable :: buf
+  real, dimension(:,:,:), save, allocatable :: buf
+
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
   idproc_right = idproc + 1
   nrp = this%ndp(1)
+  nzp = this%ndp(2)
   nvp = this%pp%getlnvp()
   comm = this%pp%getlgrp()
   dtype = this%pp%getmreal()
 
-  count = this%dim
-  if ( .not. allocated(buf) ) allocate( buf(count) )
+  if ( .not. allocated(buf) ) allocate( buf( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
 
-  if ( this%gc_num(p_upper,1) == 0 ) then
-    call write_err( 'Upper guard cells must be set up for deposition' )
-  endif
   ! forward message passing
-  ! receiver
-  if ( idproc > 0 ) then
-    call MPI_IRECV( buf, count, dtype, &
-      idproc_left, tag, comm, msgid, ierr )
-  endif
-  ! sender
-  if ( idproc < nvp-1 ) then
-    call MPI_SEND( this%f1(1,nrp+1), count, dtype, &
-      idproc_right, tag, comm, ierr )
-  endif
-  ! wait receiving finish and add up guard cells
-  if ( idproc > 0 ) then
-    call MPI_WAIT( msgid, stat, ierr )
-    do i = 1, count
-      this%f1(i,1) = this%f1(i,1) + buf(i)
-    enddo
+  if ( this%gc_num(p_lower,1) > 0 ) then
+    count = this%dim * this%gc_num(p_lower,1) * size(this%f2,3)
+    ! receiver
+    if ( idproc > 0 ) then
+      buf = 0.0
+      call MPI_IRECV( buf, count, dtype, idproc_left, tag, comm, msgid, ierr )
+    endif
+    ! sender
+    if ( idproc < nvp-1 ) then
+      do k = 1, size(this%f2,3)
+        do j = 1, this%gc_num(p_lower,1)
+          do i = 1, this%dim
+            buf(i,j,k) = this%f2( i, nrp+j, k-this%gc_num(p_lower,2) )
+          enddo
+        enddo
+      enddo
+      call MPI_SEND( buf, count, dtype, idproc_right, tag, comm, ierr )
+    endif
+    ! wait receiving finish
+    if ( idproc > 0 ) then
+      call MPI_WAIT( msgid, stat, ierr )
+      do k = 1, size(this%f2,3)
+        do j = 1, this%gc_num(p_lower,1)
+          do i = 1, this%dim
+            this%f2( i, j-this%gc_num(p_lower,1), k-this%gc_num(p_lower,2) ) = buf(i,j,k)
+          enddo
+        enddo
+      enddo
+    endif
   endif
 
   ! backward message passing
-  ! receiver
-  if ( idproc < nvp-1 ) then
-    call MPI_IRECV( this%f1(1,nrp+1), count, dtype, &
-      idproc_right, tag, comm, msgid, ierr )
-  endif
-  ! sender
-  if ( idproc > 0 ) then
-    call MPI_SEND( this%f1(1,1), count, dtype, &
-      idproc_left, tag, comm, ierr )
-  endif
-  ! wait receiving finish
-  if ( idproc < nvp-1 ) then
-    call MPI_WAIT( msgid, stat, ierr )
+  if ( this%gc_num(p_upper,1) > 0 ) then
+    count = this%dim * this%gc_num(p_upper,1) * size(this%f2,3)
+    ! receiver
+    if ( idproc < nvp-1 ) then
+      buf = 0.0
+      call MPI_IRECV( buf, count, dtype, idproc_right, tag, comm, msgid, ierr )
+    endif
+    ! sender
+    if ( idproc > 0 ) then
+      do k = 1, size(this%f2,3)
+        do j = 1, this%gc_num(p_upper,1)
+          do i = 1, this%dim
+            buf(i,j,k) = this%f2( i, j-this%gc_num(p_upper,1), k-this%gc_num(p_lower,2) )
+          enddo
+        enddo
+      enddo
+      call MPI_SEND( buf, count, dtype, idproc_left, tag, comm, ierr )
+    endif
+    ! wait receiving finish
+    if ( idproc < nvp-1 ) then
+      call MPI_WAIT( msgid, stat, ierr )
+      do k = 1, size(this%f2,3)
+        do j = 1, this%gc_num(p_upper,1)
+          do i = 1, this%dim
+            this%f2( i, nrp+j, k-this%gc_num(p_lower,2) ) = buf(i,j,k)
+          enddo
+        enddo
+      enddo
+    endif
   endif
 
-end subroutine acopy_gc_f1
+end subroutine copy_gc_f2
 
-subroutine copy_gc_f2( this, dir )
+subroutine copy_gc_stage( this, dir )
 
   implicit none
 
@@ -473,7 +501,231 @@ subroutine copy_gc_f2( this, dir )
 
   end select
 
-end subroutine copy_gc_f2
+end subroutine copy_gc_stage
+
+subroutine acopy_gc_f1( this )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+
+  integer :: idproc, idproc_left, idproc_right, nvp, comm
+  integer :: nrp, count, dtype
+  integer :: tag = 1, msgid, ierr, i
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:), save, allocatable :: buf
+
+  idproc = this%pp%getlidproc()
+  idproc_left =  idproc - 1
+  idproc_right = idproc + 1
+  nrp = this%ndp(1)
+  nvp = this%pp%getlnvp()
+  comm = this%pp%getlgrp()
+  dtype = this%pp%getmreal()
+
+  count = this%dim
+  if ( .not. allocated(buf) ) allocate( buf(count) )
+
+  if ( this%gc_num(p_upper,1) == 0 ) then
+    call write_err( 'Upper guard cells must be set up for deposition' )
+  endif
+  ! forward message passing
+  ! receiver
+  if ( idproc > 0 ) then
+    call MPI_IRECV( buf, count, dtype, &
+      idproc_left, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc < nvp-1 ) then
+    call MPI_SEND( this%f1(1,nrp+1), count, dtype, &
+      idproc_right, tag, comm, ierr )
+  endif
+  ! wait receiving finish and add up guard cells
+  if ( idproc > 0 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do i = 1, count
+      this%f1(i,1) = this%f1(i,1) + buf(i)
+    enddo
+  endif
+
+  ! backward message passing
+  ! receiver
+  if ( idproc < nvp-1 ) then
+    call MPI_IRECV( this%f1(1,nrp+1), count, dtype, &
+      idproc_right, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc > 0 ) then
+    call MPI_SEND( this%f1(1,1), count, dtype, &
+      idproc_left, tag, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( idproc < nvp-1 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+  endif
+
+end subroutine acopy_gc_f1
+
+subroutine acopy_gc_f2( this )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+
+  integer :: idproc, idproc_left, idproc_right, nvp, comm
+  integer :: nrp, nzp, count, dtype
+  integer :: tag = 1, msgid, ierr, i, j
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:,:), save, allocatable :: buf
+
+  idproc = this%pp%getlidproc()
+  idproc_left =  idproc - 1
+  idproc_right = idproc + 1
+  nrp = this%ndp(1)
+  nzp = this%ndp(2)
+  nvp = this%pp%getlnvp()
+  comm = this%pp%getlgrp()
+  dtype = this%pp%getmreal()
+
+  count = this%dim * (nzp+1)
+  if ( .not. allocated(buf) ) allocate( buf( this%dim, nzp+1 ) )
+
+  if ( this%gc_num(p_upper,1) == 0 ) then
+    call write_err( 'Upper guard cells must be set up for deposition' )
+  endif
+  ! forward message passing
+  ! receiver
+  if ( idproc > 0 ) then
+    buf = 0.0
+    call MPI_IRECV( buf, count, dtype, &
+      idproc_left, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc < nvp-1 ) then
+    do j = 1, nzp+1
+      do i = 1, this%dim
+        buf(i,j) = this%f2(i,nrp+1,j)
+      enddo
+    enddo
+    call MPI_SEND( buf, count, dtype, &
+      idproc_right, tag, comm, ierr )
+  endif
+  ! wait receiving finish and add up guard cells
+  if ( idproc > 0 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do j = 1, nzp+1
+      do i = 1, this%dim
+        this%f2(i,1,j) = this%f2(i,1,j) + buf(i,j)
+      enddo
+    enddo
+  endif
+
+  ! backward message passing
+  ! receiver
+  if ( idproc < nvp-1 ) then
+    buf = 0.0
+    call MPI_IRECV( buf, count, dtype, &
+      idproc_right, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( idproc > 0 ) then
+    do j = 1, nzp+1
+      do i = 1, this%dim
+        buf(i,j) = this%f2(i,1,j)
+      enddo
+    enddo
+    call MPI_SEND( buf, count, dtype, &
+      idproc_left, tag, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( idproc < nvp-1 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do j = 1, nzp+1
+      do i = 1, this%dim
+        this%f2(i,nzp+1,j) = buf(i,j)
+      enddo
+    enddo
+  endif
+
+end subroutine acopy_gc_f2
+
+subroutine acopy_gc_stage( this )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+
+  integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
+  integer :: nzp, nrp, count, dtype
+  integer :: tag = 1, msgid, ierr, i, j
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:,:), save, allocatable :: buf
+
+  nvp = this%nvp(1)
+  nstage = this%pp%getnstage()
+  stageid = this%pp%getstageid()
+  idproc = this%pp%getidproc()
+  idproc_last = idproc - nvp
+  idproc_next = idproc + nvp
+  nrp = this%ndp(1)
+  nzp = this%ndp(2)
+  comm = this%pp%getlworld()
+  dtype = this%pp%getmreal()
+
+  count = this%dim * (nrp+1)
+  if ( .not. allocated(buf) ) allocate( buf( this%dim, nrp+1 ) )
+        
+  ! forward message passing
+  ! receiver
+  if ( stageid > 0 ) then
+    buf = 0.0
+    call MPI_IRECV( buf, count, dtype, idproc_last, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( stageid < nstage-1 ) then
+    do j = 1, nrp+1
+      do i = 1, this%dim
+        buf = this%f2(i,j,nzp+1)
+      enddo
+    enddo
+    call MPI_SEND( buf, count, dtype, idproc_next, tag, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( stageid > 0 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do j = 1, nrp+1
+      do i = 1, this%dim
+        this%f2(i,j,1) = this%f2(i,j,1) + buf(i,j)
+      enddo
+    enddo
+  endif
+
+  ! backward message passing
+  ! receiver
+  if ( stageid < nstage-1 ) then
+    buf = 0.0
+    call MPI_IRECV( buf, count, dtype, idproc_next, tag, comm, msgid, ierr )
+  endif
+  ! sender
+  if ( stageid > 0 ) then
+    do j = 1, nrp+1
+      do i = 1, this%dim
+        buf(i,j) = this%f2(i,j,1)
+      enddo
+    enddo
+    call MPI_SEND( buf, count, dtype, idproc_last, tag, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( stageid < nstage-1 ) then
+    call MPI_WAIT( msgid, stat, ierr )
+    do j = 1, nrp+1
+      do i = 1, this%dim
+        this%f2(i,j,nrp+1) = buf(i,j)
+      enddo
+    enddo
+  endif
+
+end subroutine acopy_gc_stage
 
 subroutine assign_f1( this, that )
 
