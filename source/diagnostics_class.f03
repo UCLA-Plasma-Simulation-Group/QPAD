@@ -161,7 +161,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
   this%pp => pp
   this%num_diag = 0
 
-  call input%get( 'simulation.num_modes', num_modes )
+  call input%get( 'simulation.max_mode', num_modes )
   call input%get( 'simulation.nbeams', nbeams )
   call input%get( 'simulation.nspecies', nspecies )
 

@@ -7,7 +7,7 @@
         "r" : [0.0,12.0],
         "z" : [0,10.0]},
     "boundary" : "conducting",
-    "max_mode" : 0,
+    "max_mode" : 1,
     "interpolation" : "linear",
     "n0" : 1.0e16,
     "time" : 30.1,
@@ -134,13 +134,13 @@
 [
     {
     "profile" : 0,
-    "ppc" : [2,2],
+    "ppc" : [2,8],
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
-    "longitudinal_profile" : "piecewise",
-    "piecewise_density" : [1.0,1.5,2.5],
-    "piecewise_s" : [0.0,100.0,200.0],
+    "longitudinal_profile" : "uniform",
+!    "piecewise_density" : [1.0,1.5,2.5],
+!    "piecewise_s" : [0.0,100.0,200.0],
     "diag" :
     [
         {

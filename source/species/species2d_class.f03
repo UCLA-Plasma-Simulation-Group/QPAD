@@ -66,28 +66,23 @@ character(len=128) :: erstr
 
 contains
 !
-subroutine init_species2d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,s)
+subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
+&num_modes,qbm,dt,xdim,s)
 
    implicit none
    
    class(species2d), intent(inout) :: this
    class(parallel_pipe), intent(in), pointer :: pp
    class(grid), intent(in), pointer :: gd
-   class(field), intent(in), pointer :: fd
    class(fdist2d), intent(inout), target :: pf
-   real, intent(in) :: qbm, dt, s
-   integer, intent(in) :: xdim, part_shape
+   real, intent(in) :: qbm, dt, s, dr, dxi
+   integer, intent(in) :: xdim, part_shape, num_modes
 ! local data
    character(len=18), save :: sname = 'init_species2d'
-   real :: dr, dxi
-   integer :: num_modes
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%pf => pf
-   dr = fd%get_dr()
-   dxi = fd%get_dxi()
-   num_modes = fd%get_num_modes()
    this%pp => pp
    
    allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu)
@@ -96,7 +91,7 @@ subroutine init_species2d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,s)
    call this%cu%new(pp,gd,dr,dxi,num_modes,part_shape)
    call this%dcu%new(pp,gd,dr,dxi,num_modes,part_shape)
    call this%amu%new(pp,gd,dr,dxi,num_modes,part_shape)
-   call this%pd%new(pp,pf,fd,qbm,dt,xdim,s)
+   call this%pd%new(pp,pf,this%q,qbm,dt,xdim,s)
 
    this%qn = 0.0
    this%cu = 0.0
@@ -327,7 +322,8 @@ subroutine cbq_species2d(this,pos)
    ! call this%q%smooth(this%q)
    ! call this%q%fftkr(1)
    ! call this%q%cb(this%q3,pos,(/1/),(/1/))
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+   call this%q%copy_slice(pos,p_copy_1to2)
+call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine cbq_species2d
 !      
