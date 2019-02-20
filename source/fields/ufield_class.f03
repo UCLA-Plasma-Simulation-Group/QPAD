@@ -102,6 +102,7 @@ subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
   this%ndp = gp%get_ndp()
   this%noff = gp%get_noff()
   this%gc_num = gc_num
+  write (2, *) this%gc_num, gc_num
 
   allocate( this%f1( dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -527,6 +528,7 @@ subroutine acopy_gc_f1( this )
   if ( .not. allocated(buf) ) allocate( buf(count) )
 
   if ( this%gc_num(p_upper,1) == 0 ) then
+    write (2,*) p_upper, this%gc_num
     call write_err( 'Upper guard cells must be set up for deposition' )
   endif
   ! forward message passing
@@ -545,6 +547,11 @@ subroutine acopy_gc_f1( this )
     call MPI_WAIT( msgid, stat, ierr )
     do i = 1, count
       this%f1(i,1) = this%f1(i,1) + buf(i)
+    enddo
+  else
+    do i = 1, count
+      this%f1(i,1) = this%f1(i,1) - this%f1(i,0)
+      this%f1(i,0) = this%f1(i,1)
     enddo
   endif
 
@@ -636,6 +643,13 @@ subroutine acopy_gc_f2( this )
     enddo
     call MPI_SEND( buf, count, dtype, &
       idproc_left, tag, comm, ierr )
+  else
+      do j = 1, nzp+1
+        do i = 1, this%dim
+          this%f2(i,1,j) = this%f2(i,1,j) - this%f2(i,0,j)
+          this%f2(i,1,j) = this%f2(i,0,j)
+        enddo
+      enddo
   endif
   ! wait receiving finish
   if ( idproc < nvp-1 ) then
