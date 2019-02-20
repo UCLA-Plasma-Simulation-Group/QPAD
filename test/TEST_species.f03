@@ -22,7 +22,7 @@ type(parallel_pipe), pointer :: pp => null()
 type(grid), pointer :: gp => null()
 type(hdf5file) :: file
 type(input_json), pointer :: input => null()
-integer :: nr, nz, nrp, noff, xdim, npf
+integer :: nr, nz, nrp, noff, xdim, npf, ierr
 integer :: num_modes, part_shape, i, id
 character(len=:), allocatable :: shape
 character(len=2) :: s1
@@ -209,5 +209,8 @@ call spe%wrq(file_q,5,5,id)
 call write_dbg( 'main', 'test_species', 0, 'ends' )
 
 call end_errors()
+
+call MPI_FINALIZE(ierr)
+
 
 end program test_species
