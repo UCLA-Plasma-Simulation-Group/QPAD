@@ -308,11 +308,9 @@ subroutine dist3d_000(this,part3d,npp,ud)
    noff = ud%get_noff()
    if (noff(1) == 0) then
       edges(1) = noff(1)
-      edges(2) = edges(1) + ud%get_ndp(1)
-      edges(2) = edges(2) - 0.5
+      edges(2) = edges(1) + ud%get_ndp(1) + 0.5
    else
-      edges(1) = noff(1)
-      edges(1) = edges(1) - 0.5
+      edges(1) = noff(1) + 0.5
       edges(2) = edges(1) + ud%get_ndp(1)
    end if
    edges(3) = noff(2)

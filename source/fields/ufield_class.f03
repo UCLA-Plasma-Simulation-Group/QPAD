@@ -102,7 +102,6 @@ subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
   this%ndp = gp%get_ndp()
   this%noff = gp%get_noff()
   this%gc_num = gc_num
-  write (2, *) this%gc_num, gc_num
 
   allocate( this%f1( dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -528,7 +527,6 @@ subroutine acopy_gc_f1( this )
   if ( .not. allocated(buf) ) allocate( buf(count) )
 
   if ( this%gc_num(p_upper,1) == 0 ) then
-    write (2,*) p_upper, this%gc_num
     call write_err( 'Upper guard cells must be set up for deposition' )
   endif
   ! forward message passing

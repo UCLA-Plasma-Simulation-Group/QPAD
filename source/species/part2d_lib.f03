@@ -50,9 +50,10 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
       qc = part(8,ii)
       rc0 = cmplx(r*cos(th),-r*sin(th),kind=DB)
       r = r + 0.5
-      nn = r - noff
+      nn = r
       dd = qc*(r - real(nn))
       ad = qc - dd
+      nn = nn - noff
       r = q0(1,nn) + ad
       qc = q0(1,nn+1) + dd
       q0(1,nn) = r
@@ -93,7 +94,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
       end do      
    end if
 
-   do i = 1, n1p
+   do i = 1, n1p+1
       r = 0.5 + i + noff - 1
       q0(1,i) = q0(1,i)/r
    end do
@@ -101,7 +102,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    do i = 1, num_modes
       qr => q_re(i)%get_f1()
       qi => q_im(i)%get_f1()
-      do j = 1, n1p
+      do j = 1, n1p+1
          r = 0.5 + j + noff - 1
          qr(1,j) = qr(1,j)/r
          qi(1,j) = qi(1,j)/r
@@ -159,9 +160,10 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       qc = part(8,ii)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
-      nn = r - noff
+      nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
+      nn = nn - noff
       ip7 = 1.0 / p7
       qtmh1 = qtmh * ip7
       qtmh2 = qtmh1 * p6
@@ -354,7 +356,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       end do      
    end if
 
-   do j = 1, n1p
+   do j = 1, n1p+1
       r = 0.5 + j + noff - 1
       cu0(1:3,j) = cu0(1:3,j)/r
       dcu0(1:2,j) = dcu0(1:2,j)/r
@@ -368,7 +370,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       dcui => dcu_im(i)%get_f1()
       cur => cu_re(i)%get_f1()
       cui => cu_im(i)%get_f1()
-      do j = 1, n1p
+      do j = 1, n1p+1
          r = 0.5 + j + noff - 1
          cur(1:3,j) = cur(1:3,j)/r
          dcur(1:2,j) = dcur(1:2,j)/r
@@ -419,7 +421,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    idex = 1.0/dex
    dtx = dt * idex
    qtmh = 0.5*qbm*dt
-   edge = real(n1) - 0.5
+   edge = real(n1) + 0.5
 
    ii = 1
    do
@@ -431,9 +433,10 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       qc = part(8,ii)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
-      nn = r - noff
+      nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
+      nn = nn - noff
       ip7 = 1.0 / p7
       qtmh1 = qtmh * ip7
       qtmh2 = qtmh1 * p6
@@ -560,9 +563,9 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    an = real(n1) - 0.5
    if (id == 0) then
       edgel = 0.0
-      edger = real(n1p) - 0.5
+      edger = real(n1p) + 0.5
    else
-      edgel = real(noff) - 0.5
+      edgel = real(noff) + 0.5
       edger = edgel + real(n1p)
    end if
 
@@ -869,9 +872,10 @@ subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
       vy = part(4,ii)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
-      nn = r - noff
+      nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
+      nn = nn - noff
       dx = ad*psi0(1,nn)
       dx = dd*psi0(1,nn+1) + dx
       rc = rc0

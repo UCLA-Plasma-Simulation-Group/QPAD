@@ -227,13 +227,14 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       qc = part(7,ii)
       rc0 = cmplx(r*cos(th),-r*sin(th),kind=DB)
       r = r + 0.5
-      nn = r - noff1
-      mm = zz - noff2
+      nn = r
+      mm = zz
       dd = qc*(r - real(nn))
       ad = qc - dd
       zd = zz - real(mm)
       za = 1.0 - zd
-      mm = mm + 1
+      nn = nn - noff1
+      mm = mm - noff2 + 1
       q0(1,nn,mm) = q0(1,nn,mm) + ad*za
       q0(1,nn+1,mm) = q0(1,nn+1,mm) + dd*za
       q0(1,nn,mm+1) = q0(1,nn,mm+1) + ad*zd
@@ -274,7 +275,7 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       end do      
    end if
 
-   do i = 1, n1p
+   do i = 1, n1p+1
       r = 0.5 + i + noff1 - 1
       q0(1,i,:) = q0(1,i,:)/r
    end do
@@ -282,7 +283,7 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
    do i = 1, num_modes
       qr => q_re(i)%get_f2()
       qi => q_im(i)%get_f2()
-      do j = 1, n1p
+      do j = 1, n1p+1
          r = 0.5 + j + noff1 - 1
          qr(1,j,:) = qr(1,j,:)/r
          qi(1,j,:) = qi(1,j,:)/r
@@ -346,13 +347,14 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
       qc = part(7,ii)
       rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
       r = r0 + 0.5      
-      nn = r - noff1
-      mm = zz - noff2
+      nn = r
+      mm = zz
       dd = r - real(nn)
       ad = 1.0 - dd
       zd = zz - real(mm)
       za = 1.0 - zd
-      mm = mm + 1
+      nn = r - noff1
+      mm = zz - noff2 + 1
       dx(1:3) = ad*e0(1:3,nn,mm)
       dx(1:3) = za*(dd*e0(1:3,nn+1,mm) + dx(1:3))
       tmp(1:3) = ad*e0(1:3,nn,mm+1)
@@ -475,11 +477,9 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    noff = ud%get_noff()
    if (noff(1) == 0) then
       edges(1) = noff(1)
-      edges(2) = edges(1) + ud%get_ndp(1)
-      edges(2) = edges(2) - 0.5
+      edges(2) = edges(1) + ud%get_ndp(1) + 0.5
    else
-      edges(1) = noff(1)
-      edges(1) = edges(1) - 0.5
+      edges(1) = noff(1) + 0.5
       edges(2) = edges(1) + ud%get_ndp(1)
    end if
    edges(3) = noff(2)
