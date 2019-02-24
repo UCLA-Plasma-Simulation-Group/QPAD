@@ -183,7 +183,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    character(len=18), save :: sname = 'dist2d_000'
    real, dimension(:,:), pointer :: pt => null()
    integer(kind=LG) :: nps, i, j
-   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
+   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1, ppc1h
    real :: qm, den_temp
    integer :: prof_l
    real :: r1, t0, t1
@@ -191,7 +191,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
    n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
-   ppc1 = this%ppc1; ppc2 = this%ppc2
+   ppc1 = this%ppc1; ppc2 = this%ppc2; ppc1h = ppc1/2
    t0 = 2.0*pi/ppc2 
    den_temp = 1.0
    if (trim(this%long_prof) == 'piecewise') then
@@ -218,10 +218,10 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    nps = 1
    pt => part2d
 ! initialize the particle positions
-   if (noff1 > (n1-n1p-1)) then       
-      do i=1, n1p-1
+   if (noff1 > 0) then       
+      do i=1, n1p
          do i1 = 0, ppc1-1
-            r1 = (i1 + 0.5)/ppc1 + i - 1
+            r1 = (i1 + 0.5)/ppc1 + i - 0.5 + noff1
             do i2=0, ppc2-1
                pt(1,nps) = r1
                pt(2,nps) = i2*t0
@@ -236,9 +236,23 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
          enddo
       enddo
    else
+      do i1 = 0, ppc1h-1
+         r1 = 0.5 - (i1 + 0.5)/ppc1
+         do i2=0, ppc2-1
+            pt(1,nps) = r1
+            pt(2,nps) = i2*t0
+            pt(3,nps) = 0.0
+            pt(4,nps) = 0.0
+            pt(5,nps) = 0.0
+            pt(6,nps) = 1.0
+            pt(7,nps) = 1.0
+            pt(8,nps) = qm*r1
+            nps = nps + 1
+         enddo
+      enddo
       do i=1, n1p
          do i1 = 0, ppc1-1
-            r1 = (i1 + 0.5)/ppc1 + i - 1
+            r1 = (i1 + 0.5)/ppc1 + i - 0.5
             do i2=0, ppc2-1
                pt(1,nps) = r1
                pt(2,nps) = i2*t0
