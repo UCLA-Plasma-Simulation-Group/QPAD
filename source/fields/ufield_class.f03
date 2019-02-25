@@ -645,7 +645,7 @@ subroutine acopy_gc_f2( this )
       do j = 1, nzp+1
         do i = 1, this%dim
           this%f2(i,1,j) = this%f2(i,1,j) - this%f2(i,0,j)
-          this%f2(i,1,j) = this%f2(i,0,j)
+          this%f2(i,0,j) = this%f2(i,1,j)
         enddo
       enddo
   endif

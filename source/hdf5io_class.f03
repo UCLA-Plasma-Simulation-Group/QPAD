@@ -1283,11 +1283,11 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,dx,dz,z0,rtag,stag,&
 
        do i = 1, 3
           if (i == 1) then
-             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dx*&
-             &cos(part(i,1:((tnpp-1)*dspl+1):dspl))
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
           else if (i == 2) then
-             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dx*&
-             &sin(part(i,1:((tnpp-1)*dspl+1):dspl))
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
           else
              buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dz+z0
           end if
