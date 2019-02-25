@@ -1,6 +1,7 @@
 module system
 
 ! use, intrinsic :: iso_fortran_env
+use mpi
 
 implicit none
 
@@ -84,11 +85,15 @@ subroutine init_errors( eunit, idproc, monitor )
   integer, intent(in) :: eunit, idproc, monitor
 
   character(len=32) :: filename
+  integer :: ierr
 
   fid_err = eunit
   class_monitor = monitor
 
-  call system( 'mkdir ./ELOG' )
+  if ( idproc == 0 ) then
+    call system( 'mkdir ./ELOG' )
+  endif
+  call MPI_BARRIER( MPI_COMM_WORLD, ierr )
 
   write( filename, '(A,I0.6,A)') './ELOG/elog-', idproc, '.log'
   open( unit=fid_err, file=trim(filename), form='formatted', status='replace' )
