@@ -6,9 +6,11 @@ use field_e_class
 use field_class
 use field_src_class
 use fdist2d_class
+use fdist3d_class
 use system
 use param
 use species2d_class
+use beam3d_class
 use hdf5io_class
 use input_class
 use mpi
@@ -18,6 +20,7 @@ use debug_tool
 implicit none
 
 type(species2d) :: spe
+type(beam3d) :: beam
 type(parallel_pipe), pointer :: pp => null()
 type(grid), pointer :: gp => null()
 type(hdf5file) :: file
@@ -26,14 +29,20 @@ integer :: nr, nz, nrp, noff, xdim, npf, ierr
 integer :: num_modes, part_shape, i, id
 character(len=:), allocatable :: shape
 character(len=2) :: s1
-real :: dr, dxi, rmin, rmax, zmin, zmax
-type(field_rho), pointer :: rho
+real :: dr, dxi, rmin, rmax, zmin, zmax, dt
+type(field_rho), pointer :: rho, qb
 type fdist2d_wrap
    class(fdist2d), allocatable :: p
 end type fdist2d_wrap
 type(fdist2d_wrap) :: pf2d
+type fdist3d_wrap
+   class(fdist3d), allocatable :: p
+end type fdist3d_wrap
+type(fdist3d_wrap) :: pf3d
 type(hdf5file) :: file_spe
 type(hdf5file), dimension(:), allocatable :: file_q
+type(hdf5file) :: file_beam
+type(hdf5file), dimension(:), allocatable :: file_qb
 
 ! type( field_e ) :: e
 ! type( field_jay ) :: jay
@@ -46,7 +55,7 @@ type(hdf5file), dimension(:), allocatable :: file_q
 ! integer :: ierr, i, mode
 ! character(len=32) :: filename
 
-allocate(pp,gp,input,rho)
+allocate(pp,gp,input,rho,qb)
 call input%new()
 pp => input%pp
 
@@ -86,6 +95,18 @@ end select
 call rho%new(pp, gp, dr, dxi, num_modes, part_shape)
 call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0)
 
+call input%get('beam(1).profile',npf)
+select case (npf)
+case (0)
+   allocate(fdist3d_000::pf3d%p)
+   call pf3d%p%new(input,1)
+end select
+
+call input%get('simulation.dt',dt)
+call qb%new(pp, gp, dr, dxi, num_modes, part_shape)
+call beam%new(pp,qb,gp,part_shape,pf3d%p,-1.0,dt,7)
+call beam%qdp()
+
 call file_spe%new(&
 &timeunit = '1 / \omega_p',&
 &dt = dxi,&
@@ -100,6 +121,18 @@ call spe%wr(file_spe)
 do i = 2, nz
    call spe%cbq(i)
 end do
+
+call file_beam%new(&
+&timeunit = '1 / \omega_p',&
+&dt = dt,&
+&ty = 'particles',&
+&filename = './beam_',&
+&dataname = 'raw',&
+&units = '',&
+&label = 'Beam Raw',&
+&n = 0,&
+&t = 0.0)
+call beam%wr(file_beam,1,6,6,id)
 
 call file_q(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&
@@ -152,6 +185,58 @@ do i = 1, num_modes
    &t = 0.0)
 end do
 call spe%wrq(file_q,5,5,id)
+
+call file_q(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './',&
+&dataname = 'qb0',&
+&units = 'n_0',&
+&label = 'Beam Charge Density',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_q(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'qbr'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Beam Density',&
+   &n = 0,&
+   &t = 0.0)
+   call file_q(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'qbi'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Beam Density',&
+   &n = 0,&
+   &t = 0.0)
+end do
+call beam%wrq(file_q,8,8,id)
 
 
 ! call jay%new( pp, gp, dr, dxi, num_modes, part_shape )

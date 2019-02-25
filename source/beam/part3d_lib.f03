@@ -97,21 +97,24 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
    real, dimension(3), intent(in) :: cx,cy
    logical, intent(in) :: lquiet
 ! local data
-   character(len=20), save :: sname = "part2d_qdeposit"
+   character(len=20), save :: sname = "beam_dist000"
    integer(kind=LG) :: i, np, npt
    integer :: j,k,l
    real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
-   real :: borderr, borderlz, borderz, r0, sigmar0
+   real :: borderlz, borderz, r0, sigmar0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ierr = 0
+
+   npt = 1
+
+   i = 1
    
    x2 = 2.0 * x0
    y2 = 2.0 * y0
    r0 = sqrt(x0**2+y0**2)
    sigmar0 = sqrt(sigx**2+sigy**2)
-   borderr = min((r0+5.0*sigmar0),real(n1-1))
    borderlz = max((z0-5.0*sigz),1.0)
    borderz = min((z0+5.0*sigz),real(n2-1))
    np = npx*npy*npz
@@ -125,13 +128,18 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
          end if
       end do
 
+      tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)                
+      tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
       do
-         tempx = x0+sigx*ranorm()
-         tempy = y0+sigy*ranorm()
-         tempr = sqrt(tempx**2+tempy**2)
-         if (tempr < borderr) then
-            exit          
+         tempx = ranorm()
+         tempy = ranorm()
+         if ((tempx**2+tempy**2) > 25.0) then
+            cycle          
          end if
+         tempx = x0 + sigx*tempx + tempxx
+         tempy = y0 + sigy*tempy + tempyy
+         tempr = sqrt(tempx**2+tempy**2)
+         exit
       end do
       tvtx = vtx*ranorm() + vdx
       tvty = vty*ranorm() + vdy
@@ -140,13 +148,8 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
       if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
       &(tempz >= edges(3)) .and. (tempz < edges(4))) then
          if (npt < npmax) then
-            npt = npp + 1
             part(3,npt) = tempz
-            tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)                
-            tempx = tempx + tempxx
-            tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
-            tempy = tempy + tempyy
-            part(1,npt) = sqrt(tempx**2+tempy**2)
+            part(1,npt) = tempr
             if (tempx == 0.0) then
                if (tempy == 0.0) part(2,npt) = 0.0
                if (tempy > 0.0) part(2,npt) = pi/2.0
@@ -159,17 +162,22 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
             part(4,npt) = tvtx
             part(5,npt) = tvty
             part(6,npt) = tvtz 
-            part(7,npt) = qm
-            npp = npt
+            part(7,npt) = qm/tempr
+            npt = npt + 1
          else
             ierr = ierr + 1
          end if
-         if (lquiet) then
-            if (npt < npmax) then
-               npt = npp + 1
+      end if
+      i = i + 1   
+      if (lquiet) then
+         if (npt < npmax) then
+            tempx = x2 - tempx + 2.0*tempxx
+            tempy = y2 - tempy + 2.0*tempyy
+            tempr = sqrt(tempx**2+tempy**2)
+            if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+            &(tempz >= edges(3)) .and. (tempz < edges(4))) then
                part(3,npt) = tempz
-               tempx = x2 - tempx + 2.0*tempxx
-               tempy = y2 - tempy + 2.0*tempyy
+               part(1,npt) = tempr
                if (tempx == 0.0) then
                   if (tempy == 0.0) part(2,npt) = 0.0
                   if (tempy > 0.0) part(2,npt) = pi/2.0
@@ -182,20 +190,22 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
                part(4,npt) = -tvtx
                part(5,npt) = -tvty
                part(6,npt) = tvtz 
-               part(7,npt) = qm
-               npp = npt
-               i = i + 1
-            else 
-               ierr = ierr + 1
+               part(7,npt) = qm/tempr
+               npt = npt + 1
             end if
+         else 
+            ierr = ierr + 1
          end if
-      end if   
-   enddo     
+         i = i + 1
+      end if
+   enddo
+   npp = npt - 1
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
 end
 !
 subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
+! For 3D particles
 
    implicit none
 
@@ -239,6 +249,8 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       q0(1,nn+1,mm) = q0(1,nn+1,mm) + dd*za
       q0(1,nn,mm+1) = q0(1,nn,mm+1) + ad*zd
       q0(1,nn+1,mm+1) = q0(1,nn+1,mm+1) + dd*zd
+      write(2,*) "q0", ii, qc, q0(1,nn,mm),q0(1,nn+1,mm),&
+      &q0(1,nn,mm+1),q0(1,nn+1,mm+1)
       rc = rc0
       do i = 1, num_modes
          rcr = real(rc)
@@ -257,38 +269,38 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       end do
    end do
 
-   if (noff1 == 0) then
-      q0(1,0,:) = q0(1,0,:)/0.5
-      do i = 1, num_modes
-         qr => q_re(i)%get_f2()
-         qi => q_im(i)%get_f2()
-         qr(1,0,:) = qr(1,0,:)/0.5
-         qi(1,0,:) = qi(1,0,:)/0.5
-      end do      
-   else
-      q0(1,0,:) = q0(1,0,:)/(0.5+noff1-1)
-      do i = 1, num_modes
-         qr => q_re(i)%get_f2()
-         qi => q_im(i)%get_f2()
-         qr(1,0,:) = qr(1,0,:)/(0.5+noff1-1)
-         qi(1,0,:) = qi(1,0,:)/(0.5+noff1-1)
-      end do      
-   end if
+   ! if (noff1 == 0) then
+   !    q0(1,0,:) = q0(1,0,:)/0.5
+   !    do i = 1, num_modes
+   !       qr => q_re(i)%get_f2()
+   !       qi => q_im(i)%get_f2()
+   !       qr(1,0,:) = qr(1,0,:)/0.5
+   !       qi(1,0,:) = qi(1,0,:)/0.5
+   !    end do      
+   ! else
+   !    q0(1,0,:) = q0(1,0,:)/(0.5+noff1-1)
+   !    do i = 1, num_modes
+   !       qr => q_re(i)%get_f2()
+   !       qi => q_im(i)%get_f2()
+   !       qr(1,0,:) = qr(1,0,:)/(0.5+noff1-1)
+   !       qi(1,0,:) = qi(1,0,:)/(0.5+noff1-1)
+   !    end do      
+   ! end if
 
-   do i = 1, n1p+1
-      r = 0.5 + i + noff1 - 1
-      q0(1,i,:) = q0(1,i,:)/r
-   end do
+   ! do i = 1, n1p+1
+   !    r = 0.5 + i + noff1 - 1
+   !    q0(1,i,:) = q0(1,i,:)/r
+   ! end do
       
-   do i = 1, num_modes
-      qr => q_re(i)%get_f2()
-      qi => q_im(i)%get_f2()
-      do j = 1, n1p+1
-         r = 0.5 + j + noff1 - 1
-         qr(1,j,:) = qr(1,j,:)/r
-         qi(1,j,:) = qi(1,j,:)/r
-      end do      
-   end do
+   ! do i = 1, num_modes
+   !    qr => q_re(i)%get_f2()
+   !    qi => q_im(i)%get_f2()
+   !    do j = 1, n1p+1
+   !       r = 0.5 + j + noff1 - 1
+   !       qr(1,j,:) = qr(1,j,:)/r
+   !       qi(1,j,:) = qi(1,j,:)/r
+   !    end do      
+   ! end do
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part3d_qdeposit
@@ -852,10 +864,11 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
          write (erstr,*) 'Iteration overflow, iter = ', ierr
          call write_dbg(cls_name, sname, cls_level, erstr)
          info(1) = ierr
-         if (nter.gt.0) then
+         if (nter > 0) then
             write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
             call write_dbg(cls_name, sname, cls_level, erstr)
          end if
+         call write_dbg(cls_name, sname, cls_level, 'ends')
          return
       end if
    end do
