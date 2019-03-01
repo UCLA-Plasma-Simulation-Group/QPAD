@@ -48,7 +48,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
       r = part(1,ii)
       th = part(2,ii)
       qc = part(8,ii)
-      rc0 = cmplx(r*cos(th),-r*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r + 0.5
       nn = r
       dd = qc*(r - real(nn))
@@ -158,7 +158,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)
@@ -431,7 +431,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)
@@ -870,7 +870,7 @@ subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
       th = part(2,ii)
       vx = part(3,ii)
       vy = part(4,ii)
-      rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)

@@ -35,7 +35,7 @@ type beam3d
    generic :: new => init_beam3d
    generic :: del => end_beam3d
    generic :: push => push_beam3d
-   generic :: qdp => qdeposit_beam3d, qdpcopy_beam3d  
+   generic :: qdp => qdeposit_beam3d
    generic :: wr => writehdf5_beam3d
    generic :: wrq => writeq_beam3d
    generic :: wrst => writerst_beam3d       
@@ -46,7 +46,6 @@ type beam3d
    procedure, private :: qdeposit_beam3d, writehdf5_beam3d
    procedure, private :: writerst_beam3d, readrst_beam3d
    procedure, private :: writeq_beam3d
-   procedure, private :: qdpcopy_beam3d                 
 end type
 
 save      
@@ -105,12 +104,13 @@ subroutine end_beam3d(this)
             
 end subroutine end_beam3d
 !      
-subroutine qdeposit_beam3d(this)
+subroutine qdeposit_beam3d(this,q)
 ! deposit the charge density      
 
    implicit none
    
    class(beam3d), intent(inout) :: this
+   class(field_rho), intent(inout) :: q
 ! local data
    character(len=18), save :: sname = 'qdeposit_beam3d'
             
@@ -118,6 +118,7 @@ subroutine qdeposit_beam3d(this)
    call this%q%as(0.0)
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f2()
+   call q%as(this%q .add. q)
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine qdeposit_beam3d
@@ -145,24 +146,7 @@ end subroutine qdeposit_beam3d
 !    call this%err%werrfl2(class//sname//' ended')
    
 ! end subroutine qdeposit_beam3d
-!      
-subroutine qdpcopy_beam3d(this,q,slice)
-! copy and add the charge density to a 2d slice
-
-   implicit none
-   
-   class(beam3d), intent(inout) :: this
-   class(field_rho), intent(inout) :: q
-   integer, intent(in) :: slice
-! local data
-   character(len=18), save :: sname = 'qdpcopy_beam3d'
-            
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   ! call q%ca(this%q,slice,(/1/),(/1/))          
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   
-end subroutine qdpcopy_beam3d
-!      
+!     
 subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
 
    implicit none

@@ -235,7 +235,7 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       th = part(2,ii)
       zz = part(3,ii)
       qc = part(7,ii)
-      rc0 = cmplx(r*cos(th),-r*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r + 0.5
       nn = r
       mm = zz
@@ -249,8 +249,6 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
       q0(1,nn+1,mm) = q0(1,nn+1,mm) + dd*za
       q0(1,nn,mm+1) = q0(1,nn,mm+1) + ad*zd
       q0(1,nn+1,mm+1) = q0(1,nn+1,mm+1) + dd*zd
-      write(2,*) "q0", ii, qc, q0(1,nn,mm),q0(1,nn+1,mm),&
-      &q0(1,nn,mm+1),q0(1,nn+1,mm+1)
       rc = rc0
       do i = 1, num_modes
          rcr = real(rc)
@@ -357,7 +355,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
       th = part(2,ii)
       zz = part(3,ii)
       qc = part(7,ii)
-      rc0 = cmplx(r0*cos(th),-r0*sin(th),kind=DB)
+      rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       mm = zz
