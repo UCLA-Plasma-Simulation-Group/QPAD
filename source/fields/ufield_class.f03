@@ -757,24 +757,19 @@ subroutine assign_f1( this, that )
     
     type is (real)
 
-      do j = 1, this%ndp(1)
-        do i = 1, this%dim
-          this%f1(i,j) = that
-        enddo
-      enddo
+      this%f1 = that
 
     class is (ufield)
 
-      do j = 1, this%ndp(1)
-        do i = 1, this%dim
-          this%f1(i,j) = that%f1(i,j)
-        enddo
-      enddo
+      if ( all( this%gc_num(:,1)==that%gc_num(:,1) ) ) then
+        this%f1 = that%f1
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
     class default
 
       call write_err( "invalid assignment type!" )
-      stop
 
   end select
 
@@ -793,28 +788,19 @@ subroutine assign_f2( this, that )
     
     type is (real)
 
-      do k = 1, this%ndp(2)
-        do j = 1, this%ndp(1)
-          do i = 1, this%dim
-            this%f2(i,j,k) = that
-          enddo
-        enddo
-      enddo
+      this%f2 = that
 
     class is (ufield)
 
-      do k = 1, this%ndp(2)
-        do j = 1, this%ndp(1)
-          do i = 1, this%dim
-            this%f2(i,j,k) = that%f2(i,j,k)
-          enddo
-        enddo
-      enddo
+      if ( all( this%gc_num==that%gc_num ) ) then
+        this%f2 = that%f2
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
     class default
 
       call write_err( "invalid assignment type!" )
-      stop
 
   end select
 
@@ -835,17 +821,17 @@ function add_f1_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) + a2
-      enddo
-    enddo
+    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
+      a3%f1 = a1%f1 + a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) + a2%f1(i,j)
-      enddo
-    enddo
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+      a3%f1 = a1%f1 + a2%f1
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -867,21 +853,17 @@ function add_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) + a2
-        enddo
-      enddo
-    enddo
+    if ( all( a1%gc_num==a3%gc_num ) ) then
+      a3%f2 = a1%f2 + a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) + a2%f2(i,j,k)
-        enddo
-      enddo
-    enddo
+    if ( all( a1%gc_num==a2%gc_num ) .and. all( a1%gc_num==a3%gc_num ) ) then
+      a3%f2 = a1%f2 + a2%f2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -901,11 +883,11 @@ function add_f1_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  do j = 1, a1%ndp(1)
-    do i = 1, a1%dim
-      a3%f1(i,j) = a1%f1(i,j) + a2
-    enddo
-  enddo
+  if ( all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+    a3%f1 = a1%f1 + a2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
     
 end function add_f1_v2
 
@@ -922,14 +904,12 @@ function add_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  do k = 1, a1%ndp(2)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f2(i,j,k) = a1%f2(i,j,k) + a2
-      enddo
-    enddo
-  enddo
-    
+  if ( all(a1%gc_num==a3%gc_num) ) then
+    a3%f2 = a1%f2 + a2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
 end function add_f2_v2
 
 function sub_f1_v1( a1, a2 ) result( a3 )
@@ -947,17 +927,17 @@ function sub_f1_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) - a2
-      enddo
-    enddo
+    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
+      a3%f1 = a1%f1 - a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) - a2%f1(i,j)
-      enddo
-    enddo
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+      a3%f1 = a1%f1 - a2%f1
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -979,21 +959,17 @@ function sub_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) - a2
-        enddo
-      enddo
-    enddo
+    if ( all( a1%gc_num==a3%gc_num ) ) then
+      a3%f2 = a1%f2 - a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) - a2%f2(i,j,k)
-        enddo
-      enddo
-    enddo
+    if ( all(a1%gc_num==a2%gc_num) .and. all(a1%gc_num==a3%gc_num) ) then
+      a3%f2 = a1%f2 - a2%f2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -1011,15 +987,13 @@ function sub_f1_v2( a2, a1 ) result( a3 )
   integer :: i, j
 
   allocate( a3 )
-    ! note that buffer has no 2D array
-  ! call a3%new( a1%dim, a1%get_nd(), a1%get_nvp(), a1%get_gc_num() )
   call a3%new(a1)
 
-  do j = 1, a1%ndp(1)
-    do i = 1, a1%dim
-      a3%f1(i,j) = a2 - a1%f1(i,j)
-    enddo
-  enddo
+  if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
+    a3%f1 = a2 - a1%f1
+  else
+    call write_err( "guard cells not matched!" )
+  endif
     
 end function sub_f1_v2
 
@@ -1036,13 +1010,11 @@ function sub_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  do k = 1, a1%ndp(2)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f2(i,j,k) = a2 - a1%f2(i,j,k)
-      enddo
-    enddo
-  enddo
+  if ( all( a1%gc_num==a3%gc_num ) ) then
+    a3%f2 = a2 - a1%f2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
     
 end function sub_f2_v2
 
@@ -1061,17 +1033,17 @@ function dot_f1_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) * a2
-      enddo
-    enddo
+    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
+      a3%f1 = a1%f1 * a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f1(i,j) = a1%f1(i,j) * a2%f1(i,j)
-      enddo
-    enddo
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+      a3%f1 = a1%f1 * a2%f1
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -1093,21 +1065,17 @@ function dot_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) * a2
-        enddo
-      enddo
-    enddo
+    if ( all( a1%gc_num==a3%gc_num ) ) then
+      a3%f2 = a1%f2 * a2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class is (ufield)
-    do k = 1, a1%ndp(2)
-      do j = 1, a1%ndp(1)
-        do i = 1, a1%dim
-          a3%f2(i,j,k) = a1%f2(i,j,k) * a2%f2(i,j,k)
-        enddo
-      enddo
-    enddo
+    if ( all(a1%gc_num==a2%gc_num) .and. all(a1%gc_num==a3%gc_num) ) then
+      a3%f2 = a1%f2 * a2%f2
+    else
+      call write_err( "guard cells not matched!" )
+    endif
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -1127,11 +1095,11 @@ function dot_f1_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  do j = 1, a1%ndp(1)
-    do i = 1, a1%dim
-      a3%f1(i,j) = a1%f1(i,j) * a2
-    enddo
-  enddo
+  if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
+    a3%f1 = a1%f1 * a2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
     
 end function dot_f1_v2
 
@@ -1148,13 +1116,11 @@ function dot_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  do k = 1, a1%ndp(2)
-    do j = 1, a1%ndp(1)
-      do i = 1, a1%dim
-        a3%f2(i,j,k) = a1%f2(i,j,k) * a2
-      enddo
-    enddo
-  enddo
+  if ( all( a1%gc_num==a3%gc_num ) ) then
+    a3%f2 = a1%f2 * a2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
     
 end function dot_f2_v2
 
