@@ -351,10 +351,10 @@ subroutine solve_field_eperp( this, b, psi )
         ue_re(2,i) = -ub_re(1,i)
       enddo
       if ( idproc == 0 ) then
-        ue_re(1,1) = ub_re(2,1) - idr * ( upsi_re(1,2) - upsi_re(1,1) )
+        ue_re(1,1) = ub_re(2,1) - idrh * ( 4.0 * upsi_re(1,2) - upsi_re(1,3) - 3.0 * upsi_re(1,1) )
       endif
       if ( idproc == nvp-1 ) then
-        ue_re(1,nrp) = ub_re(2,nrp) - idr * ( upsi_re(1,nrp) - upsi_re(1,nrp-1) )
+        ue_re(1,nrp) = ub_re(2,nrp) + idrh * ( 4.0 * upsi_re(1,nrp-1) - upsi_re(1,nrp-2) - 3.0 * upsi_re(1,nrp) )
       endif
       cycle
     endif
@@ -374,13 +374,13 @@ subroutine solve_field_eperp( this, b, psi )
     enddo
     if ( idproc == 0 ) then
       ir = 2.0 * idr
-      ue_re(1,1) = ub_re(2,1) - idr * ( upsi_re(1,2) - upsi_re(1,1) )
-      ue_im(1,1) = ub_im(2,1) - idr * ( upsi_im(1,2) - upsi_im(1,1) )
+      ue_re(1,1) = ub_re(2,1) - idrh * ( 4.0 * upsi_re(1,2) - upsi_re(1,3) - 3.0 * upsi_re(1,1) )
+      ue_im(1,1) = ub_im(2,1) - idrh * ( 4.0 * upsi_im(1,2) - upsi_im(1,3) - 3.0 * upsi_im(1,1) )
     endif
     if ( idproc == nvp-1 ) then
       ir = idr / (nrp+noff-0.5)
-      ue_re(1,nrp) = ub_re(2,nrp) - idr * ( upsi_re(1,nrp) - upsi_re(1,nrp-1) )
-      ue_im(1,nrp) = ub_im(2,nrp) - idr * ( upsi_im(1,nrp) - upsi_im(1,nrp-1) )
+      ue_re(1,nrp) = ub_re(2,nrp) + idrh * ( 4.0 * upsi_re(1,nrp-1) - upsi_re(1,nrp-2) - 3.0 * upsi_re(1,nrp) )
+      ue_im(1,nrp) = ub_im(2,nrp) + idrh * ( 4.0 * upsi_im(1,nrp-1) - upsi_im(1,nrp-2) - 3.0 * upsi_im(1,nrp) )
     endif
 
   enddo
