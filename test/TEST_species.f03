@@ -124,8 +124,20 @@ call beam%new(pp,qb,gp,part_shape,pf3d%p,-1.0,dt,7)
 call beam%qdp(qb)
 
 do i = 1, nz
+   write(2,*) "Step #", i
+   call file_spe%new(&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &ty = 'particles',&
+   &filename = './spe_',&
+   &dataname = 'raw',&
+   &units = '',&
+   &label = 'Plasma Raw',&
+   &n = i,&
+   &t = real(i))
+   call spe%wr(file_spe)
    call qb%copy_slice(i,p_copy_2to1)
-   ! rho = 0.0
+   rho = 0.0
    ! psi = 0.0
    call b%solve(qb)
    call e%solve(b)
@@ -137,22 +149,6 @@ do i = 1, nz
    call e%copy_slice(i, p_copy_1to2)
    call b%copy_slice(i, p_copy_1to2)
    ! call psi%copy_slice(i, p_copy_1to2)
-end do
-
-
-call file_spe%new(&
-&timeunit = '1 / \omega_p',&
-&dt = dxi,&
-&ty = 'particles',&
-&filename = './spe_',&
-&dataname = 'raw',&
-&units = '',&
-&label = 'Plasma Raw',&
-&n = 0,&
-&t = 0.0)
-call spe%wr(file_spe)
-do i = 2, nz
-   call spe%cbq(i)
 end do
 
 call file_beam%new(&

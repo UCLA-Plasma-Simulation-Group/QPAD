@@ -60,6 +60,8 @@ type part2d
                      
 end type 
 
+save
+
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 character(len=128) :: erstr

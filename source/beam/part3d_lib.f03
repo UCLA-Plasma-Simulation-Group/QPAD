@@ -483,6 +483,7 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    real(kind=DB), dimension(2) :: bflg, work
    real :: an, xt
 
+   ierr = 0
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
    noff = ud%get_noff()
    if (noff(1) == 0) then

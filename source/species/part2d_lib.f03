@@ -494,7 +494,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       v2 = dx(2)*dtc1
       rn = sqrt(v1*v1+v2*v2)
       th1 = th + atan(v2/v1)
-      if (rn > edge) then 
+      if (rn >= edge) then 
          if (ii == npp) then
             npp = npp -1
             exit
@@ -546,6 +546,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    itermax = 20000
+   ierr = 0
 ! buffer outgoing particles, first in r direction
    nvp = pp%getlnvp()
    mreal = pp%getmreal()
@@ -555,8 +556,11 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    id = pp%getlidproc()
    idl = id - 1
    if (idl < 0) idl = idl + nvp
-   idr = idr + 1
-   if (idl >= nvp) idr = idr - nvp
+   idr = id + 1
+   if (idr >= nvp) idr = idr - nvp
+   do j = 1, 10
+      info(j) = 0
+   end do
    n1 = ud%get_nd(1)
    noff = ud%get_noff(1)
    n1p = ud%get_ndp(1)
@@ -568,8 +572,7 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       edgel = real(noff) + 0.5
       edger = edgel + real(n1p)
    end if
-
-   iter = 2
+   iter = 2 
    nter = 0
    do
       mter = 0
@@ -577,255 +580,252 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
       jsr(1) = 0
       jss(2) = 0
       do j = 1, npp
-      xt = part(1,j)
+         xt = part(1,j)
 ! particles going down
-      if (xt < edgel) then
-         if (jsl(1) < nbmax) then
-            jsl(1) = jsl(1) + 1
-            do i = 1, xdim
-               sbufl(i,jsl(1)) = part(i,j)
-            end do
-            ihole(jsl(1)+jsr(1)) = j
-         else
-            jss(2) = 1
-            exit
-         end if
+         if (xt < edgel) then
+            if (jsl(1) < nbmax) then
+               jsl(1) = jsl(1) + 1
+               do i = 1, xdim
+                  sbufl(i,jsl(1)) = part(i,j)
+               end do
+               ihole(jsl(1)+jsr(1)) = j
+            else
+               jss(2) = 1
+               exit
+            end if
 ! particles going up
-      else if (xt >= edger) then
-         if (jsr(1) < nbmax) then
-            jsr(1) = jsr(1) + 1
-            ! if ((kb(n)+1).eq.nvp) xt = xt - an
-            ! rbufl(ic,j,m) = xt
-            do i = 1, xdim
-               sbufr(i,jsr(1)) = part(i,j)
-            end do
-            ihole(jsl(1)+jsr(1)) = j
-         else
-            jss(2) = 1
-            exit
+         else if (xt >= edger) then
+            if (jsr(1) < nbmax) then
+               jsr(1) = jsr(1) + 1
+               do i = 1, xdim
+                  sbufr(i,jsr(1)) = part(i,j)
+               end do
+               ihole(jsl(1)+jsr(1)) = j
+            else
+               jss(2) = 1
+               exit
+            end if
          end if
-      end if
       end do
-   jss(1) = jsl(1) + jsr(1)
+      jss(1) = jsl(1) + jsr(1)
 ! check for full buffer condition
       nps = 0
-      nps = jss(2)
+      nps = max0(nps,jss(2))
       ibflg(3) = nps
 ! copy particle buffers
-   do
-      iter = iter + 2
-      mter = mter + 1 
-
+      do
+         iter = iter + 2
+         mter = mter + 1 
 ! post receive
-      call MPI_IRECV(rbufl,nbsize,mreal,idl,iter-1,lworld,msid(1),ierr)
-      call MPI_IRECV(rbufr,nbsize,mreal,idr,iter,lworld,msid(2),ierr)
+         call MPI_IRECV(rbufl,nbsize,mreal,idl,iter-1,lgrp,msid(1),ierr)
+         call MPI_IRECV(rbufr,nbsize,mreal,idr,iter,lgrp,msid(2),ierr)
 ! send particles
-      call MPI_ISEND(sbufr,xdim*jsr(1),mreal,idr,iter-1,lworld,msid(3),ierr)
-      call MPI_ISEND(sbufl,xdim*jsl(1),mreal,idl,iter,lworld,msid(4),ierr)
+         call MPI_ISEND(sbufr,xdim*jsr(1),mreal,idr,iter-1,lgrp,msid(3),ierr)
+         call MPI_ISEND(sbufl,xdim*jsl(1),mreal,idl,iter,lgrp,msid(4),ierr)
 ! wait for particles to arrive
-      call MPI_WAIT(msid(1),istatus,ierr)
-      call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-      jsl(2) = nps/xdim
-      call MPI_WAIT(msid(2),istatus,ierr)
-      call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-      jsr(2) = nps/xdim
+         call MPI_WAIT(msid(1),istatus,ierr)
+         call MPI_GET_COUNT(istatus,mreal,nps,ierr)
+         jsl(2) = nps/xdim
+         call MPI_WAIT(msid(2),istatus,ierr)
+         call MPI_GET_COUNT(istatus,mreal,nps,ierr)
+         jsr(2) = nps/xdim
 ! check if particles must be passed further
-      nps = 0
+         nps = 0
 ! check if any particles coming from above belong here
-      jsl(1) = 0
-      jsr(1) = 0
-      jss(2) = 0
-      do j = 1, jsr(2)
-         if (rbufr(1,j) < edgel) jsl(1) = jsl(1) + 1
-         if (rbufr(1,j) >= edger) jsr(1) = jsr(1) + 1
-      end do
-      if (jsr(1) /= 0) then
-         write (erstr,*) 'Info:',jsr(1),' particles returning above'
-         call write_dbg(cls_name, sname, cls_level, erstr)
-      end if
+         jsl(1) = 0
+         jsr(1) = 0
+         jss(2) = 0
+         do j = 1, jsr(2)
+            if (rbufr(1,j) < edgel) jsl(1) = jsl(1) + 1
+            if (rbufr(1,j) >= edger) jsr(1) = jsr(1) + 1
+         end do
+         if (jsr(1) /= 0) then
+            write (erstr,*) 'Info:',jsr(1),' particles returning above'
+            call write_dbg(cls_name, sname, cls_level, erstr)
+         end if
 ! check if any particles coming from below belong here
-      do j = 1, jsl(2)
-         if (rbufl(1,j) >= edger) jsr(1) = jsr(1) + 1
-         if (rbufl(1,j) < edgel) jss(2) = jss(2) + 1
-      end do
-      if (jss(2) /= 0) then
-         write (erstr,*) 'Info:',jss(2),' particles returning below'
-         call write_dbg(cls_name, sname, cls_level, erstr)
-      end if
-      jsl(1) = jsl(1) + jss(2)
-      nps = max0(nps,jsl(1)+jsr(1))
+         do j = 1, jsl(2)
+            if (rbufl(1,j) >= edger) jsr(1) = jsr(1) + 1
+            if (rbufl(1,j) < edgel) jss(2) = jss(2) + 1
+         end do
+         if (jss(2) /= 0) then
+            write (erstr,*) 'Info:',jss(2),' particles returning below'
+            call write_dbg(cls_name, sname, cls_level, erstr)
+         end if
+         jsl(1) = jsl(1) + jss(2)
+         nps = max0(nps,jsl(1)+jsr(1))
   
-      ibflg(2) = nps
+         ibflg(2) = nps
 ! make sure sbufr and sbufl have been sent
-      call MPI_WAIT(msid(3),istatus,ierr)
-      call MPI_WAIT(msid(4),istatus,ierr)
-
-      if (nps /= 0) then
+         call MPI_WAIT(msid(3),istatus,ierr)
+         call MPI_WAIT(msid(4),istatus,ierr)
+         if (nps /= 0) then
 ! remove particles which do not belong here
 ! first check particles coming from above
-      jsl(1) = 0
-      jsr(1) = 0
-      jss(2) = 0
-      do j = 1, jsr(2)
-      xt = rbufr(1,j)
+            jsl(1) = 0
+            jsr(1) = 0
+            jss(2) = 0
+            do j = 1, jsr(2)
+               xt = rbufr(1,j)
 ! particles going down
-      if (xt < edgel) then
-         jsl(1) = jsl(1) + 1
-         do i = 1, xdim
-            sbufl(i,jsl(1)) = rbufr(i,j)
-         end do
+               if (xt < edgel) then
+                  jsl(1) = jsl(1) + 1
+                  do i = 1, xdim
+                     sbufl(i,jsl(1)) = rbufr(i,j)
+                  end do
 ! particles going up, should not happen
-      else if (xt >= edger) then
-         jsr(1) = jsr(1) + 1
-         do i = 1, xdim
-            sbufr(i,jsr(1)) = rbufr(i,j)
-         end do
+               else if (xt >= edger) then
+                  jsr(1) = jsr(1) + 1
+                  do i = 1, xdim
+                     sbufr(i,jsr(1)) = rbufr(i,j)
+                  end do
 ! particles staying here
-      else
-         jss(2) = jss(2) + 1
-         do i = 1, xdim
-            rbufr(i,jss(2)) = rbufr(i,j)
-         end do
-      end if
-      end do
-      jsr(2) = jss(2)
+               else
+                  jss(2) = jss(2) + 1
+                  do i = 1, xdim
+                     rbufr(i,jss(2)) = rbufr(i,j)
+                  end do
+               end if
+            end do
+            jsr(2) = jss(2)
 ! next check particles coming from below
-      jss(2) = 0
-      do j = 1, jsl(2)
-      xt = rbufl(1,j)
+            jss(2) = 0
+            do j = 1, jsl(2)
+               xt = rbufl(1,j)
 ! particles going up
-      if (xt >= edger) then
-         if (jsr(1) < nbmax) then
-            jsr(1) = jsr(1) + 1
-            ! if ((kb(n)+1).eq.nvp) xt = xt - an
-            ! rbufl(ic,j,m) = xt
-            do i = 1, xdim
-               sbufr(i,jsr(1)) = rbufl(i,j)
-            end do
-         else
-            jss(2) = 2*npmax
-            exit
-         end if
+               if (xt >= edger) then
+                  if (jsr(1) < nbmax) then
+                     jsr(1) = jsr(1) + 1
+                     do i = 1, xdim
+                        sbufr(i,jsr(1)) = rbufl(i,j)
+                     end do
+                  else
+                     jss(2) = 2*npmax
+                     exit
+                  end if
 ! particles going down back, should not happen
-      else if (xt < edgel) then
-         if (jsl(1) < nbmax) then
-            jsl(1) = jsl(1) + 1
-            do i = 1, xdim
-               sbufl(i,jsl(1)) = rbufl(i,j)
-            end do
-         else
-            jss(2) = 2*npmax
-            exit
-         end if
+               else if (xt < edgel) then
+                  if (jsl(1) < nbmax) then
+                     jsl(1) = jsl(1) + 1
+                     do i = 1, xdim
+                        sbufl(i,jsl(1)) = rbufl(i,j)
+                     end do
+                  else
+                     jss(2) = 2*npmax
+                     exit
+                  end if
 ! particles staying here
-      else
-         jss(2) = jss(2) + 1
-         do i = 1, xdim
-            rbufl(i,jss(2)) = rbufl(i,j)
-         end do
-      end if
-   end do
-   jsl(2) = jss(2)
-   end if
+               else
+                  jss(2) = jss(2) + 1
+                  do i = 1, xdim
+                     rbufl(i,jss(2)) = rbufl(i,j)
+                  end do
+               end if
+            end do
+            jsl(2) = jss(2)
+         end if
 ! check if move would overflow particle array
-      nps = 0
-      npt = npmax
-      jss(2) = npp + jsl(2) + jsr(2) - jss(1)
-      nps = max0(nps,jss(2))
-      npt = min0(npt,jss(2))
-      ibflg(1) = nps
-      ibflg(4) = -npt
-      iwork = ibflg
-      call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr) 
-      info(2) = ibflg(1)
-      info(3) = -ibflg(4)
-      ierr = ibflg(1) - npmax
-      if (ierr > 0) then
-         write (erstr,*) 'particle overflow error, ierr = ', ierr
-         call write_dbg(cls_name, sname, cls_level, erstr)
-         info(1) = ierr
-         return
-      end if
+         nps = 0
+         npt = npmax
+         jss(2) = npp + jsl(2) + jsr(2) - jss(1)
+         nps = max0(nps,jss(2))
+         npt = min0(npt,jss(2))
+         ibflg(1) = nps
+         ibflg(4) = -npt
+         iwork = ibflg
+         call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr) 
+         info(2) = ibflg(1)
+         info(3) = -ibflg(4)
+         ierr = ibflg(1) - npmax
+         if (ierr > 0) then
+            write (erstr,*) 'particle overflow error, ierr = ', ierr
+            call write_dbg(cls_name, sname, cls_level, erstr)
+            info(1) = ierr
+            return
+         end if
 ! distribute incoming particles from buffers
 ! distribute particles coming from below into holes
-      jss(2) = min0(jss(1),jsl(2))
-      do j = 1, jss(2)
-         do i = 1, xdim
-            part(i,ihole(j)) = rbufl(i,j)
+         jss(2) = min0(jss(1),jsl(2))
+         do j = 1, jss(2)
+            do i = 1, xdim
+               part(i,ihole(j)) = rbufl(i,j)
+            end do 
          end do 
-      end do 
-      if (jss(1) > jsl(2)) then
-         jss(2) = min0(jss(1)-jsl(2),jsr(2))
-      else
-         jss(2) = jsl(2) - jss(1)
-      end if
-      do j = 1, jss(2)
+         if (jss(1) > jsl(2)) then
+            jss(2) = min0(jss(1)-jsl(2),jsr(2))
+         else
+            jss(2) = jsl(2) - jss(1)
+         end if
+         do j = 1, jss(2)
 ! no more particles coming from below or back
 ! distribute particles coming from above or front into holes
-      if (jss(1) > jsl(2)) then
-         do i = 1, xdim
-            part(i,ihole(j+jsl(2))) = rbufr(i,j)
-         end do
-      else
+            if (jss(1) > jsl(2)) then
+               do i = 1, xdim
+                  part(i,ihole(j+jsl(2))) = rbufr(i,j)
+               end do
+            else
 ! no more holes
 ! distribute remaining particles from below or back into bottom
-         do i = 1, xdim
-            part(i,j+npp) = rbufl(i,j+jss(1))
-         end do
-      end if
-      end do
-      if (jss(1) <= jsl(2)) then
-         npp = npp + (jsl(2) - jss(1))
-         jss(1) = jsl(2)
-      end if
-      jss(2) = jss(1) - (jsl(2) + jsr(2))
-      if (jss(2) > 0) then
-         jss(1) = (jsl(2) + jsr(2))
-         jsr(2) = jss(2)
-      else
-         jss(1) = jss(1) - jsl(2)
-         jsr(2) = -jss(2)
-      end if
-      do j = 1, jsr(2)
+               do i = 1, xdim
+                  part(i,j+npp) = rbufl(i,j+jss(1))
+               end do
+            end if
+            end do
+            if (jss(1) <= jsl(2)) then
+               npp = npp + (jsl(2) - jss(1))
+               jss(1) = jsl(2)
+            end if
+            jss(2) = jss(1) - (jsl(2) + jsr(2))
+            if (jss(2) > 0) then
+               jss(1) = (jsl(2) + jsr(2))
+               jsr(2) = jss(2)
+            else
+               jss(1) = jss(1) - jsl(2)
+               jsr(2) = -jss(2)
+            end if
+            do j = 1, jsr(2)
 ! holes left over
 ! fill up remaining holes in particle array with particles from bottom
-      if (jss(2) > 0) then
-         j1 = npp - j + 1
-         j2 = jss(1) + jss(2) - j + 1
-         if (j1 > ihole(j2)) then
+            if (jss(2) > 0) then
+               j1 = npp - j + 1
+               j2 = jss(1) + jss(2) - j + 1
+               if (j1 > ihole(j2)) then
 ! move particle only if it is below current hole
-            do i = 1, xdim
-               part(i,ihole(j2)) = part(i,j1)
-            end do
-         end if
-      else
+                  do i = 1, xdim
+                     part(i,ihole(j2)) = part(i,j1)
+                  end do
+               end if
+            else
 ! no more holes
 ! distribute remaining particles from above or front into bottom
-         do i = 1, xdim
-            part(i,j+npp) = rbufr(i,j+jss(1))
+               do i = 1, xdim
+                  part(i,j+npp) = rbufr(i,j+jss(1))
+               end do
+            end if
          end do
-      end if
-      end do
-      if (jss(2) > 0) then
-         npp = npp - jsr(2)
-      else
-         npp = npp + jsr(2)
-      end if
-      jss(1) = 0
-
+         if (jss(2) > 0) then
+            npp = npp - jsr(2)
+         else
+            npp = npp + jsr(2)
+         end if
+         jss(1) = 0
 ! check if any particles have to be passed further
-      info(6) = max0(info(6),mter)
-      if (ibflg(2) <= 0) exit
-      write (erstr,*) 'Info: particles being passed further = ', ibflg(2)
-      call write_dbg(cls_name, sname, cls_level, erstr)
-      if (ibflg(3) > 0) ibflg(3) = 1
-      if (iter >= itermax) then
-         ierr = -((iter-2)/2)
-         write (erstr,*) 'Iteration overflow, iter = ', ierr
-         call write_err(erstr)
-         return
-      end if
-   end do
+         info(5) = max0(info(5),mter)
+         if (ibflg(2) <= 0) exit
+         write (erstr,*) 'Info: particles being passed further = ', ibflg(2)
+         call write_dbg(cls_name, sname, cls_level, erstr)
+         if (ibflg(3) > 0) ibflg(3) = 1
+         if (iter >= itermax) then
+            ierr = -((iter-2)/2)
+            write (erstr,*) 'Iteration overflow, iter = ', ierr
+            call write_err(erstr)
+            info(1) = ierr
+            if (nter > 0) then
+               write (2,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
+            endif
+            return
+         end if
+      end do
 ! check if buffer overflowed and more particles remain to be checked
       if (ibflg(3) <=  0) exit
       nter = nter + 1
