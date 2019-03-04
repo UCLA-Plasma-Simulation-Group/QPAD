@@ -302,6 +302,8 @@ subroutine solve_field_ez( this, jay )
 
   enddo
 
+  call this%copy_gc_f1()
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_ez
@@ -385,6 +387,10 @@ subroutine solve_field_eperp( this, b, psi )
 
   enddo
 
+  call this%copy_gc_f1()
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
 end subroutine solve_field_eperp
 
 subroutine solve_field_eperp_beam( this, b )
@@ -427,6 +433,10 @@ subroutine solve_field_eperp_beam( this, b )
     enddo
 
   enddo
+
+  call this%copy_gc_f1()
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_eperp_beam
 
