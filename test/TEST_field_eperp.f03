@@ -67,14 +67,16 @@ do mode = 0, num_modes
   
   do i = 1, nrp
     r = (real(i+noff)-0.5)*dr
-    uq_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
+    ! uq_re(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
+    uq_re(mode)%f1(1,i) = -1.0
   enddo
 
   if ( mode == 0 ) cycle
 
   do i = 1, nrp
     r = (real(i+noff)-0.5)*dr
-    uq_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
+    ! uq_im(mode)%f1(1,i) = 0.5*exp( -((r-0.4)/0.05)**2 )
+    uq_im(mode)%f1(1,i) = -1.0
   enddo
 
 enddo
@@ -115,6 +117,9 @@ enddo
 
 call b%solve( djdxi, jay )
 
+! call b%as(0.0)
+! b = 0.0
+
 ! solve electric field
 call e%solve( b, psi )
 
@@ -132,53 +137,19 @@ write( filename, '(A,I0.3,A)' ) 'er-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 1 )
 write( filename, '(A,I0.3,A)' ) 'ephi-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 2 )
-p => ue_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
+do i = 1, num_modes
+  p => ue_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'er-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ephi-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+  p => ue_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'er-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ephi-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+enddo
 
-! p => ub_re(0)%get_f1()
-! call write_data( p, 'br-re-0.txt', 1 )
-! call write_data( p, 'bphi-re-0.txt', 2 )
-! p => ub_re(1)%get_f1()
-! call write_data( p, 'br-re-1.txt', 1 )
-! call write_data( p, 'bphi-re-1.txt', 2 )
-! p => ub_re(2)%get_f1()
-! call write_data( p, 'br-re-2.txt', 1 )
-! call write_data( p, 'bphi-re-2.txt', 2 )
-! p => ub_im(1)%get_f1()
-! call write_data( p, 'br-im-1.txt', 1 )
-! call write_data( p, 'bphi-im-1.txt', 2 )
-! p => ub_im(2)%get_f1()
-! call write_data( p, 'br-im-2.txt', 1 )
-! call write_data( p, 'bphi-im-2.txt', 2 )
-
-! p => upsi_re(0)%get_f1()
-! call write_data( p, 'psi-re-0.txt', 1 )
-! p => upsi_re(1)%get_f1()
-! call write_data( p, 'psi-re-1.txt', 1 )
-! p => upsi_re(2)%get_f1()
-! call write_data( p, 'psi-re-2.txt', 1 )
-! p => upsi_im(1)%get_f1()
-! call write_data( p, 'psi-im-1.txt', 1 )
-! p => upsi_im(2)%get_f1()
-! call write_data( p, 'psi-im-2.txt', 1 )
 
 call rho%del()
 call psi%del()

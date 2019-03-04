@@ -19,7 +19,7 @@ type( grid ), pointer :: gp => null()
 type( field_b ) :: b
 type( field_jay ) :: jay
 
-integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: num_modes = 3, part_shape = p_ps_linear
 integer :: nr = 128, nz = 1, nrp, noff
 real :: dr, dxi, r
 
@@ -79,18 +79,14 @@ ub_im => b%get_rf_im()
 p => ub_re(0)%get_f1()
 write( filename, '(A,I0.3,A)' ) 'bz-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 3 )
-p => ub_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'bz-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ub_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'bz-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ub_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'bz-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ub_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'bz-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
+do i = 1, num_modes
+  p => ub_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bz-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 3 )
+  p => ub_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bz-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 3 )
+enddo
 
 call jay%del()
 call b%del()

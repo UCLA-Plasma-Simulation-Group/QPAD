@@ -26,6 +26,7 @@ real :: dr, dxi, r
 
 type( ufield ), dimension(:), pointer :: uq_re => null(), uq_im => null()
 type( ufield ), dimension(:), pointer :: ue_re => null(), ue_im => null()
+type( ufield ), dimension(:), pointer :: ub_re => null(), ub_im => null()
 real, dimension(:,:), pointer :: p
 integer :: ierr, i, mode
 character(len=32) :: filename
@@ -39,8 +40,10 @@ call write_dbg( 'main', 'test_field_eperp_beam', 0, 'starts' )
 
 call gp%new( pp, nr, nz )
 
-dr = 1.0 / (nrp-0.5)
+dr = 1.0 / (nr-0.5)
 dxi = 1.0
+nrp = gp%get_ndp(1)
+noff = gp%get_noff(1)
 
 ! Test beam field
 call rho%new( pp, gp, dr, dxi, num_modes, part_shape )
@@ -68,6 +71,28 @@ do mode = 0, num_modes
 enddo
 
 call b%solve(rho)
+
+ub_re => b%get_rf_re()
+ub_im => b%get_rf_im()
+
+p => ub_re(0)%get_f1()
+write( filename, '(A,I0.3,A)' ) 'br-beam-re-0-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 1 )
+write( filename, '(A,I0.3,A)' ) 'bphi-beam-re-0-', pp%getlidproc(), '.txt'
+call write_data( p, trim(filename), 2 )
+do i = 1, num_modes
+  p => ub_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'br-beam-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bphi-beam-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+  p => ub_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'br-beam-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bphi-beam-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+enddo
+
 call e%solve(b)
 
 ue_re => e%get_rf_re()
@@ -78,26 +103,18 @@ write( filename, '(A,I0.3,A)' ) 'er-beam-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 1 )
 write( filename, '(A,I0.3,A)' ) 'ephi-beam-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 2 )
-p => ue_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-beam-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-beam-re-1', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-beam-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-beam-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-beam-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-beam-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
-p => ue_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'er-beam-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-write( filename, '(A,I0.3,A)' ) 'ephi-beam-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 2 )
+do i = 1, num_modes
+  p => ue_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'er-beam-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ephi-beam-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+  p => ue_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'er-beam-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ephi-beam-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 2 )
+enddo
 
 call rho%del()
 call b%del()

@@ -19,7 +19,7 @@ type( grid ), pointer :: gp => null()
 type( field_psi ) :: psi
 type( field_rho ) :: q
 
-integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: num_modes = 4, part_shape = p_ps_linear
 integer :: nr = 512, nz = 1, nrp, noff
 real :: dr, dxi, r
 
@@ -76,18 +76,15 @@ upsi_im => psi%get_rf_im()
 p => upsi_re(0)%get_f1()
 write( filename, '(A,I0.3,A)' ) 'psi-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 1 )
-p => upsi_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'psi-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-p => upsi_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'psi-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-p => upsi_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'psi-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
-p => upsi_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'psi-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 1 )
+
+do i = 1, num_modes
+  p => upsi_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'psi-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+  p => upsi_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'psi-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 1 )
+enddo
 
 call q%del()
 call psi%del()
