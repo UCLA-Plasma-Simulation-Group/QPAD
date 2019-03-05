@@ -29,6 +29,7 @@ type :: ufield
   integer :: dim ! dimension of array (guard cell excluded)
   integer, dimension(2) :: noff
   integer, dimension(2,2) :: gc_num ! number of guard cells
+  integer :: mode
   logical :: has_2d
 
   ! real, dimension(:), pointer :: buf => null() ! data buffer used for MPI
@@ -80,14 +81,14 @@ end type ufield
 
 contains
 
-subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
+subroutine init_ufield( this, pp, gp, dim, mode, gc_num, has_2d )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: dim
+  integer, intent(in) :: dim, mode
   integer, intent(in), dimension(2,2) :: gc_num
   logical, intent(in), optional :: has_2d
 
@@ -102,6 +103,7 @@ subroutine init_ufield( this, pp, gp, dim, gc_num, has_2d )
   this%ndp = gp%get_ndp()
   this%noff = gp%get_noff()
   this%gc_num = gc_num
+  this%mode = mode
 
   allocate( this%f1( dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -134,6 +136,7 @@ subroutine init_ufield_cp( this, that )
   this%ndp = that%get_ndp()
   this%noff = that%get_noff()
   this%gc_num = that%get_gc_num()
+  this%mode = that%mode
 
   allocate( this%f1( this%dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -291,8 +294,9 @@ subroutine copy_gc_f1( this )
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
   integer :: nrp, count, dtype
-  integer :: tag = 1, msgid, ierr
+  integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
+  real :: pha
 
 
   idproc = this%pp%getlidproc()
@@ -319,6 +323,17 @@ subroutine copy_gc_f1( this )
     ! wait receiving finish
     if ( idproc > 0 ) then
       call MPI_WAIT( msgid, stat, ierr )
+    else
+      if ( mod(this%mode,2) == 0 ) then
+        pha = 1.0
+      else
+        pha = -1.0
+      endif
+      do j = 1, this%gc_num(p_lower,1)
+        do i = 1, this%dim
+          this%f1(i,1-j) = pha * this%f1(i,j)
+        enddo
+      enddo
     endif
   endif
 

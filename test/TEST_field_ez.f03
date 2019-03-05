@@ -19,7 +19,7 @@ type( grid ), pointer :: gp => null()
 type( field_e ) :: e
 type( field_jay ) :: jay
 
-integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: num_modes = 3, part_shape = p_ps_linear
 integer :: nr = 128, nz = 1, nrp, noff
 real :: dr, dxi, r
 
@@ -79,18 +79,14 @@ ue_im => e%get_rf_im()
 p => ue_re(0)%get_f1()
 write( filename, '(A,I0.3,A)' ) 'ez-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, trim(filename), 3 )
-p => ue_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'ez-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ue_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'ez-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ue_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'ez-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
-p => ue_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'ez-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, trim(filename), 3 )
+do i = 1, num_modes
+  p => ue_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ez-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 3 )
+  p => ue_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'ez-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, trim(filename), 3 )
+enddo
 
 call jay%del()
 call e%del()

@@ -19,7 +19,7 @@ type( grid ), pointer :: gp => null()
 type( field_b ) :: b
 type( field_rho ) :: rho
 
-integer :: num_modes = 2, part_shape = p_ps_linear
+integer :: num_modes = 3, part_shape = p_ps_linear
 integer :: nr = 128, nz = 1, nrp, noff
 real :: dr, dxi, r
 
@@ -77,26 +77,19 @@ write( filename, '(A,I0.3,A)' ) 'br-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, filename, 1 )
 write( filename, '(A,I0.3,A)' ) 'bphi-re-0-', pp%getlidproc(), '.txt'
 call write_data( p, filename, 2 )
-p => ub_re(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'br-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 1 )
-write( filename, '(A,I0.3,A)' ) 'bphi-re-1-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 2 )
-p => ub_re(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'br-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 1 )
-write( filename, '(A,I0.3,A)' ) 'bphi-re-2-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 2 )
-p => ub_im(1)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'br-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 1 )
-write( filename, '(A,I0.3,A)' ) 'bphi-im-1-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 2 )
-p => ub_im(2)%get_f1()
-write( filename, '(A,I0.3,A)' ) 'br-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 1 )
-write( filename, '(A,I0.3,A)' ) 'bphi-im-2-', pp%getlidproc(), '.txt'
-call write_data( p, filename, 2 )
+do i = 1, num_modes
+  p => ub_re(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'br-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, filename, 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bphi-re-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, filename, 2 )
+
+  p => ub_im(i)%get_f1()
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'br-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, filename, 1 )
+  write( filename, '(A,I0.1,A,I0.3,A)' ) 'bphi-im-', i, '-', pp%getlidproc(), '.txt'
+  call write_data( p, filename, 2 )
+enddo
 
 call rho%del()
 call b%del()

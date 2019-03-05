@@ -317,10 +317,11 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+      ! this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
+      this%buf(3) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) )
     endif
     if ( idproc == nvp-1 ) then
-      this%buf(4*nrp-1) = idr * ( f1_re(1,nrp)-f1_re(1,nrp-1) )
+      this%buf(4*nrp-1) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) )
     endif
 
     ! call write_data( this%buf, 'bsource-re-0.txt' )
@@ -339,14 +340,12 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      ir = 2.0 * idr
-      this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
-      this%buf(4) = idr * ( f1_im(1,2)-f1_im(1,1) )
+      this%buf(3) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) )
+      this%buf(4) = idrh * ( -3.0 * f1_im(1,1) + 4.0 * f1_im(1,2) - f1_im(1,3) )
     endif
     if ( idproc == nvp-1 ) then
-      ir = idr / (real(nrp+noff)-0.5)
-      this%buf(4*nrp-1) = idr * ( f1_re(1,nrp)-f1_re(1,nrp-1) )
-      this%buf(4*nrp)   = idr * ( f1_im(1,nrp)-f1_im(1,nrp-1) )
+      this%buf(4*nrp-1) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) )
+      this%buf(4*nrp)   = idrh * ( 3.0 * f1_im(1,nrp) - 4.0 * f1_im(1,nrp-1) + f1_im(1,nrp-2) )
     endif
 
   else
@@ -417,13 +416,13 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     if ( idproc == 0 ) then
       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
       this%buf(2) = 0.0
-      this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
+      this%buf(3) = f1_re(1,1) + idrh * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
       this%buf(4) = 0.0
     endif
     if ( idproc == nvp-1 ) then
       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
       this%buf(4*nrp-2) = 0.0
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( f2_re(3,nrp)-f2_re(3,nrp-1) ) - f3_re(2,nrp)
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
       this%buf(4*nrp)   = 0.0
     endif
 
@@ -444,15 +443,15 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       ir = 2.0 * idr
       this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
-      this%buf(3) = f1_re(1,1) + idr * ( f2_re(3,2)-f2_re(3,1) ) - f3_re(2,1)
-      this%buf(4) = f1_im(1,1) + idr * ( f2_im(3,2)-f2_im(3,1) ) - f3_im(2,1)
+      this%buf(3) = f1_re(1,1) + idr * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
+      this%buf(4) = f1_im(1,1) + idr * ( 3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) - f3_im(2,1)
     endif
     if ( idproc == nvp-1 ) then
       ir = idr / (real(nrp+noff)-0.5)
       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp)
       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp)
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( f2_re(3,nrp)-f2_re(3,nrp-1) ) - f3_re(2,nrp)
-      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( f2_im(3,nrp)-f2_im(3,nrp-1) ) - f3_im(2,nrp)
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( -3.0 * f2_re(3,nrp) + 4.0 * f2_re(3,nrp-1) - f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)
     endif
 
   else
@@ -597,6 +596,8 @@ subroutine solve_field_bz( this, jay )
 
   enddo
 
+  call this%copy_gc_f1()
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bz
@@ -633,6 +634,8 @@ subroutine solve_field_bperp( this, rho )
     call this%get_solution_bperp(i)
 
   enddo
+
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -675,6 +678,8 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
     call this%get_solution_bperp_iter(i)
 
   enddo
+
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
