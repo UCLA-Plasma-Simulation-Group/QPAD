@@ -974,14 +974,13 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
  
 end subroutine pwpart_2d
 !
-subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
+subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: part
- real, intent(in) :: delta
  integer(kind=LG), intent(in) :: npp
  integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
@@ -1075,11 +1074,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
        call h5sclose_f(aspace_id, ierr)
 
        do i = 1, 2
-          if (i == 2) then
-            buff(1:tnpp) = part(i,1:(1+(tnpp-1)*dspl):dspl)
-          else
-            buff(1:tnpp) = part(i,1:(1+(tnpp-1)*dspl):dspl)*delta
-          end if
+          buff(1:tnpp) = part(i,1:(1+(tnpp-1)*dspl):dspl)
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'x'//char(iachar('0')+i), treal,&
@@ -1099,7 +1094,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
        enddo
 
        do i = 1, 3
-          buff(1:tnpp) = part((i+2),1:(1+(tnpp-1)*dspl):dspl)*delta
+          buff(1:tnpp) = part((i+2),1:(1+(tnpp-1)*dspl):dspl)
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'p'//char(iachar('0')+i), treal,&
@@ -1151,7 +1146,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,delta,ierr)
  
 end subroutine pwpart_2d_r
 !
-subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,dx,dz,z0,rtag,stag,&
+subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
 &id,ierr)
 
  implicit none
@@ -1159,7 +1154,7 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,dx,dz,z0,rtag,stag,&
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: part
- real, intent(in) :: dx, dz, z0
+ real, intent(in) :: z0
  integer(kind=LG), intent(in) :: npp
  integer, intent(in) :: dspl
  integer, intent(in) :: rtag, stag
@@ -1283,13 +1278,13 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,dx,dz,z0,rtag,stag,&
 
        do i = 1, 3
           if (i == 1) then
-             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
              &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
           else if (i == 2) then
-             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*dx*&
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
              &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
           else
-             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)*dz+z0
+             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)+z0
           end if
 
           if (ori >=0 .and. tpo /= 0) then

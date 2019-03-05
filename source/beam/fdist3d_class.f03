@@ -242,21 +242,21 @@ subroutine init_fdist3d_000(this,input,i)
    qm = qm/npy
    qm = qm/npz
    this%qm = qm
-   this%bcx = bcx/dr
-   this%bcy = bcy/dr
-   this%bcz = bcz/dz
-   this%sigx = sigx/dr
-   this%sigy = sigy/dr
-   this%sigz = sigz/dz
+   this%bcx = bcx
+   this%bcy = bcy
+   this%bcz = bcz
+   this%sigx = sigx
+   this%sigy = sigy
+   this%sigz = sigz
    this%sigvx = sigvx
    this%sigvy = sigvy
    this%sigvz = sigvz
-   this%cx1 = cx1*dz*dz/dr
-   this%cx2 = cx2*dz/dr
-   this%cx3 = cx3/dr
-   this%cy1 = cy1*dz*dz/dr
-   this%cy2 = cy2*dz/dr
-   this%cy3 = cy3/dr
+   this%cx1 = cx1
+   this%cx2 = cx2
+   this%cx3 = cx3
+   this%cy1 = cy1
+   this%cy2 = cy2
+   this%cy3 = cy3
    this%gamma = gamma
    this%np = np
    this%quiet = quiet
@@ -281,7 +281,7 @@ subroutine dist3d_000(this,part3d,npp,ud)
 ! edges(4) = upper boundary in z of particle partition
    real, dimension(:,:), pointer :: pt => null()
    integer :: npx, npy, npz, n1, n2, ipbc
-   real :: vtx, vty, vtz, vdx, vdy, vdz
+   real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
@@ -305,17 +305,18 @@ subroutine dist3d_000(this,part3d,npp,ud)
    lquiet = this%quiet
    idimp = size(part3d,1); npmax = size(part3d,2)
    noff = ud%get_noff()
+   dr = this%dx; dz= this%dz
    if (noff(1) == 0) then
-      edges(1) = noff(1)
-      edges(2) = edges(1) + ud%get_ndp(1) + 0.5
+      edges(1) = noff(1)*dr
+      edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
    else
-      edges(1) = noff(1) + 0.5
-      edges(2) = edges(1) + ud%get_ndp(1)
+      edges(1) = (noff(1) + 0.5)*dr
+      edges(2) = edges(1) + ud%get_ndp(1)*dr
    end if
-   edges(3) = noff(2)
-   edges(4) = edges(3) + ud%get_ndp(2)         
+   edges(3) = noff(2)*dz
+   edges(4) = edges(3) + ud%get_ndp(2)*dz
    
-   call beam_dist000(pt,this%qm,edges,npp,nps,vtx,vty,vtz,vdx,vdy,&
+   call beam_dist000(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npx,npy,npz,n1,n2,idimp,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
 

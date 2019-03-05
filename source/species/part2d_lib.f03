@@ -21,12 +21,13 @@ private :: cls_name, cls_level, erstr
 
 contains
 !      
-subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
+subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(in) :: part
    integer(kind=LG), intent(in) :: npp
+   real, intent(in) :: dr
    class(ufield), dimension(:), pointer, intent(in) :: q_re, q_im
    integer, intent(in) :: num_modes
 ! local data
@@ -45,7 +46,7 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    qr => null(); qi => null()
 
    do ii = 1, npp
-      r = part(1,ii)
+      r = part(1,ii)/dr
       th = part(2,ii)
       qc = part(8,ii)
       rc0 = cmplx(cos(th),-sin(th),kind=DB)
@@ -111,14 +112,14 @@ subroutine part2d_qdeposit(part,npp,q_re,q_im,num_modes)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine part2d_qdeposit
 !
-subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
+subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 &cu_re,cu_im,dcu_re,dcu_im,amu_re,amu_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(in) :: part
    integer(kind=LG), intent(in) :: npp
-   real, intent(in) :: dt, qbm
+   real, intent(in) :: dr, dt, qbm
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
    &bf_re, bf_im, cu_re, cu_im, dcu_re, dcu_im, amu_re, amu_im
    integer, intent(in) :: num_modes
@@ -153,7 +154,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    qtmh = 0.5*qbm*dt
    dti = 1.0/dt
    do ii = 1, npp
-      r0 = part(1,ii)
+      r0 = part(1,ii)/dr
       th = part(2,ii)
       p6 = part(6,ii)
       p7 = part(7,ii)
@@ -385,14 +386,14 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
 end subroutine part2d_amjdeposit
 !
-subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
+subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
 &bf_re,bf_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: dt, qbm, dex
+   real, intent(in) :: dr, dt, qbm
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
    &bf_re, bf_im
    integer, intent(in) :: xdim, num_modes
@@ -402,12 +403,12 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    integer(kind=LG) :: ii
    real, dimension(:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, nn, noff, n1p
-   real :: idex, edge, qtmh, qtmh1, qtmh2, dti, p6, p7, ip7
+   real :: edge, qtmh, qtmh1, qtmh2, p6, p7, ip7
    real :: r0, r, rn, qc, qc1, th, th1, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx, om
    real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8, rot9
-   real :: dtc1, v1, v2, dtx
+   real :: dtc1, v1, v2
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -419,10 +420,8 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
    b0 => bf_re(0)%get_f1()
    er => null(); ei => null(); br => null(); bi => null()
 
-   idex = 1.0/dex
-   dtx = dt * idex
    qtmh = 0.5*qbm*dt
-   edge = real(n1) + 0.5
+   edge = (real(n1) + 0.5)*dr
 
    ii = 1
    do
@@ -433,7 +432,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       p7 = part(7,ii)
       qc = part(8,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0 + 0.5      
+      r = r0/dr + 0.5      
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
@@ -490,7 +489,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       dx(1) = (rot1*acx + rot2*acy + rot3*acz)*anorm + dx(1)
       dx(2) = (rot4*acx + rot5*acy + rot6*acz)*anorm + dx(2)
       dx(3) = (rot7*acx + rot8*acy + rot9*acz)*anorm + dx(3)
-      dtc1 = dtx/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
+      dtc1 = dt/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
       v1 = r0 + dx(1)*dtc1
       v2 = dx(2)*dtc1
       rn = sqrt(v1*v1+v2*v2)
@@ -520,13 +519,14 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
 
 end subroutine part2d_push
 !
-subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
+subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr
    integer(kind=LG), intent(inout) :: npp
+   real, intent(in) :: dr
    integer(kind=LG), intent(in) :: npmax, nbmax
    integer(kind=LG), dimension(:), intent(inout) :: ihole
    integer, intent(in) :: xdim
@@ -568,10 +568,10 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    an = real(n1) - 0.5
    if (id == 0) then
       edgel = 0.0
-      edger = real(n1p) + 0.5
+      edger = (real(n1p) + 0.5)*dr
    else
-      edgel = real(noff) + 0.5
-      edger = edgel + real(n1p)
+      edgel = (real(noff) + 0.5)*dr
+      edger = edgel + real(n1p)*dr
    end if
    iter = 2 
    nter = 0
@@ -842,14 +842,14 @@ subroutine part2d_pmove(part,pp,npp,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,
    return
 end subroutine part2d_pmove
 !
-subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
+subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    integer(kind=LG), intent(in) :: npp
    integer, intent(in) :: num_modes
-   real, intent(in) :: qbm
+   real, intent(in) :: dr,qbm
    class(ufield), dimension(:), pointer, intent(in) :: psi_re, psi_im
 ! local data
    character(len=20), save :: sname = "part2d_extractpsi"
@@ -867,7 +867,7 @@ subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
    psir => null(); psii => null()
 
    do ii = 1, npp
-      r0 = part(1,ii)
+      r0 = part(1,ii)/dr
       th = part(2,ii)
       vx = part(3,ii)
       vy = part(4,ii)

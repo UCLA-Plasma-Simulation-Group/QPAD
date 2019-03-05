@@ -90,10 +90,10 @@ end select
 call rho%new(pp, gp, dr, dxi, num_modes, part_shape)
 call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0)
 
-! call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-! call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+! call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
+! call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
 
 ! do i = 1, nz

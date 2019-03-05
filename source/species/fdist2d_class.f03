@@ -186,13 +186,14 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1, ppc1h
    real :: qm, den_temp
    integer :: prof_l
-   real :: r1, t0, t1
+   real :: r1, t0, t1, dr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
    n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
    ppc1 = this%ppc1; ppc2 = this%ppc2; ppc1h = ppc1/2
    t0 = 2.0*pi/ppc2 
+   dr = this%dex
    den_temp = 1.0
    if (trim(this%long_prof) == 'piecewise') then
       prof_l = size(this%fs)
@@ -223,7 +224,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
          do i1 = 0, ppc1-1
             r1 = (i1 + 0.5)/ppc1 + i - 0.5 + noff1
             do i2=0, ppc2-1
-               pt(1,nps) = r1
+               pt(1,nps) = r1*dr
                pt(2,nps) = i2*t0
                pt(3,nps) = 0.0
                pt(4,nps) = 0.0
@@ -239,7 +240,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
       do i1 = 0, ppc1h-1
          r1 = 0.5 - (i1 + 0.5)/ppc1
          do i2=0, ppc2-1
-            pt(1,nps) = r1
+            pt(1,nps) = r1*dr
             pt(2,nps) = i2*t0
             pt(3,nps) = 0.0
             pt(4,nps) = 0.0
@@ -254,7 +255,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
          do i1 = 0, ppc1-1
             r1 = (i1 + 0.5)/ppc1 + i - 0.5
             do i2=0, ppc2-1
-               pt(1,nps) = r1
+               pt(1,nps) = r1*dr
                pt(2,nps) = i2*t0
                pt(3,nps) = 0.0
                pt(4,nps) = 0.0

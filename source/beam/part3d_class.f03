@@ -141,7 +141,7 @@ subroutine qdeposit(this,q)
    q_re => q%get_rf_re()
    q_im => q%get_rf_im()
    
-   call part3d_qdeposit(this%part,this%npp,q_re,q_im,q%get_num_modes())         
+   call part3d_qdeposit(this%part,this%npp,this%dx,this%dz,q_re,q_im,q%get_num_modes())         
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
@@ -165,8 +165,8 @@ subroutine partpush(this,ef,bf)
    bf_re => bf%get_rf_re()
    bf_im => bf%get_rf_im()
    
-   call part3d_push(this%part,this%npp,this%xdim,this%dt,this%qbm,this%dx,&
-   &this%dz,ef_re,ef_im,bf_re,bf_im,ef%get_num_modes())
+   call part3d_push(this%part,this%npp,this%dx,this%dz,this%xdim,this%dt,this%qbm,&
+   &ef_re,ef_im,bf_re,bf_im,ef%get_num_modes())
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
@@ -190,8 +190,8 @@ subroutine pmove(this,fd,rtag,stag,sid)
 
    ud => fd%get_rf_re()
 
-   call part3d_pmove(this%part,this%pp,ud(0),this%npp,sbufr,sbufl,rbufr,rbufl,ihole,this%pbuff,&
-   &this%xdim,this%npmax,this%nbmax,rtag,stag,sid,info)
+   call part3d_pmove(this%part,this%pp,ud(0),this%npp,this%dx,this%dz,sbufr,sbufl,&
+   &rbufr,rbufl,ihole,this%pbuff,this%xdim,this%npmax,this%nbmax,rtag,stag,sid,info)
 
    if (info(1) /= 0) then
       write (erstr,*) 'part3d_pmove error'
@@ -228,7 +228,7 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call pwpart_pipe(this%pp,file,this%part,this%npp,dspl,this%dx,this%dz,&
+   call pwpart_pipe(this%pp,file,this%part,this%npp,dspl,&
    &this%z0,rtag,stag,id,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

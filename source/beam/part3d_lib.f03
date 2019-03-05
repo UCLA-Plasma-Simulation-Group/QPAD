@@ -80,7 +80,7 @@ function ranorm()
    end if
 end function ranorm
 !
-subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
+subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 &vdy,vdz,npx,npy,npz,n1,n2,idimp,npmax,sigx,&
 &sigy,sigz,x0,y0,z0,cx,cy,lquiet,ierr)
 
@@ -90,7 +90,7 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
    integer, intent(inout) :: ierr
    integer(kind=LG), intent(inout) :: npp
    integer(kind=LG), intent(in) :: npmax,nps
-   real, intent(in) :: qm,sigx,sigy,sigz,x0,y0,z0
+   real, intent(in) :: dr,dz,qm,sigx,sigy,sigz,x0,y0,z0
    real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz
    real, dimension(:,:), intent(inout) :: part
    real, dimension(4), intent(in) :: edges
@@ -162,7 +162,7 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
             part(4,npt) = tvtx
             part(5,npt) = tvty
             part(6,npt) = tvtz 
-            part(7,npt) = qm/tempr
+            part(7,npt) = qm/tempr*dr
             npt = npt + 1
          else
             ierr = ierr + 1
@@ -190,7 +190,7 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
                part(4,npt) = -tvtx
                part(5,npt) = -tvty
                part(6,npt) = tvtz 
-               part(7,npt) = qm/tempr
+               part(7,npt) = qm/tempr*dr
                npt = npt + 1
             end if
          else 
@@ -204,13 +204,14 @@ subroutine beam_dist000(part,qm,edges,npp,nps,vtx,vty,vtz,vdx,&
    return
 end
 !
-subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
+subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
 ! For 3D particles
 
    implicit none
 
    real, dimension(:,:), pointer, intent(in) :: part
    integer(kind=LG), intent(in) :: npp
+   real, intent(in) :: dr, dz
    class(ufield), dimension(:), pointer, intent(in) :: q_re, q_im
    integer, intent(in) :: num_modes
 ! local data
@@ -231,9 +232,9 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
    qr => null(); qi => null()
 
    do ii = 1, npp
-      r = part(1,ii)
+      r = part(1,ii)/dr
       th = part(2,ii)
-      zz = part(3,ii)
+      zz = part(3,ii)/dz
       qc = part(7,ii)
       rc0 = cmplx(cos(th),-sin(th),kind=DB)
       r = r + 0.5
@@ -303,14 +304,14 @@ subroutine part3d_qdeposit(part,npp,q_re,q_im,num_modes)
 
 end subroutine part3d_qdeposit
 !
-subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
+subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
 &bf_re,bf_im,num_modes)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: part
    integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: dt, qbm, dx0, dz0
+   real, intent(in) :: dr, dz, dt, qbm
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
    &bf_re, bf_im
    integer, intent(in) :: xdim, num_modes
@@ -322,7 +323,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
    integer :: n1, n2, nn, mm, noff1, n1p, noff2, n2p
    real :: idex, edge1, edge2, qtmh, qtmh1, qtmh2, dti
    real :: r0, r, rn, qc, qc1, th, th1, dd, ad, za, zd, rcr, rci
-   real :: zz
+   real :: zz, z
    real, dimension(3) :: dx, dxx, ox, oxx, tmp
    real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
@@ -341,22 +342,23 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
    b0 => bf_re(0)%get_f2()
    er => null(); ei => null(); br => null(); bi => null()
 
-   idex = 1.0/dx0
-   dtx = dt/dx0
-   dtz = dt/dz0
+   ! idex = 1.0/dx0
+   ! dtx = dt/dx0
+   ! dtz = dt/dz0
    qtmh = qbm*dt
-   edge1 = real(n1) - 0.5
-   edge2 = real(n2) - 1.0
+   edge1 = (real(n1) - 0.5)*dr
+   edge2 = (real(n2) - 1.0)*dz
 
    ii = 1
    do
       if (ii > npp) exit
       r0 = part(1,ii)
       th = part(2,ii)
-      zz = part(3,ii)
+      z = part(3,ii)
       qc = part(7,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0 + 0.5      
+      r = r0/dr + 0.5  
+      zz = z/dz    
       nn = r
       mm = zz
       dd = r - real(nn)
@@ -407,14 +409,14 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
       part(6,ii) = acz
       p2 = acx**2 + acy**2
       ngamma = sqrt(1.0 + p2 + acz**2)
-      dtx1 = dtx/ngamma
-      dtz1 = dtz*(1.0+p2)/(acz*(acz+ngamma))
+      dtx1 = dt/ngamma
+      dtz1 = dt*(1.0+p2)/(acz*(acz+ngamma))
 
       v1 = r0 + acx*dtx1
       v2 = acy*dtx1
       rn = sqrt(v1*v1+v2*v2)
       th1 = th + atan(v2/v1)
-      acz = part(3,ii) + dtz1
+      acz = z + dtz1
       if (rn > edge1) then 
          if (ii == npp) then
             npp = npp -1
@@ -449,7 +451,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
 
 end subroutine part3d_push
 !
-subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
+subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
 &xdim,npmax,nbmax,tag1,tag2,id,info)
 
    implicit none
@@ -457,6 +459,7 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    real, dimension(:,:), pointer, intent(inout) :: part
    real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr,pbuff
    integer(kind=LG), intent(inout) :: npp
+   real, intent(in) :: dr, dz
    integer(kind=LG), intent(in) :: npmax, nbmax
    integer(kind=LG), dimension(:), intent(inout) :: ihole
    integer, intent(in) :: xdim
@@ -487,14 +490,14 @@ subroutine part3d_pmove(part,pp,ud,npp,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
    noff = ud%get_noff()
    if (noff(1) == 0) then
-      edges(1) = noff(1)
-      edges(2) = edges(1) + ud%get_ndp(1) + 0.5
+      edges(1) = noff(1)*dr
+      edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
    else
-      edges(1) = noff(1) + 0.5
-      edges(2) = edges(1) + ud%get_ndp(1)
+      edges(1) = (noff(1) + 0.5)*dr
+      edges(2) = edges(1) + ud%get_ndp(1)*dr
    end if
-   edges(3) = noff(2)
-   edges(4) = edges(3) + ud%get_ndp(2)
+   edges(3) = noff(2)*dz
+   edges(4) = edges(3) + ud%get_ndp(2)*dz
    kstrt = pp%getkstrt()
    nvpy = pp%getlnvp()
    nvpz = pp%getnstage()

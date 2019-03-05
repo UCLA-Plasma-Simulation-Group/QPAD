@@ -161,7 +161,7 @@ subroutine qdeposit(this,q)
    q_re => q%get_rf_re()
    q_im => q%get_rf_im()
    
-   call part2d_qdeposit(this%part,this%npp,q_re,q_im,q%get_num_modes())         
+   call part2d_qdeposit(this%part,this%npp,this%dex,q_re,q_im,q%get_num_modes())         
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
@@ -196,7 +196,7 @@ subroutine amjdeposit(this,ef,bf,cu,amu,dcu)
    amu_re => amu%get_rf_re()
    amu_im => amu%get_rf_im()
    
-   call part2d_amjdeposit(this%part,this%npp,this%dt,this%qbm,&
+   call part2d_amjdeposit(this%part,this%npp,this%dex,this%dt,this%qbm,&
    &ef_re,ef_im,bf_re,bf_im,cu_re,cu_im,dcu_re,dcu_im,amu_re,amu_im,&
    &ef%get_num_modes())
 
@@ -222,7 +222,7 @@ subroutine partpush(this,ef,bf)
    bf_re => bf%get_rf_re()
    bf_im => bf%get_rf_im()
    
-   call part2d_push(this%part,this%npp,this%xdim,this%dt,this%qbm,this%dex,&
+   call part2d_push(this%part,this%npp,this%dex,this%xdim,this%dt,this%qbm,&
    &ef_re,ef_im,bf_re,bf_im,ef%get_num_modes())
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -242,7 +242,7 @@ subroutine pmove(this,fd)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ud => fd%get_rf_re()
-   call part2d_pmove(this%part,this%pp,this%npp,this%xdim,this%npmax,&
+   call part2d_pmove(this%part,this%pp,this%npp,this%dex,this%xdim,this%npmax,&
    &this%nbmax,ud(0),sbufl,sbufr,rbufl,rbufr,ihole)
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -263,7 +263,7 @@ subroutine extractpsi(this,psi)
 
    psi_re => psi%get_rf_re()
    psi_im => psi%get_rf_im()
-   call part2d_extractpsi(this%part,this%npp,this%qbm,psi_re,psi_im,psi%get_num_modes())
+   call part2d_extractpsi(this%part,this%npp,this%dex,this%qbm,psi_re,psi_im,psi%get_num_modes())
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
@@ -365,7 +365,7 @@ subroutine writehdf5_part2d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call pwpart(this%pp,file,this%part,this%npp,1,this%dex,ierr)
+   call pwpart(this%pp,file,this%part,this%npp,1,ierr)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
