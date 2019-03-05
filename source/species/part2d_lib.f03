@@ -158,7 +158,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx(cos(th),-sin(th),kind=DB)
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)
@@ -179,12 +179,12 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          er => ef_re(i)%get_f1()
          ei => ef_im(i)%get_f1()
          dxx(1:3) = (ad*er(1:3,nn)+dd*er(1:3,nn+1))*rcr
-         dxx(1:3) = dxx(1:3) + (ad*ei(1:3,nn)+dd*ei(1:3,nn+1))*rci
+         dxx(1:3) = dxx(1:3) - (ad*ei(1:3,nn)+dd*ei(1:3,nn+1))*rci
          dx(1:3) = dx(1:3) + dxx(1:3)
          br => bf_re(i)%get_f1()
          bi => bf_im(i)%get_f1()
          oxx(1:3) = (ad*br(1:3,nn)+dd*br(1:3,nn+1))*rcr
-         oxx(1:3) = oxx(1:3) + (ad*bi(1:3,nn)+dd*bi(1:3,nn+1))*rci
+         oxx(1:3) = oxx(1:3) - (ad*bi(1:3,nn)+dd*bi(1:3,nn+1))*rci
          ox(1:3) = ox(1:3) + oxx(1:3)
          rc = rc*rc0
       end do
@@ -271,6 +271,7 @@ subroutine part2d_amjdeposit(part,npp,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       cu0(2,nn+1) = cu0(2,nn+1) + omt
       cu0(3,nn+1) = cu0(3,nn+1) + anorm
 
+      rc0 = cmplx(cos(th),sin(-th),kind=DB)
       rc = rc0
       do i = 1, num_modes
          rcr = real(rc)
@@ -431,7 +432,7 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx(cos(th),-sin(th),kind=DB)
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)
@@ -452,12 +453,12 @@ subroutine part2d_push(part,npp,xdim,dt,qbm,dex,ef_re,ef_im,&
          er => ef_re(i)%get_f1()
          ei => ef_im(i)%get_f1()
          dxx(1:3) = (ad*er(1:3,nn)+dd*er(1:3,nn+1))*rcr
-         dxx(1:3) = dxx(1:3) + (ad*ei(1:3,nn)+dd*ei(1:3,nn+1))*rci
+         dxx(1:3) = dxx(1:3) - (ad*ei(1:3,nn)+dd*ei(1:3,nn+1))*rci
          dx(1:3) = dx(1:3) + dxx(1:3)
          br => bf_re(i)%get_f1()
          bi => bf_im(i)%get_f1()
          oxx(1:3) = (ad*br(1:3,nn)+dd*br(1:3,nn+1))*rcr
-         oxx(1:3) = oxx(1:3) + (ad*bi(1:3,nn)+dd*bi(1:3,nn+1))*rci
+         oxx(1:3) = oxx(1:3) - (ad*bi(1:3,nn)+dd*bi(1:3,nn+1))*rci
          ox(1:3) = ox(1:3) + oxx(1:3)
          rc = rc*rc0
       end do
@@ -870,7 +871,7 @@ subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
       th = part(2,ii)
       vx = part(3,ii)
       vy = part(4,ii)
-      rc0 = cmplx(cos(th),-sin(th),kind=DB)
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       dd = r - real(nn)
@@ -884,8 +885,8 @@ subroutine part2d_extractpsi(part,npp,qbm,psi_re,psi_im,num_modes)
          rci = aimag(rc)
          psir => psi_re(i)%get_f1()
          psii => psi_im(i)%get_f1()
-         dx = (ad*psir(1,nn)+dd*psir(1,nn+1))*rcr + dx
-         dx = (ad*psii(1,nn)+dd*psii(1,nn+1))*rci + dx
+         dx = dx + (ad*psir(1,nn)+dd*psir(1,nn+1))*rcr
+         dx = dx - (ad*psii(1,nn)+dd*psii(1,nn+1))*rci
          rc = rc*rc0
       end do
       dx = - dx*qbm

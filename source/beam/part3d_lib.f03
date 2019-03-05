@@ -355,7 +355,7 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
       th = part(2,ii)
       zz = part(3,ii)
       qc = part(7,ii)
-      rc0 = cmplx(cos(th),-sin(th),kind=DB)
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0 + 0.5      
       nn = r
       mm = zz
@@ -380,17 +380,17 @@ subroutine part3d_push(part,npp,xdim,dt,qbm,dx0,dz0,ef_re,ef_im,&
          rci = aimag(rc)
          er => ef_re(i)%get_f2()
          ei => ef_im(i)%get_f2()
-         dxx(1:3) = ad*(er(1:3,nn,mm)*rcr + ei(1:3,nn,mm)*rci)
-         dxx(1:3) = za*(dd*(er(1:3,nn+1,mm)*rcr+ei(1:3,nn+1,mm)*rci) + dxx(1:3))
-         tmp(1:3) = ad*(er(1:3,nn,mm+1)*rcr + ei(1:3,nn,mm+1)*rci)
-         dxx(1:3) = dxx(1:3) + zd*(dd*(er(1:3,nn+1,mm+1)*rcr+ei(1:3,nn+1,mm+1)*rci) + tmp(1:3))
+         dxx(1:3) = ad*(er(1:3,nn,mm)*rcr - ei(1:3,nn,mm)*rci)
+         dxx(1:3) = za*(dd*(er(1:3,nn+1,mm)*rcr-ei(1:3,nn+1,mm)*rci) + dxx(1:3))
+         tmp(1:3) = ad*(er(1:3,nn,mm+1)*rcr - ei(1:3,nn,mm+1)*rci)
+         dxx(1:3) = dxx(1:3) + zd*(dd*(er(1:3,nn+1,mm+1)*rcr-ei(1:3,nn+1,mm+1)*rci) + tmp(1:3))
          dx(1:3) = dx(1:3) + dxx(1:3)
          br => bf_re(i)%get_f2()
          bi => bf_im(i)%get_f2()
-         oxx(1:3) = ad*(br(1:3,nn,mm)*rcr + bi(1:3,nn,mm)*rci)
-         oxx(1:3) = za*(dd*(br(1:3,nn+1,mm)*rcr + bi(1:3,nn+1,mm)*rci) + oxx(1:3))
-         tmp(1:3) = ad*(br(1:3,nn,mm+1)*rcr + bi(1:3,nn,mm+1)*rci)
-         oxx(1:3) = oxx(1:3) + zd*(dd*(br(1:3,nn+1,mm+1)*rcr + bi(1:3,nn+1,mm+1)*rci) + tmp(1:3))
+         oxx(1:3) = ad*(br(1:3,nn,mm)*rcr - bi(1:3,nn,mm)*rci)
+         oxx(1:3) = za*(dd*(br(1:3,nn+1,mm)*rcr - bi(1:3,nn+1,mm)*rci) + oxx(1:3))
+         tmp(1:3) = ad*(br(1:3,nn,mm+1)*rcr - bi(1:3,nn,mm+1)*rci)
+         oxx(1:3) = oxx(1:3) + zd*(dd*(br(1:3,nn+1,mm+1)*rcr - bi(1:3,nn+1,mm+1)*rci) + tmp(1:3))
          ox(1:3) = ox(1:3) + oxx(1:3)
          rc = rc*rc0
       end do
