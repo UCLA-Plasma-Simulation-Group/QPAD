@@ -538,14 +538,15 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
    integer(kind=LG) :: ii, j, npt
    integer, dimension(2) :: jsr, jsl, jss
    integer, dimension(4) :: ibflg, msid, iwork
-   integer, dimension(10) :: istatus, info
+   integer, dimension(MPI_STATUS_SIZE) :: istatus
+   integer, dimension(10) :: info
    integer :: itermax, nvp, n1, n1p, noff, iter, nter, nps
    integer :: id, idl, idr, mter, nbsize, n
    integer :: mreal, mint, mcplx, mdouble, lworld, lgrp, ierr
    real :: edgel,edger,an,xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
+   nbsize = nbmax*xdim
    itermax = 20000
    ierr = 0
 ! buffer outgoing particles, first in r direction
