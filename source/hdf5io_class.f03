@@ -1329,7 +1329,20 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
        enddo
 
        do i = 1, 3
-          buff(1:tnpp) = part((i+3),1:((tnpp-1)*dspl+1):dspl) 
+          if (i == 1) then
+             buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl)) - &
+             &part(5,1:((tnpp-1)*dspl+1):dspl)*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          else if (i == 2) then
+             buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl)) + &
+             &part(5,1:((tnpp-1)*dspl+1):dspl)*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
+          else
+             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)+z0
+          end if
+
           if (ori >= 0 .and. tpo /= 0) then
              call h5dopen_f(rootID, 'p'//char(iachar('0')+i), dset_id, ierr)
              ldim(1) = tp
