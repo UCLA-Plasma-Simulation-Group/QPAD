@@ -27,7 +27,7 @@ type(grid), pointer :: gp => null()
 type(hdf5file) :: file
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr
-integer :: num_modes, part_shape, i, id
+integer :: num_modes, part_shape, i, id, j, k
 character(len=:), allocatable :: shape
 character(len=2) :: s1
 real :: dr, dxi, rmin, rmax, zmin, zmax, dt
@@ -96,19 +96,19 @@ call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
 
-! do i = 1, nz
-!    rho = 0.0
-!    e = 0.0
-!    psi = 0.0
-!    b = 0.0
-!    call spe%qdp(rho)
-!    call psi%solve(rho)
-!    call e%solve(b,psi)
-!    call rho%copy_slice(i, p_copy_1to2)
-!    call e%copy_slice(i, p_copy_1to2)
-!    call b%copy_slice(i, p_copy_1to2)
-!    call psi%copy_slice(i, p_copy_1to2)
-! end do
+do i = 1, nz
+   rho = 0.0
+   e = 0.0
+   psi = 0.0
+   b = 0.0
+   call spe%qdp(rho)
+   call psi%solve(rho)
+   call e%solve(b,psi)
+   call rho%copy_slice(i, p_copy_1to2)
+   call e%copy_slice(i, p_copy_1to2)
+   call b%copy_slice(i, p_copy_1to2)
+   call psi%copy_slice(i, p_copy_1to2)
+end do
 
 call input%get('beam(1).profile',npf)
 select case (npf)
@@ -121,47 +121,118 @@ call input%get('simulation.dt',dt)
 call qb%new(pp, gp, dr, dxi, num_modes, part_shape)
 call qb%as(0.0)
 call beam%new(pp,qb,gp,part_shape,pf3d%p,-1.0,dt,7)
-call beam%qdp(qb)
 
-do i = 1, nz
-   write(2,*) "Step #", i
-   call file_spe%new(&
-   &timeunit = '1 / \omega_p',&
-   &dt = dxi,&
-   &ty = 'particles',&
-   &filename = './spe_',&
-   &dataname = 'raw',&
-   &units = '',&
-   &label = 'Plasma Raw',&
-   &n = i,&
-   &t = real(i))
-   call spe%wr(file_spe)
-   call qb%copy_slice(i,p_copy_2to1)
-   rho = 0.0
-   ! psi = 0.0
-   call b%solve(qb)
-   call e%solve(b)
-   call spe%qdp(rho)
-   call spe%push(e,b)
-   ! call psi%solve(rho)
-   ! call e%solve(b,psi)
-   call rho%copy_slice(i, p_copy_1to2)
-   call e%copy_slice(i, p_copy_1to2)
-   call b%copy_slice(i, p_copy_1to2)
-   ! call psi%copy_slice(i, p_copy_1to2)
-end do
-
-call file_beam%new(&
+call file_q(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
 &timeunit = '1 / \omega_p',&
-&dt = dt,&
-&ty = 'particles',&
-&filename = './beam_',&
-&dataname = 'raw',&
-&units = '',&
-&label = 'Beam Raw',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './',&
+&dataname = 'qb0',&
+&units = 'n_0',&
+&label = 'Beam Charge Density',&
 &n = 0,&
 &t = 0.0)
-call beam%wr(file_beam,1,6,6,id)
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_q(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'qbr'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Beam Density',&
+   &n = 0,&
+   &t = 0.0)
+   call file_q(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'qbi'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Beam Density',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+do i = 1, 100
+   call beam%push(e,b,7,7,id)
+   call qb%as(0.0)
+   call beam%qdp(qb)
+   call file_beam%new(&
+   &timeunit = '1 / \omega_p',&
+   &dt = dt,&
+   &ty = 'particles',&
+   &filename = './beam_',&
+   &dataname = 'raw',&
+   &units = '',&
+   &label = 'Beam Raw',&
+   &n = i,&
+   &t = i*dt)
+   call beam%wr(file_beam,1,6,6,id)
+
+   call file_q(1)%new(&
+   &n = i,&
+   &t = i*dt)
+   
+   do j = 1, num_modes
+      call file_q(2*j)%new(&
+      &n = i,&
+      &t = i*dt)
+      call file_q(2*j+1)%new(&
+      &n = i,&
+      &t = i*dt)
+   end do   
+   call beam%wrq(file_q,8,8,id)
+
+
+end do   
+
+! do i = 1, nz
+!    write(2,*) "Step #", i
+!    call file_spe%new(&
+!    &timeunit = '1 / \omega_p',&
+!    &dt = dxi,&
+!    &ty = 'particles',&
+!    &filename = './spe_',&
+!    &dataname = 'raw',&
+!    &units = '',&
+!    &label = 'Plasma Raw',&
+!    &n = i,&
+!    &t = real(i))
+!    call spe%wr(file_spe)
+!    call qb%copy_slice(i,p_copy_2to1)
+!    rho = 0.0
+!    ! psi = 0.0
+!    call b%solve(qb)
+!    call e%solve(b)
+!    call spe%qdp(rho)
+!    call spe%push(e,b)
+!    ! call psi%solve(rho)
+!    ! call e%solve(b,psi)
+!    call rho%copy_slice(i, p_copy_1to2)
+!    call e%copy_slice(i, p_copy_1to2)
+!    call b%copy_slice(i, p_copy_1to2)
+!    ! call psi%copy_slice(i, p_copy_1to2)
+! end do
+
 
 call file_q(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&
@@ -215,58 +286,6 @@ do i = 1, num_modes
 end do
 ! call spe%wrq(file_q,5,5,id)
 call rho%write_hdf5(file_q,1,5,5,id)
-
-call file_q(1)%new(&
-&axismin = (/rmin,zmin,0.0/),&
-&axismax = (/rmax,zmax,1.0/),&
-&axisname  = (/'r  ','\xi','z  '/),&
-&axislabel = (/'r  ','\xi','z  '/),&
-&timeunit = '1 / \omega_p',&
-&dt = dxi,&
-&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
-&rank = 2,&
-&filename = './',&
-&dataname = 'qb0',&
-&units = 'n_0',&
-&label = 'Beam Charge Density',&
-&n = 0,&
-&t = 0.0)
-
-
-do i = 1, num_modes
-   write (s1, '(I1.1)') i
-   call file_q(2*i)%new(&
-   &axismin = (/rmin,zmin,0.0/),&
-   &axismax = (/rmax,zmax,1.0/),&
-   &axisname  = (/'r  ','\xi','z  '/),&
-   &axislabel = (/'r  ','\xi','z  '/),&
-   &timeunit = '1 / \omega_p',&
-   &dt = dxi,&
-   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
-   &rank = 2,&
-   &filename = './',&
-   &dataname = 'qbr'//trim(s1),&
-   &units = 'n_0',&
-   &label = 'Beam Density',&
-   &n = 0,&
-   &t = 0.0)
-   call file_q(2*i+1)%new(&
-   &axismin = (/rmin,zmin,0.0/),&
-   &axismax = (/rmax,zmax,1.0/),&
-   &axisname  = (/'r  ','\xi','z  '/),&
-   &axislabel = (/'r  ','\xi','z  '/),&
-   &timeunit = '1 / \omega_p',&
-   &dt = dxi,&
-   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
-   &rank = 2,&
-   &filename = './',&
-   &dataname = 'qbi'//trim(s1),&
-   &units = 'n_0',&
-   &label = 'Beam Density',&
-   &n = 0,&
-   &t = 0.0)
-end do
-call beam%wrq(file_q,8,8,id)
 
 
 call file_q(1)%new(&

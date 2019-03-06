@@ -159,8 +159,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
             else
                part(2,npt) = atan(tempx/tempy) + pi
             end if
-            part(4,npt) = tvtx
-            part(5,npt) = tvty
+            part(4,npt) = tvtx*cos(part(2,npt))+tvty*sin(part(2,npt))
+            part(5,npt) = -tvtx*sin(part(2,npt))+tvty*cos(part(2,npt))
             part(6,npt) = tvtz 
             part(7,npt) = qm/tempr*dr
             npt = npt + 1
@@ -187,8 +187,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                else
                   part(2,npt) = atan(tempx/tempy) + pi
                end if
-               part(4,npt) = -tvtx
-               part(5,npt) = -tvty
+               part(4,npt) = -tvtx*cos(part(2,npt))-tvty*sin(part(2,npt))
+               part(5,npt) = tvtx*sin(part(2,npt))-tvty*cos(part(2,npt))
                part(6,npt) = tvtz 
                part(7,npt) = qm/tempr*dr
                npt = npt + 1
@@ -321,13 +321,13 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
    integer(kind=LG) :: ii
    real, dimension(:,:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, n2, nn, mm, noff1, n1p, noff2, n2p
-   real :: idex, edge1, edge2, qtmh, qtmh1, qtmh2, dti
+   real :: edge1, edge2, qtmh, qtmh1, qtmh2, dti
    real :: r0, r, rn, qc, qc1, th, th1, dd, ad, za, zd, rcr, rci
    real :: zz, z
    real, dimension(3) :: dx, dxx, ox, oxx, tmp
    real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
-   real :: dtc1, v1, v2, dtx, dtz, ngamma, p2, dtx1, dtz1
+   real :: dtc1, v1, v2, ngamma, p2, dtx1, dtz1
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -404,8 +404,6 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
       acx = part(4,ii) + dx(1)
       acy = part(5,ii) + dx(2)
       acz = part(6,ii) + dx(3)
-      part(4,ii) = acx
-      part(5,ii) = acy
       part(6,ii) = acz
       p2 = acx**2 + acy**2
       ngamma = sqrt(1.0 + p2 + acz**2)
@@ -443,6 +441,8 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
          part(1,ii) = rn
          part(2,ii) = th1
          part(3,ii) = acz
+         part(4,ii) = (acx*v1+acy*v2)/rn
+         part(5,ii) = r0*acy/rn
          ii = ii + 1
       end if
    end do
