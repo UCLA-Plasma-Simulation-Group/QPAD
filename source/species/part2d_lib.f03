@@ -154,13 +154,13 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    qtmh = 0.5*qbm*dt
    dti = 1.0/dt
    do ii = 1, npp
-      r0 = part(1,ii)/dr
+      r0 = part(1,ii)
       th = part(2,ii)
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0 + 0.5      
+      r = r0/dr + 0.5      
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
@@ -189,6 +189,8 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          ox(1:3) = ox(1:3) + oxx(1:3)
          rc = rc*rc0
       end do
+      dx(1) = -dx(1) + ox(2)
+      dx(2) = -dx(2) - ox(1)
 ! calculate half impulse
       ddx = (-1.0)*qtmh2*dx(1) + qtmh*ox(2)
       ddy = (-1.0)*qtmh2*dx(2) - qtmh*ox(1)

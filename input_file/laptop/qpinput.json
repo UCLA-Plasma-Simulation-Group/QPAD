@@ -7,10 +7,10 @@
         "r" : [0.0,12.0],
         "z" : [0,10.0]},
     "boundary" : "conducting",
-    "max_mode" : 2,
+    "max_mode" : 1,
     "interpolation" : "linear",
     "n0" : 1.0e16,
-    "time" : 30.1,
+    "time" : 10.1,
     "dt" : 10.0,
     "nbeams" : 1,
     "nspecies" : 1,
@@ -24,7 +24,7 @@
 "beam" :
 [
     {
-    "evolution" : false,
+    "evolution" : true,
     "profile" : 0,
     "np" : [64,64,128],
     "npmax" : 4000000,
@@ -34,8 +34,8 @@
     "peak_density" : 0.5,
     "quiet_start" : true,
     "center" : [0.0,0.0,5.0],
-    "sigma" : [2.0,2.0,1.0],
-    "sigma_v" : [3.0,3.0,100.0],
+    "sigma" : [0.5,0.5,1.0],
+    "sigma_v" : [50.0,50.0,0.0],
     "centroid_x" : [0.0,0.0,0.0],
     "centroid_y" : [0.0,0.0,0.0],
     "diag" :
