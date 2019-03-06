@@ -159,12 +159,12 @@ subroutine set_source( this, mode, q_re, q_im )
   if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
     do i = 1, nrp
-      this%buf_re(i) = f1_re(1,i)
+      this%buf_re(i) = -1.0 * f1_re(1,i)
     enddo
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
-      this%buf_re(i) = f1_re(1,i)
-      this%buf_im(i) = f1_im(1,i)
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+      this%buf_im(i) = -1.0 * f1_im(1,i)
     enddo
   else
     call write_err( 'Invalid input arguments!' )
