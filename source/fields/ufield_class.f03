@@ -843,9 +843,11 @@ function add_f1_v1( a1, a2 ) result( a3 )
     endif
   class is (ufield)
     dim = min(size(a1%f1,1), size(a2%f1,1))
-    if ( all(a1%gc_num(1:dim,1)==a2%gc_num(1:dim,1)) .and. &
-    &all(a1%gc_num(1:dim,1)==a3%gc_num(1:dim,1)) ) then
-      a3%f1(1:dim,:) = a1%f1(1:dim,:) + a2%f1(1:dim,:)
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. &
+    &all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+      do i = 1, dim
+        a3%f1(i,:) = a1%f1(i,:) + a2%f1(i,:)
+      end do
     else
       call write_err( "guard cells not matched!" )
     endif
