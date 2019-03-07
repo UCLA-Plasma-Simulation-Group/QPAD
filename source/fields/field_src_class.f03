@@ -193,7 +193,7 @@ subroutine solve_field_djdxi( this, acu, amu )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call amu%copy_gc_f1()
+  ! call amu%copy_gc_f1()
 
   idr = 1.0 / this%dr
   idrh = idr * 0.5

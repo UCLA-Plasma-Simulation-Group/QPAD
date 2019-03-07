@@ -159,6 +159,7 @@ subroutine qdp_species2d(this,q)
    this%q = 0.0
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f1()
+   call this%q%copy_gc_f1()
    q = this%q + q + this%qn
             
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -187,6 +188,9 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    call this%cu%acopy_gc_f1()
    call this%dcu%acopy_gc_f1()
    call this%amu%acopy_gc_f1()
+   call this%cu%copy_gc_f1()
+   call this%dcu%copy_gc_f1()
+   call this%amu%copy_gc_f1()
    cu = cu + this%cu
    dcu = dcu + this%dcu
    amu = amu + this%amu

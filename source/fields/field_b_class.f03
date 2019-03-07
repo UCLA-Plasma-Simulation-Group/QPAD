@@ -78,7 +78,7 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   
   case ( p_ps_linear )
   
-    gc_num(:,1) = (/0, 1/)
+    gc_num(:,1) = (/1, 1/)
     gc_num(:,2) = (/0, 1/)
   
   case ( p_ps_quadratic )
@@ -575,7 +575,7 @@ subroutine solve_field_bz( this, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call jay%copy_gc_f1()
+  ! call jay%copy_gc_f1()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -615,7 +615,7 @@ subroutine solve_field_bperp( this, rho )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call rho%copy_gc_f1()
+  ! call rho%copy_gc_f1()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
@@ -656,7 +656,7 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call jay%copy_gc_f1()
+  ! call jay%copy_gc_f1()
   ! call djdxi%copy_gc_f1() ! no need for djdxi to copy guard cells
 
   djdxi_re => djdxi%get_rf_re()

@@ -894,7 +894,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
       end do
       dx = - dx*qbm
       part(7,ii) = 1.0 + dx
-      part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5
+      part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5*(1.0+dx)
    end do
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
