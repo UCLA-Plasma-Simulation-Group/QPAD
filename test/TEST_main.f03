@@ -612,7 +612,7 @@ do i = 1, nt
       bb = b + bb
       call e%solve(bb,psi)
       cu = cu + dcu
-      call spe%push(e,b)
+      call spe%push(e,bb)
       call e%copy_slice(j+1, p_copy_1to2)
       call bb%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
