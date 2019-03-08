@@ -92,9 +92,9 @@ call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0)
 
 ! call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
 ! call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=1.0d-6 )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=1.0d-6 )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=1.0d-6 )
 
 do i = 1, nz
    rho = 0.0

@@ -30,7 +30,7 @@ integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
 integer :: num_modes, part_shape, i, id, j, k, nt
 character(len=:), allocatable :: shape
 character(len=2) :: s1
-real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt
+real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
 type fdist2d_wrap
    class(fdist2d), allocatable :: p
 end type fdist2d_wrap
@@ -87,6 +87,8 @@ call input%get('simulation.box.z(1)',zmin)
 call input%get('simulation.box.z(2)',zmax)
 dxi = (zmax-zmin)/nz
 
+call input%get('simulation.solver_precision',prec)
+
 nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
@@ -96,11 +98,11 @@ call cu%new(pp, gp, dr, dxi, num_modes, part_shape)
 call amu%new(pp, gp, dr, dxi, num_modes, part_shape)
 call dcu%new(pp, gp, dr, dxi, num_modes, part_shape)
 call acu%new(pp, gp, dr, dxi, num_modes, part_shape)
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
-call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
+call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
+call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
 
 xdim = 8
 

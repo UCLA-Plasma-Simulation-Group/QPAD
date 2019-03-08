@@ -53,7 +53,7 @@ end type field_b
 
 contains
 
-subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
+subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
 
   implicit none
 
@@ -61,7 +61,7 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape, entity
-  real, intent(in) :: dr, dxi
+  real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
@@ -102,15 +102,15 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity )
     allocate( this%solver_bperp_iter( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
-        stype=p_hypre_cycred, tol=1.0d-6 )
+        stype=p_hypre_cycred, tol=iter_tol )
       call this%solver_bperp_iter(i)%new( pp, gp, i, dr, kind=p_fk_bperp_iter, &
-        stype=p_hypre_amg, tol=1.0d-6 )
+        stype=p_hypre_amg, tol=iter_tol )
     enddo 
   case ( p_entity_beam )
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp, &
-        stype=p_hypre_amg, tol=1.0d-6 )
+        stype=p_hypre_amg, tol=iter_tol )
     enddo
   case default
     call write_err( 'Invalid field entity type.' )

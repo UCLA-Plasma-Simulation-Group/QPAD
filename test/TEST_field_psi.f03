@@ -44,7 +44,7 @@ nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
 call q%new( pp, gp, dr, dxi, num_modes, part_shape )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=1.0d-6 )
 
 uq_re => q%get_rf_re()
 uq_im => q%get_rf_im()

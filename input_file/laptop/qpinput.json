@@ -19,6 +19,7 @@
     "read_restart" : false,
     "restart_timestep" : 1,
     "iter" : 1,
+    "solver_precision" : 1.0e-6,
     "verbose" : 0
 },
 "beam" :

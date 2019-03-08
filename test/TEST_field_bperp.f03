@@ -44,7 +44,7 @@ nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
 call rho%new( pp, gp, dr, dxi, num_modes, part_shape )
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=1.0d-6 )
 
 
 uq_re => rho%get_rf_re()

@@ -53,9 +53,9 @@ nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
 call rho%new( pp, gp, dr, dxi, num_modes, part_shape )
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=1.0d-6 )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=1.0d-6 )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=1.0d-6 )
 call jay%new( pp, gp, dr, dxi, num_modes, part_shape )
 call djdxi%new( pp, gp, dr, dxi, num_modes, part_shape )
 

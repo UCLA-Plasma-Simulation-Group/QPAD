@@ -59,7 +59,7 @@ subroutine init_simulation(this)
   ! local data
   character(len=18), save :: sname = 'init_simulation:'
 
-  real :: min, max, n0, dr, dxi, dt, time
+  real :: min, max, n0, dr, dxi, dt, time, solver_prec
   integer :: nr, nz
   logical :: read_rst
   character(len=:), allocatable :: interp_str
@@ -115,7 +115,8 @@ subroutine init_simulation(this)
     call write_err( 'Invalid interpolation type!' )
   end select
 
-  call this%fields%new( this%pp, this%gp, this%dr, this%dxi, this%num_modes, this%interp )
+  call this%input%get( 'simulation.solver_precision', solver_prec )
+  call this%fields%new( this%pp, this%gp, this%dr, this%dxi, this%num_modes, this%interp, solver_prec )
 ! ===============================================================================
 ! THIS PART IS TO BE FINISHED
 ! ===============================================================================

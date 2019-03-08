@@ -44,7 +44,7 @@ nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
 call jay%new( pp, gp, dr, dxi, num_modes, part_shape )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=1.0d-6 )
 
 
 ujay_re => jay%get_rf_re()

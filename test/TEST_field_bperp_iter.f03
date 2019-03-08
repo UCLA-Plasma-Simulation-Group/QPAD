@@ -51,7 +51,7 @@ noff = gp%get_noff(1)
 
 call jay%new( pp, gp, dr, dxi, num_modes, part_shape )
 call djdxi%new( pp, gp, dr, dxi, num_modes, part_shape )
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=1.0d-6 )
 
 ujay_re => jay%get_rf_re()
 ujay_im => jay%get_rf_im()
@@ -88,12 +88,12 @@ enddo
 gc_num = 0
 allocate( res(num_iter, (2*num_modes+1)*2) )
 allocate( ub_re_old(0:num_modes), ub_im_old(num_modes) )
-call ub_res%new( pp, gp, 3, gc_num, has_2d=.true. )
+call ub_res%new( pp, gp, 3, 0, gc_num, has_2d=.true. )
 
 do i = 0, num_modes
-  call ub_re_old(i)%new( pp, gp, 3, gc_num, has_2d=.true. )
+  call ub_re_old(i)%new( pp, gp, 3, i, gc_num, has_2d=.true. )
   if (i==0) cycle
-  call ub_im_old(i)%new( pp, gp, 3, gc_num, has_2d=.true. )
+  call ub_im_old(i)%new( pp, gp, 3, i, gc_num, has_2d=.true. )
 enddo
 
 do iter = 1, num_iter
