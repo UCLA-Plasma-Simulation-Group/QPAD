@@ -829,28 +829,48 @@ function add_f1_v1( a1, a2 ) result( a3 )
   class(*), intent(in) :: a2
   class( ufield ), allocatable :: a3
 
-  integer :: i, j, dim
+  integer :: i, j, dim_min
 
   allocate( a3 )
-  call a3%new(a1)
+  ! call a3%new(a1)
 
   select type (a2)
+
   type is (real)
-    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
-      a3%f1 = a1%f1 + a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+
+    call a3%new(a1)
+    a3%f1 = a1%f1 + a2
+
   class is (ufield)
-    dim = min(size(a1%f1,1), size(a2%f1,1))
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. &
-    &all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
-      do i = 1, dim
+
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
+
+      dim_min = min( a1%get_dim(), a2%get_dim() )
+
+      if ( a1%get_dim() > a2%get_dim() ) then
+        call a3%new(a1)
+      else
+        call a3%new(a2)
+      endif
+
+      do i = 1, dim_min
         a3%f1(i,:) = a1%f1(i,:) + a2%f1(i,:)
-      end do
+      enddo
+
+      if ( a1%get_dim() > a2%get_dim() ) then
+        do i = dim_min+1, a1%dim
+          a3%f1(i,:) = a1%f1(i,:)
+        enddo
+      elseif ( a1%get_dim() < a2%get_dim() ) then
+        do i = dim_min+1, a2%dim
+          a3%f1(i,:) = a2%f1(i,:)
+        enddo
+      endif      
+
     else
       call write_err( "guard cells not matched!" )
     endif
+
   class default
     call write_err( "invalid assignment type!" )
   end select
@@ -872,13 +892,9 @@ function add_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    if ( all( a1%gc_num==a3%gc_num ) ) then
-      a3%f2 = a1%f2 + a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+    a3%f2 = a1%f2 + a2
   class is (ufield)
-    if ( all( a1%gc_num==a2%gc_num ) .and. all( a1%gc_num==a3%gc_num ) ) then
+    if ( all( a1%gc_num==a2%gc_num ) ) then
       a3%f2 = a1%f2 + a2%f2
     else
       call write_err( "guard cells not matched!" )
@@ -902,11 +918,7 @@ function add_f1_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
-    a3%f1 = a1%f1 + a2
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f1 = a1%f1 + a2
     
 end function add_f1_v2
 
@@ -923,11 +935,7 @@ function add_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all(a1%gc_num==a3%gc_num) ) then
-    a3%f2 = a1%f2 + a2
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f2 = a1%f2 + a2
 
 end function add_f2_v2
 
@@ -946,13 +954,9 @@ function sub_f1_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
-      a3%f1 = a1%f1 - a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+    a3%f1 = a1%f1 - a2
   class is (ufield)
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
       a3%f1 = a1%f1 - a2%f1
     else
       call write_err( "guard cells not matched!" )
@@ -978,13 +982,9 @@ function sub_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    if ( all( a1%gc_num==a3%gc_num ) ) then
-      a3%f2 = a1%f2 - a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+    a3%f2 = a1%f2 - a2
   class is (ufield)
-    if ( all(a1%gc_num==a2%gc_num) .and. all(a1%gc_num==a3%gc_num) ) then
+    if ( all(a1%gc_num==a2%gc_num) ) then
       a3%f2 = a1%f2 - a2%f2
     else
       call write_err( "guard cells not matched!" )
@@ -1008,11 +1008,7 @@ function sub_f1_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
-    a3%f1 = a2 - a1%f1
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f1 = a2 - a1%f1
     
 end function sub_f1_v2
 
@@ -1029,11 +1025,7 @@ function sub_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all( a1%gc_num==a3%gc_num ) ) then
-    a3%f2 = a2 - a1%f2
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f2 = a2 - a1%f2
     
 end function sub_f2_v2
 
@@ -1052,13 +1044,9 @@ function dot_f1_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
-      a3%f1 = a1%f1 * a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+    a3%f1 = a1%f1 * a2
   class is (ufield)
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) .and. all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
+    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
       a3%f1 = a1%f1 * a2%f1
     else
       call write_err( "guard cells not matched!" )
@@ -1084,13 +1072,9 @@ function dot_f2_v1( a1, a2 ) result( a3 )
 
   select type (a2)
   type is (real)
-    if ( all( a1%gc_num==a3%gc_num ) ) then
-      a3%f2 = a1%f2 * a2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
+    a3%f2 = a1%f2 * a2
   class is (ufield)
-    if ( all(a1%gc_num==a2%gc_num) .and. all(a1%gc_num==a3%gc_num) ) then
+    if ( all(a1%gc_num==a2%gc_num) ) then
       a3%f2 = a1%f2 * a2%f2
     else
       call write_err( "guard cells not matched!" )
@@ -1114,11 +1098,7 @@ function dot_f1_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all( a1%gc_num(:,1)==a3%gc_num(:,1) ) ) then
-    a3%f1 = a1%f1 * a2
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f1 = a1%f1 * a2
     
 end function dot_f1_v2
 
@@ -1135,11 +1115,7 @@ function dot_f2_v2( a2, a1 ) result( a3 )
   allocate( a3 )
   call a3%new(a1)
 
-  if ( all( a1%gc_num==a3%gc_num ) ) then
-    a3%f2 = a1%f2 * a2
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+  a3%f2 = a1%f2 * a2
     
 end function dot_f2_v2
 

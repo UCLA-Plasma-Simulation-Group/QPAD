@@ -237,7 +237,7 @@ subroutine solve_field_djdxi( this, acu, amu )
       ! k0 = real(i+noff) - 0.5
       ! ir = idr / k0
       udcu_re(1,i) = uacu_re(1,i) - idrh * ( uamu_re(1,i+1) - uamu_re(1,i-1) )
-      udcu_re(1,i) = uacu_re(2,i) - idrh * ( uamu_re(2,i+1) - uamu_re(2,i-1) )
+      udcu_re(2,i) = uacu_re(2,i) - idrh * ( uamu_re(2,i+1) - uamu_re(2,i-1) )
       ! udcu_re(2,i) = -uacu_re(1,i) + ir * mode * uamu_im(1,i)
 
       udcu_im(1,i) = uacu_im(1,i) - idrh * ( uamu_im(1,i+1) - uamu_im(1,i-1) )
