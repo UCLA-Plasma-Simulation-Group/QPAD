@@ -3,6 +3,7 @@ module field_class
 use parallel_pipe_class
 use grid_class
 use ufield_class
+use ufield_smooth_class
 use hdf5io_class
 use param
 use system
@@ -22,8 +23,7 @@ type :: field
 
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
-
-  ! class( emf_solver ) :: solver
+  type( ufield_smooth ) :: smooth
 
   real :: dr, dxi
   integer :: num_modes
@@ -36,7 +36,7 @@ type :: field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
-  ! generic :: smooth
+  procedure :: smooth_f1
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
   procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
@@ -71,7 +71,8 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
+subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
+  entity, smooth_type, smooth_order )
 
   implicit none
 
@@ -81,7 +82,7 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
   integer, intent(in) :: num_modes, dim
   real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2,2) :: gc_num
-  integer, intent(in), optional :: entity
+  integer, intent(in), optional :: entity, smooth_type, smooth_order
 
   integer :: i
   character(len=20), save :: sname = "init_field"
@@ -96,6 +97,12 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
     this%entity = entity
   else
     this%entity = p_entity_none
+  endif
+
+  if ( present(smooth_type) .and. present(smooth_order) ) then
+    call this%smooth%new( smooth_type, smooth_order )
+  else
+    call this%smooth%new( p_smooth_none, 0 )
   endif
 
   allocate( this%rf_re(0:num_modes) )
@@ -150,6 +157,8 @@ subroutine end_field( this )
     call this%rf_im(i)%del()
   enddo
   deallocate( this%rf_re, this%rf_im )
+
+  call this%smooth%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -362,6 +371,33 @@ subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
+
+subroutine smooth_f1( this )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+
+  integer :: i
+  character(len=32), save :: sname = 'smooth_f1'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%num_modes
+
+    if ( i == 0 ) then
+      call this%smooth%smooth_f1( this%rf_re(i) )
+      cycle
+    endif
+
+    call this%smooth%smooth_f1( this%rf_re(i) )
+    call this%smooth%smooth_f1( this%rf_im(i) )
+
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine smooth_f1
 
 function get_dr( this )
 

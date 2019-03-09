@@ -63,4 +63,9 @@ integer, parameter :: p_copy_1to2 = 1, p_copy_2to1 = -1
 ! ================================================================
 integer, parameter :: p_mpi_forward = 1, p_mpi_backward = -1, p_mpi_bothway = 0
 
+! ================================================================
+! parameters for smooth
+! ================================================================
+integer, parameter :: p_smooth_none = 0, p_smooth_binomial = 1, p_smooth_compensated = 2
+
 end module param

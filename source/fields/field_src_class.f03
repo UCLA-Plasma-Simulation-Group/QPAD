@@ -43,7 +43,8 @@ end type field_djdxi
 
 contains
 
-subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
+subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape, &
+  smooth_type, smooth_order )
 
   implicit none
 
@@ -52,6 +53,7 @@ subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
+  integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
@@ -80,13 +82,26 @@ subroutine init_field_rho( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+  if ( present(smooth_type) .and. present(smooth_order) ) then
+
+    gc_num(1,1) = max( gc_num(1,1), smooth_order )
+    gc_num(2,1) = max( gc_num(2,1), smooth_order )
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, &
+      smooth_type=smooth_type, smooth_order=smooth_order )
+
+  else
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_rho
 
-subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
+subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape, &
+  smooth_type, smooth_order )
 
   implicit none
 
@@ -95,6 +110,7 @@ subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
+  integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
@@ -123,13 +139,26 @@ subroutine init_field_jay( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+  if ( present(smooth_type) .and. present(smooth_order) ) then
+
+    gc_num(1,1) = max( gc_num(1,1), smooth_order )
+    gc_num(2,1) = max( gc_num(2,1), smooth_order )
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, &
+      smooth_type=smooth_type, smooth_order=smooth_order )
+
+  else
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_jay
 
-subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape )
+subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape, &
+  smooth_type, smooth_order )
 
   implicit none
 
@@ -138,6 +167,7 @@ subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape )
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape
   real, intent(in) :: dr, dxi
+  integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i
@@ -166,7 +196,19 @@ subroutine init_field_djdxi( this, pp, gp, dr, dxi, num_modes, part_shape )
 
   dim = 2
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+  if ( present(smooth_type) .and. present(smooth_order) ) then
+
+    gc_num(1,1) = max( gc_num(1,1), smooth_order )
+    gc_num(2,1) = max( gc_num(2,1), smooth_order )
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, &
+      smooth_type=smooth_type, smooth_order=smooth_order )
+
+  else
+
+    call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num )
+
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
