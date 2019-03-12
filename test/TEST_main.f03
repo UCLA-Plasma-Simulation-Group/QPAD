@@ -24,7 +24,6 @@ type(species2d) :: spe
 type(beam3d) :: beam
 type(parallel_pipe), pointer :: pp => null()
 type(grid), pointer :: gp => null()
-type(hdf5file) :: file
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
 integer :: num_modes, part_shape, i, id, j, k, nt
@@ -44,7 +43,8 @@ type(hdf5file), dimension(:), allocatable :: file_q, file_qe, file_psi,&
 &file_er,file_eth,file_ez,file_br,file_bth,file_bz
 type(hdf5file) :: file_beam
 
-type(field_rho), pointer :: qe,qb
+type(field_rho), pointer :: pqb => null()
+type(field_rho), target :: qe,qb
 type(field_jay) :: cu
 type(field_djdxi) :: dcu,acu,amu
 type(field_b) :: b,bb,bt
@@ -53,7 +53,7 @@ type(field_psi) :: psi
 
 
 ! Initialization
-allocate(pp,gp,input,qe,qb)
+allocate(pp,gp,input)
 call input%new()
 pp => input%pp
 
@@ -101,6 +101,7 @@ call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma )
 call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
 call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape )
+pqb => qb
 
 xdim = 8
 
@@ -122,7 +123,7 @@ end select
 call input%get('simulation.dt',dt)
 call input%get('simulation.time',tt)
 nt = tt/dt
-call beam%new(pp,qb,gp,part_shape,pf3d%p,-1.0,dt,7)
+call beam%new(pp,pqb,gp,part_shape,pf3d%p,-1.0,dt,7)
 
 call file_q(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&
@@ -585,7 +586,19 @@ end do
 do i = 1, nt
    call qb%as(0.0)
    call beam%qdp(qb)
-   do j = 1, nz
+      do j = 1, nz
+      ! call file_spe%new(&
+      ! &timeunit = '1 / \omega_p',&
+      ! &dt = dxi,&
+      ! &ty = 'particles',&
+      ! &filename = './spe_',&
+      ! &dataname = 'raw',&
+      ! &units = '',&
+      ! &label = 'Plasma Raw',&
+      ! &n = j,&
+      ! &t = real(j))
+      ! call spe%wr(file_spe)
+
       call qb%copy_slice(j, p_copy_2to1)
       call bb%solve(qb)
       qe = 0.0
