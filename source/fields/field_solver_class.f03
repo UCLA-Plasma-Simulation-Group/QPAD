@@ -21,7 +21,7 @@ integer, parameter :: cls_level = 4
 integer, dimension(4), save :: itime
 double precision, save :: dtime
 
-real, dimension(:), pointer :: HYPRE_BUF => null()
+real, dimension(:), pointer, save :: HYPRE_BUF => null()
 
 type :: field_solver ! class for HYPRE solver
 
