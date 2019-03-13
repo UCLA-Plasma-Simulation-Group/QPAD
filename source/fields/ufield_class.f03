@@ -16,7 +16,7 @@ integer, parameter :: cls_level = 4
 
 public :: ufield
 
-real, dimension(:), pointer, save :: buf => null() ! data buffer used for MPI
+! real, dimension(:), pointer, save :: buf => null() ! data buffer used for MPI
 
 type :: ufield
 
@@ -368,7 +368,7 @@ subroutine copy_gc_f2( this )
   integer :: nrp, nzp, count, dtype
   integer :: tag = 1, msgid, ierr, i, j, k
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:,:,:), save, allocatable :: buf1, buf2
+  real, dimension(:,:,:), allocatable :: buf1, buf2
 
 
   idproc = this%pp%getlidproc()
@@ -446,6 +446,9 @@ subroutine copy_gc_f2( this )
       enddo
     endif
   endif
+
+  deallocate( buf1 )
+  deallocate( buf2 )
 
 end subroutine copy_gc_f2
 
@@ -529,7 +532,7 @@ subroutine acopy_gc_f1( this )
   integer :: nrp, count, dtype
   integer :: tag = 1, msgid, ierr, i
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  ! real, dimension(:), save, allocatable :: buf
+  real, dimension(:), allocatable :: buf
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -540,7 +543,7 @@ subroutine acopy_gc_f1( this )
   dtype = this%pp%getmreal()
 
   count = this%dim
-  if ( .not. associated(buf) ) allocate( buf(p_max_xdim) )
+  if ( .not. allocated(buf) ) allocate( buf(count) )
 
   if ( this%gc_num(p_upper,1) == 0 ) then
     call write_err( 'Upper guard cells must be set up for deposition' )
@@ -585,6 +588,8 @@ subroutine acopy_gc_f1( this )
     call MPI_WAIT( msgid, stat, ierr )
   endif
 
+  deallocate( buf )
+
 end subroutine acopy_gc_f1
 
 subroutine acopy_gc_f2( this )
@@ -597,7 +602,7 @@ subroutine acopy_gc_f2( this )
   integer :: nrp, nzp, count, dtype
   integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:,:), save, allocatable :: buf1, buf2
+  real, dimension(:,:), allocatable :: buf1, buf2
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -678,6 +683,9 @@ subroutine acopy_gc_f2( this )
     enddo
   endif
 
+  deallocate( buf1 )
+  deallocate( buf2 )
+
 end subroutine acopy_gc_f2
 
 subroutine acopy_gc_stage( this )
@@ -690,7 +698,7 @@ subroutine acopy_gc_stage( this )
   integer :: nzp, nrp, count, dtype
   integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:,:), save, allocatable :: buf1, buf2
+  real, dimension(:,:), allocatable :: buf1, buf2
 
   nvp = this%nvp(1)
   nstage = this%pp%getnstage()
@@ -756,6 +764,9 @@ subroutine acopy_gc_stage( this )
       enddo
     enddo
   endif
+
+  deallocate( buf1 )
+  deallocate( buf2 )
 
 end subroutine acopy_gc_stage
 
