@@ -84,7 +84,7 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
 ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: xtras, noff, nxyp, nx, npmax, nbmax
-   class(ufield), dimension(:), pointer :: ud
+   class(ufield), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%qbm = qbm
@@ -95,11 +95,11 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
    this%npmax = npmax
    nbmax = max(int(0.01*npmax),100)
    this%nbmax = nbmax
-   ud => fd%get_rf_re()
+   ud => fd%get_rf_re(0)
    this%pp => pp
 
    allocate(this%part(xdim,npmax))
-   call pf%dist(this%part,this%npp,ud(0),s)
+   call pf%dist(this%part,this%npp,ud,s)
    if (.not. allocated(sbufl)) then
       allocate(sbufl(xdim,nbmax),sbufr(xdim,nbmax))
       allocate(rbufl(xdim,nbmax),rbufr(xdim,nbmax))
@@ -134,12 +134,12 @@ subroutine renew_part2d(this,pf,fd,s)
 ! local data
    character(len=18), save :: sname = 'renew_part2d'
    integer :: noff, prof
-   class(ufield), dimension(:), pointer :: ud
+   class(ufield), pointer :: ud
          
    call write_dbg(cls_name, sname, cls_level, 'starts')
    
-   ud => fd%get_rf_re()
-   call pf%dist(this%part,this%npp,ud(0),s)
+   ud => fd%get_rf_re(0)
+   call pf%dist(this%part,this%npp,ud,s)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -237,13 +237,13 @@ subroutine pmove(this,fd)
    class(field), intent(in) :: fd
 ! local data   
    character(len=18), save :: sname = 'pmove'
-   class(ufield), dimension(:), pointer :: ud
+   class(ufield), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   ud => fd%get_rf_re()
+   ud => fd%get_rf_re(0)
    call part2d_pmove(this%part,this%pp,this%npp,this%dex,this%xdim,this%npmax,&
-   &this%nbmax,ud(0),sbufl,sbufr,rbufl,rbufr,ihole)
+   &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

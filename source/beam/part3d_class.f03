@@ -84,7 +84,7 @@ subroutine init_part3d(this,pp,pf,fd,qbm,dt,xdim)
 ! local data
    character(len=18), save :: sname = 'init_part3d'
    integer :: noff, nxyp, nx, prof, npmax, nbmax
-   class(ufield), dimension(:), pointer :: ud
+   class(ufield), pointer :: ud
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
@@ -100,8 +100,8 @@ subroutine init_part3d(this,pp,pf,fd,qbm,dt,xdim)
    this%npp = 0
    prof = pf%getnpf()
    allocate(this%part(xdim,npmax),this%pbuff(xdim,nbmax))
-   ud => fd%get_rf_re()
-   call pf%dist(this%part,this%npp,ud(0))
+   ud => fd%get_rf_re(0)
+   call pf%dist(this%part,this%npp,ud)
    this%z0 = pf%getz0()
    if (.not. allocated(sbufl)) then
       allocate(sbufl(xdim,nbmax),sbufr(xdim,nbmax))
@@ -182,15 +182,15 @@ subroutine pmove(this,fd,rtag,stag,sid)
    integer, intent(inout) :: sid
 ! local data
    character(len=18), save :: sname = 'pmove:'
-   class(ufield), dimension(:), pointer :: ud
+   class(ufield), pointer :: ud
    integer, dimension(9) :: info
 
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   ud => fd%get_rf_re()
+   ud => fd%get_rf_re(0)
 
-   call part3d_pmove(this%part,this%pp,ud(0),this%npp,this%dx,this%dz,sbufr,sbufl,&
+   call part3d_pmove(this%part,this%pp,ud,this%npp,this%dx,this%dz,sbufr,sbufl,&
    &rbufr,rbufl,ihole,this%pbuff,this%xdim,this%npmax,this%nbmax,rtag,stag,sid,info)
 
    if (info(1) /= 0) then
