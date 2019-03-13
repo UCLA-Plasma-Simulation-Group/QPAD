@@ -16,6 +16,8 @@ integer, parameter :: cls_level = 4
 
 public :: ufield
 
+real, dimension(:), pointer, save :: buf => null() ! data buffer used for MPI
+
 type :: ufield
 
   private
@@ -31,8 +33,6 @@ type :: ufield
   integer, dimension(2,2) :: gc_num ! number of guard cells
   integer :: mode
   logical :: has_2d
-
-  ! real, dimension(:), pointer :: buf => null() ! data buffer used for MPI
 
   contains
 
@@ -529,7 +529,7 @@ subroutine acopy_gc_f1( this )
   integer :: nrp, count, dtype
   integer :: tag = 1, msgid, ierr, i
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:), save, allocatable :: buf
+  ! real, dimension(:), save, allocatable :: buf
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -540,7 +540,7 @@ subroutine acopy_gc_f1( this )
   dtype = this%pp%getmreal()
 
   count = this%dim
-  if ( .not. allocated(buf) ) allocate( buf(count) )
+  if ( .not. associated(buf) ) allocate( buf(p_max_xdim) )
 
   if ( this%gc_num(p_upper,1) == 0 ) then
     call write_err( 'Upper guard cells must be set up for deposition' )
