@@ -10,12 +10,20 @@ private
 public :: init_stdout, write_stdout
 public :: init_errors, end_errors, write_err, write_wrn, write_dbg
 public :: num2str
+public :: init_tprof, write_tprof, start_tprof, stop_tprof
 
 integer, save :: class_monitor = 0
 integer, save :: fid_err, fid_stdout
 integer, dimension(4), save :: itime
 double precision, save :: dtime
 logical, save :: is_master
+
+! variables for timing
+integer, parameter :: p_max_event = 128
+double precision, dimension(p_max_event), save :: t_event
+character(len=64), dimension(p_max_event), save :: name_event
+integer, save :: num_event
+logical, save :: if_timing = .false.
 
 interface init_stdout
   module procedure init_stdout
@@ -49,6 +57,22 @@ interface num2str
   module procedure num2str_int
   module procedure num2str_real
 end interface
+
+interface init_tprof
+  module procedure init_tprof
+end interface
+
+interface start_tprof
+  module procedure start_tprof
+end interface start_tprof
+
+interface stop_tprof
+  module procedure stop_tprof
+end interface stop_tprof
+
+interface write_tprof
+  module procedure write_tprof
+end interface write_tprof
 
 contains
 
@@ -224,5 +248,133 @@ function num2str_real( number, prec ) result( str )
   str = trim(adjustl(tmp_str))
 
 end function num2str_real
+
+subroutine init_tprof( enable_timing )
+
+  implicit none
+
+  logical, intent(in) :: enable_timing
+
+  t_event = 0.0
+  num_event = 0
+
+  call add_tprof( 'field solve' )
+  call add_tprof( 'particle push' )
+  call add_tprof( 'arithmetics' )
+
+  if_timing = enable_timing
+
+end subroutine init_tprof
+
+subroutine add_tprof( event )
+
+  implicit none
+
+  character(len=*), intent(in) :: event
+
+  num_event = num_event + 1
+  name_event(num_event) = trim(event)
+
+end subroutine add_tprof
+
+subroutine start_tprof( event )
+
+  implicit none
+
+  character(len=*), intent(in) :: event
+
+  integer :: i
+
+  if ( (num_event == 0) .or. (if_timing .eqv. .false.) ) return
+
+  do i = 1, num_event
+    if ( trim( name_event(i) ) == trim(event) ) then
+      call dtimer( dtime, itime, 1 )
+      t_event(i) = t_event(i) - dtime
+      return
+    endif
+  enddo
+
+end subroutine start_tprof
+
+subroutine stop_tprof( event )
+
+  implicit none
+
+  character(len=*), intent(in) :: event
+
+  integer :: i
+
+  if ( (num_event == 0) .or. (if_timing .eqv. .false.) ) return
+
+  do i = 1, num_event
+    if ( trim( name_event(i) ) == trim(event) ) then
+      call dtimer( dtime, itime, 1 )
+      t_event(i) = t_event(i) + dtime
+      return
+    endif
+  enddo
+
+end subroutine stop_tprof
+
+subroutine write_tprof()
+
+  implicit none
+
+  integer :: idproc, nproc, ierr, fid = 10, i
+  character(len=32) :: filename
+  character(len=128) :: str
+  double precision, dimension(:), allocatable :: buf
+  double precision :: avg, max, min, std
+
+  if ( (num_event == 0) .or. (.not. if_timing) ) return
+
+  call MPI_COMM_RANK( MPI_COMM_WORLD, idproc, ierr )
+  call MPI_COMM_SIZE( MPI_COMM_WORLD, nproc, ierr )
+  if ( idproc == 0 ) then
+    call system( 'mkdir ./TIMING' )
+  endif
+  call MPI_BARRIER( MPI_COMM_WORLD, ierr )
+
+  write( filename, '(A,I0.6,A)') './TIMING/tprof-', idproc, '.out'
+  open( unit=fid, file=trim(filename), form='formatted', status='replace' )
+  write ( fid, * ) "=========================================="
+  write ( fid, '(A20, A20)' ) "EVENT", "ELAPSE TIME (s)"
+  write ( fid, * ) "------------------------------------------"
+
+  do i = 1, num_event
+    write( fid, '(A20, E20.4)' ) trim(adjustl(name_event(i))), t_event(i)
+  enddo
+
+  write ( fid, * ) "=========================================="
+  close( unit=fid )
+
+  call MPI_BARRIER( MPI_COMM_WORLD, ierr )
+
+  fid = 11
+  if ( idproc == 0 ) then
+    open( unit=fid, file='./TIMING/stats-tprof.out', form='formatted', status='replace' )
+    write ( fid, * ) "===================================================================================================="
+    write ( fid, '(5A20)' ) "EVENT", "AVG TIME (s)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)"
+    write ( fid, * ) "----------------------------------------------------------------------------------------------------"
+    allocate( buf(nproc) )
+  endif
+
+  do i = 1, num_event
+    call MPI_GATHER( t_event(i), 1, MPI_DOUBLE_PRECISION, &
+      buf, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+    if ( idproc == 0 ) then
+      avg = sum(buf) / nproc
+      max = maxval(buf)
+      min = minval(buf)
+      std = sqrt( sum( (buf - avg)**2 ) / nproc )
+      write( fid, '(A20, 4E20.4)' ) trim(adjustl(name_event(i))), avg, max, min, std
+    endif
+  enddo
+
+  write ( fid, * ) "===================================================================================================="
+  close( unit=fid )
+
+end subroutine write_tprof
 
 end module system
