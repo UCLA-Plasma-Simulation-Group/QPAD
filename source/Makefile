@@ -52,20 +52,6 @@ objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
 objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
 main_obj := $(builddir)/main.o
 
-# ------------------------------------------------------------------------------
-# QuickPIC unit test source files
-# Each test source file is independent on others, so they can be listed in
-# arbitrary order.
-# ------------------------------------------------------------------------------
-test_src = TEST_field_bperp.f03 TEST_field_bz.f03 TEST_field_eperp.f03 \
-	TEST_field_psi.f03 TEST_field_bperp_iter.f03 TEST_field_eperp_beam.f03 \
-	TEST_field_ez.f03 TEST_ufield.f03
-# ------------------------------------------------------------------------------
-
-# Parse test source files to generate object files
-test_src := $(patsubst TEST_%.f03, $(testdir)/TEST_%.f03, $(test_src))
-test_exe := $(patsubst TEST_%.f03, TEST_%.e, $(test_src))
-
 # Generate date stamp
 DATESTAMP = $$(date +%s)
 
