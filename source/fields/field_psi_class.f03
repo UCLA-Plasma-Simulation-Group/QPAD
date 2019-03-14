@@ -220,7 +220,7 @@ subroutine solve_field_psi( this, q )
   character(len=20), save :: sname = 'solve_field_psi'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve fields' )
+  call start_tprof( 'solve psi' )
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -243,7 +243,7 @@ subroutine solve_field_psi( this, q )
 
   call this%copy_gc_f1()
 
-  call stop_tprof( 'solve fields' )
+  call stop_tprof( 'solve psi' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_psi

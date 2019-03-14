@@ -282,7 +282,7 @@ subroutine solve_field_ez( this, jay )
   character(len=20), save :: sname = 'solve_field_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve fields' )
+  call start_tprof( 'solve ez' )
 
   ! call jay%copy_gc_f1()
 
@@ -307,7 +307,7 @@ subroutine solve_field_ez( this, jay )
 
   call this%copy_gc_f1()
 
-  call stop_tprof( 'solve fields' )
+  call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_ez
@@ -330,7 +330,7 @@ subroutine solve_field_eperp( this, b, psi )
   character(len=20), save :: sname = 'solve_field_eperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve fields' )
+  call start_tprof( 'solve plasma eperp' )
 
   ! call psi%copy_gc_f1()
 
@@ -394,7 +394,7 @@ subroutine solve_field_eperp( this, b, psi )
 
   call this%copy_gc_f1()
 
-  call stop_tprof( 'solve fields' )
+  call stop_tprof( 'solve plasma eperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_eperp
@@ -413,7 +413,7 @@ subroutine solve_field_eperp_beam( this, b )
   character(len=20), save :: sname = 'solve_field_eperp_beam'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve fields' )
+  call start_tprof( 'solve beam eperp' )
 
   b_re => b%get_rf_re()
   b_im => b%get_rf_im()
@@ -443,7 +443,7 @@ subroutine solve_field_eperp_beam( this, b )
 
   call this%copy_gc_f1()
 
-  call stop_tprof( 'solve fields' )
+  call stop_tprof( 'solve beam eperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_eperp_beam

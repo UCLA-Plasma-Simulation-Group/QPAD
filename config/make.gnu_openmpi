@@ -1,6 +1,6 @@
 # Fortran compiler configuration
 FC = mpif90
-FC_OPTS = -g -fbounds-check -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+FC_OPTS = -g -O3 -fbounds-check -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
 # C compiler configuration
 CC = gcc

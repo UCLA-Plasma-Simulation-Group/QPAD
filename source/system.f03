@@ -258,7 +258,13 @@ subroutine init_tprof( enable_timing )
   t_event = 0.0
   num_event = 0
 
-  call add_tprof( 'solve fields' )
+  call add_tprof( 'solve psi' )
+  call add_tprof( 'solve bz' )
+  call add_tprof( 'solve beam bperp' )
+  call add_tprof( 'solve plasma bperp' )
+  call add_tprof( 'solve ez' )
+  call add_tprof( 'solve beam eperp' )
+  call add_tprof( 'solve plasma eperp' )
   call add_tprof( 'set source' )
   call add_tprof( 'smooth' )
   call add_tprof( 'copy guard cells' )
@@ -270,6 +276,7 @@ subroutine init_tprof( enable_timing )
   call add_tprof( 'push 3D particles' )
   call add_tprof( 'extract psi' )
   call add_tprof( 'arithmetics' )
+  call add_tprof( 'total simulation time' )
 
   if_timing = enable_timing
 
@@ -347,15 +354,15 @@ subroutine write_tprof()
 
   write( filename, '(A,I0.6,A)') './TIMING/tprof-', idproc, '.out'
   open( unit=fid, file=trim(filename), form='formatted', status='replace' )
-  write ( fid, * ) "=========================================="
-  write ( fid, '(A20, A20)' ) "EVENT", "ELAPSE TIME (s)"
-  write ( fid, * ) "------------------------------------------"
+  write ( fid, * ) repeat( '=', 50 )
+  write ( fid, '(A30, A20)' ) "EVENT", "ELAPSE TIME (s)"
+  write ( fid, * ) repeat( '-', 50 )
 
   do i = 1, num_event
-    write( fid, '(A20, E20.4)' ) trim(adjustl(name_event(i))), t_event(i)
+    write( fid, '(A30, E20.4)' ) trim(adjustl(name_event(i))), t_event(i)
   enddo
 
-  write ( fid, * ) "=========================================="
+  write ( fid, * ) repeat( '=', 50 )
   close( unit=fid )
 
   call MPI_BARRIER( MPI_COMM_WORLD, ierr )
@@ -363,9 +370,9 @@ subroutine write_tprof()
   fid = 11
   if ( idproc == 0 ) then
     open( unit=fid, file='./TIMING/stats-tprof.out', form='formatted', status='replace' )
-    write ( fid, * ) "===================================================================================================="
-    write ( fid, '(5A20)' ) "EVENT", "AVG TIME (s)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)"
-    write ( fid, * ) "----------------------------------------------------------------------------------------------------"
+    write ( fid, * ) repeat( '=', 110 )
+    write ( fid, '(A30, 4A20)' ) "EVENT", "AVG TIME (s)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)"
+    write ( fid, * ) repeat( '-', 110 )
     allocate( buf(nproc) )
   endif
 
@@ -377,11 +384,11 @@ subroutine write_tprof()
       max = maxval(buf)
       min = minval(buf)
       std = sqrt( sum( (buf - avg)**2 ) / nproc )
-      write( fid, '(A20, 4E20.4)' ) trim(adjustl(name_event(i))), avg, max, min, std
+      write( fid, '(A30, 4E20.4)' ) trim(adjustl(name_event(i))), avg, max, min, std
     endif
   enddo
 
-  write ( fid, * ) "===================================================================================================="
+  write ( fid, * ) repeat( '=', 110 )
   close( unit=fid )
 
 end subroutine write_tprof

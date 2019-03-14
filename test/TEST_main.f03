@@ -586,6 +586,8 @@ do i = 1, num_modes
 end do
 
 do i = 1, nt
+
+   call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call beam%qdp(qb)
       do j = 1, nz
@@ -636,6 +638,8 @@ do i = 1, nt
 
    call beam%push(e,bb,7,7,id)
    call spe%renew(i*dt)
+
+   call stop_tprof( 'total simulation time' )
 
    call file_q(1)%new(&
    &n = i,&
