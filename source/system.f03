@@ -258,8 +258,17 @@ subroutine init_tprof( enable_timing )
   t_event = 0.0
   num_event = 0
 
-  call add_tprof( 'field solve' )
-  call add_tprof( 'particle push' )
+  call add_tprof( 'solve fields' )
+  call add_tprof( 'set source' )
+  call add_tprof( 'smooth' )
+  call add_tprof( 'copy guard cells' )
+  call add_tprof( 'copy & add guard cells' )
+  call add_tprof( 'copy slices' )
+  call add_tprof( 'deposit 2D particles' )
+  call add_tprof( 'push 2D particles' )
+  call add_tprof( 'deposit 3D particles' )
+  call add_tprof( 'push 3D particles' )
+  call add_tprof( 'extract psi' )
   call add_tprof( 'arithmetics' )
 
   if_timing = enable_timing

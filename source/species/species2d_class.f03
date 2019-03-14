@@ -155,13 +155,15 @@ subroutine qdp_species2d(this,q)
    character(len=18), save :: sname = 'qdp_species2d'
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 2D particles' )
 
    this%q = 0.0
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f1()
    call this%q%copy_gc_f1()
    q = this%q + q + this%qn
-            
+   
+   call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine qdp_species2d
@@ -180,6 +182,7 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    character(len=18), save :: sname = 'amjdp_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 2D particles' )
 
    this%cu = 0.0
    this%dcu = 0.0
@@ -195,6 +198,7 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    dcu = dcu + this%dcu
    amu = amu + this%amu
 
+   call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine amjdp_species2d
@@ -210,10 +214,12 @@ subroutine push_species2d(this,ef,bf)
    character(len=18), save :: sname = 'push_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'push 2D particles' )
 
    call this%pd%push(ef,bf)
    call this%pd%pmv(this%q)
    
+   call stop_tprof( 'push 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine push_species2d
@@ -228,9 +234,11 @@ subroutine extpsi_species2d(this,psi)
    character(len=18), save :: sname = 'extpsi_species2d'
    
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'extract psi' )
    
    call this%pd%extpsi(psi)
 
+   call stop_tprof( 'extract psi' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine extpsi_species2d

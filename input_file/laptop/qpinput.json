@@ -20,7 +20,10 @@
     "restart_timestep" : 1,
     "iter" : 1,
     "solver_precision" : 1.0e-6,
-    "verbose" : 0
+    "smooth_type" : "compensated",
+    "smooth_order" : 0,
+    "verbose" : 0,
+    "if_timing" : true
 },
 "beam" :
 [

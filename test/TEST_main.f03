@@ -777,7 +777,7 @@ do i = 1, nt
 
 end do
 
-
+call write_tprof()
 call write_dbg( 'main', 'test_main', 0, 'ends' )
 
 call end_errors()

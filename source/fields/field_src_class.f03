@@ -234,6 +234,7 @@ subroutine solve_field_djdxi( this, acu, amu )
   character(len=20), save :: sname = 'solve_field_djdxi'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'set source' )
 
   ! call amu%copy_gc_f1()
 
@@ -305,6 +306,7 @@ subroutine solve_field_djdxi( this, acu, amu )
 
   call this%copy_gc_f1()
 
+  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_djdxi

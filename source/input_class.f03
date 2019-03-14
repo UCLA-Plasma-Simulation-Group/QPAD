@@ -61,7 +61,7 @@ subroutine read_input_json(this)
    class(input_json), intent(inout) :: this
 ! local data
    character(len=18), save :: sname = 'read_input_json'
-   logical :: found, stat
+   logical :: found, stat, if_timing
    character(len=:), allocatable :: ff, boundary, error_msg
    integer :: length, num_stages, verbose, nr, nz, psolve, ierr
    
@@ -99,6 +99,9 @@ subroutine read_input_json(this)
    call MPI_BCAST(ff, length, this%p%getmchar(), 0, this%p%getlworld(), ierr)
    
    call this%load_from_string(ff)
+
+   call this%get('simulation.if_timing', if_timing)
+   call init_tprof( if_timing )
    
    call this%get('simulation.nodes(2)',num_stages)
    

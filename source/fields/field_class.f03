@@ -175,6 +175,7 @@ subroutine copy_slice( this, idx, dir )
   character(len=20), save :: sname = "copy_slice"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy slices' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%copy_slice( idx, dir )
@@ -182,6 +183,7 @@ subroutine copy_slice( this, idx, dir )
     call this%rf_im(i)%copy_slice( idx, dir )
   enddo
 
+  call stop_tprof( 'copy slices' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_slice
@@ -196,6 +198,7 @@ subroutine copy_gc_f1( this )
   character(len=20), save :: sname = "copy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%copy_gc_f1()
@@ -203,6 +206,7 @@ subroutine copy_gc_f1( this )
     call this%rf_im(i)%copy_gc_f1()
   enddo
 
+  call stop_tprof( 'copy guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_f1
@@ -217,6 +221,7 @@ subroutine copy_gc_f2( this )
   character(len=20), save :: sname = "copy_gc_f2"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%copy_gc_f2()
@@ -224,6 +229,7 @@ subroutine copy_gc_f2( this )
     call this%rf_im(i)%copy_gc_f2()
   enddo
 
+  call stop_tprof( 'copy guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_f2
@@ -239,6 +245,7 @@ subroutine copy_gc_stage( this, dir )
   character(len=20), save :: sname = "copy_gc_stage"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%copy_gc_stage(dir)
@@ -246,6 +253,7 @@ subroutine copy_gc_stage( this, dir )
     call this%rf_im(i)%copy_gc_stage(dir)
   enddo
 
+  call stop_tprof( 'copy guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_stage
@@ -260,6 +268,7 @@ subroutine acopy_gc_f1( this )
   character(len=20), save :: sname = "acopy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy & add guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%acopy_gc_f1()
@@ -267,6 +276,7 @@ subroutine acopy_gc_f1( this )
     call this%rf_im(i)%acopy_gc_f1()
   enddo
 
+  call stop_tprof( 'copy & add guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine acopy_gc_f1
@@ -281,6 +291,7 @@ subroutine acopy_gc_f2( this )
   character(len=20), save :: sname = "acopy_gc_f2"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy & add guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%acopy_gc_f2()
@@ -288,6 +299,7 @@ subroutine acopy_gc_f2( this )
     call this%rf_im(i)%acopy_gc_f2()
   enddo
 
+  call stop_tprof( 'copy & add guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine acopy_gc_f2
@@ -302,6 +314,7 @@ subroutine acopy_gc_stage( this )
   character(len=20), save :: sname = "acopy_gc_stage"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'copy & add guard cells' )
 
   do i = 0, this%num_modes
     call this%rf_re(i)%acopy_gc_stage()
@@ -309,6 +322,7 @@ subroutine acopy_gc_stage( this )
     call this%rf_im(i)%acopy_gc_stage()
   enddo
 
+  call stop_tprof( 'copy & add guard cells' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine acopy_gc_stage
@@ -382,6 +396,7 @@ subroutine smooth_f1( this )
   character(len=32), save :: sname = 'smooth_f1'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'smooth' )
 
   do i = 0, this%num_modes
 
@@ -395,6 +410,7 @@ subroutine smooth_f1( this )
 
   enddo
 
+  call stop_tprof( 'smooth' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine smooth_f1
@@ -559,6 +575,8 @@ function add_f1_v1( a1, a2 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -581,6 +599,8 @@ function add_f1_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function add_f1_v1
 
 function add_f1_v2( a2, a1 ) result( a3 )
@@ -594,6 +614,8 @@ function add_f1_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -604,6 +626,8 @@ function add_f1_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     ua3_im(i) = a1%rf_im(i) + a2
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function add_f1_v2
 
@@ -617,6 +641,8 @@ function dot_f1_v1( a1, a2 ) result( a3 )
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
+
+  call start_tprof( 'arithmetics' )
 
   allocate(a3)
   call a3%new(a1)
@@ -640,6 +666,8 @@ function dot_f1_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function dot_f1_v1
 
 function dot_f1_v2( a2, a1 ) result( a3 )
@@ -653,6 +681,8 @@ function dot_f1_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -663,6 +693,8 @@ function dot_f1_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     ua3_im(i) = a1%rf_im(i) * a2
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function dot_f1_v2
 
@@ -676,6 +708,8 @@ function sub_f1_v1( a1, a2 ) result( a3 )
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
+
+  call start_tprof( 'arithmetics' )
 
   allocate(a3)
   call a3%new(a1)
@@ -699,6 +733,8 @@ function sub_f1_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function sub_f1_v1
 
 function sub_f1_v2( a2, a1 ) result( a3 )
@@ -712,6 +748,8 @@ function sub_f1_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -722,6 +760,8 @@ function sub_f1_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     ua3_im(i) = a1%rf_im(i) - a2
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function sub_f1_v2
 
@@ -735,6 +775,8 @@ function add_f2_v1( a1, a2 ) result( a3 )
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
+
+  call start_tprof( 'arithmetics' )
 
   allocate(a3)
   call a3%new(a1)
@@ -758,6 +800,8 @@ function add_f2_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function add_f2_v1
 
 function add_f2_v2( a2, a1 ) result( a3 )
@@ -771,6 +815,8 @@ function add_f2_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -781,6 +827,8 @@ function add_f2_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function add_f2_v2
 
@@ -794,6 +842,8 @@ function dot_f2_v1( a1, a2 ) result( a3 )
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
+
+  call start_tprof( 'arithmetics' )
 
   allocate(a3)
   call a3%new(a1)
@@ -817,6 +867,8 @@ function dot_f2_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function dot_f2_v1
 
 function dot_f2_v2( a2, a1 ) result( a3 )
@@ -830,6 +882,8 @@ function dot_f2_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -840,6 +894,8 @@ function dot_f2_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function dot_f2_v2
 
@@ -853,6 +909,8 @@ function sub_f2_v1( a1, a2 ) result( a3 )
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
+
+  call start_tprof( 'arithmetics' )
 
   allocate(a3)
   call a3%new(a1)
@@ -876,6 +934,8 @@ function sub_f2_v1( a1, a2 ) result( a3 )
     call write_err( "invalid assignment type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end function sub_f2_v1
 
 function sub_f2_v2( a2, a1 ) result( a3 )
@@ -889,6 +949,8 @@ function sub_f2_v2( a2, a1 ) result( a3 )
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
+  call start_tprof( 'arithmetics' )
+
   allocate(a3)
   call a3%new(a1)
   ua3_re => a3%get_rf_re()
@@ -899,6 +961,8 @@ function sub_f2_v2( a2, a1 ) result( a3 )
     if (i==0) cycle
     call ua3_im(i)%as( a2 .sub. a1%rf_im(i) )
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end function sub_f2_v2
 

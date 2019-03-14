@@ -134,6 +134,7 @@ subroutine set_source( this, mode, q_re, q_im )
   character(len=20), save :: sname = 'set_source'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'set source' )
 
   nrp = q_re%get_ndp(1)
 
@@ -170,6 +171,7 @@ subroutine set_source( this, mode, q_re, q_im )
     call write_err( 'Invalid input arguments!' )
   endif
 
+  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source
@@ -218,6 +220,7 @@ subroutine solve_field_psi( this, q )
   character(len=20), save :: sname = 'solve_field_psi'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve fields' )
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -240,6 +243,7 @@ subroutine solve_field_psi( this, q )
 
   call this%copy_gc_f1()
 
+  call stop_tprof( 'solve fields' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_psi

@@ -172,6 +172,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'set source' )
 
   nrp = jay_re%get_ndp(1)
   idr = 1.0 / this%dr
@@ -263,6 +264,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
   endif
 
+  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bz
@@ -282,6 +284,7 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   character(len=20), save :: sname = 'set_source_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'set source' )
 
   idproc = q_re%pp%getlidproc()
   nvp = q_re%pp%getlnvp()
@@ -354,6 +357,7 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
 
   endif
 
+  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bperp
@@ -375,6 +379,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   character(len=20), save :: sname = 'set_source_bperp_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'set source' )
 
   nvp = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
@@ -460,6 +465,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
 
   endif
 
+  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bperp_iter
@@ -574,6 +580,7 @@ subroutine solve_field_bz( this, jay )
   character(len=20), save :: sname = 'solve_field_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve fields' )
 
   ! call jay%copy_gc_f1()
 
@@ -598,6 +605,7 @@ subroutine solve_field_bz( this, jay )
 
   call this%copy_gc_f1()
 
+  call stop_tprof( 'solve fields' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bz
@@ -614,6 +622,7 @@ subroutine solve_field_bperp( this, rho )
   character(len=20), save :: sname = 'solve_field_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve fields' )
 
   ! call rho%copy_gc_f1()
 
@@ -637,6 +646,7 @@ subroutine solve_field_bperp( this, rho )
 
   call this%copy_gc_f1()
 
+  call stop_tprof( 'solve fields' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bperp
@@ -655,6 +665,7 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
   character(len=20), save :: sname = 'solve_field_bperp_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve fields' )
 
   ! call jay%copy_gc_f1()
   ! call djdxi%copy_gc_f1() ! no need for djdxi to copy guard cells
@@ -681,6 +692,7 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   call this%copy_gc_f1()
 
+  call stop_tprof( 'solve fields' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bperp_iter

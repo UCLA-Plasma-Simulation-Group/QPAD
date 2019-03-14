@@ -115,10 +115,14 @@ subroutine qdeposit_beam3d(this,q)
    character(len=18), save :: sname = 'qdeposit_beam3d'
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 3D particles' )
+
    call this%q%as(0.0)
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f2()
    call q%as(this%q .add. q)
+
+   call stop_tprof( 'deposit 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine qdeposit_beam3d
@@ -160,12 +164,16 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
    character(len=18), save :: sname = 'partpush'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'push 3D particles' )
+
    if (.not. this%evol) then
       call write_dbg(cls_name, sname, cls_level, 'ends')
       return
    end if
    call this%pd%push(ef,bf)
    call this%pd%pmv(ef,rtag,stag,sid)
+
+   call stop_tprof( 'push 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine push_beam3d
