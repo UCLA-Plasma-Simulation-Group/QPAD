@@ -100,8 +100,8 @@ call dcu%new(pp, gp, dr, dxi, num_modes, part_shape)
 call acu%new(pp, gp, dr, dxi, num_modes, part_shape)
 call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
-call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
+call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
+call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
 pqb => qb
 
@@ -604,7 +604,7 @@ do i = 1, nt
       ! call spe%wr(file_spe)
 
       call qb%copy_slice(j, p_copy_2to1)
-      call bb%solve(qb)
+      call bb%solve_old(qb)
       qe = 0.0
       call spe%qdp(qe)
       call psi%solve(qe)
