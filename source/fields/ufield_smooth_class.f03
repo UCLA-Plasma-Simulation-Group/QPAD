@@ -147,7 +147,7 @@ subroutine smooth_f1( this, uf )
   real, dimension(:,:), pointer :: pf => null()
 
   integer :: ext_lb, ext_ub, int_lb, int_ub
-  integer :: nsm, dim, j, k, idproc, nvp, nrp
+  integer :: nsm, dim, i, j, k, idproc, nvp, nrp
 
   real, dimension(:,:), allocatable, save :: o
   real, dimension(:), allocatable, save :: f
@@ -175,74 +175,85 @@ subroutine smooth_f1( this, uf )
   if ( idproc == nvp-1 ) int_ub = nrp - nsm
 
   if ( .not. allocated(o) ) then
-    allocate( o(dim,-nsm:nsm), f(dim) )
+    allocate( o(p_max_xdim,-nsm:nsm), f(p_max_xdim) )
   endif
   o = 0.0
   f = 0.0
 
   if ( nsm > 0 ) then
 
+    ! print *, "size(o,1) = ", size(o,1)
+    ! print *, "size(pf,1) = ", size(pf,1)
+    ! print *, "dim = ", dim
     do k = -nsm, nsm-1
-      o(:,k) = pf(:, 1+k)
+      do i = 1, dim
+        o(i,k) = pf(i, 1+k)
+      enddo
     enddo
 
     ! smooth the axis
     if ( idproc == 0 ) then
 
       do j = 1, int_lb-1
+        do i = 1, dim
 
-        o(:, nsm) = pf(:, j+nsm)
-        f(:) = o(:,1-j) * this%scoef(1-j)
+          o(i, nsm) = pf(i, j+nsm)
+          f(i) = o(i,1-j) * this%scoef(1-j)
 
-        do k = 2-j, nsm
-          f(:) = f(:) + o(:,k) * this%scoef(k)
+          do k = 2-j, nsm
+            f(i) = f(i) + o(i,k) * this%scoef(k)
+          enddo
+
+          do k = -j, nsm-1
+            o(i,k) = o(i,k+1)
+          enddo
+
+          pf(i,j) = f(i) / this%norm_bnd(j)
+
         enddo
-
-        do k = -j, nsm-1
-          o(:,k) = o(:,k+1)
-        enddo
-
-        pf(:,j) = f(:) / this%norm_bnd(j)
-
       enddo
     endif
 
     ! smooth interior region
     do j = int_lb, int_ub
+      do i = 1, dim
 
-      o(:, nsm) = pf(:, j+nsm)
+        o(i, nsm) = pf(i, j+nsm)
 
-      f(:) = o(:, -nsm) * this%scoef(-nsm)
+        f(i) = o(i, -nsm) * this%scoef(-nsm)
 
-      do k = -nsm + 1, nsm
-        f(:) = f(:) + o(:,k) * this%scoef(k)
+        do k = -nsm + 1, nsm
+          f(i) = f(i) + o(i,k) * this%scoef(k)
+        enddo
+
+        do k = -nsm, nsm-1
+          o(i,k) = o(i,k+1)
+        enddo
+
+        pf(i,j) = f(i)
+
       enddo
-
-      do k = -nsm, nsm-1
-        o(:,k) = o(:,k+1)
-      enddo
-
-      pf(:,j) = f(:)
-
     enddo
 
     ! smooth outer boundary
     if ( idproc == nvp-1 ) then
       do j = int_ub+1, nrp
+        do i = 1, dim
 
-        ! o(:, nsm) = pf(:, j+nsm) ! no need for this
-        f(:) = o(:,-nsm) * this%scoef(-nsm)
+          ! o(i, nsm) = pf(i, j+nsm) ! no need for this
+          f(i) = o(i,-nsm) * this%scoef(-nsm)
 
-        do k = -nsm+1, nsm-j+int_ub
-          f(:) = f(:) + o(:,k) * this%scoef(k)
+          do k = -nsm+1, nsm-j+int_ub
+            f(i) = f(i) + o(i,k) * this%scoef(k)
+          enddo
+
+          do k = -nsm, nsm-j+int_ub-1
+            o(i,k) = o(i,k+1)
+          enddo
+
+          pf(i,j) = f(i) / this%norm_bnd(nrp-j+1)
+
         enddo
-
-        do k = -nsm, nsm-j+int_ub-1
-          o(:,k) = o(:,k+1)
-        enddo
-
-        pf(:,j) = f(:) / this%norm_bnd(nrp-j+1)
-
       enddo
     endif
 

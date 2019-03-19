@@ -56,7 +56,7 @@ character(len=128) :: erstr
 
 contains
 !
-subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim)
+subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,smooth_type,smooth_order)
 
    implicit none
    
@@ -67,6 +67,7 @@ subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim)
    class(fdist3d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt
    integer, intent(in) :: xdim, part_shape
+   integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=18), save :: sname = 'init_beam3d'
    integer :: id, num_modes, ierr
@@ -82,7 +83,11 @@ subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim)
 
    allocate(this%pd,this%q)
    this%evol = pf%getevol()
-   call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
+   if ( present(smooth_type) .and. present(smooth_order) ) then
+      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+   else
+      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
+   endif
    call this%pd%new(pp,pf,fd,qbm,dt,xdim)
    call this%pd%pmv(this%q,1,1,id)
    call MPI_WAIT(id,istat,ierr)

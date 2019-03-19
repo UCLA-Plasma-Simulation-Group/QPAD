@@ -67,7 +67,7 @@ character(len=128) :: erstr
 contains
 !
 subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
-&num_modes,qbm,dt,xdim,s)
+&num_modes,qbm,dt,xdim,s,smooth_type,smooth_order)
 
    implicit none
    
@@ -77,6 +77,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
    class(fdist2d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt, s, dr, dxi
    integer, intent(in) :: xdim, part_shape, num_modes
+   integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=18), save :: sname = 'init_species2d'
 
@@ -86,11 +87,20 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
    this%pp => pp
    
    allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu)
-   call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
-   call this%qn%new(pp,gd,dr,dxi,num_modes,part_shape)
-   call this%cu%new(pp,gd,dr,dxi,num_modes,part_shape)
-   call this%dcu%new(pp,gd,dr,dxi,num_modes,part_shape)
-   call this%amu%new(pp,gd,dr,dxi,num_modes,part_shape)
+
+   if ( present(smooth_type) .and. present(smooth_order) ) then
+      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+      call this%qn%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+      call this%cu%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+      call this%dcu%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+      call this%amu%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+   else
+      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
+      call this%qn%new(pp,gd,dr,dxi,num_modes,part_shape)
+      call this%cu%new(pp,gd,dr,dxi,num_modes,part_shape)
+      call this%dcu%new(pp,gd,dr,dxi,num_modes,part_shape)
+      call this%amu%new(pp,gd,dr,dxi,num_modes,part_shape)
+   endif
    call this%pd%new(pp,pf,this%q,qbm,dt,xdim,s)
 
    this%qn = 0.0

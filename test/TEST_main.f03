@@ -27,7 +27,8 @@ type(grid), pointer :: gp => null()
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
 integer :: num_modes, part_shape, i, id, j, k, nt
-character(len=:), allocatable :: shape
+integer :: st, so ! smooth
+character(len=:), allocatable :: shape, st_str
 character(len=2) :: s1
 real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
 type fdist2d_wrap
@@ -88,16 +89,27 @@ call input%get('simulation.box.z(2)',zmax)
 dxi = (zmax-zmin)/nz
 
 call input%get('simulation.solver_precision',prec)
+call input%get('simulation.smooth_type',st_str)
+call input%get('simulation.smooth_order',so)
+
+select case ( trim(st_str) )
+case ( 'binomial' )
+   st = p_smooth_binomial
+case ( 'compensated' )
+   st = p_smooth_compensated
+case default
+   st = p_smooth_none
+end select
 
 nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
-call qb%new(pp, gp, dr, dxi, num_modes, part_shape)
-call qe%new(pp, gp, dr, dxi, num_modes, part_shape)
-call cu%new(pp, gp, dr, dxi, num_modes, part_shape)
-call amu%new(pp, gp, dr, dxi, num_modes, part_shape)
-call dcu%new(pp, gp, dr, dxi, num_modes, part_shape)
-call acu%new(pp, gp, dr, dxi, num_modes, part_shape)
+call qb%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
+call qe%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
+call cu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
+call amu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
+call dcu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
+call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
@@ -113,7 +125,7 @@ case (0)
    allocate(fdist2d_000::pf2d%p)
    call pf2d%p%new(input,1)
 end select
-call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0)
+call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
 
 call input%get('beam(1).profile',npf)
 select case (npf)
@@ -125,7 +137,7 @@ end select
 call input%get('simulation.dt',dt)
 call input%get('simulation.time',tt)
 nt = tt/dt
-call beam%new(pp,pqb,gp,part_shape,pf3d%p,-1.0,dt,7)
+call beam%new(pp,pqb,gp,part_shape,pf3d%p,-1.0,dt,7,st,so)
 
 call file_q(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&
@@ -604,11 +616,14 @@ do i = 1, nt
       ! call spe%wr(file_spe)
 
       call qb%copy_slice(j, p_copy_2to1)
+      call qb%smooth_f1()
       call bb%solve_old(qb)
       qe = 0.0
       call spe%qdp(qe)
+      call qe%smooth_f1()
       call psi%solve(qe)
       call spe%extpsi(psi)
+      call cu%smooth_f1()
       call e%solve(cu)
       call b%solve(cu)
       do k = 1, iter
@@ -618,6 +633,9 @@ do i = 1, nt
          acu = 0.0
          amu = 0.0
          call spe%amjdp(e,bt,cu,amu,acu)
+         call acu%smooth_f1()
+         call amu%smooth_f1()
+         call cu%smooth_f1()
          call dcu%solve(acu,amu)
          call b%solve(dcu,cu)
          call e%solve(cu)
