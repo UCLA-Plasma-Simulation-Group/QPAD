@@ -39,12 +39,13 @@ integer, parameter :: p_bnd_axial = 0, p_bnd_conduct = 1
 ! field kind
 integer, parameter :: p_fk_psi = 0, p_fk_ez = 1, p_fk_bz = 2, &
                       p_fk_bperp = 3, p_fk_br_iter = 4, p_fk_bphi_iter = 5, &
-                      p_fk_bperp_iter = 6
+                      p_fk_bperp_iter = 6, p_fk_bperp_old = 7
 
 ! ================================================================
 ! entity of electromagnetic field
 ! ================================================================
-integer, parameter :: p_entity_none = 0, p_entity_beam = 1, p_entity_plasma = 2
+integer, parameter :: p_entity_none = 0, p_entity_beam = 1, &
+                      p_entity_plasma = 2, p_entity_beam_old = 3
 
 ! ================================================================
 ! HYPRE parameters

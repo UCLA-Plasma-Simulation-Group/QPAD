@@ -36,17 +36,21 @@ type, extends( field ) :: field_b
   procedure :: del => end_field_b
   ! generic :: read_input => read_input_field_b
   generic :: solve => solve_field_bz, solve_field_bperp, solve_field_bperp_iter
+  generic :: solve_old => solve_field_bperp_old
 
   procedure, private :: init_field_b
   procedure, private :: end_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bperp
+  procedure, private :: set_source_bperp_old
   procedure, private :: set_source_bperp_iter
   procedure, private :: get_solution_bz
   procedure, private :: get_solution_bperp
+  procedure, private :: get_solution_bperp_old
   procedure, private :: get_solution_bperp_iter
   procedure, private :: solve_field_bz
   procedure, private :: solve_field_bperp
+  procedure, private :: solve_field_bperp_old
   procedure, private :: solve_field_bperp_iter
 
 end type field_b
@@ -64,15 +68,12 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
   real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
-  integer, dimension(2) :: nd, ndp, noff
+  integer :: dim, i, nrp
   character(len=20), save :: sname = "init_field_b"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd = gp%get_nd()
-  ndp = gp%get_ndp()
-  noff = gp%get_noff()
+  nrp = gp%get_ndp(1)
 
   select case ( part_shape )
   
@@ -97,7 +98,9 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
 
   ! initialize solver
   select case ( entity )
+
   case ( p_entity_plasma )
+
     allocate( this%solver_bz( 0:num_modes ) )
     allocate( this%solver_bperp_iter( 0:num_modes ) )
     do i = 0, num_modes
@@ -105,15 +108,35 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
         stype=p_hypre_cycred, tol=iter_tol )
       call this%solver_bperp_iter(i)%new( pp, gp, i, dr, kind=p_fk_bperp_iter, &
         stype=p_hypre_amg, tol=iter_tol )
-    enddo 
+    enddo
+
+    allocate( this%buf(4*nrp) )
+    allocate( this%buf_re(nrp), this%buf_im(nrp) )
+
+  case ( p_entity_beam_old )
+
+    allocate( this%solver_bperp( 0:num_modes ) )
+    do i = 0, num_modes
+      call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp_old, &
+        stype=p_hypre_amg, tol=iter_tol )
+    enddo
+
+    allocate( this%buf( nrp*4 ) )
+
   case ( p_entity_beam )
+
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp, &
-        stype=p_hypre_amg, tol=iter_tol )
+        stype=p_hypre_cycred, tol=iter_tol )
     enddo
+
+    allocate( this%buf_re(nrp), this%buf_im(nrp) )
+
   case default
+
     call write_err( 'Invalid field entity type.' )
+
   end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -172,7 +195,6 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'set source' )
 
   nrp = jay_re%get_ndp(1)
   idr = 1.0 / this%dr
@@ -182,21 +204,21 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   idproc = jay_re%pp%getlidproc()
   
   f1_re => jay_re%get_f1()
-  if ( .not. associated( this%buf_re ) ) then
-    allocate( this%buf_re( nrp ) )
-  elseif ( size(this%buf_re) < nrp ) then
-    deallocate( this%buf_re )
-    allocate( this%buf_re( nrp ) )
-  endif
+  ! if ( .not. associated( this%buf_re ) ) then
+  !   allocate( this%buf_re( nrp ) )
+  ! elseif ( size(this%buf_re) < nrp ) then
+  !   deallocate( this%buf_re )
+  !   allocate( this%buf_re( nrp ) )
+  ! endif
 
   if ( present(jay_im) ) then
     f1_im => jay_im%get_f1()
-    if ( .not. associated( this%buf_im ) ) then
-      allocate( this%buf_im( nrp ) )
-    elseif ( size(this%buf_im) < nrp ) then
-      deallocate( this%buf_im )
-      allocate( this%buf_im( nrp ) )
-    endif
+    ! if ( .not. associated( this%buf_im ) ) then
+    !   allocate( this%buf_im( nrp ) )
+    ! elseif ( size(this%buf_im) < nrp ) then
+    !   deallocate( this%buf_im )
+    !   allocate( this%buf_im( nrp ) )
+    ! endif
   endif
 
   this%buf_re = 0.0
@@ -264,12 +286,11 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
   endif
 
-  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bz
 
-subroutine set_source_bperp( this, mode, q_re, q_im )
+subroutine set_source_bperp_old( this, mode, q_re, q_im )
 
   implicit none
 
@@ -281,10 +302,9 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   integer :: i, nrp, idproc, nvp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, a1, a2, a3, b, ir
-  character(len=20), save :: sname = 'set_source_bperp'
+  character(len=20), save :: sname = 'set_source_bperp_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'set source' )
 
   idproc = q_re%pp%getlidproc()
   nvp = q_re%pp%getlnvp()
@@ -294,9 +314,9 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   idrh = 0.5 * idr
   
   f1_re => q_re%get_f1()
-  if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nrp*4 ) )
-  endif
+  ! if ( .not. associated( this%buf ) ) then
+  !   allocate( this%buf( nrp*4 ) )
+  ! endif
 
   if ( present(q_im) ) then
     f1_im => q_im%get_f1()
@@ -357,7 +377,66 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
 
   endif
 
-  call stop_tprof( 'set source' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine set_source_bperp_old
+
+subroutine set_source_bperp( this, mode, q_re, q_im )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( ufield ), intent(in) :: q_re
+  class( ufield ), intent(in), optional :: q_im
+  integer, intent(in) :: mode
+
+  integer :: i, nrp, idproc, nvp, noff
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real :: idrh, idr, a1, a2, a3, b, ir
+  character(len=20), save :: sname = 'set_source_bperp'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  idproc = q_re%pp%getlidproc()
+  nvp = q_re%pp%getlnvp()
+  nrp = q_re%get_ndp(1)
+  noff = q_re%get_noff(1)
+  idr = 1.0 / this%dr
+  idrh = 0.5 * idr
+  
+  f1_re => q_re%get_f1()
+  ! if ( .not. associated( this%buf_re ) ) then
+  !   allocate( this%buf_re( nrp ) )
+  ! elseif ( size(this%buf_re) < nrp ) then
+  !   deallocate( this%buf_re )
+  !   allocate( this%buf_re( nrp ) )
+  ! endif
+
+  if ( present(q_im) ) then
+    f1_im => q_im%get_f1()
+    ! if ( .not. associated( this%buf_im ) ) then
+    !   allocate( this%buf_im( nrp ) )
+    ! elseif ( size(this%buf_im) < nrp ) then
+    !   deallocate( this%buf_im )
+    !   allocate( this%buf_im( nrp ) )
+    ! endif
+  endif
+
+  this%buf_re = 0.0
+  if ( present(q_im) ) this%buf_im = 0.0
+  if ( mode == 0 ) then
+    do i = 1, nrp
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+    enddo
+  elseif ( mode > 0 .and. present(q_im) ) then
+    do i = 1, nrp
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+      this%buf_im(i) = -1.0 * f1_im(1,i)
+    enddo
+  else
+    call write_err( 'Invalid input arguments!' )
+  endif
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bperp
@@ -379,7 +458,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   character(len=20), save :: sname = 'set_source_bperp_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'set source' )
 
   nvp = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
@@ -391,9 +469,9 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   f1_re => djdxi_re%get_f1()
   f2_re => jay_re%get_f1()
   f3_re => this%rf_re(mode)%get_f1()
-  if ( .not. associated( this%buf ) ) then
-    allocate( this%buf( nrp*4 ) )
-  endif
+  ! if ( .not. associated( this%buf ) ) then
+  !   allocate( this%buf( nrp*4 ) )
+  ! endif
 
   if ( present(djdxi_im) .and. present(jay_im) ) then
     f1_im => djdxi_im%get_f1()
@@ -465,7 +543,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
 
   endif
 
-  call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bperp_iter
@@ -501,7 +578,7 @@ subroutine get_solution_bz( this, mode )
 
 end subroutine get_solution_bz
 
-subroutine get_solution_bperp( this, mode )
+subroutine get_solution_bperp_old( this, mode )
 
   implicit none
 
@@ -510,7 +587,7 @@ subroutine get_solution_bperp( this, mode )
 
   integer :: i, nd1p
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  character(len=20), save :: sname = 'get_solution_bperp'
+  character(len=20), save :: sname = 'get_solution_bperp_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -528,6 +605,141 @@ subroutine get_solution_bperp( this, mode )
       f1_im(1,i) = this%buf(4*i-2)
       f1_im(2,i) = this%buf(4*i)
     enddo
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine get_solution_bperp_old
+
+subroutine get_solution_bperp( this, mode )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  integer, intent(in) :: mode
+
+  integer :: i, nrp, idproc, nvp, noff, dtype, ierr, comm, msgid1, msgid2, stat
+  real :: idr, idrh, ir
+  real, dimension(2), save :: lbuf, ubuf
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution_bperp'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nrp    = this%rf_re(mode)%get_ndp(1)
+  idproc = this%rf_re(mode)%pp%getlidproc()
+  nvp    = this%rf_re(mode)%pp%getlnvp()
+  noff   = this%rf_re(mode)%get_noff(1)
+  comm   = this%rf_re(mode)%pp%getlgrp()
+  dtype  = this%rf_re(mode)%pp%getmreal()
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+
+  lbuf = 0.0; ubuf = 0.0
+
+  ! copy the guard cell of buffer
+
+  ! forward message passing
+  ! receiver
+  if ( idproc > 0 ) then
+    call MPI_IRECV( lbuf(1), 1, dtype, idproc-1, 1, comm, msgid1, ierr )
+    call MPI_IRECV( lbuf(2), 1, dtype, idproc-1, 2, comm, msgid2, ierr )
+  endif
+  ! sender
+  if ( idproc < nvp-1 ) then
+    call MPI_SEND( this%buf_re(nrp), 1, dtype, idproc+1, 1, comm, ierr )
+    call MPI_SEND( this%buf_im(nrp), 1, dtype, idproc+1, 2, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( idproc > 0 ) then
+    call MPI_WAIT( msgid1, stat, ierr )
+    call MPI_WAIT( msgid2, stat, ierr )
+  endif
+
+
+  ! backward message passing
+  ! receiver
+  if ( idproc < nvp-1 ) then
+    call MPI_IRECV( ubuf(1), 1, dtype, idproc+1, 1, comm, msgid1, ierr )
+    call MPI_IRECV( ubuf(2), 1, dtype, idproc+1, 2, comm, msgid2, ierr )
+  endif
+  ! sender
+  if ( idproc > 0 ) then
+    call MPI_SEND( this%buf_re(1), 1, dtype, idproc-1, 1, comm, ierr )
+    call MPI_SEND( this%buf_im(1), 1, dtype, idproc-1, 2, comm, ierr )
+  endif
+  ! wait receiving finish
+  if ( idproc < nvp-1 ) then
+    call MPI_WAIT( msgid1, stat, ierr )
+    call MPI_WAIT( msgid2, stat, ierr )
+  endif
+
+
+  if ( mode == 0 ) then
+
+    f1_re => this%rf_re(mode)%get_f1()
+    do i = 2, nrp-1
+      ir = idr / ( real(i+noff) - 0.5 )
+      f1_re(1,i) = 0.0
+      f1_re(2,i) = -idrh * ( this%buf_re(i+1) - this%buf_re(i-1) )
+    enddo
+    
+    if ( idproc == 0 ) then
+      f1_re(1,1) = 0.0
+      f1_re(2,1) = -idrh * ( -3.0 * this%buf_re(1) + 4.0 * this%buf_re(2) - this%buf_re(3) )
+    else
+      f1_re(1,1) = 0.0
+      f1_re(2,1) = -idrh * ( this%buf_re(2) - lbuf(1) )
+    endif
+
+    if ( idproc == nvp-1 ) then
+      f1_re(1,nrp) = 0.0
+      f1_re(2,nrp) = -idrh * ( 3.0 * this%buf_re(nrp) - 4.0 * this%buf_re(nrp-1) + this%buf_re(nrp-2) )
+    else
+      f1_re(1,nrp) = 0.0
+      f1_re(2,nrp) = -idrh * ( ubuf(1) - this%buf_re(nrp-1) )
+    endif
+
+  else
+
+    f1_re => this%rf_re(mode)%get_f1()
+    f1_im => this%rf_im(mode)%get_f1()
+    do i = 2, nrp-1
+      ir = idr / ( real(i+noff) - 0.5 )
+      f1_re(1,i) = -ir * mode * this%buf_im(i)
+      f1_re(2,i) = -idrh * ( this%buf_re(i+1) - this%buf_re(i-1) )
+      f1_im(1,i) = ir * mode * this%buf_re(i)
+      f1_im(2,i) = -idrh * ( this%buf_im(i+1) - this%buf_im(i-1) )
+    enddo
+
+    if ( idproc == 0 ) then
+      ir = 2.0 * idr
+      f1_re(1,1) = -ir * mode * this%buf_im(1)
+      f1_re(2,1) = -idrh * ( -3.0 * this%buf_re(1) + 4.0 * this%buf_re(2) - this%buf_re(3) )
+      f1_im(1,1) = ir * mode * this%buf_re(1)
+      f1_im(2,1) = -idrh * ( -3.0 * this%buf_im(1) + 4.0 * this%buf_im(2) - this%buf_im(3) )
+    else
+      ir = idr / ( real(1+noff) - 0.5 )
+      f1_re(1,1) = -ir * mode * this%buf_im(1)
+      f1_re(2,1) = -idrh * ( this%buf_re(2) - lbuf(1) )
+      f1_im(1,1) = ir * mode * this%buf_re(1)
+      f1_im(2,1) = -idrh * ( this%buf_im(2) - lbuf(2) )
+    endif
+
+    if ( idproc == nvp-1 ) then
+      ir = idr / ( real(nrp+noff) - 0.5 )
+      f1_re(1,nrp) = -ir * mode * this%buf_im(nrp)
+      f1_re(2,nrp) = -idrh * ( 3.0 * this%buf_re(nrp) - 4.0 * this%buf_re(nrp-1) + this%buf_re(nrp-2) )
+      f1_im(1,nrp) = ir * mode * this%buf_re(nrp)
+      f1_im(2,nrp) = -idrh * ( 3.0 * this%buf_im(nrp) - 4.0 * this%buf_im(nrp-1) + this%buf_im(nrp-2) )
+    else
+      ir = idr / ( real(nrp+noff) - 0.5 )
+      f1_re(1,nrp) = -ir * mode * this%buf_im(nrp)
+      f1_re(2,nrp) = -idrh * ( ubuf(1) - this%buf_re(nrp-1) )
+      f1_im(1,nrp) = ir * mode * this%buf_re(nrp)
+      f1_im(2,nrp) = -idrh * ( ubuf(2) - this%buf_im(nrp-1) )
+    endif
+
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -610,6 +822,47 @@ subroutine solve_field_bz( this, jay )
 
 end subroutine solve_field_bz
 
+subroutine solve_field_bperp_old( this, rho )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( field_rho ), intent(inout) :: rho
+
+  type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
+  integer :: i
+  character(len=20), save :: sname = 'solve_field_bperp_old'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve beam bperp (old)' )
+
+  ! call rho%copy_gc_f1()
+
+  rho_re => rho%get_rf_re()
+  rho_im => rho%get_rf_im()
+
+  do i = 0, this%num_modes
+
+    if ( i == 0 ) then
+      call this%set_source_bperp_old( i, rho_re(i) )
+      call this%solver_bperp(i)%solve( this%buf )
+      call this%get_solution_bperp_old(i)
+      cycle
+    endif
+
+    call this%set_source_bperp_old( i, rho_re(i), rho_im(i) )
+    call this%solver_bperp(i)%solve( this%buf )
+    call this%get_solution_bperp_old(i)
+
+  enddo
+
+  call this%copy_gc_f1()
+
+  call stop_tprof( 'solve beam bperp (old)' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine solve_field_bperp_old
+
 subroutine solve_field_bperp( this, rho )
 
   implicit none
@@ -633,13 +886,14 @@ subroutine solve_field_bperp( this, rho )
 
     if ( i == 0 ) then
       call this%set_source_bperp( i, rho_re(i) )
-      call this%solver_bperp(i)%solve( this%buf )
+      call this%solver_bperp(i)%solve( this%buf_re )
       call this%get_solution_bperp(i)
       cycle
     endif
 
     call this%set_source_bperp( i, rho_re(i), rho_im(i) )
-    call this%solver_bperp(i)%solve( this%buf )
+    call this%solver_bperp(i)%solve( this%buf_re )
+    call this%solver_bperp(i)%solve( this%buf_im )
     call this%get_solution_bperp(i)
 
   enddo

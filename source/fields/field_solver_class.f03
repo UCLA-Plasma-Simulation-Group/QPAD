@@ -88,7 +88,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
   select case ( this%kind )
 
-  case ( p_fk_psi, p_fk_ez, p_fk_bz )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
 
     call this%set_struct_grid( pp, gp )
     call this%set_struct_stencil()
@@ -102,7 +102,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
 
     call this%set_struct_solver( pp )
 
-  case ( p_fk_bperp, p_fk_bperp_iter )
+  case ( p_fk_bperp_old, p_fk_bperp_iter )
 
     call this%set_ij_matrix( pp, gp, dr )
 
@@ -136,13 +136,13 @@ subroutine end_field_solver( this )
   if ( associated(HYPRE_BUF) ) deallocate( HYPRE_BUF )
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_bz, p_fk_ez )
+  case ( p_fk_psi, p_fk_bz, p_fk_ez, p_fk_bperp )
     call HYPRE_StructGridDestroy( this%grid, ierr )
     call HYPRE_StructStencilDestroy( this%stencil, ierr )
     call HYPRE_StructVectorDestroy( this%b, ierr )
     call HYPRE_StructVectorDestroy( this%x, ierr )
     call HYPRE_StructMatrixDestroy( this%A, ierr )
-  case ( p_fk_bperp_iter, p_fk_bperp )
+  case ( p_fk_bperp_iter, p_fk_bperp_old )
     call HYPRE_IJMatrixDestroy( this%A, ierr )
     call HYPRE_IJVectorDestroy( this%b, ierr )
     call HYPRE_IJVectorDestroy( this%x, ierr )
@@ -266,10 +266,10 @@ subroutine solve_equation( this, src_sol )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_ez, p_fk_bz )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
     call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
     call HYPRE_StructVectorAssemble( this%b, ierr )
-  case ( p_fk_bperp, p_fk_bperp_iter )
+  case ( p_fk_bperp_old, p_fk_bperp_iter )
     local_size = this%iupper - this%ilower + 1
     if ( .not. associated(rows) ) then
       allocate( rows(local_size) )
@@ -301,9 +301,9 @@ subroutine solve_equation( this, src_sol )
   end select
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_ez, p_fk_bz )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
-  case ( p_fk_bperp, p_fk_bperp_iter )
+  case ( p_fk_bperp_old, p_fk_bperp_iter )
     call HYPRE_IJVectorGetValues( this%x, local_size, rows, src_sol, ierr )
   end select
 
