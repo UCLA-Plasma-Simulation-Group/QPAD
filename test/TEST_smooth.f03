@@ -78,7 +78,7 @@ do i = 1, num_modes
   call write_data( p, trim(filename), 1 )
 enddo
 
-call q%copy_gc_f1()
+! call q%copy_gc_f1()
 call q%smooth_f1() ! make sure the guard cells have been copied before smooth
 
 ! output the smoothed data
