@@ -365,7 +365,7 @@ subroutine copy_gc_f2( this )
   class( ufield ), intent(inout) :: this
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, nzp, count, dtype
+  integer :: nrp, nzp, count, dtype, lgc1, ugc1, lgc2, ugc2
   integer :: tag = 1, msgid, ierr, i, j, k
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:), allocatable :: buf1, buf2
@@ -383,9 +383,14 @@ subroutine copy_gc_f2( this )
   allocate( buf1( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
   allocate( buf2( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
 
+  lgc1 = this%gc_num(p_lower,1)
+  ugc1 = this%gc_num(p_upper,1)
+  lgc2 = this%gc_num(p_lower,2)
+  ugc2 = this%gc_num(p_upper,2)
+
   ! forward message passing
-  if ( this%gc_num(p_lower,1) > 0 ) then
-    count = this%dim * this%gc_num(p_lower,1) * size(this%f2,3)
+  if ( lgc1 > 0 ) then
+    count = this%dim * lgc1 * size(this%f2,3)
     ! receiver
     if ( idproc > 0 ) then
       buf1 = 0.0
@@ -394,9 +399,9 @@ subroutine copy_gc_f2( this )
     ! sender
     if ( idproc < nvp-1 ) then
       do k = 1, size(this%f2,3)
-        do j = 1, this%gc_num(p_lower,1)
+        do j = 1, lgc1
           do i = 1, this%dim
-            buf2(i,j,k) = this%f2( i, nrp+j, k-this%gc_num(p_lower,2) )
+            buf2(i,j,k) = this%f2( i, nrp+j-lgc1, k-lgc2 )
           enddo
         enddo
       enddo
@@ -406,9 +411,9 @@ subroutine copy_gc_f2( this )
     if ( idproc > 0 ) then
       call MPI_WAIT( msgid, stat, ierr )
       do k = 1, size(this%f2,3)
-        do j = 1, this%gc_num(p_lower,1)
+        do j = 1, lgc1
           do i = 1, this%dim
-            this%f2( i, j-this%gc_num(p_lower,1), k-this%gc_num(p_lower,2) ) = buf1(i,j,k)
+            this%f2( i, j-lgc1, k-lgc2 ) = buf1(i,j,k)
           enddo
         enddo
       enddo
@@ -416,8 +421,8 @@ subroutine copy_gc_f2( this )
   endif
 
   ! backward message passing
-  if ( this%gc_num(p_upper,1) > 0 ) then
-    count = this%dim * this%gc_num(p_upper,1) * size(this%f2,3)
+  if ( ugc1 > 0 ) then
+    count = this%dim * ugc1 * size(this%f2,3)
     ! receiver
     if ( idproc < nvp-1 ) then
       buf1 = 0.0
@@ -426,9 +431,9 @@ subroutine copy_gc_f2( this )
     ! sender
     if ( idproc > 0 ) then
       do k = 1, size(this%f2,3)
-        do j = 1, this%gc_num(p_upper,1)
+        do j = 1, ugc1
           do i = 1, this%dim
-            buf2(i,j,k) = this%f2( i, j-this%gc_num(p_upper,1), k-this%gc_num(p_lower,2) )
+            buf2(i,j,k) = this%f2( i, j, k-lgc2 )
           enddo
         enddo
       enddo
@@ -438,9 +443,9 @@ subroutine copy_gc_f2( this )
     if ( idproc < nvp-1 ) then
       call MPI_WAIT( msgid, stat, ierr )
       do k = 1, size(this%f2,3)
-        do j = 1, this%gc_num(p_upper,1)
+        do j = 1, ugc1
           do i = 1, this%dim
-            this%f2( i, nrp+j, k-this%gc_num(p_lower,2) ) = buf1(i,j,k)
+            this%f2( i, nrp+j, k-lgc2 ) = buf1(i,j,k)
           enddo
         enddo
       enddo
@@ -645,10 +650,17 @@ subroutine acopy_gc_f2( this )
         this%f2(i,1,j) = this%f2(i,1,j) + buf1(i,j)
       enddo
     enddo
+  else
+    do j = 1, nzp+1
+      do i = 1, this%dim
+        this%f2(i,1,j) = this%f2(i,1,j) - this%f2(i,0,j)
+        this%f2(i,0,j) = this%f2(i,1,j)
+      enddo
+    enddo
   endif
 
-  ! ! backward message passing
-  ! ! receiver
+  ! backward message passing
+  ! receiver
   ! if ( idproc < nvp-1 ) then
   !   buf1 = 0.0
   !   call MPI_IRECV( buf1, count, dtype, &
@@ -663,13 +675,6 @@ subroutine acopy_gc_f2( this )
   !   enddo
   !   call MPI_SEND( buf2, count, dtype, &
   !     idproc_left, tag, comm, ierr )
-  ! else
-  !     do j = 1, nzp+1
-  !       do i = 1, this%dim
-  !         this%f2(i,1,j) = this%f2(i,1,j) - this%f2(i,0,j)
-  !         this%f2(i,0,j) = this%f2(i,1,j)
-  !       enddo
-  !     enddo
   ! endif
   ! ! wait receiving finish
   ! if ( idproc < nvp-1 ) then

@@ -623,7 +623,7 @@ do i = 1, nt
       call qe%smooth_f1()
       call psi%solve(qe)
       call spe%extpsi(psi)
-      call cu%smooth_f1()
+      ! call cu%smooth_f1()
       call e%solve(cu)
       call b%solve(cu)
       do k = 1, iter

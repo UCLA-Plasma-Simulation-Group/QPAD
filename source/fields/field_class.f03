@@ -398,6 +398,8 @@ subroutine smooth_f1( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'smooth' )
 
+  if ( .not. this%smooth%if_smooth() ) return
+
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
