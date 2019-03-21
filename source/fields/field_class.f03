@@ -42,7 +42,7 @@ type :: field
   procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
   procedure :: acopy_gc_f1, acopy_gc_f2, acopy_gc_stage
 
-  procedure, private :: init_field, init_field_cp, end_field 
+  procedure, private :: init_field, init_field_cp, end_field
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
@@ -100,7 +100,6 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
   endif
 
   if ( present(smooth_type) .and. present(smooth_order) ) then
-    ! print *, smooth_type, smooth_order
     call this%smooth%new( smooth_type, smooth_order )
   else
     call this%smooth%new( p_smooth_none, 0 )
@@ -398,6 +397,8 @@ subroutine smooth_f1( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'smooth' )
+
+  call this%copy_gc_f1()
 
   do i = 0, this%num_modes
 

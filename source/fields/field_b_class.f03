@@ -836,7 +836,7 @@ subroutine solve_field_bperp_old( this, rho )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve beam bperp (old)' )
 
-  call rho%copy_gc_f1()
+  ! call rho%copy_gc_f1()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
