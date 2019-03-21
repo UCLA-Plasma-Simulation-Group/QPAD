@@ -398,8 +398,6 @@ subroutine smooth_f1( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'smooth' )
 
-  call this%copy_gc_f1()
-
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
@@ -411,6 +409,8 @@ subroutine smooth_f1( this )
     call this%smooth%smooth_f1( this%rf_im(i) )
 
   enddo
+
+  call this%copy_gc_f1()
 
   call stop_tprof( 'smooth' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )

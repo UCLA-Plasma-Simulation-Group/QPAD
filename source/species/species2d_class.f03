@@ -107,6 +107,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
    this%cu = 0.0
    call this%pd%qdp(this%qn)
    call this%qn%acopy_gc_f1()
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -144,6 +145,7 @@ subroutine renew_species2d(this,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
    call this%qn%acopy_gc_f1()
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (this%pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
