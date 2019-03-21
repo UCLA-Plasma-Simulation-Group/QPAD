@@ -100,7 +100,7 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
   endif
 
   if ( present(smooth_type) .and. present(smooth_order) ) then
-    print *, smooth_type, smooth_order
+    ! print *, smooth_type, smooth_order
     call this%smooth%new( smooth_type, smooth_order )
   else
     call this%smooth%new( p_smooth_none, 0 )

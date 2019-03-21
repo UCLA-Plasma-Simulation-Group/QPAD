@@ -380,8 +380,8 @@ subroutine copy_gc_f2( this )
   comm = this%pp%getlgrp()
   dtype = this%pp%getmreal()
 
-  if ( .not. allocated(buf1) ) allocate( buf1( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
-  if ( .not. allocated(buf2) ) allocate( buf2( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
+  allocate( buf1( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
+  allocate( buf2( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
 
   ! forward message passing
   if ( this%gc_num(p_lower,1) > 0 ) then

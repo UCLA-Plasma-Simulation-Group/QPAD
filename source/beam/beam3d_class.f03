@@ -125,6 +125,7 @@ subroutine qdeposit_beam3d(this,q)
    call this%q%as(0.0)
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f2()
+   call this%q%copy_gc_f2()
    call q%as(this%q .add. q)
 
    call stop_tprof( 'deposit 3D particles' )
