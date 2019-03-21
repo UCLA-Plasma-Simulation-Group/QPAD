@@ -388,8 +388,10 @@ subroutine write_tprof()
     endif
   enddo
 
-  write ( fid, * ) repeat( '=', 110 )
-  close( unit=fid )
+  if ( idproc == 0 ) then
+    write ( fid, * ) repeat( '=', 110 )
+    close( unit=fid )
+  endif
 
 end subroutine write_tprof
 

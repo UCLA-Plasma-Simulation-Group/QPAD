@@ -182,9 +182,6 @@ subroutine smooth_f1( this, uf )
 
   if ( nsm > 0 ) then
 
-    ! print *, "size(o,1) = ", size(o,1)
-    ! print *, "size(pf,1) = ", size(pf,1)
-    ! print *, "dim = ", dim
     do k = -nsm, nsm-1
       do i = 1, dim
         o(i,k) = pf(i, 1+k)
