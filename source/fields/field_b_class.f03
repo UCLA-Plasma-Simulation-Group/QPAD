@@ -9,6 +9,7 @@ use system
 use parallel_pipe_class
 use grid_class
 use debug_tool
+use mpi
 
 implicit none
 
@@ -29,6 +30,7 @@ type, extends( field ) :: field_b
 
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
   real, dimension(:), pointer :: buf => null()
+  real :: src_mean
 
   contains
 
@@ -188,43 +190,37 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, idproc, nvp
+  integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, k0, a1, a2, a3, b
+  real :: idrh, idr, k0, a1, a2, a3, b, dr, dr2, rmax
+  real :: local_sum, global_sum
   character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = jay_re%get_ndp(1)
-  idr = 1.0 / this%dr
-  idrh = 0.5 * idr
-  noff = jay_re%get_noff(1)
-  nvp = jay_re%pp%getlnvp()
+  nrp    = jay_re%get_ndp(1)
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+  noff   = jay_re%get_noff(1)
+  nvp    = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
+  dr     = this%dr
+  dr2    = dr*dr
+  rmax   = (jay_re%get_nd(1)-0.5) * dr
+  dtype  = jay_re%pp%getmreal()
+  comm   = jay_re%pp%getlgrp()
   
   f1_re => jay_re%get_f1()
-  ! if ( .not. associated( this%buf_re ) ) then
-  !   allocate( this%buf_re( nrp ) )
-  ! elseif ( size(this%buf_re) < nrp ) then
-  !   deallocate( this%buf_re )
-  !   allocate( this%buf_re( nrp ) )
-  ! endif
-
   if ( present(jay_im) ) then
     f1_im => jay_im%get_f1()
-    ! if ( .not. associated( this%buf_im ) ) then
-    !   allocate( this%buf_im( nrp ) )
-    ! elseif ( size(this%buf_im) < nrp ) then
-    !   deallocate( this%buf_im )
-    !   allocate( this%buf_im( nrp ) )
-    ! endif
   endif
 
   this%buf_re = 0.0
   if ( present(jay_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
     
+    local_sum = 0.0
     do i = 1, nrp
 
       k0 = real(i+noff) - 0.5
@@ -234,8 +230,11 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       a3 = -idrh * (k0+0.5) / k0
 
       this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+      local_sum = local_sum + f1_re(2,i)
 
     enddo
+    local_sum = local_sum * dr
+    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
@@ -243,11 +242,11 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     endif
     if ( idproc == nvp-1 ) then
       a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
-      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp)
+      a3 = idr**2 * (nrp+noff) / (nrp+noff-0.5)
+      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) &
+      + a3 * global_sum
+      ! this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp)
     endif
-
-    ! write( filename, '(A,I0.3,A)' ) 'src-re-0-', idproc, '.txt'
-    ! call write_data( this%buf_re, filename )
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
     
@@ -314,10 +313,6 @@ subroutine set_source_bperp_old( this, mode, q_re, q_im )
   idrh = 0.5 * idr
   
   f1_re => q_re%get_f1()
-  ! if ( .not. associated( this%buf ) ) then
-  !   allocate( this%buf( nrp*4 ) )
-  ! endif
-
   if ( present(q_im) ) then
     f1_im => q_im%get_f1()
   endif
@@ -390,44 +385,38 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, idproc, nvp, noff
+  integer :: i, nrp, noff, dtype, ierr, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, a1, a2, a3, b, ir
+  real :: local_sum, global_sum, dr, dr2, rmax
   character(len=20), save :: sname = 'set_source_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  idproc = q_re%pp%getlidproc()
-  nvp = q_re%pp%getlnvp()
-  nrp = q_re%get_ndp(1)
-  noff = q_re%get_noff(1)
-  idr = 1.0 / this%dr
-  idrh = 0.5 * idr
+  nrp   = q_re%get_ndp(1)
+  noff  = q_re%get_noff(1)
+  dr    = this%dr
+  dr2   = dr**2
+  dtype = q_re%pp%getmreal()
+  comm  = q_re%pp%getlgrp()
+  rmax  = (q_re%get_nd(1)-0.5) * dr
   
   f1_re => q_re%get_f1()
-  ! if ( .not. associated( this%buf_re ) ) then
-  !   allocate( this%buf_re( nrp ) )
-  ! elseif ( size(this%buf_re) < nrp ) then
-  !   deallocate( this%buf_re )
-  !   allocate( this%buf_re( nrp ) )
-  ! endif
-
   if ( present(q_im) ) then
     f1_im => q_im%get_f1()
-    ! if ( .not. associated( this%buf_im ) ) then
-    !   allocate( this%buf_im( nrp ) )
-    ! elseif ( size(this%buf_im) < nrp ) then
-    !   deallocate( this%buf_im )
-    !   allocate( this%buf_im( nrp ) )
-    ! endif
   endif
 
   this%buf_re = 0.0
   if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
+    local_sum = 0.0
     do i = 1, nrp
       this%buf_re(i) = -1.0 * f1_re(1,i)
+      local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
     enddo
+    ! for mode=0 the source term needs to be neutralized
+    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+    this%src_mean = global_sum * 2.0 / rmax**2
+    this%buf_re = this%buf_re - this%src_mean
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
       this%buf_re(i) = -1.0 * f1_re(1,i)
@@ -469,9 +458,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   f1_re => djdxi_re%get_f1()
   f2_re => jay_re%get_f1()
   f3_re => this%rf_re(mode)%get_f1()
-  ! if ( .not. associated( this%buf ) ) then
-  !   allocate( this%buf( nrp*4 ) )
-  ! endif
 
   if ( present(djdxi_im) .and. present(jay_im) ) then
     f1_im => djdxi_im%get_f1()
@@ -618,10 +604,11 @@ subroutine get_solution_bperp( this, mode )
   class( field_b ), intent(inout) :: this
   integer, intent(in) :: mode
 
-  integer :: i, nrp, idproc, nvp, noff, dtype, ierr, comm, msgid1, msgid2, stat
-  real :: idr, idrh, ir
+  integer :: i, nrp, idproc, nvp, noff, dtype, ierr, comm, msgid1, msgid2
+  real :: idr, idrh, ir, r2
   real, dimension(2), save :: lbuf, ubuf
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=20), save :: sname = 'get_solution_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -636,6 +623,14 @@ subroutine get_solution_bperp( this, mode )
   idrh   = 0.5 * idr
 
   lbuf = 0.0; ubuf = 0.0
+
+  ! deneutralize the potential
+  if ( mode == 0 ) then
+    do i = 1, nrp
+      r2 = ( (i+noff-0.5) * this%dr )**2
+      this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * r2
+    enddo
+  endif
 
   ! copy the guard cell of buffer
 
