@@ -132,7 +132,8 @@ subroutine set_source( this, mode, q_re, q_im )
 
   integer :: i, nrp, noff, dtype, ierr, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: local_sum, global_sum, dr, dr2, rmax
+  real, save :: local_sum, global_sum
+  real :: dr, dr2, rmax
   character(len=20), save :: sname = 'set_source'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

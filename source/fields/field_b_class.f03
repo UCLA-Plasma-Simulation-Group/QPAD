@@ -193,7 +193,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, k0, a1, a2, a3, b, dr, dr2, rmax
-  real :: local_sum, global_sum
+  real, save :: local_sum, global_sum
   character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
 
@@ -387,7 +387,8 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
 
   integer :: i, nrp, noff, dtype, ierr, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: local_sum, global_sum, dr, dr2, rmax
+  real, save :: local_sum, global_sum
+  real ::dr, dr2, rmax
   character(len=20), save :: sname = 'set_source_bperp'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -417,6 +418,7 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
     this%src_mean = global_sum * 2.0 / rmax**2
     this%buf_re = this%buf_re - this%src_mean
+    ! print *, this%src_mean
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
       this%buf_re(i) = -1.0 * f1_re(1,i)
@@ -439,21 +441,27 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   class( ufield ), intent(in), optional :: djdxi_im, jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, nvp, idproc, noff
+  integer :: i, nrp, nvp, idproc, noff, dtype, ierr, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
-  real :: idrh, idr, a1, a2, a3, b, ir
+  real :: idrh, idr, a1, a2, a3, b, ir, dr2, dr, rmax
+  real, save :: local_sum, global_sum
   character(len=20), save :: sname = 'set_source_bperp_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  dtype = jay_re%pp%getmreal()
+  comm  = jay_re%pp%getlgrp()
   nvp = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
   nrp = jay_re%get_ndp(1)
   noff = jay_re%get_noff(1)
   idr = 1.0 / this%dr
   idrh = 0.5 * idr
+  dr = this%dr
+  dr2 = dr**2
+  rmax = (jay_re%get_nd(1)-0.5) * dr
   
   f1_re => djdxi_re%get_f1()
   f2_re => jay_re%get_f1()
@@ -468,6 +476,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   this%buf = 0.0
   if ( mode == 0 ) then
     
+    local_sum = 0.0
     do i = 1, nrp
 
       ! Re(Br)
@@ -479,7 +488,12 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       ! Im(Bphi)
       this%buf(4*i) = 0.0
 
+      local_sum = local_sum + f2_re(3,i) * real(i+noff-0.5) * dr2
+
     enddo
+
+    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+    global_sum = global_sum / rmax
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
@@ -491,7 +505,9 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     if ( idproc == nvp-1 ) then
       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
       this%buf(4*nrp-2) = 0.0
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
+      - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
       this%buf(4*nrp)   = 0.0
     endif
 
