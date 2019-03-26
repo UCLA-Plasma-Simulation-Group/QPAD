@@ -71,6 +71,7 @@ do mode = 0, num_modes
 
 enddo
 
+call jay%copy_gc_f1()
 call b%solve(jay)
 
 ub_re => b%get_rf_re()
