@@ -418,7 +418,6 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
     this%src_mean = global_sum * 2.0 / rmax**2
     this%buf_re = this%buf_re - this%src_mean
-    ! print *, this%src_mean
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
       this%buf_re(i) = -1.0 * f1_re(1,i)
@@ -640,7 +639,7 @@ subroutine get_solution_bperp( this, mode )
 
   lbuf = 0.0; ubuf = 0.0
 
-  ! deneutralize the potential
+  ! add contribution from the induced current
   if ( mode == 0 ) then
     do i = 1, nrp
       r2 = ( (i+noff-0.5) * this%dr )**2
