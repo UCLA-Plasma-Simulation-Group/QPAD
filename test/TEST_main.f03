@@ -602,6 +602,8 @@ do i = 1, nt
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call beam%qdp(qb)
+   qe = 1.0
+   call qe%copy_slice(1, p_copy_1to2)
       do j = 1, nz
       ! call file_spe%new(&
       ! &timeunit = '1 / \omega_p',&
@@ -651,6 +653,7 @@ do i = 1, nt
       call e%copy_slice(j+1, p_copy_1to2)
       call bb%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
+      call qe%copy_slice(j+1, p_copy_1to2)
       write (2,*) "Step", j
    end do
 
@@ -697,7 +700,8 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   call spe%wrq(file_qe,5,5,id)
+   ! call spe%wrq(file_qe,5,5,id)
+   call qe%write_hdf5(file_qe,1,8,8,id)
 
    call file_psi(1)%new(&
    &n = i,&
