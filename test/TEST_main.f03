@@ -602,7 +602,7 @@ do i = 1, nt
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call beam%qdp(qb)
-   qe = 1.0
+   qe = 0.0
    call qe%copy_slice(1, p_copy_1to2)
       do j = 1, nz
       ! call file_spe%new(&
