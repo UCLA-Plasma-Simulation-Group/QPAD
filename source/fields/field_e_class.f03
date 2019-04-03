@@ -18,6 +18,9 @@ private
 character(len=20), parameter :: cls_name = "field_e"
 integer, parameter :: cls_level = 3
 
+! damping factor for the source
+real, dimension(:), allocatable, save :: damp_fac
+
 public :: field_e
 
 type, extends( field ) :: field_e
@@ -57,15 +60,10 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
   real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
-  integer, dimension(2) :: ndp, noff, nd
+  integer :: dim, i, nrp, idproc, nvp, ndamp
   character(len=20), save :: sname = "init_field_e"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  nd = gp%get_nd()
-  ndp = gp%get_ndp()
-  noff = gp%get_noff()
 
   select case ( part_shape )
   
@@ -102,6 +100,22 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
     call write_err( 'Invalid field entity type.' )
   end select
 
+  ! initialize damping factor
+  idproc = pp%getlidproc()
+  nvp    = pp%getlnvp()
+  nrp    = gp%get_ndp(1)
+  ndamp  = 50
+  if ( .not. allocated(damp_fac) ) then
+    allocate( damp_fac(nrp) )
+    damp_fac = 1.0
+    if ( idproc == nvp-1 ) then
+      do i = nrp-ndamp, nrp
+        ! damp_fac(i) = cos( 0.5 * pi * real(i-nrp+ndamp) / ndamp )**2
+        damp_fac(i) = 1.0
+      enddo
+    endif
+  endif
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_e
@@ -126,6 +140,7 @@ subroutine end_field_e( this )
 
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
+  if ( allocated( damp_fac ) ) deallocate( damp_fac )
 
   call this%field%del()
 
@@ -187,16 +202,19 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
       a3 =  idrh * (k0+0.5) / k0
 
       this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1)
+      this%buf_re(i) = this%buf_re(i) * damp_fac(i)
 
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf_re(1) = idr * ( f1_re(1,1) + f1_re(1,2) )
+      this%buf_re(1) = this%buf_re(1) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       a2 = idr * (nrp+noff+0.5) / (nrp+noff-0.5)
       this%buf_re(nrp) = -idr * f1_re(1,nrp-1) + a2 * f1_re(1,nrp)
+      this%buf_re(nrp) = this%buf_re(nrp) * damp_fac(nrp)
     endif
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
@@ -213,6 +231,9 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
                         b * f1_im(2,i)
       this%buf_im(i) = a1 * f1_im(1,i-1) + a2 * f1_im(1,i) + a3 * f1_im(1,i+1) + &
                         b * f1_re(2,i)
+      
+      this%buf_re(i) = this%buf_re(i) * damp_fac(i)
+      this%buf_im(i) = this%buf_im(i) * damp_fac(i)
 
     enddo
 
@@ -220,6 +241,8 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
     if ( idproc == 0 ) then
       this%buf_re(1) = idr * ( f1_re(2,1) + f1_re(2,2) - 2.0 * real(mode) * f1_im(1,1) )
       this%buf_im(1) = idr * ( f1_im(2,1) + f1_im(2,2) + 2.0 * real(mode) * f1_re(1,1) )
+      this%buf_re(1) = this%buf_re(1) * damp_fac(1)
+      this%buf_im(1) = this%buf_im(1) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       k0 = real(nrp+noff) - 0.5
@@ -227,6 +250,8 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
       b  = idr * real(mode) / k0
       this%buf_re(nrp) = -idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
       this%buf_im(nrp) = -idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
+      this%buf_re(nrp) = this%buf_re(nrp) * damp_fac(nrp)
+      this%buf_im(nrp) = this%buf_im(nrp) * damp_fac(nrp)
     endif
 
   else

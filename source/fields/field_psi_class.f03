@@ -17,6 +17,9 @@ private
 character(len=20), parameter :: cls_name = "field_psi"
 integer, parameter :: cls_level = 3
 
+! damping factor for the source
+real, dimension(:), allocatable, save :: damp_fac
+
 public :: field_psi
 
 type, extends( field ) :: field_psi
@@ -55,7 +58,7 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, iter_to
   real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp
+  integer :: dim, i, nrp, idproc, nvp, ndamp
   character(len=20), save :: sname = "init_field_psi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -92,6 +95,21 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, iter_to
 
   allocate( this%buf_re(nrp), this%buf_im(nrp) )
 
+  ! initialize damping factor
+  idproc = pp%getlidproc()
+  nvp    = pp%getlnvp()
+  ndamp  = 50
+  if ( .not. allocated(damp_fac) ) then
+    allocate( damp_fac(nrp) )
+    damp_fac = 1.0
+    if ( idproc == nvp-1 ) then
+      do i = nrp-ndamp, nrp
+        ! damp_fac(i) = cos( 0.5 * pi * real(i-nrp+ndamp) / ndamp )**2
+        damp_fac(i) = 1.0
+      enddo
+    endif
+  endif
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_psi
@@ -114,6 +132,7 @@ subroutine end_field_psi( this )
 
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
+  if ( allocated( damp_fac ) ) deallocate( damp_fac )
 
   call this%field%del()
 
@@ -156,7 +175,7 @@ subroutine set_source( this, mode, q_re, q_im )
   if ( mode == 0 ) then
     local_sum = 0.0
     do i = 1, nrp
-      this%buf_re(i) = -1.0 * f1_re(1,i)
+      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
       local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
     enddo
     ! for mode=0 the source term needs to be neutralized
@@ -165,8 +184,8 @@ subroutine set_source( this, mode, q_re, q_im )
     this%buf_re = this%buf_re - this%src_mean
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
-      this%buf_re(i) = -1.0 * f1_re(1,i)
-      this%buf_im(i) = -1.0 * f1_im(1,i)
+      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
+      this%buf_im(i) = -1.0 * damp_fac(i) * f1_im(1,i)
     enddo
   else
     call write_err( 'Invalid input arguments!' )
@@ -195,12 +214,12 @@ subroutine get_solution( this, mode )
   rmax2 = ((this%rf_re(mode)%get_nd(1)-0.5) * this%dr)**2
 
   ! deneutralize the solution
-  if ( mode == 0 ) then
-    do i = 1, nrp
-      r2 = ( (i+noff-0.5) * this%dr )**2
-      this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
-    enddo
-  endif
+  ! if ( mode == 0 ) then
+  !   do i = 1, nrp
+  !     r2 = ( (i+noff-0.5) * this%dr )**2
+  !     this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
+  !   enddo
+  ! endif
 
   f1_re => this%rf_re(mode)%get_f1()
   do i = 1, nrp
