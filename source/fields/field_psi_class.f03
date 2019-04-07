@@ -218,8 +218,8 @@ subroutine get_solution( this, mode )
   if ( mode == 0 ) then
     do i = 1, nrp
       r2 = ( (i+noff-0.5) * this%dr )**2
-      ! this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
-      this%buf_re(i) = this%buf_re(i) + 0.000000000001 * this%src_mean * (r2-rmax2)
+      this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
+      ! this%buf_re(i) = this%buf_re(i) + 0.000000000001 * this%src_mean * (r2-rmax2)
     enddo
   endif
 
