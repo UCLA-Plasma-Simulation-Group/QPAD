@@ -641,4 +641,128 @@ subroutine set_ij_matrix( this, pp, gp, dr )
 
 end subroutine set_ij_matrix
 
+! subroutine set_ij_matrix( this, pp, gp, dr )
+
+!   implicit none
+
+!   class( field_solver ), intent(inout) :: this
+!   class( parallel_pipe ), intent(in) :: pp
+!   class( grid ), intent(in) :: gp
+!   real, intent(in) :: dr
+
+!   integer :: local_size, ierr, m, m2, i, nr, noff
+!   integer :: comm
+!   integer, dimension(:), pointer :: cols
+!   real :: idr2, k0, k_minus, k_plus
+!   character(len=20), save :: sname = "set_struct_matrix"
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+!   comm = pp%getlgrp()
+!   nr = gp%get_nd(1)
+!   noff = gp%get_noff(1)
+!   this%ilower = 4*noff + 1
+!   this%iupper = 4*noff + 4*gp%get_ndp(1)
+
+!   local_size = this%iupper - this%ilower + 1
+
+!   call HYPRE_IJMatrixCreate( comm, this%ilower, this%iupper, &
+!       this%ilower, this%iupper, this%A, ierr )
+!   call HYPRE_IJMatrixSetObjectType( this%A, HYPRE_PARCSR, ierr )
+!   call HYPRE_IJMatrixInitialize( this%A, ierr )
+
+!   if ( .not. associated( HYPRE_BUF ) ) then
+!     allocate( HYPRE_BUF(3) )
+!   elseif ( size(HYPRE_BUF) < 3 ) then
+!     deallocate( HYPRE_BUF )
+!     allocate( HYPRE_BUF(3) )
+!   endif
+!   allocate( cols(3) )
+
+!   m = this%mode
+!   m2 = m*m
+!   idr2 = 1.0 / dr**2
+!   HYPRE_BUF = 0.0
+
+
+!   do i = this%ilower, this%iupper, 4
+
+!     k0 = i/4 + 0.5
+!     k_minus = k0 - 0.5
+!     k_plus  = k0 + 0.5
+
+!     ! set Re(Br)
+!     cols = (/i-4, i, i+4/)
+!     HYPRE_BUF(1) = k_minus / k0 * idr2
+!     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2) - 1.0
+!     HYPRE_BUF(3) = k_plus  / k0 * idr2
+
+!     if ( i == 1 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i, cols(2), HYPRE_BUF(2), ierr )
+!     elseif ( i == 4*nr-3 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i, cols, HYPRE_BUF, ierr )
+!     else
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols, HYPRE_BUF, ierr )
+!     endif
+
+!     ! set Im(Br)
+!     cols = (/i-3, i+1, i+5/)
+
+!     HYPRE_BUF(1) = k_minus / k0 * idr2
+!     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2) - 1.0
+!     HYPRE_BUF(3) = k_plus  / k0 * idr2
+
+!     if ( i == 1 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+1, cols(2), HYPRE_BUF(2), ierr )
+!     elseif ( i == 4*nr-3 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+1, cols, HYPRE_BUF, ierr )
+!     else
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols, HYPRE_BUF, ierr )
+!     endif
+
+!     ! set Re(Bphi)
+!     cols = (/i-2, i+2, i+6/)
+
+!     HYPRE_BUF(1) = k_minus / k0 * idr2
+!     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2) - 1.0
+!     HYPRE_BUF(3) = k_plus  / k0 * idr2
+
+!     if ( i == 1 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+2, cols(2), HYPRE_BUF(2), ierr )
+!     elseif ( i == 4*nr-3 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+2, cols, HYPRE_BUF, ierr )
+!     else
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols, HYPRE_BUF, ierr )
+!     endif
+
+!     ! set Im(Bphi)
+!     cols = (/i-1, i+3, i+7/)
+
+!     HYPRE_BUF(1) = k_minus / k0 * idr2
+!     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2) - 1.0
+!     HYPRE_BUF(3) = k_plus  / k0 * idr2
+
+!     if ( i == 1 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+3, cols(2), HYPRE_BUF(2), ierr )
+!     elseif ( i == 4*nr-3 ) then
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 2, i+3, cols, HYPRE_BUF, ierr )
+!     else
+!       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols, HYPRE_BUF, ierr )
+!     endif
+
+!   enddo
+
+!   call HYPRE_IJMatrixAssemble( this%A, ierr )
+!   call HYPRE_IJMatrixGetObject( this%A, this%par_A, ierr )
+
+!   ! if ( m == 1 ) then
+!   !   call HYPRE_IJMatrixPrint( this%A, 'A.out', ierr )
+!   ! endif
+
+!   deallocate( cols )
+
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine set_ij_matrix
+
 end module field_solver_class

@@ -602,6 +602,155 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
 
 end subroutine set_source_bperp_iter
 
+! subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
+
+!   implicit none
+
+!   class( field_b ), intent(inout) :: this
+!   class( ufield ), intent(in) :: djdxi_re, jay_re
+!   class( ufield ), intent(in), optional :: djdxi_im, jay_im
+!   integer, intent(in) :: mode
+
+!   integer :: i, nrp, nvp, idproc, noff, dtype, ierr, comm
+!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+!   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
+!   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
+!   real :: idrh, idr, a1, a2, a3, b, ir, ir2, dr2, dr, rmax
+!   real, save :: local_sum, global_sum
+!   character(len=20), save :: sname = 'set_source_bperp_iter'
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+!   dtype = jay_re%pp%getmreal()
+!   comm  = jay_re%pp%getlgrp()
+!   nvp = jay_re%pp%getlnvp()
+!   idproc = jay_re%pp%getlidproc()
+!   nrp = jay_re%get_ndp(1)
+!   noff = jay_re%get_noff(1)
+!   idr = 1.0 / this%dr
+!   idrh = 0.5 * idr
+!   dr = this%dr
+!   dr2 = dr**2
+!   rmax = (jay_re%get_nd(1)-0.5) * dr
+  
+!   f1_re => djdxi_re%get_f1()
+!   f2_re => jay_re%get_f1()
+!   f3_re => this%rf_re(mode)%get_f1()
+
+!   if ( present(djdxi_im) .and. present(jay_im) ) then
+!     f1_im => djdxi_im%get_f1()
+!     f2_im => jay_im%get_f1()
+!     f3_im => this%rf_im(mode)%get_f1()
+!   endif
+
+!   this%buf = 0.0
+!   if ( mode == 0 ) then
+    
+!     local_sum = 0.0
+!     do i = 1, nrp
+
+!       ! Re(Br)
+!       this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
+!       ! Im(Br)
+!       this%buf(4*i-2) = 0.0
+!       ! Re(Bphi)
+!       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+!       ! Im(Bphi)
+!       this%buf(4*i) = 0.0
+
+!       this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
+!       this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
+!       local_sum = local_sum + damp_fac(i) * f2_re(3,i) * real(i+noff-0.5) * dr2
+
+!     enddo
+
+!     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+!     global_sum = global_sum / rmax
+
+!     ! calculate the derivatives at the boundary and axis
+!     if ( idproc == 0 ) then
+!       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
+!       this%buf(2) = 0.0
+!       this%buf(3) = f1_re(1,1) + idrh * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
+!       this%buf(4) = 0.0
+
+!       this%buf(1) = this%buf(1) * damp_fac(1)
+!       this%buf(3) = this%buf(3) * damp_fac(1)
+!     endif
+!     if ( idproc == nvp-1 ) then
+!       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
+!       this%buf(4*nrp-2) = 0.0
+!       this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+!       ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
+!       ! - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+!       this%buf(4*nrp)   = 0.0
+
+!       this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
+!       ! this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+!       this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
+!     endif
+
+!   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
+    
+!     do i = 1, nrp
+
+!       ir = idr / (real(i+noff)-0.5)
+!       ir2 = ir**2
+
+!       this%buf(4*i-3) = -f1_re(2,i) + mode * f2_im(3,i) * ir - f3_re(1,i) - 2.0 * mode * ir2 * f3_im(2,i)
+!       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i) + 2.0 * mode * ir2 * f3_re(2,i)
+!       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i) + 2.0 * mode * ir2 * f3_im(1,i)
+!       this%buf(4*i)   = f1_im(1,i) + idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i) - 2.0 * mode * ir2 * f3_re(1,i)
+
+!       this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
+!       this%buf(4*i-2) = this%buf(4*i-2) * damp_fac(i)
+!       this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
+!       this%buf(4*i)   = this%buf(4*i)   * damp_fac(i)
+      
+!     enddo
+
+!     ! calculate the derivatives at the boundary and axis
+!     if ( idproc == 0 ) then
+!       ir = 2.0 * idr
+!       ir2 = ir**2
+!       this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1) - 2.0 * mode * ir2 * f3_im(2,1)
+!       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1) + 2.0 * mode * ir2 * f3_re(2,1)
+!       this%buf(3) = f1_re(1,1) + idr * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) &
+!                   - f3_re(2,1) + 2.0 * mode * ir2 * f3_im(1,1)
+!       this%buf(4) = f1_im(1,1) + idr * (  3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) &
+!                   - f3_im(2,1) - 2.0 * mode * ir2 * f3_re(1,1)
+
+!       this%buf(1) = this%buf(1) * damp_fac(1)
+!       this%buf(2) = this%buf(2) * damp_fac(1)
+!       this%buf(3) = this%buf(3) * damp_fac(1)
+!       this%buf(4) = this%buf(4) * damp_fac(1)
+!     endif
+!     if ( idproc == nvp-1 ) then
+!       ir = idr / (real(nrp+noff)-0.5)
+!       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp) - 2.0 * mode * ir2 * f3_im(2,nrp)
+!       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp) + 2.0 * mode * ir2 * f3_re(2,nrp)
+!       this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( -3.0 * f2_re(3,nrp) + 4.0 * f2_re(3,nrp-1) - f2_re(3,nrp-2) ) &
+!                         - f3_re(2,nrp) + 2.0 * mode * ir2 * f3_im(1,nrp)
+!       this%buf(4*nrp)   = f1_im(1,nrp) + idr * (  3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) &
+!                         - f3_im(2,nrp) - 2.0 * mode * ir2 * f3_re(1,nrp)
+      
+!       this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
+!       this%buf(4*nrp-2) = this%buf(4*nrp-2) * damp_fac(nrp)
+!       this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
+!       this%buf(4*nrp)   = this%buf(4*nrp)   * damp_fac(nrp)
+    
+!     endif
+
+!   else
+
+!     call write_err( 'Invalid input arguments!' )
+
+!   endif
+
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine set_source_bperp_iter
+
 subroutine get_solution_bz( this, mode )
 
   implicit none
