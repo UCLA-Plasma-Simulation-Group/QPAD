@@ -98,7 +98,7 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, iter_to
   ! initialize damping factor
   idproc = pp%getlidproc()
   nvp    = pp%getlnvp()
-  ndamp  = 50
+  ndamp  = 10
   if ( .not. allocated(damp_fac) ) then
     allocate( damp_fac(nrp) )
     damp_fac = 1.0

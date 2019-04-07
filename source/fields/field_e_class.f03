@@ -104,7 +104,7 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
   idproc = pp%getlidproc()
   nvp    = pp%getlnvp()
   nrp    = gp%get_ndp(1)
-  ndamp  = 50
+  ndamp  = 10
   if ( .not. allocated(damp_fac) ) then
     allocate( damp_fac(nrp) )
     damp_fac = 1.0
