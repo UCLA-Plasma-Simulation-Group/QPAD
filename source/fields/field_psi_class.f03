@@ -182,7 +182,6 @@ subroutine set_source( this, mode, q_re, q_im )
     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
     this%src_mean = global_sum * 2.0 / rmax**2
     this%buf_re = this%buf_re - this%src_mean
-    ! print *, "mean source = ", this%src_mean
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
       this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
@@ -219,7 +218,6 @@ subroutine get_solution( this, mode )
     do i = 1, nrp
       r2 = ( (i+noff-0.5) * this%dr )**2
       this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
-      ! this%buf_re(i) = this%buf_re(i) + 0.000000000001 * this%src_mean * (r2-rmax2)
     enddo
   endif
 
