@@ -113,7 +113,7 @@ call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
-call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
+call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
 pqb => qb
 
@@ -629,35 +629,35 @@ do i = 1, nt
       call e%solve(cu)
       call b%solve(cu)
       do k = 1, iter
-         bt = b + bb
-         call e%solve(bt,psi)
+         b = bt + bb
+         call e%solve(b,psi)
          cu = 0.0
          acu = 0.0
          amu = 0.0
-         call spe%amjdp(e,bt,cu,amu,acu)
+         call spe%amjdp(e,b,cu,amu,acu)
          call acu%smooth_f1()
          call amu%smooth_f1()
          call cu%smooth_f1()
          call dcu%solve(acu,amu)
-         call b%solve(dcu,cu)
+         call bt%solve(dcu,cu)
          call e%solve(cu)
          call b%solve(cu)
          if (k == iter) then
             call spe%cbq(j+1)
          end if
       end do
-      bb = b + bb
-      call e%solve(bb,psi)
-      cu = cu + dcu
-      call spe%push(e,bb)
+      b = bt + bb
+      call e%solve(b,psi)
+      cu = cu + dcu*dxi
+      call spe%push(e,b)
       call e%copy_slice(j+1, p_copy_1to2)
-      call bb%copy_slice(j+1, p_copy_1to2)
+      call b%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
       call qe%copy_slice(j+1, p_copy_1to2)
       write (2,*) "Step", j
    end do
 
-   call beam%push(e,bb,7,7,id)
+   call beam%push(e,b,7,7,id)
    call spe%renew(i*dt)
 
    call stop_tprof( 'total simulation time' )
@@ -771,7 +771,7 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   call bb%write_hdf5(file_br,1,8,8,id)
+   call b%write_hdf5(file_br,1,8,8,id)
 
    call file_bth(1)%new(&
    &n = i,&
@@ -785,7 +785,7 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   call bb%write_hdf5(file_bth,2,8,8,id)
+   call b%write_hdf5(file_bth,2,8,8,id)
 
    call file_bz(1)%new(&
    &n = i,&
@@ -799,7 +799,7 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   call bb%write_hdf5(file_bz,3,8,8,id)
+   call b%write_hdf5(file_bz,3,8,8,id)
 
 end do
 
