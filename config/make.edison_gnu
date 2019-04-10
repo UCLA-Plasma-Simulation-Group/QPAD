@@ -1,5 +1,5 @@
 # Fortran compiler configuration
-FC = ftn
+FC = ftn -O3
 FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
 # C compiler configuration
@@ -13,15 +13,16 @@ CC_OPTS = -O3 -std=c99
 PYTHON = python 
 
 # Linker configuration
-LINKER = mpif90
-LINKER_OPTS = -fopenmp -O3
-LDF = -L$(HYPRE_LIB) -lHYPRE -L$(JSON_LIB) -ljsonfortran -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz
+LINKER = ftn
+LINKER_OPTS = -fopenmp -O3 -ffree-form
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
 HYPRE_LIB = $(HOME)/codes/hypre-2.14.0/src/hypre/lib
+HYPRE_INC = $(HOME)/codes/hypre-2.14.0/src/hypre/include
 JSON_LIB = $(HOME)/json-fortran-6.3.0/build/lib
 JSON_INC = $(HOME)/json-fortran-6.3.0/build/include 
-HDF5_INC = 
+HDF5_INC =
 HDF5_LIB = 
 
 INCF = -I$(JSON_INC)

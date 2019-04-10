@@ -698,7 +698,7 @@ do i = 1, nt
       ! &t = real(j))
       ! call spe%wr(file_spe)
 
-      call qb%copy_slice(j, p_copy_2to1)
+      call qb%copy_slice(j+1, p_copy_2to1)
       call qb%smooth_f1()
       call bb%solve_old(qb)
       qe = 0.0
