@@ -14,7 +14,16 @@ private
 character(len=20), parameter :: cls_name = "ufield"
 integer, parameter :: cls_level = 4
 
+interface add_f1
+  module procedure add_f1_dim
+end interface
+
+interface add_f2
+  module procedure add_f2_dim
+end interface
+
 public :: ufield
+public :: add_f1, add_f2
 
 ! real, dimension(:), pointer, save :: buf => null() ! data buffer used for MPI
 
@@ -835,6 +844,31 @@ subroutine assign_f2( this, that )
 
 end subroutine assign_f2
 
+subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1, a2
+  class( ufield ), intent(inout) :: a3
+  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+  
+  integer :: ndim, i
+
+  ndim = size( dim1 )
+
+  if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) &
+    .and. all(a1%gc_num(:,1)==a3%gc_num(:,1))  ) then
+
+    do i = 1, ndim
+      a3%f1( dim3(i), : ) = a1%f1( dim1(i), : ) + a2%f1( dim2(i), : )
+    enddo
+
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
+end subroutine add_f1_dim
+
 function add_f1_v1( a1, a2 ) result( a3 )
 
   implicit none
@@ -890,6 +924,31 @@ function add_f1_v1( a1, a2 ) result( a3 )
   end select
 
 end function add_f1_v1
+
+subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a1, a2
+  class( ufield ), intent(inout) :: a3
+  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+  
+  integer :: ndim, i
+
+  ndim = size( dim1 )
+
+  if ( all(a1%gc_num==a2%gc_num) &
+    .and. all(a1%gc_num==a3%gc_num)  ) then
+
+    do i = 1, ndim
+      a3%f2( dim3(i),:,: ) = a1%f2( dim1(i),:,: ) + a2%f2( dim2(i),:,: )
+    enddo
+
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
+end subroutine add_f2_dim
 
 function add_f2_v1( a1, a2 ) result( a3 )
 

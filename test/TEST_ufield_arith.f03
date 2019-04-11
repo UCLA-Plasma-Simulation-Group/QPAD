@@ -10,7 +10,7 @@ type( parallel_pipe ), pointer :: pp => null()
 type( grid ), pointer :: gp => null()
 type( ufield ) :: a1, a2, a3
 
-integer :: dim = 3
+integer :: dim = 3, mode = 0
 integer :: nr = 2, nz = 2
 integer, dimension(2,2) :: gc_num = 0
 real :: k = 5.0
@@ -23,9 +23,9 @@ call pp%new(nst=1)
 call gp%new( pp, nr, nz )
 
 
-call a1%new( pp, gp, dim, gc_num, has_2d=.true. )
-call a2%new( pp, gp, dim, gc_num, has_2d=.true. )
-call a3%new( pp, gp, dim, gc_num, has_2d=.true. )
+call a1%new( pp, gp, dim, mode, gc_num, has_2d=.true. )
+call a2%new( pp, gp, dim, mode, gc_num, has_2d=.true. )
+call a3%new( pp, gp, dim, mode, gc_num, has_2d=.true. )
 
 a1%f1 = 0.5
 a2%f1 = 0.1
@@ -46,6 +46,14 @@ call a3%as( k .dot. (a1 .add. a2) .sub. a1  )
 
 print *, "a3_f1(dim=1) = ", a3%f1(1,:)
 print *, "a3_f2(dim=1) = ", a3%f2(1,:,:)
+
+call add_f1( a1, a2, a3, (/1,2/), (/2,1/), (/1,2/) )
+call add_f2( a1, a2, a3, (/1,2/), (/2,1/), (/1,2/) )
+
+print *, "a3_f1(dim=1) = ", a3%f1(1,:)
+print *, "a3_f2(dim=1) = ", a3%f2(1,:,:)
+print *, "a3_f1(dim=2) = ", a3%f1(2,:)
+print *, "a3_f2(dim=2) = ", a3%f2(2,:,:)
 
 call pp%del()
 call gp%del()
