@@ -766,9 +766,7 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   call spe%wrq(file_s,5,5,id)
-
-   call qe%write_hdf5(file_qe,1,8,8,id)
+   call qe%write_hdf5(file_s,1,8,8,id)
 
    call file_psi(1)%new(&
    &n = i,&
