@@ -12,7 +12,16 @@ implicit none
 
 private
 
+interface add_f1
+  module procedure add_f1_dim
+end interface
+
+interface add_f2
+  module procedure add_f2_dim
+end interface
+
 public :: field
+public :: add_f1, add_f2
 
 character(len=20), parameter :: cls_name = "field"
 integer, parameter :: cls_level = 3
@@ -568,6 +577,32 @@ subroutine assign_f2( this, that )
 
 end subroutine assign_f2
 
+subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
+  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  call start_tprof( 'arithmetics' )
+
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+    if (i==0) cycle
+    call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+  enddo
+
+  call stop_tprof( 'arithmetics' )
+
+end subroutine add_f1_dim
+
 function add_f1_v1( a1, a2 ) result( a3 )
 
   implicit none
@@ -768,6 +803,32 @@ function sub_f1_v2( a2, a1 ) result( a3 )
   call stop_tprof( 'arithmetics' )
 
 end function sub_f1_v2
+
+subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
+  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+
+  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  integer :: i
+
+  call start_tprof( 'arithmetics' )
+
+  ua3_re => a3%get_rf_re()
+  ua3_im => a3%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+    if (i==0) cycle
+    call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+  enddo
+
+  call stop_tprof( 'arithmetics' )
+
+end subroutine add_f2_dim
 
 function add_f2_v1( a1, a2 ) result( a3 )
 
