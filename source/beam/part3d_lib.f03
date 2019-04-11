@@ -162,7 +162,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
             part(4,npt) = tvtx*cos(part(2,npt))+tvty*sin(part(2,npt))
             part(5,npt) = -tvtx*sin(part(2,npt))+tvty*cos(part(2,npt))
             part(6,npt) = tvtz 
-            part(7,npt) = qm/tempr*dr
+            ! part(7,npt) = qm/tempr*dr
+            part(7,npt) = qm
             npt = npt + 1
          else
             ierr = ierr + 1
@@ -190,7 +191,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                part(4,npt) = -tvtx*cos(part(2,npt))-tvty*sin(part(2,npt))
                part(5,npt) = tvtx*sin(part(2,npt))-tvty*cos(part(2,npt))
                part(6,npt) = tvtz 
-               part(7,npt) = qm/tempr*dr
+               ! part(7,npt) = qm/tempr*dr
+               part(7,npt) = qm
                npt = npt + 1
             end if
          else 
@@ -268,38 +270,38 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
       end do
    end do
 
-   ! if (noff1 == 0) then
-   !    q0(1,0,:) = q0(1,0,:)/0.5
-   !    do i = 1, num_modes
-   !       qr => q_re(i)%get_f2()
-   !       qi => q_im(i)%get_f2()
-   !       qr(1,0,:) = qr(1,0,:)/0.5
-   !       qi(1,0,:) = qi(1,0,:)/0.5
-   !    end do      
-   ! else
-   !    q0(1,0,:) = q0(1,0,:)/(0.5+noff1-1)
-   !    do i = 1, num_modes
-   !       qr => q_re(i)%get_f2()
-   !       qi => q_im(i)%get_f2()
-   !       qr(1,0,:) = qr(1,0,:)/(0.5+noff1-1)
-   !       qi(1,0,:) = qi(1,0,:)/(0.5+noff1-1)
-   !    end do      
-   ! end if
+   if (noff1 == 0) then
+      q0(1,0,:) = q0(1,0,:)/0.5
+      do i = 1, num_modes
+         qr => q_re(i)%get_f2()
+         qi => q_im(i)%get_f2()
+         qr(1,0,:) = qr(1,0,:)/0.5
+         qi(1,0,:) = qi(1,0,:)/0.5
+      end do      
+   else
+      q0(1,0,:) = q0(1,0,:)/(0.5+noff1-1)
+      do i = 1, num_modes
+         qr => q_re(i)%get_f2()
+         qi => q_im(i)%get_f2()
+         qr(1,0,:) = qr(1,0,:)/(0.5+noff1-1)
+         qi(1,0,:) = qi(1,0,:)/(0.5+noff1-1)
+      end do      
+   end if
 
-   ! do i = 1, n1p+1
-   !    r = 0.5 + i + noff1 - 1
-   !    q0(1,i,:) = q0(1,i,:)/r
-   ! end do
+   do i = 1, n1p+1
+      r = 0.5 + i + noff1 - 1
+      q0(1,i,:) = q0(1,i,:)/r
+   end do
       
-   ! do i = 1, num_modes
-   !    qr => q_re(i)%get_f2()
-   !    qi => q_im(i)%get_f2()
-   !    do j = 1, n1p+1
-   !       r = 0.5 + j + noff1 - 1
-   !       qr(1,j,:) = qr(1,j,:)/r
-   !       qi(1,j,:) = qi(1,j,:)/r
-   !    end do      
-   ! end do
+   do i = 1, num_modes
+      qr => q_re(i)%get_f2()
+      qi => q_im(i)%get_f2()
+      do j = 1, n1p+1
+         r = 0.5 + j + noff1 - 1
+         qr(1,j,:) = qr(1,j,:)/r
+         qi(1,j,:) = qi(1,j,:)/r
+      end do      
+   end do
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part3d_qdeposit

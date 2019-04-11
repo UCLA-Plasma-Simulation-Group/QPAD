@@ -40,7 +40,7 @@ type fdist3d_wrap
 end type fdist3d_wrap
 type(fdist3d_wrap) :: pf3d
 type(hdf5file) :: file_spe
-type(hdf5file), dimension(:), allocatable :: file_q, file_qe, file_psi,&
+type(hdf5file), dimension(:), allocatable :: file_q, file_qe, file_psi, file_s,&
 &file_er,file_eth,file_ez,file_br,file_bth,file_bz
 type(hdf5file) :: file_beam
 
@@ -63,6 +63,7 @@ call write_dbg( 'main', 'test_species', 0, 'starts' )
 call input%get('simulation.max_mode',num_modes)
 allocate(file_q(2*num_modes+1))
 allocate(file_qe(2*num_modes+1))
+allocate(file_s(2*num_modes+1))
 allocate(file_psi(2*num_modes+1))
 allocate(file_er(2*num_modes+1))
 allocate(file_eth(2*num_modes+1))
@@ -236,6 +237,57 @@ do i = 1, num_modes
    &dataname = 'qi'//trim(s1),&
    &units = 'n_0',&
    &label = 'Charge Density',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+call file_s(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './',&
+&dataname = 's',&
+&units = 'n_0',&
+&label = '\rho - J_z',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_s(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'sr'//trim(s1),&
+   &units = 'n_0',&
+   &label = '\rho - J_z',&
+   &n = 0,&
+   &t = 0.0)
+   call file_qe(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './',&
+   &dataname = 'si'//trim(s1),&
+   &units = 'n_0',&
+   &label = '\rho - J_z',&
    &n = 0,&
    &t = 0.0)
 end do
@@ -617,7 +669,7 @@ do i = 1, nt
       ! &t = real(j))
       ! call spe%wr(file_spe)
 
-      call qb%copy_slice(j, p_copy_2to1)
+      call qb%copy_slice(j+1, p_copy_2to1)
       call qb%smooth_f1()
       call bb%solve_old(qb)
       qe = 0.0
@@ -700,7 +752,22 @@ do i = 1, nt
       &n = i,&
       &t = i*dt)
    end do   
-   ! call spe%wrq(file_qe,5,5,id)
+   call spe%wrq(file_qe,5,5,id)
+
+   call file_s(1)%new(&
+   &n = i,&
+   &t = i*dt)
+   
+   do j = 1, num_modes
+      call file_s(2*j)%new(&
+      &n = i,&
+      &t = i*dt)
+      call file_s(2*j+1)%new(&
+      &n = i,&
+      &t = i*dt)
+   end do   
+   call spe%wrq(file_s,5,5,id)
+
    call qe%write_hdf5(file_qe,1,8,8,id)
 
    call file_psi(1)%new(&

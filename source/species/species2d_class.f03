@@ -341,13 +341,10 @@ subroutine cbq_species2d(this,pos)
    character(len=18), save :: sname = 'cpq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   ! call this%q%add(this%q,this%cu,(/1/),(/1/),(/3/))
-   ! call this%q%fftrk(1)
-   ! call this%q%smooth(this%q)
-   ! call this%q%fftkr(1)
-   ! call this%q%cb(this%q3,pos,(/1/),(/1/))
+   this%q = this%q + this%cu
+   call this%q%smooth_f1()
    call this%q%copy_slice(pos,p_copy_1to2)
-call write_dbg(cls_name, sname, cls_level, 'ends')
+   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine cbq_species2d
 !      
