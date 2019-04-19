@@ -2,6 +2,7 @@ program test_main
 
 use parallel_pipe_class
 use grid_class
+use field_class
 use field_e_class
 use field_src_class
 use field_b_class
@@ -710,7 +711,8 @@ do i = 1, nt
       call e%solve(cu)
       call b%solve(cu)
       do k = 1, iter
-         b = bt + bb
+         ! b = bt + bb
+         call add_f1( bt, bb, b )
          call e%solve(b,psi)
          cu = 0.0
          acu = 0.0
@@ -727,9 +729,12 @@ do i = 1, nt
             call spe%cbq(j+1)
          end if
       end do
-      b = bt + bb
+      ! b = bt + bb
+      call add_f1( bt, bb, b )
       call e%solve(b,psi)
-      cu = cu + dcu*dxi
+      ! cu = cu + dcu*dxi
+      call dot_f1( dxi, dcu )
+      call add_f1( dcu, cu )
       call spe%push(e,b)
       call e%copy_slice(j+1, p_copy_1to2)
       call b%copy_slice(j+1, p_copy_1to2)

@@ -15,37 +15,36 @@ character(len=20), parameter :: cls_name = "ufield"
 integer, parameter :: cls_level = 4
 
 interface add_f1
-  module procedure add_f1_dim
-  module procedure add_f1_all
+  module procedure add_f1_binary
+  module procedure add_f1_binary_dim
+  module procedure add_f1_unitary
+  module procedure add_f1_unitary_dim
 end interface
 
 interface add_f2
-  module procedure add_f2_dim
-  module procedure add_f2_all
+  module procedure add_f2_binary
+  module procedure add_f2_unitary
 end interface
 
 interface sub_f1
-  module procedure add_f1_dim
-  module procedure add_f1_all
+  module procedure sub_f1_binary
+  module procedure sub_f1_binary_dim
+  module procedure sub_f1_unitary
+  module procedure sub_f1_unitary_dim
 end interface
 
 interface sub_f2
-  module procedure add_f2_dim
-  module procedure add_f2_all
+  module procedure sub_f2_binary
+  module procedure sub_f2_unitary
 end interface
 
 interface dot_f1
-  module procedure add_f1_dim
-  module procedure add_f1_all
+  module procedure dot_f1_unitary
 end interface
 
-interface dot_f2
-  module procedure add_f2_dim
-  module procedure add_f2_all
-end interface
 
 public :: ufield
-public :: add_f1, add_f2, sub_f1, sub_f2, dot_f1, dot_f2
+public :: add_f1, add_f2, sub_f1, sub_f2, dot_f1
 
 ! real, dimension(:), pointer, save :: buf => null() ! data buffer used for MPI
 
@@ -85,12 +84,12 @@ type :: ufield
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
-  generic :: operator(+)     => add_f1_v1, add_f1_v2
-  generic :: operator(-)     => sub_f1_v1, sub_f1_v2
-  generic :: operator(*)     => dot_f1_v1, dot_f1_v2
-  generic :: operator(.add.) => add_f2_v1, add_f2_v2
-  generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
-  generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
+  ! generic :: operator(+)     => add_f1_v1, add_f1_v2
+  ! generic :: operator(-)     => sub_f1_v1, sub_f1_v2
+  ! generic :: operator(*)     => dot_f1_v1, dot_f1_v2
+  ! generic :: operator(.add.) => add_f2_v1, add_f2_v2
+  ! generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
+  ! generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
 
   procedure, private :: init_ufield, init_ufield_cp, end_ufield
   procedure, private :: get_nd_all, get_nd_dim
@@ -100,12 +99,12 @@ type :: ufield
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
-  procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
-  procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
-  procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
-  procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
-  procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
-  procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
+  ! procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
+  ! procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
+  ! procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
+  ! procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
+  ! procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
+  ! procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
   procedure, private :: assign_f1, assign_f2
 
 end type ufield
@@ -866,7 +865,7 @@ subroutine assign_f2( this, that )
 
 end subroutine assign_f2
 
-subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
   implicit none
 
@@ -889,9 +888,33 @@ subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
     call write_err( "guard cells not matched!" )
   endif
 
-end subroutine add_f1_dim
+end subroutine add_f1_binary_dim
 
-subroutine add_f1_all( a1, a2, a3 )
+subroutine add_f1_unitary_dim( a, b, adim, bdim )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
+  integer, intent(in), dimension(:) :: adim, bdim
+  
+  integer :: ndim, i
+
+  ndim = size( adim )
+
+  if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
+
+    do i = 1, ndim
+      b%f1( bdim(i), : ) = b%f1( bdim(i), : ) + a%f1( adim(i), : )
+    enddo
+
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
+end subroutine add_f1_unitary_dim
+
+subroutine add_f1_binary( a1, a2, a3 )
 
   implicit none
 
@@ -949,9 +972,36 @@ subroutine add_f1_all( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine add_f1_all
+end subroutine add_f1_binary
 
-subroutine sub_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine add_f1_unitary( a, b )
+
+  implicit none
+
+  class( * ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
+  
+  select type (a)
+
+    type is (real)
+
+      b%f1 = b%f1 + a
+
+    class is (ufield)
+
+      if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
+        b%f1 = b%f1 + a%f1
+      else
+        call write_err( "guard cells not matched!" )
+      endif
+
+    class default
+      call write_err( "Invalid argument type!" )
+  end select
+
+end subroutine add_f1_unitary
+
+subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
   implicit none
 
@@ -974,9 +1024,33 @@ subroutine sub_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
     call write_err( "guard cells not matched!" )
   endif
 
-end subroutine sub_f1_dim
+end subroutine sub_f1_binary_dim
 
-subroutine sub_f1_all( a1, a2, a3 )
+subroutine sub_f1_unitary_dim( a, b, adim, bdim )
+
+  implicit none
+
+  class( ufield ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
+  integer, intent(in), dimension(:) :: adim, bdim
+  
+  integer :: ndim, i
+
+  ndim = size( adim )
+
+  if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
+
+    do i = 1, ndim
+      b%f1( bdim(i), : ) = b%f1( bdim(i), : ) - a%f1( adim(i), : )
+    enddo
+
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
+end subroutine sub_f1_unitary_dim
+
+subroutine sub_f1_binary( a1, a2, a3 )
 
   implicit none
 
@@ -1034,119 +1108,63 @@ subroutine sub_f1_all( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine sub_f1_all
+end subroutine sub_f1_binary
 
-subroutine dot_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
-  integer, intent(in), dimension(:) :: dim1, dim2, dim3
-  
-  integer :: ndim, i
-
-  ndim = size( dim1 )
-
-  if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) &
-    .and. all(a1%gc_num(:,1)==a3%gc_num(:,1))  ) then
-
-    do i = 1, ndim
-      a3%f1( dim3(i), : ) = a1%f1( dim1(i), : ) * a2%f1( dim2(i), : )
-    enddo
-
-  else
-    call write_err( "guard cells not matched!" )
-  endif
-
-end subroutine dot_f1_dim
-
-subroutine dot_f1_all( a1, a2, a3 )
+subroutine sub_f1_unitary( a, b )
 
   implicit none
 
-  class( * ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
+  class( * ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
   
-  select type (a1)
+  select type (a)
 
     type is (real)
 
-      select type (a2)
-
-        type is (real)
-
-          a3%f1 = a1 * a2
-
-        class is (ufield)
-
-          if ( all(a2%gc_num(:,1)==a3%gc_num(:,1)) ) then
-            a3%f1 = a1 * a2%f1
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class default
-          call write_err( "Invalid argument type!" )
-      end select
+      b%f1 = b%f1 - a
 
     class is (ufield)
 
-      select type (a2)
-
-        type is (real)
-
-          if ( all(a1%gc_num(:,1)==a3%gc_num(:,1)) ) then
-            a3%f1 = a1%f1 * a2
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class is (ufield)
-
-          if ( all(a1%gc_num(:,1)==a3%gc_num(:,1)) .and. &
-               all(a2%gc_num(:,1)==a3%gc_num(:,1)) ) then
-            a3%f1 = a1%f1 * a2%f1
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class default
-          call write_err( "Invalid argument type!" )
-      end select
+      if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
+        b%f1 = b%f1 - a%f1
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
     class default
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine dot_f1_all
+end subroutine sub_f1_unitary
 
-subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine dot_f1_unitary( a, b )
 
   implicit none
 
-  class( ufield ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
-  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+  class( * ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
   
-  integer :: ndim, i
+  select type (a)
 
-  ndim = size( dim1 )
+    type is (real)
 
-  if ( all(a1%gc_num==a2%gc_num) &
-    .and. all(a1%gc_num==a3%gc_num)  ) then
+      b%f1 = b%f1 * a
 
-    do i = 1, ndim
-      a3%f2( dim3(i),:,: ) = a1%f2( dim1(i),:,: ) + a2%f2( dim2(i),:,: )
-    enddo
+    class is (ufield)
 
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+      if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
+        b%f1 = b%f1 * a%f1
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
-end subroutine add_f2_dim
+    class default
+      call write_err( "Invalid argument type!" )
+  end select
 
-subroutine add_f2_all( a1, a2, a3 )
+end subroutine dot_f1_unitary
+
+subroutine add_f2_binary( a1, a2, a3 )
 
   implicit none
 
@@ -1204,34 +1222,36 @@ subroutine add_f2_all( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine add_f2_all
+end subroutine add_f2_binary
 
-subroutine sub_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine add_f2_unitary( a, b )
 
   implicit none
 
-  class( ufield ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
-  integer, intent(in), dimension(:) :: dim1, dim2, dim3
+  class( * ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
   
-  integer :: ndim, i
+  select type (a)
 
-  ndim = size( dim1 )
+    type is (real)
 
-  if ( all(a1%gc_num==a2%gc_num) &
-    .and. all(a1%gc_num==a3%gc_num)  ) then
+      b%f2 = b%f2 + a
 
-    do i = 1, ndim
-      a3%f2( dim3(i),:,: ) = a1%f2( dim1(i),:,: ) - a2%f2( dim2(i),:,: )
-    enddo
+    class is (ufield)
 
-  else
-    call write_err( "guard cells not matched!" )
-  endif
+      if ( all(a%gc_num==b%gc_num) ) then
+        b%f2 = b%f2 + a%f2
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
-end subroutine sub_f2_dim
+    class default
+      call write_err( "Invalid argument type!" )
+  end select
 
-subroutine sub_f2_all( a1, a2, a3 )
+end subroutine add_f2_unitary
+
+subroutine sub_f2_binary( a1, a2, a3 )
 
   implicit none
 
@@ -1289,390 +1309,34 @@ subroutine sub_f2_all( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine sub_f2_all
+end subroutine sub_f2_binary
 
-subroutine dot_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
-  integer, intent(in), dimension(:) :: dim1, dim2, dim3
-  
-  integer :: ndim, i
-
-  ndim = size( dim1 )
-
-  if ( all(a1%gc_num==a2%gc_num) &
-    .and. all(a1%gc_num==a3%gc_num)  ) then
-
-    do i = 1, ndim
-      a3%f2( dim3(i),:,: ) = a1%f2( dim1(i),:,: ) * a2%f2( dim2(i),:,: )
-    enddo
-
-  else
-    call write_err( "guard cells not matched!" )
-  endif
-
-end subroutine dot_f2_dim
-
-subroutine dot_f2_all( a1, a2, a3 )
+subroutine sub_f2_unitary( a, b )
 
   implicit none
 
-  class( * ), intent(in) :: a1, a2
-  class( ufield ), intent(inout) :: a3
+  class( * ), intent(in) :: a
+  class( ufield ), intent(inout) :: b
   
-  select type (a1)
+  select type (a)
 
     type is (real)
 
-      select type (a2)
-
-        type is (real)
-
-          a3%f2 = a1 * a2
-
-        class is (ufield)
-
-          if ( all(a2%gc_num==a3%gc_num) ) then
-            a3%f2 = a1 * a2%f2
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class default
-          call write_err( "Invalid argument type!" )
-      end select
+      b%f2 = b%f2 - a
 
     class is (ufield)
 
-      select type (a2)
-
-        type is (real)
-
-          if ( all(a1%gc_num==a3%gc_num) ) then
-            a3%f2 = a1%f2 * a2
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class is (ufield)
-
-          if ( all(a1%gc_num==a3%gc_num) .and. &
-               all(a2%gc_num==a3%gc_num) ) then
-            a3%f2 = a1%f2 * a2%f2
-          else
-            call write_err( "guard cells not matched!" )
-          endif
-
-        class default
-          call write_err( "Invalid argument type!" )
-      end select
+      if ( all(a%gc_num==b%gc_num) ) then
+        b%f2 = b%f2- a%f2
+      else
+        call write_err( "guard cells not matched!" )
+      endif
 
     class default
       call write_err( "Invalid argument type!" )
   end select
 
-end subroutine dot_f2_all
-
-function add_f1_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, dim_min
-
-  allocate( a3 )
-  ! call a3%new(a1)
-
-  select type (a2)
-
-  type is (real)
-
-    call a3%new(a1)
-    a3%f1 = a1%f1 + a2
-
-  class is (ufield)
-
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-
-      dim_min = min( a1%get_dim(), a2%get_dim() )
-
-      if ( a1%get_dim() > a2%get_dim() ) then
-        call a3%new(a1)
-      else
-        call a3%new(a2)
-      endif
-
-      do i = 1, dim_min
-        a3%f1(i,:) = a1%f1(i,:) + a2%f1(i,:)
-      enddo
-
-      if ( a1%get_dim() > a2%get_dim() ) then
-        do i = dim_min+1, a1%dim
-          a3%f1(i,:) = a1%f1(i,:)
-        enddo
-      elseif ( a1%get_dim() < a2%get_dim() ) then
-        do i = dim_min+1, a2%dim
-          a3%f1(i,:) = a2%f1(i,:)
-        enddo
-      endif      
-
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function add_f1_v1
-
-function add_f2_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  select type (a2)
-  type is (real)
-    a3%f2 = a1%f2 + a2
-  class is (ufield)
-    if ( all( a1%gc_num==a2%gc_num ) ) then
-      a3%f2 = a1%f2 + a2%f2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function add_f2_v1
-
-function add_f1_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f1 = a1%f1 + a2
-    
-end function add_f1_v2
-
-function add_f2_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f2 = a1%f2 + a2
-
-end function add_f2_v2
-
-function sub_f1_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  select type (a2)
-  type is (real)
-    a3%f1 = a1%f1 - a2
-  class is (ufield)
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-      a3%f1 = a1%f1 - a2%f1
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function sub_f1_v1
-
-function sub_f2_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  select type (a2)
-  type is (real)
-    a3%f2 = a1%f2 - a2
-  class is (ufield)
-    if ( all(a1%gc_num==a2%gc_num) ) then
-      a3%f2 = a1%f2 - a2%f2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function sub_f2_v1
-
-function sub_f1_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f1 = a2 - a1%f1
-    
-end function sub_f1_v2
-
-function sub_f2_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f2 = a2 - a1%f2
-    
-end function sub_f2_v2
-
-function dot_f1_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  select type (a2)
-  type is (real)
-    a3%f1 = a1%f1 * a2
-  class is (ufield)
-    if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-      a3%f1 = a1%f1 * a2%f1
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function dot_f1_v1
-
-function dot_f2_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( ufield ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  select type (a2)
-  type is (real)
-    a3%f2 = a1%f2 * a2
-  class is (ufield)
-    if ( all(a1%gc_num==a2%gc_num) ) then
-      a3%f2 = a1%f2 * a2%f2
-    else
-      call write_err( "guard cells not matched!" )
-    endif
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-end function dot_f2_v1
-
-function dot_f1_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f1 = a1%f1 * a2
-    
-end function dot_f1_v2
-
-function dot_f2_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  real, intent(in) :: a2
-  class( ufield ), intent(in) :: a1
-  class( ufield ), allocatable :: a3
-
-  integer :: i, j, k
-
-  allocate( a3 )
-  call a3%new(a1)
-
-  a3%f2 = a1%f2 * a2
-    
-end function dot_f2_v2
+end subroutine sub_f2_unitary
 
 function get_dim( this )
 
@@ -1832,5 +1496,303 @@ function has2d( this )
   has2d = this%has_2d
 
 end function has2d
+
+! function add_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, dim_min
+
+!   allocate( a3 )
+!   ! call a3%new(a1)
+
+!   select type (a2)
+
+!   type is (real)
+
+!     call a3%new(a1)
+!     a3%f1 = a1%f1 + a2
+
+!   class is (ufield)
+
+!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
+
+!       dim_min = min( a1%get_dim(), a2%get_dim() )
+
+!       if ( a1%get_dim() > a2%get_dim() ) then
+!         call a3%new(a1)
+!       else
+!         call a3%new(a2)
+!       endif
+
+!       do i = 1, dim_min
+!         a3%f1(i,:) = a1%f1(i,:) + a2%f1(i,:)
+!       enddo
+
+!       if ( a1%get_dim() > a2%get_dim() ) then
+!         do i = dim_min+1, a1%dim
+!           a3%f1(i,:) = a1%f1(i,:)
+!         enddo
+!       elseif ( a1%get_dim() < a2%get_dim() ) then
+!         do i = dim_min+1, a2%dim
+!           a3%f1(i,:) = a2%f1(i,:)
+!         enddo
+!       endif      
+
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function add_f1_v1
+
+! function add_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   select type (a2)
+!   type is (real)
+!     a3%f2 = a1%f2 + a2
+!   class is (ufield)
+!     if ( all( a1%gc_num==a2%gc_num ) ) then
+!       a3%f2 = a1%f2 + a2%f2
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function add_f2_v1
+
+! function add_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f1 = a1%f1 + a2
+    
+! end function add_f1_v2
+
+! function add_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f2 = a1%f2 + a2
+
+! end function add_f2_v2
+
+! function sub_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   select type (a2)
+!   type is (real)
+!     a3%f1 = a1%f1 - a2
+!   class is (ufield)
+!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
+!       a3%f1 = a1%f1 - a2%f1
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function sub_f1_v1
+
+! function sub_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   select type (a2)
+!   type is (real)
+!     a3%f2 = a1%f2 - a2
+!   class is (ufield)
+!     if ( all(a1%gc_num==a2%gc_num) ) then
+!       a3%f2 = a1%f2 - a2%f2
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function sub_f2_v1
+
+! function sub_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f1 = a2 - a1%f1
+    
+! end function sub_f1_v2
+
+! function sub_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f2 = a2 - a1%f2
+    
+! end function sub_f2_v2
+
+! function dot_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   select type (a2)
+!   type is (real)
+!     a3%f1 = a1%f1 * a2
+!   class is (ufield)
+!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
+!       a3%f1 = a1%f1 * a2%f1
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function dot_f1_v1
+
+! function dot_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( ufield ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   select type (a2)
+!   type is (real)
+!     a3%f2 = a1%f2 * a2
+!   class is (ufield)
+!     if ( all(a1%gc_num==a2%gc_num) ) then
+!       a3%f2 = a1%f2 * a2%f2
+!     else
+!       call write_err( "guard cells not matched!" )
+!     endif
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+! end function dot_f2_v1
+
+! function dot_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f1 = a1%f1 * a2
+    
+! end function dot_f1_v2
+
+! function dot_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   real, intent(in) :: a2
+!   class( ufield ), intent(in) :: a1
+!   class( ufield ), allocatable :: a3
+
+!   integer :: i, j, k
+
+!   allocate( a3 )
+!   call a3%new(a1)
+
+!   a3%f2 = a1%f2 * a2
+    
+! end function dot_f2_v2
 
 end module ufield_class

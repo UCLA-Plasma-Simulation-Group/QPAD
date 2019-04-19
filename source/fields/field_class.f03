@@ -13,15 +13,35 @@ implicit none
 private
 
 interface add_f1
-  module procedure add_f1_dim
+  module procedure add_f1_binary
+  module procedure add_f1_binary_dim
+  module procedure add_f1_unitary
+  module procedure add_f1_unitary_dim
 end interface
 
 interface add_f2
-  module procedure add_f2_dim
+  module procedure add_f2_binary
+  module procedure add_f2_unitary
+end interface
+
+interface sub_f1
+  module procedure sub_f1_binary
+  module procedure sub_f1_binary_dim
+  module procedure sub_f1_unitary
+  module procedure sub_f1_unitary_dim
+end interface
+
+interface sub_f2
+  module procedure sub_f2_binary
+  module procedure sub_f2_unitary
+end interface
+
+interface dot_f1
+  module procedure dot_f1_unitary
 end interface
 
 public :: field
-public :: add_f1, add_f2
+public :: add_f1, add_f2, sub_f1, sub_f2, dot_f1
 
 character(len=20), parameter :: cls_name = "field"
 integer, parameter :: cls_level = 3
@@ -57,19 +77,19 @@ type :: field
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
-  generic :: operator(+)     => add_f1_v1, add_f1_v2
-  generic :: operator(-)     => sub_f1_v1, sub_f1_v2
-  generic :: operator(*)     => dot_f1_v1, dot_f1_v2
-  generic :: operator(.add.) => add_f2_v1, add_f2_v2
-  generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
-  generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
+  ! generic :: operator(+)     => add_f1_v1, add_f1_v2
+  ! generic :: operator(-)     => sub_f1_v1, sub_f1_v2
+  ! generic :: operator(*)     => dot_f1_v1, dot_f1_v2
+  ! generic :: operator(.add.) => add_f2_v1, add_f2_v2
+  ! generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
+  ! generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
 
-  procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
-  procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
-  procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
-  procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
-  procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
-  procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
+  ! procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
+  ! procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
+  ! procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
+  ! procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
+  ! procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
+  ! procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
   procedure, private :: assign_f1, assign_f2
 
 end type field
@@ -577,7 +597,7 @@ subroutine assign_f2( this, that )
 
 end subroutine assign_f2
 
-subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
   implicit none
 
@@ -601,210 +621,85 @@ subroutine add_f1_dim( a1, a2, a3, dim1, dim2, dim3 )
 
   call stop_tprof( 'arithmetics' )
 
-end subroutine add_f1_dim
+end subroutine add_f1_binary_dim
 
-function add_f1_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
-
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-  integer :: i
-
-  call start_tprof( 'arithmetics' )
-
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
-
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) + a2
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) + a2
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) + a2%get_rf_re(i)
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) + a2%get_rf_im(i)
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-  call stop_tprof( 'arithmetics' )
-
-end function add_f1_v1
-
-function add_f1_v2( a2, a1 ) result( a3 )
+subroutine add_f1_unitary_dim( a1, a2, dim1, dim2 )
 
   implicit none
 
   class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(inout) :: a2
+  integer, intent(in), dimension(:) :: dim1, dim2
 
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
 
   do i = 0, a1%num_modes
-    ua3_re(i) = a1%rf_re(i) + a2
+    call add_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
     if (i==0) cycle
-    ua3_im(i) = a1%rf_im(i) + a2
+    call add_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function add_f1_v2
+end subroutine add_f1_unitary_dim
 
-function dot_f1_v1( a1, a2 ) result( a3 )
+subroutine add_f1_binary( a1, a2, a3 )
 
   implicit none
 
-  class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
-
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) * a2
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) * a2
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) * a2%get_rf_re(i)
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) * a2%get_rf_im(i)
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-  call stop_tprof( 'arithmetics' )
-
-end function dot_f1_v1
-
-function dot_f1_v2( a2, a1 ) result( a3 )
-
-  implicit none
-
-  class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
-
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-  integer :: i
-
-  call start_tprof( 'arithmetics' )
-
-  allocate(a3)
-  call a3%new(a1)
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
   do i = 0, a1%num_modes
-    ua3_re(i) = a1%rf_re(i) * a2
+    call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
-    ua3_im(i) = a1%rf_im(i) * a2
+    call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function dot_f1_v2
+end subroutine add_f1_binary
 
-function sub_f1_v1( a1, a2 ) result( a3 )
-
-  implicit none
-
-  class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
-
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-  integer :: i
-
-  call start_tprof( 'arithmetics' )
-
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
-
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) - a2
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) - a2
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      ua3_re(i) = a1%rf_re(i) - a2%get_rf_re(i)
-      if (i==0) cycle
-      ua3_im(i) = a1%rf_im(i) - a2%get_rf_im(i)
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
-
-  call stop_tprof( 'arithmetics' )
-
-end function sub_f1_v1
-
-function sub_f1_v2( a2, a1 ) result( a3 )
+subroutine add_f1_unitary( a1, a2 )
 
   implicit none
 
   class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(inout) :: a2
 
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
 
   do i = 0, a1%num_modes
-    ua3_re(i) = a1%rf_re(i) - a2
+    call add_f1( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
-    ua3_im(i) = a1%rf_im(i) - a2
+    call add_f1( a1%rf_im(i), ua2_im(i) )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function sub_f1_v2
+end subroutine add_f1_unitary
 
-subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
   implicit none
 
@@ -821,214 +716,798 @@ subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
   ua3_im => a3%get_rf_im()
 
   do i = 0, a1%num_modes
-    call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+    call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
     if (i==0) cycle
-    call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+    call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end subroutine add_f2_dim
+end subroutine sub_f1_binary_dim
 
-function add_f2_v1( a1, a2 ) result( a3 )
+subroutine sub_f1_unitary_dim( a1, a2, dim1, dim2 )
 
   implicit none
 
   class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(inout) :: a2
+  integer, intent(in), dimension(:) :: dim1, dim2
 
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
 
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .add. a2%get_rf_re(i) )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .add. a2%get_rf_im(i) )
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
+  do i = 0, a1%num_modes
+    call sub_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
+    if (i==0) cycle
+    call sub_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
+  enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function add_f2_v1
+end subroutine sub_f1_unitary_dim
 
-function add_f2_v2( a2, a1 ) result( a3 )
+subroutine sub_f1_binary( a1, a2, a3 )
 
   implicit none
 
-  class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
   do i = 0, a1%num_modes
-    call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
+    call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
-    call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
+    call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function add_f2_v2
+end subroutine sub_f1_binary
 
-function dot_f2_v1( a1, a2 ) result( a3 )
+subroutine sub_f1_unitary( a1, a2 )
 
   implicit none
 
   class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(inout) :: a2
 
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
 
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .dot. a2%get_rf_re(i) )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .dot. a2%get_rf_im(i) )
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
+  do i = 0, a1%num_modes
+    call sub_f1( a1%rf_re(i), ua2_re(i) )
+    if (i==0) cycle
+    call sub_f1( a1%rf_im(i), ua2_im(i) )
+  enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function dot_f2_v1
+end subroutine sub_f1_unitary
 
-function dot_f2_v2( a2, a1 ) result( a3 )
+subroutine dot_f1_unitary( a1, a2 )
 
   implicit none
 
-  class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
+  real, intent(in) :: a1
+  class( field ), intent(inout) :: a2
+
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
+  integer :: i
+
+  call start_tprof( 'arithmetics' )
+
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
+
+  do i = 0, a2%num_modes
+    call dot_f1( a1, ua2_re(i) )
+    if (i==0) cycle
+    call dot_f1( a1, ua2_im(i) )
+  enddo
+
+  call stop_tprof( 'arithmetics' )
+
+end subroutine dot_f1_unitary
+
+subroutine add_f2_binary( a1, a2, a3 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
   do i = 0, a1%num_modes
-    call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
+    call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
-    call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
+    call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function dot_f2_v2
+end subroutine add_f2_binary
 
-function sub_f2_v1( a1, a2 ) result( a3 )
+subroutine add_f2_unitary( a1, a2 )
 
   implicit none
 
   class( field ), intent(in) :: a1
-  class(*), intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(inout) ::a2
 
-  class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
-  ua3_re => a3%get_rf_re()
-  ua3_im => a3%get_rf_im()
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
 
-  select type (a2)
-  type is (real)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .sub. a2 )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .sub. a2 )
-    enddo
-  class is (field)
-    do i = 0, a1%num_modes
-      call ua3_re(i)%as( a1%rf_re(i) .sub. a2%get_rf_re(i) )
-      if (i==0) cycle
-      call ua3_im(i)%as( a1%rf_im(i) .sub. a2%get_rf_im(i) )
-    enddo
-  class default
-    call write_err( "invalid assignment type!" )
-  end select
+  do i = 0, a1%num_modes
+    call add_f2( a1%rf_re(i), ua2_re(i) )
+    if (i==0) cycle
+    call add_f2( a1%rf_im(i), ua2_im(i) )
+  enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function sub_f2_v1
+end subroutine add_f2_unitary
 
-function sub_f2_v2( a2, a1 ) result( a3 )
+subroutine sub_f2_binary( a1, a2, a3 )
 
   implicit none
 
-  class( field ), intent(in) :: a1
-  real, intent(in) :: a2
-  class( field ), allocatable :: a3
+  class( field ), intent(in) :: a1, a2
+  class( field ), intent(inout) :: a3
 
   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
   integer :: i
 
   call start_tprof( 'arithmetics' )
 
-  allocate(a3)
-  call a3%new(a1)
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
   do i = 0, a1%num_modes
-    call ua3_re(i)%as( a2 .sub. a1%rf_re(i) )
+    call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
-    call ua3_im(i)%as( a2 .sub. a1%rf_im(i) )
+    call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
   enddo
 
   call stop_tprof( 'arithmetics' )
 
-end function sub_f2_v2
+end subroutine sub_f2_binary
+
+subroutine sub_f2_unitary( a1, a2 )
+
+  implicit none
+
+  class( field ), intent(in) :: a1
+  class( field ), intent(inout) ::a2
+
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
+  integer :: i
+
+  call start_tprof( 'arithmetics' )
+
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
+
+  do i = 0, a1%num_modes
+    call sub_f2( a1%rf_re(i), ua2_re(i) )
+    if (i==0) cycle
+    call sub_f2( a1%rf_im(i), ua2_im(i) )
+  enddo
+
+  call stop_tprof( 'arithmetics' )
+
+end subroutine sub_f2_unitary
+
+! function add_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) + a2
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) + a2
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) + a2%get_rf_re(i)
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) + a2%get_rf_im(i)
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function add_f1_v1
+
+! function add_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     ua3_re(i) = a1%rf_re(i) + a2
+!     if (i==0) cycle
+!     ua3_im(i) = a1%rf_im(i) + a2
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function add_f1_v2
+
+! function dot_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) * a2
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) * a2
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) * a2%get_rf_re(i)
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) * a2%get_rf_im(i)
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function dot_f1_v1
+
+! function dot_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     ua3_re(i) = a1%rf_re(i) * a2
+!     if (i==0) cycle
+!     ua3_im(i) = a1%rf_im(i) * a2
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function dot_f1_v2
+
+! function sub_f1_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) - a2
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) - a2
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       ua3_re(i) = a1%rf_re(i) - a2%get_rf_re(i)
+!       if (i==0) cycle
+!       ua3_im(i) = a1%rf_im(i) - a2%get_rf_im(i)
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function sub_f1_v1
+
+! function sub_f1_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     ua3_re(i) = a1%rf_re(i) - a2
+!     if (i==0) cycle
+!     ua3_im(i) = a1%rf_im(i) - a2
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function sub_f1_v2
+
+! subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1, a2
+!   class( field ), intent(inout) :: a3
+!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+!     if (i==0) cycle
+!     call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end subroutine add_f2_dim
+
+
+
+! subroutine sub_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1, a2
+!   class( field ), intent(inout) :: a3
+!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+!     if (i==0) cycle
+!     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end subroutine sub_f2_dim
+
+! subroutine sub_f2_all( a1, a2, a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1, a2
+!   class( field ), intent(inout) :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
+!     if (i==0) cycle
+!     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end subroutine sub_f2_all
+
+! subroutine dot_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1, a2
+!   class( field ), intent(inout) :: a3
+!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call dot_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
+!     if (i==0) cycle
+!     call dot_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end subroutine dot_f2_dim
+
+! subroutine dot_f2_all( a1, a2, a3 )
+
+!   implicit none
+
+!   class( * ), intent(in) :: a1, a2
+!   class( field ), intent(inout) :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a1)
+
+!   type is (real)
+
+!     select type (a2)
+
+!       type is  (real)
+
+!         do i = 0, a3%num_modes
+!           call dot_f2( a1, a2, ua3_re(i) )
+!           if (i==0) cycle
+!           call dot_f2( a1, a2, ua3_im(i) )
+!         enddo
+
+!       class is (field)
+
+!         do i = 0, a3%num_modes
+!           call dot_f2( a1, a2%rf_re(i), ua3_re(i) )
+!           if (i==0) cycle
+!           call dot_f2( a1, a2%rf_im(i), ua3_im(i) )
+!         enddo
+
+!       class default
+
+!         call write_err( "invalid assignment type!" )
+
+!     end select
+
+!   class is (field)
+
+!     select type (a2)
+
+!       type is (real)
+
+!         do i = 0, a3%num_modes
+!           call dot_f2( a1%rf_re(i), a2, ua3_re(i) )
+!           if (i==0) cycle
+!           call dot_f2( a1%rf_im(i), a2, ua3_im(i) )
+!         enddo
+
+!       class is (field)
+
+!         do i = 0, a3%num_modes
+!           call dot_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
+!           if (i==0) cycle
+!           call dot_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
+!         enddo
+
+!       class default
+
+!         call write_err( "invalid assignment type!" )
+
+!     end select
+
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end subroutine dot_f2_all
+
+! function add_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .add. a2%get_rf_re(i) )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .add. a2%get_rf_im(i) )
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function add_f2_v1
+
+! function add_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
+!     if (i==0) cycle
+!     call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function add_f2_v2
+
+! function dot_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .dot. a2%get_rf_re(i) )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .dot. a2%get_rf_im(i) )
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function dot_f2_v1
+
+! function dot_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
+!     if (i==0) cycle
+!     call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function dot_f2_v2
+
+! function sub_f2_v1( a1, a2 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   class(*), intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   select type (a2)
+!   type is (real)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .sub. a2 )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .sub. a2 )
+!     enddo
+!   class is (field)
+!     do i = 0, a1%num_modes
+!       call ua3_re(i)%as( a1%rf_re(i) .sub. a2%get_rf_re(i) )
+!       if (i==0) cycle
+!       call ua3_im(i)%as( a1%rf_im(i) .sub. a2%get_rf_im(i) )
+!     enddo
+!   class default
+!     call write_err( "invalid assignment type!" )
+!   end select
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function sub_f2_v1
+
+! function sub_f2_v2( a2, a1 ) result( a3 )
+
+!   implicit none
+
+!   class( field ), intent(in) :: a1
+!   real, intent(in) :: a2
+!   class( field ), allocatable :: a3
+
+!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
+!   integer :: i
+
+!   call start_tprof( 'arithmetics' )
+
+!   allocate(a3)
+!   call a3%new(a1)
+!   ua3_re => a3%get_rf_re()
+!   ua3_im => a3%get_rf_im()
+
+!   do i = 0, a1%num_modes
+!     call ua3_re(i)%as( a2 .sub. a1%rf_re(i) )
+!     if (i==0) cycle
+!     call ua3_im(i)%as( a2 .sub. a1%rf_im(i) )
+!   enddo
+
+!   call stop_tprof( 'arithmetics' )
+
+! end function sub_f2_v2
 
 end module field_class

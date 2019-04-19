@@ -113,7 +113,8 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,dr,dxi,&
       ! call this%q%smooth(this%q)
       call this%q%copy_slice(1,p_copy_1to2)
    end if
-   this%qn = this%qn*(-1.0)
+   ! this%qn = this%qn*(-1.0)
+   call dot_f1( -1.0, this%qn )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine init_species2d
 !
@@ -151,7 +152,8 @@ subroutine renew_species2d(this,s)
       ! call this%q%smooth(this%q)
       call this%q%copy_slice(1,p_copy_1to2)
    end if
-   this%qn = this%qn * (-1.0)
+   ! this%qn = this%qn * (-1.0)
+   call dot_f1( -1.0, this%qn )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine renew_species2d
@@ -173,7 +175,9 @@ subroutine qdp_species2d(this,q)
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f1()
    call this%q%copy_gc_f1()
-   q = this%q + q + this%qn
+   ! q = this%q + q + this%qn
+   call add_f1( this%q, q )
+   call add_f1( this%qn, q )
    
    call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -206,9 +210,13 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    call this%cu%copy_gc_f1()
    call this%dcu%copy_gc_f1()
    call this%amu%copy_gc_f1()
-   cu = cu + this%cu
-   dcu = dcu + this%dcu
-   amu = amu + this%amu
+   ! cu = cu + this%cu
+   ! dcu = dcu + this%dcu
+   ! amu = amu + this%amu
+   call add_f1( this%cu, cu )
+   call add_f1( this%dcu, dcu )
+   call add_f1( this%amu, amu )
+
 
    call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -341,7 +349,8 @@ subroutine cbq_species2d(this,pos)
    character(len=18), save :: sname = 'cpq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call add_f1(this%q,this%cu,this%q,(/1/),(/3/),(/1/))
+   ! call add_f1(this%q,this%cu,this%q,(/1/),(/3/),(/1/))
+   call add_f1( this%cu, this%q, (/3/), (/1/) )
    call this%q%smooth_f1()
    call this%q%copy_slice(pos,p_copy_1to2)
    call write_dbg(cls_name, sname, cls_level, 'ends')
