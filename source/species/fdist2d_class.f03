@@ -195,6 +195,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    t0 = 2.0*pi/ppc2 
    dr = this%dex
    den_temp = 1.0
+   ! n1p = min(n1p,220-noff1)
    if (trim(this%long_prof) == 'piecewise') then
       prof_l = size(this%fs)
       if (s<this%s(1) .or. s>this%s(prof_l)) then

@@ -40,8 +40,8 @@ type fdist3d_wrap
 end type fdist3d_wrap
 type(fdist3d_wrap) :: pf3d1, pf3d2
 type(hdf5file) :: file_spe
-type(hdf5file), dimension(:), allocatable :: file_q1, file_qe, file_psi,&
-&file_er,file_eth,file_ez,file_br,file_bth,file_bz, file_q2
+type(hdf5file), dimension(:), allocatable :: file_rjz, file_q1, file_qe, file_psi,&
+&file_er,file_eth,file_ez,file_br,file_bth,file_bz, file_q2,file_jr,file_jth,file_jz
 type(hdf5file) :: file_beam1, file_beam2
 
 type(field_rho), pointer :: pqb => null()
@@ -65,6 +65,7 @@ call input%get('simulation.max_mode',num_modes)
 allocate(file_q1(2*num_modes+1))
 allocate(file_q2(2*num_modes+1))
 allocate(file_qe(2*num_modes+1))
+allocate(file_rjz(2*num_modes+1))
 allocate(file_psi(2*num_modes+1))
 allocate(file_er(2*num_modes+1))
 allocate(file_eth(2*num_modes+1))
@@ -72,6 +73,9 @@ allocate(file_ez(2*num_modes+1))
 allocate(file_br(2*num_modes+1))
 allocate(file_bth(2*num_modes+1))
 allocate(file_bz(2*num_modes+1))
+allocate(file_jr(2*num_modes+1))
+allocate(file_jth(2*num_modes+1))
+allocate(file_jz(2*num_modes+1))
 call input%get('simulation.interpolation',shape)
 call input%get('simulation.iter',iter)
 select case (trim(shape))
@@ -114,7 +118,8 @@ call dcu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
+! call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
+call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
 call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
 pqb => qb
@@ -155,6 +160,8 @@ if (pp%getidproc() == 0) then
    call system('mkdir -p ./Beam01/Raw/')
    call system('mkdir -p ./Beam02/Raw/')
    call system('mkdir -p ./Species01/Charge/')
+   call system('mkdir -p ./Species01/Raw/')
+   call system('mkdir -p ./Fields/Rhojz/')
    call system('mkdir -p ./Fields/Psi/')
    call system('mkdir -p ./Fields/Er/')
    call system('mkdir -p ./Fields/Eth/')
@@ -162,6 +169,9 @@ if (pp%getidproc() == 0) then
    call system('mkdir -p ./Fields/Br/')
    call system('mkdir -p ./Fields/Bth/')
    call system('mkdir -p ./Fields/Bz/')
+   call system('mkdir -p ./Fields/Jr/')
+   call system('mkdir -p ./Fields/Jth/')
+   call system('mkdir -p ./Fields/Jz/')
 end if
 
 call MPI_BARRIER(pp%getlworld(),ierr)
@@ -314,6 +324,57 @@ do i = 1, num_modes
    &dataname = 'qi'//trim(s1),&
    &units = 'n_0',&
    &label = 'Charge Density',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+call file_rjz(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './Fields/Rhojz/',&
+&dataname = 'rjz0',&
+&units = 'n_0',&
+&label = '\rho - J_z',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_rjz(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Rhojz/',&
+   &dataname = 'rjz'//trim(s1),&
+   &units = 'n_0',&
+   &label = '\rho - J_z',&
+   &n = 0,&
+   &t = 0.0)
+   call file_rjz(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Rhojz/',&
+   &dataname = 'rjz'//trim(s1),&
+   &units = 'n_0',&
+   &label = '\rho - J_z',&
    &n = 0,&
    &t = 0.0)
 end do
@@ -674,10 +735,163 @@ do i = 1, num_modes
    &t = 0.0)
 end do
 
+call file_jr(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './Fields/Jr/',&
+&dataname = 'Jr0',&
+&units = 'n_pec',&
+&label = 'J_r (0 Mode)',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_jr(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jr/',&
+   &dataname = 'Jr_r'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Real Part of J_r ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+   call file_jr(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jr/',&
+   &dataname = 'Jr_i'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Imaginary Part of J_r ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+call file_jth(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './Fields/Jth/',&
+&dataname = 'Jth0',&
+&units = 'n_pec',&
+&label = 'J_\theta (0 Mode)',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_jth(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jth/',&
+   &dataname = 'Jth_r'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Real Part of J_\theta ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+   call file_jth(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jth/',&
+   &dataname = 'Jth_i'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Imaginary Part of J_\theta ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+call file_jz(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './Fields/Jz/',&
+&dataname = 'Jz0',&
+&units = 'n_pec',&
+&label = 'J_z (0 Mode)',&
+&n = 0,&
+&t = 0.0)
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_jz(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jz/',&
+   &dataname = 'Jz_r'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Real Part of J_z ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+   call file_jz(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Fields/Jz/',&
+   &dataname = 'Jz_i'//trim(s1),&
+   &units = 'n_pec',&
+   &label = 'Imaginary Part of J_z ('//trim(s1)//' Mode',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
 do i = 1, nt
 
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
+   call qe%as(0.0)
    call beam1%qdp(qb)
    call beam2%qdp(qb)
    cu = 0.0
@@ -686,29 +900,33 @@ do i = 1, nt
    bt = 0.0
    psi = 0.0
    do j = 1, nz
-      ! call file_spe%new(&
-      ! &timeunit = '1 / \omega_p',&
-      ! &dt = dxi,&
-      ! &ty = 'particles',&
-      ! &filename = './spe_',&
-      ! &dataname = 'raw',&
-      ! &units = '',&
-      ! &label = 'Plasma Raw',&
-      ! &n = j,&
-      ! &t = real(j))
-      ! call spe%wr(file_spe)
+
+      call file_spe%new(&
+      &timeunit = '1 / \omega_p',&
+      &dt = dxi,&
+      &ty = 'particles',&
+      &filename = './Species01/Raw/',&
+      &dataname = 'raw',&
+      &units = '',&
+      &label = 'Plasma Raw',&
+      &n = j,&
+      &t = real(j))
+      call spe%wr(file_spe)
 
       call qb%copy_slice(j+1, p_copy_2to1)
       call qb%smooth_f1()
-      call bb%solve_old(qb)
+      ! call bb%solve_old(qb)
+      call bb%solve(qb)
       qe = 0.0
       call spe%qdp(qe)
       call qe%smooth_f1()
+      call qe%copy_slice(j+1, p_copy_1to2)
       call psi%solve(qe)
       call spe%extpsi(psi)
       ! call cu%smooth_f1()
       call e%solve(cu)
-      call b%solve(cu)
+      ! call b%solve(cu)
+      call bt%solve(cu)
       do k = 1, iter
          b = bt + bb
          call e%solve(b,psi)
@@ -722,9 +940,11 @@ do i = 1, nt
          call dcu%solve(acu,amu)
          call bt%solve(dcu,cu)
          call e%solve(cu)
-         call b%solve(cu)
+         ! call b%solve(cu)
+         call bt%solve(cu)
          if (k == iter) then
             call spe%cbq(j+1)
+            call cu%copy_slice(j+1, p_copy_1to2)
          end if
       end do
       b = bt + bb
@@ -744,6 +964,20 @@ do i = 1, nt
    call stop_tprof( 'total simulation time' )
 
    if (mod ((i-1), ndump) == 0) then
+
+      call file_rjz(1)%new(&
+      &n = i,&
+      &t = i*dt)
+      
+      do j = 1, num_modes
+         call file_rjz(2*j)%new(&
+         &n = i,&
+         &t = i*dt)
+         call file_rjz(2*j+1)%new(&
+         &n = i,&
+         &t = i*dt)
+      end do   
+      call qe%write_hdf5(file_rjz,1,8,8,id)
 
       call file_q1(1)%new(&
       &n = i,&
@@ -908,6 +1142,49 @@ do i = 1, nt
          &t = i*dt)
       end do   
       call b%write_hdf5(file_bz,3,8,8,id)
+
+      call file_jr(1)%new(&
+      &n = i,&
+      &t = i*dt)
+      
+      do j = 1, num_modes
+         call file_jr(2*j)%new(&
+         &n = i,&
+         &t = i*dt)
+         call file_jr(2*j+1)%new(&
+         &n = i,&
+         &t = i*dt)
+      end do   
+      call cu%write_hdf5(file_jr,1,8,8,id)
+   
+      call file_jth(1)%new(&
+      &n = i,&
+      &t = i*dt)
+      
+      do j = 1, num_modes
+         call file_jth(2*j)%new(&
+         &n = i,&
+         &t = i*dt)
+         call file_jth(2*j+1)%new(&
+         &n = i,&
+         &t = i*dt)
+      end do   
+      call cu%write_hdf5(file_jth,2,8,8,id)
+   
+      call file_jz(1)%new(&
+      &n = i,&
+      &t = i*dt)
+      
+      do j = 1, num_modes
+         call file_jz(2*j)%new(&
+         &n = i,&
+         &t = i*dt)
+         call file_jz(2*j+1)%new(&
+         &n = i,&
+         &t = i*dt)
+      end do   
+      call cu%write_hdf5(file_jz,3,8,8,id)
+
    end if
 
 end do

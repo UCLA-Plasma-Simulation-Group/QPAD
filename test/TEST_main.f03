@@ -113,7 +113,7 @@ call dcu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
+call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
 call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
 pqb => qb
@@ -653,9 +653,14 @@ do i = 1, nt
 
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
+   call qe%as(0.0)
    call beam%qdp(qb)
-   qe = 0.0
    call qe%copy_slice(1, p_copy_1to2)
+   cu = 0.0
+   b = 0.0
+   e = 0.0
+   bt = 0.0
+   psi = 0.0
       do j = 1, nz
       ! call file_spe%new(&
       ! &timeunit = '1 / \omega_p',&
@@ -675,11 +680,12 @@ do i = 1, nt
       qe = 0.0
       call spe%qdp(qe)
       call qe%smooth_f1()
+      call qe%copy_slice(j+1, p_copy_1to2)      
       call psi%solve(qe)
       call spe%extpsi(psi)
       ! call cu%smooth_f1()
       call e%solve(cu)
-      call b%solve(cu)
+      call bt%solve(cu)
       do k = 1, iter
          b = bt + bb
          call e%solve(b,psi)
@@ -693,9 +699,10 @@ do i = 1, nt
          call dcu%solve(acu,amu)
          call bt%solve(dcu,cu)
          call e%solve(cu)
-         call b%solve(cu)
+         call bt%solve(cu)
          if (k == iter) then
             call spe%cbq(j+1)
+            call cu%copy_slice(j+1, p_copy_1to2)            
          end if
       end do
       b = bt + bb
@@ -705,7 +712,6 @@ do i = 1, nt
       call e%copy_slice(j+1, p_copy_1to2)
       call b%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
-      call qe%copy_slice(j+1, p_copy_1to2)
       write (2,*) "Step", j
    end do
 
