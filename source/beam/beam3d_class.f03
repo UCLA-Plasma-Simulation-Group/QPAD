@@ -175,6 +175,7 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
 
    if (.not. this%evol) then
       call write_dbg(cls_name, sname, cls_level, 'ends')
+      call stop_tprof( 'push 3D particles' )
       return
    end if
    call this%pd%push(ef,bf)
