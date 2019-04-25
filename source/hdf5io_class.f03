@@ -1074,7 +1074,13 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
        call h5sclose_f(aspace_id, ierr)
 
        do i = 1, 2
-          buff(1:tnpp) = part(i,1:(1+(tnpp-1)*dspl):dspl)
+          if (i == 1) then
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
+          else if (i == 2) then
+             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          end if
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'x'//char(iachar('0')+i), treal,&
@@ -1094,7 +1100,19 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
        enddo
 
        do i = 1, 3
-          buff(1:tnpp) = part((i+2),1:(1+(tnpp-1)*dspl):dspl)
+          if (i == 1) then
+             buff(1:tnpp) = part(3,1:((tnpp-1)*dspl+1):dspl)*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))-part(4,1:&
+             &((tnpp-1)*dspl+1):dspl)*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          else if (i == 2) then
+             buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
+             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))+part(3,1:&
+             &((tnpp-1)*dspl+1):dspl)*&
+             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          else
+             buff(1:tnpp) = part(5,1:(1+(tnpp-1)*dspl):dspl)
+          end if
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'p'//char(iachar('0')+i), treal,&

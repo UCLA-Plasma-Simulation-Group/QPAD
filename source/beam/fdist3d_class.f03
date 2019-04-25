@@ -3,6 +3,7 @@
 module fdist3d_class
 
 use parallel_pipe_class
+use field_class
 use ufield_class
 use input_class
 use part3d_lib
@@ -33,9 +34,11 @@ type, abstract :: fdist3d
    generic :: new => init_fdist3d         
    generic :: del => end_fdist3d
    generic :: dist => dist3d
+   generic :: dp => deposit_fdist3d
    procedure(ab_init_fdist3d), deferred, private :: init_fdist3d
    procedure, private :: end_fdist3d
    procedure(ab_dist3d), deferred, private :: dist3d
+   procedure(ab_deposit_fdist3d), deferred, private :: deposit_fdist3d
    procedure :: getnpf, getnpmax, getevol, getdx, getdz, getz0
             
 end type
@@ -62,6 +65,14 @@ subroutine ab_init_fdist3d(this,input,i)
    integer, intent(in) :: i
 end subroutine ab_init_fdist3d
 !
+subroutine ab_deposit_fdist3d(this,q)
+   import fdist3d
+   import field
+   implicit none
+   class(fdist3d), intent(inout) :: this
+   class(field), intent(inout) :: q
+end subroutine ab_deposit_fdist3d
+!
 end interface
 !
 type, extends(fdist3d) :: fdist3d_000
@@ -77,6 +88,7 @@ type, extends(fdist3d) :: fdist3d_000
    contains
 
    procedure, private :: init_fdist3d => init_fdist3d_000
+   procedure, private :: deposit_fdist3d => deposit_fdist3d_000
    procedure, private :: dist3d => dist3d_000
 
 end type fdist3d_000
@@ -328,5 +340,49 @@ subroutine dist3d_000(this,part3d,npp,ud)
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
 end subroutine dist3d_000
+!
+subroutine deposit_fdist3d_000(this,q)
+
+   implicit none
+
+   class(fdist3d_000), intent(inout) :: this
+   class(field), intent(inout) :: q
+! local data
+   class(ufield), dimension(:), pointer :: q_re, q_im
+   real, dimension(:,:,:), pointer :: q0
+   real :: r, z, dr, dz
+   integer :: i, j, nn, mm, noff1, noff2, n1p, n2p
+   real :: np, sigx, sigz, sigx2, sigz2
+   real :: bcz
+
+   q_im => null()
+   q_re => q%get_rf_re()
+   q0 => q_re(0)%get_f2()
+   noff1 = q_re(0)%get_noff(1)
+   noff2 = q_re(0)%get_noff(2)
+   n1p = q_re(0)%get_ndp(1)
+   n2p = q_re(0)%get_ndp(2)
+   dr = this%dx
+   dz = this%dz
+   if (abs(this%qm) < 1.0e-6 ) then
+      np = 0.0
+   else
+      np = this%np*this%qm/abs(this%qm)
+   end if
+   sigx = this%sigx
+   sigz = this%sigz
+   bcz = this%bcz
+   sigx2 = 0.5/sigx**2
+   sigz2 = 0.5/sigz**2
+
+   do i = 1, n1p
+      r = (i + noff1 - 0.5) * dr
+      do j = 1, n2p+1
+         z = (j + noff2) * dz - bcz
+         q0(1,i,j) = np*exp(-r**2*sigx2-z**2*sigz2)
+      end do
+   end do
+
+end subroutine deposit_fdist3d_000
 !
 end module fdist3d_class

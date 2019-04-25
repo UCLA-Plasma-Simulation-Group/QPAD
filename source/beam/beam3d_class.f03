@@ -122,13 +122,19 @@ subroutine qdeposit_beam3d(this,q)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call start_tprof( 'deposit 3D particles' )
 
-   call this%q%as(0.0)
-   call this%pd%qdp(this%q)
-   call this%q%acopy_gc_f2()
-   call this%q%copy_gc_f2()
-   ! call q%as(this%q .add. q)
-   call add_f2( this%q, q )
-
+   if (.not. this%evol) then
+      call this%q%as(0.0)
+      call this%pf%dp(this%q)
+      call this%q%copy_gc_f2()
+      call add_f2( this%q, q )
+   else
+      call this%q%as(0.0)
+      call this%pd%qdp(this%q)
+      call this%q%acopy_gc_f2()
+      call this%q%copy_gc_f2()
+      call add_f2( this%q, q )
+   end if
+   
    call stop_tprof( 'deposit 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
