@@ -1,9 +1,15 @@
 # Fortran compiler configuration
 FC = mpif90
-FC_OPTS = -g -O3 -fbounds-check -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
+# -fbacktrace -fbounds-check
+# -fbounds-check
+# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
+# -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
+# -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+
 
 # C compiler configuration
-CC = gcc
+CC = gcc-6
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
