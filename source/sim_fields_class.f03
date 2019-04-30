@@ -44,7 +44,7 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine init_sim_fields( this, pp, gp, dr, dxi, num_modes, part_shape, iter_tol )
+subroutine init_sim_fields( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
 
   implicit none
 
@@ -52,7 +52,7 @@ subroutine init_sim_fields( this, pp, gp, dr, dxi, num_modes, part_shape, iter_t
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   real, intent(in) :: dr, dxi, iter_tol
-  integer, intent(in) :: num_modes, part_shape
+  integer, intent(in) :: num_modes, part_shape, boundary
 
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
@@ -69,17 +69,17 @@ subroutine init_sim_fields( this, pp, gp, dr, dxi, num_modes, part_shape, iter_t
   allocate( this%psi, this%e_spe, this%b_spe, this%e_beam, this%b_beam, &
     this%jay, this%q_spe, this%q_beam, this%djdxi )
 
-  call this%psi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, iter_tol )
+  call this%psi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
   call this%jay%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
   call this%q_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
   call this%q_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
   call this%djdxi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
   entity = p_entity_plasma
-  call this%e_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
-  call this%b_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
+  call this%e_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
+  call this%b_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
   entity = p_entity_beam
-  call this%e_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
-  call this%b_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
+  call this%e_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
+  call this%b_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
 
   ! call input%get('simulation.nspecies',n)
 

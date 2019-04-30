@@ -17,9 +17,6 @@ private
 character(len=20), parameter :: cls_name = "field_psi"
 integer, parameter :: cls_level = 3
 
-! damping factor for the source
-real, dimension(:), allocatable, save :: damp_fac
-
 public :: field_psi
 
 type, extends( field ) :: field_psi
@@ -47,18 +44,18 @@ end type field_psi
 
 contains
 
-subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, iter_tol )
+subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape
+  integer, intent(in) :: num_modes, part_shape, boundary
   real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp, idproc, nvp, ndamp
+  integer :: dim, i, nrp
   character(len=20), save :: sname = "init_field_psi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -90,25 +87,10 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, iter_to
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
     call this%solver(i)%new( pp, gp, i, dr, &
-      kind=p_fk_psi, stype=p_hypre_cycred, tol=iter_tol )
+      kind=p_fk_psi, bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
   enddo
 
   allocate( this%buf_re(nrp), this%buf_im(nrp) )
-
-  ! initialize damping factor
-  idproc = pp%getlidproc()
-  nvp    = pp%getlnvp()
-  ndamp  = 10
-  if ( .not. allocated(damp_fac) ) then
-    allocate( damp_fac(nrp) )
-    damp_fac = 1.0
-    if ( idproc == nvp-1 ) then
-      do i = nrp-ndamp, nrp
-        ! damp_fac(i) = cos( 0.5 * pi * real(i-nrp+ndamp) / ndamp )**2
-        damp_fac(i) = 1.0
-      enddo
-    endif
-  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -132,7 +114,6 @@ subroutine end_field_psi( this )
 
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
-  if ( allocated( damp_fac ) ) deallocate( damp_fac )
 
   call this%field%del()
 
@@ -173,20 +154,34 @@ subroutine set_source( this, mode, q_re, q_im )
   this%buf_re = 0.0
   if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
-    local_sum = 0.0
-    do i = 1, nrp
-      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
-      local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
-    enddo
-    ! for mode=0 the source term needs to be neutralized
-    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-    this%src_mean = global_sum * 2.0 / rmax**2
-    this%buf_re = this%buf_re - this%src_mean
+
+    select case ( this%solver(0)%bnd )
+
+    case ( p_bnd_zero, p_bnd_open )
+      do i = 1, nrp
+        this%buf_re(i) = -1.0 * f1_re(1,i)
+      enddo
+
+    case ( p_bnd_conduct )
+      local_sum = 0.0
+      do i = 1, nrp
+        this%buf_re(i) = -1.0 * f1_re(1,i)
+        local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
+      enddo
+      ! for mode=0 the source term needs to be neutralized
+      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+      this%src_mean = global_sum * 2.0 / rmax**2
+      this%buf_re = this%buf_re - this%src_mean
+
+    end select
+
   elseif ( mode > 0 .and. present(q_im) ) then
+
     do i = 1, nrp
-      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
-      this%buf_im(i) = -1.0 * damp_fac(i) * f1_im(1,i)
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+      this%buf_im(i) = -1.0 * f1_im(1,i)
     enddo
+
   else
     call write_err( 'Invalid input arguments!' )
   endif
@@ -214,7 +209,7 @@ subroutine get_solution( this, mode )
   rmax2 = ((this%rf_re(mode)%get_nd(1)-0.5) * this%dr)**2
 
   ! deneutralize the solution
-  if ( mode == 0 ) then
+  if ( mode == 0 .and. this%solver(0)%bnd == p_bnd_conduct ) then
     do i = 1, nrp
       r2 = ( (i+noff-0.5) * this%dr )**2
       this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)

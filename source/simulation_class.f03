@@ -33,7 +33,7 @@ type simulation
   type( sim_diag ) :: diag
   real :: dr, dxi, dt
   integer :: iter, nstep2d, nstep1d, start2d, nbeams, nspecies, tstep
-  integer :: num_modes, interp
+  integer :: num_modes, interp, fld_bnd
 
   contains
 
@@ -62,7 +62,7 @@ subroutine init_simulation(this)
   real :: min, max, n0, dr, dxi, dt, time, solver_prec
   integer :: nr, nz
   logical :: read_rst
-  character(len=:), allocatable :: interp_str
+  character(len=:), allocatable :: interp_str, fld_bnd_str
 
   allocate( this%input )
   call this%input%new()
@@ -115,8 +115,21 @@ subroutine init_simulation(this)
     call write_err( 'Invalid interpolation type!' )
   end select
 
+  call this%input%get( 'simulation.field_boundary', fld_bnd_str )
+  select case ( trim(fld_bnd_str) )
+  case ( 'zero' )
+    this%fld_bnd = p_bnd_zero
+  case ( 'conduct' )
+    this%fld_bnd = p_bnd_conduct
+  case ( 'open' )
+    this%fld_bnd = p_bnd_open
+  case default
+    call write_err( 'Invalid field boundary type!' )
+  end select
+
   call this%input%get( 'simulation.solver_precision', solver_prec )
-  call this%fields%new( this%pp, this%gp, this%dr, this%dxi, this%num_modes, this%interp, solver_prec )
+  call this%fields%new( this%pp, this%gp, this%dr, this%dxi, this%num_modes, this%interp, &
+    this%fld_bnd, solver_prec )
 ! ===============================================================================
 ! THIS PART IS TO BE FINISHED
 ! ===============================================================================

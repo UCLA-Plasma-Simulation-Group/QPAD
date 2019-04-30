@@ -32,6 +32,7 @@ type :: field_solver ! class for HYPRE solver
   integer :: stype
   integer :: kind
   integer :: mode
+  integer :: bnd
   real :: tol
 
   integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver, precond
@@ -63,14 +64,14 @@ contains
 ! Class field_solver implementation
 ! =====================================================================
 
-subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
+subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype, tol )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
   class( parallel_pipe ), intent(in) :: pp
   class( grid ), intent(in) :: gp
-  integer, intent(in) :: kind, stype, mode
+  integer, intent(in) :: kind, stype, mode, bnd
   real, intent(in) :: dr, tol
 
   integer :: i, j, ierr, comm
@@ -82,6 +83,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, stype, tol )
   this%tol = tol
   this%mode = mode
   this%kind = kind
+  this%bnd = bnd
 
   ! setup HYPRE grid
   comm = pp%getlgrp()
@@ -381,7 +383,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
   integer :: i, j, ierr, local_vol, nr, noff
   integer :: comm, lidproc, lnvp
-  real :: idr2, m, m2, k1, k2, k0
+  real :: idr2, m, m2, k1, k2, k0, r
   character(len=20), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -421,7 +423,51 @@ subroutine set_struct_matrix( this, pp, gp, dr )
   if ( lidproc == 0 ) HYPRE_BUF(1) = 0.0
 
   ! upper boundary
-  if ( lidproc == lnvp-1 ) HYPRE_BUF(local_vol) = 0.0
+  if ( lidproc == lnvp-1 ) then
+
+    select case ( this%bnd )
+
+    case ( p_bnd_conduct, p_bnd_zero )
+
+      ! the difference between conduct and zero boundary are reflected in the source terms
+      HYPRE_BUF(local_vol) = 0.0
+    
+    case ( p_bnd_open )
+
+      select case ( this%kind )
+      case ( p_fk_psi )
+        r = ( noff + nr - 0.5 ) * dr
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+      case ( p_fk_bperp )
+        r = ( noff + nr - 0.5 ) * dr
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0+dr/((r+dr)*log(r+dr))) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+      case ( p_fk_ez, p_fk_bz )
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+      case default
+        call write_err( 'Invalid field type!' )
+      end select
+    
+    case default
+      call write_err( 'Invalid boundary condition!' )
+    end select
+
+  endif
 
   call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
     this%stencil_idx, HYPRE_BUF, ierr )
@@ -521,7 +567,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   integer :: local_size, ierr, m, m2, i, nr, noff
   integer :: comm
   integer, dimension(:), pointer :: cols
-  real :: idr2, k0, k_minus, k_plus
+  real :: idr2, k0, k_minus, k_plus, rmax
   character(len=20), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -531,6 +577,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
   noff = gp%get_noff(1)
   this%ilower = 4*noff + 1
   this%iupper = 4*noff + 4*gp%get_ndp(1)
+  rmax = ( noff + nr - 0.5 ) * dr
 
   local_size = this%iupper - this%ilower + 1
 
@@ -570,6 +617,12 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
+      select case ( this%bnd )
+      case ( p_bnd_zero, p_bnd_conduct )
+        ! do nothing
+      case ( p_bnd_open )
+        HYPRE_BUF(2) = HYPRE_BUF(2) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
+      end select
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols, HYPRE_BUF, ierr )
     else
       call HYPRE_IJMatrixSetValues( this%A, 1, 4, i, cols, HYPRE_BUF, ierr )
@@ -587,6 +640,12 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
+      select case ( this%bnd )
+      case ( p_bnd_conduct, p_bnd_zero )
+        ! do nothing
+      case ( p_bnd_open )
+        HYPRE_BUF(2) = HYPRE_BUF(2) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
+      end select
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols, HYPRE_BUF, ierr )
     else
       call HYPRE_IJMatrixSetValues( this%A, 1, 4, i+1, cols, HYPRE_BUF, ierr )
@@ -604,6 +663,12 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
+      select case ( this%bnd )
+      case ( p_bnd_conduct, p_bnd_zero )
+        ! do nothing
+      case ( p_bnd_open )
+        HYPRE_BUF(3) = HYPRE_BUF(3) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
+      end select
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols, HYPRE_BUF, ierr )
     else
       call HYPRE_IJMatrixSetValues( this%A, 1, 4, i+2, cols, HYPRE_BUF, ierr )
@@ -621,6 +686,12 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
+      select case ( this%bnd )
+      case ( p_bnd_conduct, p_bnd_zero )
+        ! do nothing
+      case ( p_bnd_open )
+        HYPRE_BUF(3) = HYPRE_BUF(3) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
+      end select
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols, HYPRE_BUF, ierr )
     else
       call HYPRE_IJMatrixSetValues( this%A, 1, 4, i+3, cols, HYPRE_BUF, ierr )
@@ -630,10 +701,6 @@ subroutine set_ij_matrix( this, pp, gp, dr )
 
   call HYPRE_IJMatrixAssemble( this%A, ierr )
   call HYPRE_IJMatrixGetObject( this%A, this%par_A, ierr )
-
-  ! if ( m == 1 ) then
-  !   call HYPRE_IJMatrixPrint( this%A, 'A.out', ierr )
-  ! endif
 
   deallocate( cols )
 

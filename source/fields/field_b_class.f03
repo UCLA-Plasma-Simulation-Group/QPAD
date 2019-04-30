@@ -18,9 +18,6 @@ private
 character(len=20), parameter :: cls_name = "field_b"
 integer, parameter :: cls_level = 3
 
-! damping factor for the source
-real, dimension(:), allocatable, save :: damp_fac
-
 public :: field_b
 
 type, extends( field ) :: field_b
@@ -62,18 +59,18 @@ end type field_b
 
 contains
 
-subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, iter_tol )
+subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape, entity
+  integer, intent(in) :: num_modes, part_shape, entity, boundary
   real, intent(in) :: dr, dxi, iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp, idproc, nvp, ndamp
+  integer :: dim, i, nrp
   character(len=20), save :: sname = "init_field_b"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -110,9 +107,9 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
     allocate( this%solver_bperp_iter( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
-        stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
       call this%solver_bperp_iter(i)%new( pp, gp, i, dr, kind=p_fk_bperp_iter, &
-        stype=p_hypre_amg, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_amg, tol=iter_tol )
     enddo
 
     allocate( this%buf(4*nrp) )
@@ -123,7 +120,7 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp_old, &
-        stype=p_hypre_amg, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_amg, tol=iter_tol )
     enddo
 
     allocate( this%buf( nrp*4 ) )
@@ -133,7 +130,7 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
     allocate( this%solver_bperp( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bperp(i)%new( pp, gp, i, dr, kind=p_fk_bperp, &
-        stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
     enddo
 
     allocate( this%buf_re(nrp), this%buf_im(nrp) )
@@ -143,21 +140,6 @@ subroutine init_field_b( this, pp, gp, dr, dxi, num_modes, part_shape, entity, i
     call write_err( 'Invalid field entity type.' )
 
   end select
-
-  ! initialize damping factor
-  idproc = pp%getlidproc()
-  nvp    = pp%getlnvp()
-  ndamp  = 10
-  if ( .not. allocated(damp_fac) ) then
-    allocate( damp_fac(nrp) )
-    damp_fac = 1.0
-    if ( idproc == nvp-1 ) then
-      do i = nrp-ndamp, nrp
-        ! damp_fac(i) = cos( 0.5 * pi * real(i-nrp+ndamp) / ndamp )**2
-        damp_fac(i) = 1.0
-      enddo
-    endif
-  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -192,7 +174,6 @@ subroutine end_field_b( this )
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
   if ( associated( this%buf ) ) deallocate( this%buf )
-  if ( allocated( damp_fac ) ) deallocate( damp_fac )
 
   call this%field%del()
 
@@ -239,36 +220,57 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   if ( present(jay_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
     
-    local_sum = 0.0
-    do i = 1, nrp
+    select case ( this%solver_bz(0)%bnd )
 
-      k0 = real(i+noff) - 0.5
+    case ( p_bnd_zero, p_bnd_open )
 
-      a1 =  idrh * (k0-0.5) / k0
-      a2 = -idrh / k0
-      a3 = -idrh * (k0+0.5) / k0
+      do i = 1, nrp
 
-      this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
-      this%buf_re(i) = damp_fac(i) * this%buf_re(i)
-      local_sum = local_sum + damp_fac(i) * f1_re(2,i)
+        k0 = real(i+noff) - 0.5
 
-    enddo
-    local_sum = local_sum * dr
-    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+        a1 =  idrh * (k0-0.5) / k0
+        a2 = -idrh / k0
+        a3 = -idrh * (k0+0.5) / k0
+
+        this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+
+      enddo
+
+    case ( p_bnd_conduct )
+
+      local_sum = 0.0
+      do i = 1, nrp
+
+        k0 = real(i+noff) - 0.5
+
+        a1 =  idrh * (k0-0.5) / k0
+        a2 = -idrh / k0
+        a3 = -idrh * (k0+0.5) / k0
+
+        this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+        local_sum = local_sum + f1_re(2,i)
+
+      enddo
+      local_sum = local_sum * dr
+      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+
+    end select
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
-      this%buf_re(1) = this%buf_re(1) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
       a3 = idr**2 * (nrp+noff) / (nrp+noff-0.5)
-      ! this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) &
-      ! + a3 * global_sum
       this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp)
-      ! note that global_sum is already damped
-      this%buf_re(nrp) = this%buf_re(nrp) * damp_fac(nrp) + a3 * global_sum 
+
+      select case ( this%solver_bz(0)%bnd )
+      case ( p_bnd_conduct )
+        this%buf_re(nrp) = this%buf_re(nrp) + a3 * global_sum 
+      case ( p_bnd_zero, p_bnd_open )
+        ! do nothing
+      end select
     endif
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
@@ -286,17 +288,12 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
                         b * f1_im(1,i)
       this%buf_im(i) = a1 * f1_im(2,i-1) + a2 * f1_im(2,i) + a3 * f1_im(2,i+1) + &
                         b * f1_re(1,i)
-      this%buf_re(i) = this%buf_re(i) * damp_fac(i)
-      this%buf_im(i) = this%buf_im(i) * damp_fac(i)
-
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
       this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
-      this%buf_re(1) = this%buf_re(1) * damp_fac(1)
-      this%buf_im(1) = this%buf_im(1) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       k0 = real(nrp+noff) - 0.5
@@ -304,8 +301,6 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       b  =  idr * real(mode) / k0
       this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
       this%buf_im(nrp) = idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
-      this%buf_re(nrp) = this%buf_re(nrp) * damp_fac(nrp)
-      this%buf_im(nrp) = this%buf_im(nrp) * damp_fac(nrp)
     endif
 
   else
@@ -327,9 +322,9 @@ subroutine set_source_bperp_old( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, idproc, nvp, noff
+  integer :: i, nrp, idproc, nvp, noff, comm, dtype, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, a1, a2, a3, b, ir
+  real :: idrh, idr, a1, a2, a3, b, ir, dr2, rmax, local_sum, global_sum
   character(len=20), save :: sname = 'set_source_bperp_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -340,6 +335,10 @@ subroutine set_source_bperp_old( this, mode, q_re, q_im )
   noff = q_re%get_noff(1)
   idr = 1.0 / this%dr
   idrh = 0.5 * idr
+  dtype = q_re%pp%getmreal()
+  comm = q_re%pp%getlgrp()
+  dr2 = (this%dr)**2
+  rmax = (q_re%get_nd(1)-0.5) * this%dr
   
   f1_re => q_re%get_f1()
   if ( present(q_im) ) then
@@ -348,30 +347,60 @@ subroutine set_source_bperp_old( this, mode, q_re, q_im )
 
   this%buf = 0.0
   if ( mode == 0 ) then
+
+    select case ( this%solver_bperp(0)%bnd )
+
+    case ( p_bnd_zero, p_bnd_open )
     
-    do i = 1, nrp
+      do i = 1, nrp
 
-      ! Re(Br)
-      this%buf(4*i-3) = 0.0
-      ! Im(Br)
-      this%buf(4*i-2) = 0.0
-      ! Re(Bphi)
-      this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
-      ! Im(Bphi)
-      this%buf(4*i) = 0.0
+        ! Re(Br)
+        this%buf(4*i-3) = 0.0
+        ! Im(Br)
+        this%buf(4*i-2) = 0.0
+        ! Re(Bphi)
+        this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
+        ! Im(Bphi)
+        this%buf(4*i) = 0.0
 
-    enddo
+      enddo
+
+    case ( p_bnd_conduct )
+
+      local_sum = 0.0
+      do i = 1, nrp
+
+        ! Re(Br)
+        this%buf(4*i-3) = 0.0
+        ! Im(Br)
+        this%buf(4*i-2) = 0.0
+        ! Re(Bphi)
+        this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
+        ! Im(Bphi)
+        this%buf(4*i) = 0.0
+
+        local_sum = local_sum + f1_re(1,i) * real(i+noff-0.5) * dr2
+
+      enddo
+
+      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+      global_sum = global_sum / rmax
+
+    end select
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      ! this%buf(3) = idr * ( f1_re(1,2)-f1_re(1,1) )
       this%buf(3) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) )
     endif
     if ( idproc == nvp-1 ) then
       this%buf(4*nrp-1) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) )
+      select case ( this%solver_bperp(0)%bnd )
+      case ( p_bnd_zero, p_bnd_open )
+        ! do nothing
+      case ( p_bnd_conduct )
+        this%buf(4*nrp-1) = this%buf(4*nrp-1) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+      end select
     endif
-
-    ! call write_data( this%buf, 'bsource-re-0.txt' )
 
   elseif ( mode > 0 .and. present( q_im ) ) then
     
@@ -438,19 +467,33 @@ subroutine set_source_bperp( this, mode, q_re, q_im )
   this%buf_re = 0.0
   if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
-    local_sum = 0.0
-    do i = 1, nrp
-      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
-      local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
-    enddo
-    ! for mode=0 the source term needs to be neutralized
-    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-    this%src_mean = global_sum * 2.0 / rmax**2
-    this%buf_re = this%buf_re - this%src_mean
+
+    select case ( this%solver_bperp(0)%bnd )
+
+    case ( p_bnd_zero, p_bnd_open )
+
+      do i = 1, nrp
+        this%buf_re(i) = -1.0 * f1_re(1,i)
+      enddo
+
+    case ( p_bnd_conduct )
+
+      local_sum = 0.0
+      do i = 1, nrp
+        this%buf_re(i) = -1.0 * f1_re(1,i)
+        local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
+      enddo
+      ! for mode=0 the source term needs to be neutralized
+      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+      this%src_mean = global_sum * 2.0 / rmax**2
+      this%buf_re = this%buf_re - this%src_mean
+
+    end select
+
   elseif ( mode > 0 .and. present(q_im) ) then
     do i = 1, nrp
-      this%buf_re(i) = -1.0 * damp_fac(i) * f1_re(1,i)
-      this%buf_im(i) = -1.0 * damp_fac(i) * f1_im(1,i)
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+      this%buf_im(i) = -1.0 * f1_im(1,i)
     enddo
   else
     call write_err( 'Invalid input arguments!' )
@@ -504,49 +547,65 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   this%buf = 0.0
   if ( mode == 0 ) then
     
-    local_sum = 0.0
-    do i = 1, nrp
+    select case ( this%solver_bperp_iter(0)%bnd )
 
-      ! Re(Br)
-      this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
-      ! Im(Br)
-      this%buf(4*i-2) = 0.0
-      ! Re(Bphi)
-      this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-      ! Im(Bphi)
-      this%buf(4*i) = 0.0
+    case ( p_bnd_zero, p_bnd_open )
 
-      this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
-      this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
-      local_sum = local_sum + damp_fac(i) * f2_re(3,i) * real(i+noff-0.5) * dr2
+      do i = 1, nrp
 
-    enddo
+        ! Re(Br)
+        this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
+        ! Im(Br)
+        this%buf(4*i-2) = 0.0
+        ! Re(Bphi)
+        this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+        ! Im(Bphi)
+        this%buf(4*i) = 0.0
 
-    call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-    global_sum = global_sum / rmax
-    
+      enddo
+
+    case ( p_bnd_conduct )
+
+      local_sum = 0.0
+      do i = 1, nrp
+
+        ! Re(Br)
+        this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
+        ! Im(Br)
+        this%buf(4*i-2) = 0.0
+        ! Re(Bphi)
+        this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
+        ! Im(Bphi)
+        this%buf(4*i) = 0.0
+
+        local_sum = local_sum + f2_re(3,i) * real(i+noff-0.5) * dr2
+
+      enddo
+
+      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+      global_sum = global_sum / rmax
+
+    end select
+
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
       this%buf(2) = 0.0
       this%buf(3) = f1_re(1,1) + idrh * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
       this%buf(4) = 0.0
-
-      this%buf(1) = this%buf(1) * damp_fac(1)
-      this%buf(3) = this%buf(3) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
       this%buf(4*nrp-2) = 0.0
-      ! zero boundary
-      ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
-      - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
       this%buf(4*nrp)   = 0.0
 
-      this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
-      !this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
-      this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
+      select case ( this%solver_bperp_iter(0)%bnd )
+      case ( p_bnd_zero, p_bnd_open )
+        ! do nothing
+      case ( p_bnd_conduct )
+        this%buf(4*nrp-1) = this%buf(4*nrp-1) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+      end select
     endif
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
@@ -558,11 +617,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i)
       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
       this%buf(4*i)   = f1_im(1,i) + idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i)
-
-      this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
-      this%buf(4*i-2) = this%buf(4*i-2) * damp_fac(i)
-      this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
-      this%buf(4*i)   = this%buf(4*i)   * damp_fac(i)
       
     enddo
 
@@ -573,24 +627,13 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
       this%buf(3) = f1_re(1,1) + idr * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
       this%buf(4) = f1_im(1,1) + idr * ( 3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) - f3_im(2,1)
-
-      this%buf(1) = this%buf(1) * damp_fac(1)
-      this%buf(2) = this%buf(2) * damp_fac(1)
-      this%buf(3) = this%buf(3) * damp_fac(1)
-      this%buf(4) = this%buf(4) * damp_fac(1)
     endif
     if ( idproc == nvp-1 ) then
       ir = idr / (real(nrp+noff)-0.5)
       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp)
       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp)
       this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( -3.0 * f2_re(3,nrp) + 4.0 * f2_re(3,nrp-1) - f2_re(3,nrp-2) ) - f3_re(2,nrp)
-      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)
-      
-      this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
-      this%buf(4*nrp-2) = this%buf(4*nrp-2) * damp_fac(nrp)
-      this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
-      this%buf(4*nrp)   = this%buf(4*nrp)   * damp_fac(nrp)
-    
+      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)    
     endif
 
   else
@@ -602,155 +645,6 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bperp_iter
-
-! subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   class( ufield ), intent(in) :: djdxi_re, jay_re
-!   class( ufield ), intent(in), optional :: djdxi_im, jay_im
-!   integer, intent(in) :: mode
-
-!   integer :: i, nrp, nvp, idproc, noff, dtype, ierr, comm
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
-!   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
-!   real :: idrh, idr, a1, a2, a3, b, ir, ir2, dr2, dr, rmax
-!   real, save :: local_sum, global_sum
-!   character(len=20), save :: sname = 'set_source_bperp_iter'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-!   dtype = jay_re%pp%getmreal()
-!   comm  = jay_re%pp%getlgrp()
-!   nvp = jay_re%pp%getlnvp()
-!   idproc = jay_re%pp%getlidproc()
-!   nrp = jay_re%get_ndp(1)
-!   noff = jay_re%get_noff(1)
-!   idr = 1.0 / this%dr
-!   idrh = 0.5 * idr
-!   dr = this%dr
-!   dr2 = dr**2
-!   rmax = (jay_re%get_nd(1)-0.5) * dr
-  
-!   f1_re => djdxi_re%get_f1()
-!   f2_re => jay_re%get_f1()
-!   f3_re => this%rf_re(mode)%get_f1()
-
-!   if ( present(djdxi_im) .and. present(jay_im) ) then
-!     f1_im => djdxi_im%get_f1()
-!     f2_im => jay_im%get_f1()
-!     f3_im => this%rf_im(mode)%get_f1()
-!   endif
-
-!   this%buf = 0.0
-!   if ( mode == 0 ) then
-    
-!     local_sum = 0.0
-!     do i = 1, nrp
-
-!       ! Re(Br)
-!       this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
-!       ! Im(Br)
-!       this%buf(4*i-2) = 0.0
-!       ! Re(Bphi)
-!       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-!       ! Im(Bphi)
-!       this%buf(4*i) = 0.0
-
-!       this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
-!       this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
-!       local_sum = local_sum + damp_fac(i) * f2_re(3,i) * real(i+noff-0.5) * dr2
-
-!     enddo
-
-!     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-!     global_sum = global_sum / rmax
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
-!       this%buf(2) = 0.0
-!       this%buf(3) = f1_re(1,1) + idrh * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
-!       this%buf(4) = 0.0
-
-!       this%buf(1) = this%buf(1) * damp_fac(1)
-!       this%buf(3) = this%buf(3) * damp_fac(1)
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
-!       this%buf(4*nrp-2) = 0.0
-!       this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
-!       ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
-!       ! - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
-!       this%buf(4*nrp)   = 0.0
-
-!       this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
-!       ! this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
-!       this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
-!     endif
-
-!   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
-    
-!     do i = 1, nrp
-
-!       ir = idr / (real(i+noff)-0.5)
-!       ir2 = ir**2
-
-!       this%buf(4*i-3) = -f1_re(2,i) + mode * f2_im(3,i) * ir - f3_re(1,i) - 2.0 * mode * ir2 * f3_im(2,i)
-!       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i) + 2.0 * mode * ir2 * f3_re(2,i)
-!       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i) + 2.0 * mode * ir2 * f3_im(1,i)
-!       this%buf(4*i)   = f1_im(1,i) + idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i) - 2.0 * mode * ir2 * f3_re(1,i)
-
-!       this%buf(4*i-3) = this%buf(4*i-3) * damp_fac(i)
-!       this%buf(4*i-2) = this%buf(4*i-2) * damp_fac(i)
-!       this%buf(4*i-1) = this%buf(4*i-1) * damp_fac(i)
-!       this%buf(4*i)   = this%buf(4*i)   * damp_fac(i)
-      
-!     enddo
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       ir = 2.0 * idr
-!       ir2 = ir**2
-!       this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1) - 2.0 * mode * ir2 * f3_im(2,1)
-!       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1) + 2.0 * mode * ir2 * f3_re(2,1)
-!       this%buf(3) = f1_re(1,1) + idr * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) &
-!                   - f3_re(2,1) + 2.0 * mode * ir2 * f3_im(1,1)
-!       this%buf(4) = f1_im(1,1) + idr * (  3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) &
-!                   - f3_im(2,1) - 2.0 * mode * ir2 * f3_re(1,1)
-
-!       this%buf(1) = this%buf(1) * damp_fac(1)
-!       this%buf(2) = this%buf(2) * damp_fac(1)
-!       this%buf(3) = this%buf(3) * damp_fac(1)
-!       this%buf(4) = this%buf(4) * damp_fac(1)
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       ir = idr / (real(nrp+noff)-0.5)
-!       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp) - 2.0 * mode * ir2 * f3_im(2,nrp)
-!       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp) + 2.0 * mode * ir2 * f3_re(2,nrp)
-!       this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( -3.0 * f2_re(3,nrp) + 4.0 * f2_re(3,nrp-1) - f2_re(3,nrp-2) ) &
-!                         - f3_re(2,nrp) + 2.0 * mode * ir2 * f3_im(1,nrp)
-!       this%buf(4*nrp)   = f1_im(1,nrp) + idr * (  3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) &
-!                         - f3_im(2,nrp) - 2.0 * mode * ir2 * f3_re(1,nrp)
-      
-!       this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
-!       this%buf(4*nrp-2) = this%buf(4*nrp-2) * damp_fac(nrp)
-!       this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
-!       this%buf(4*nrp)   = this%buf(4*nrp)   * damp_fac(nrp)
-    
-!     endif
-
-!   else
-
-!     call write_err( 'Invalid input arguments!' )
-
-!   endif
-
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine set_source_bperp_iter
 
 subroutine get_solution_bz( this, mode )
 
@@ -845,10 +739,15 @@ subroutine get_solution_bperp( this, mode )
 
   ! add contribution from the induced current
   if ( mode == 0 ) then
-    do i = 1, nrp
-      r2 = ( (i+noff-0.5) * this%dr )**2
-      this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * r2
-    enddo
+    select case ( this%solver_bperp(0)%bnd )
+    case ( p_bnd_zero, p_bnd_open )
+      ! do nothing
+    case ( p_bnd_conduct )
+      do i = 1, nrp
+        r2 = ( (i+noff-0.5) * this%dr )**2
+        this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * r2
+      enddo
+    end select
   endif
 
   ! copy the guard cell of buffer
