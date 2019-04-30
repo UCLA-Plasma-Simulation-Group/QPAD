@@ -524,7 +524,7 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
 
     call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
     global_sum = global_sum / rmax
-
+    
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
@@ -538,13 +538,14 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
     if ( idproc == nvp-1 ) then
       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
       this%buf(4*nrp-2) = 0.0
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
-      ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
-      ! - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+      ! zero boundary
+      ! this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
+      - f3_re(2,nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
       this%buf(4*nrp)   = 0.0
 
       this%buf(4*nrp-3) = this%buf(4*nrp-3) * damp_fac(nrp)
-      ! this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
+      !this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
       this%buf(4*nrp-1) = this%buf(4*nrp-1) * damp_fac(nrp)
     endif
 

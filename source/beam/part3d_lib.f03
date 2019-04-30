@@ -380,8 +380,8 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
       ox(1:3) = ox(1:3) + zd*(dd*b0(1:3,nn+1,mm+1) + tmp(1:3))
       rc = rc0
       do i = 1, num_modes
-         rcr = real(rc)
-         rci = aimag(rc)
+         rcr = 2.0*real(rc)
+         rci = 2.0*aimag(rc)
          er => ef_re(i)%get_f2()
          ei => ef_im(i)%get_f2()
          dxx(1:3) = ad*(er(1:3,nn,mm)*rcr - ei(1:3,nn,mm)*rci)

@@ -175,8 +175,8 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       ox(1:3) = dd*b0(1:3,nn+1) + ox(1:3)
       rc = rc0
       do i = 1, num_modes
-         rcr = real(rc)
-         rci = aimag(rc)
+         rcr = 2.0*real(rc)
+         rci = 2.0*aimag(rc)
          er => ef_re(i)%get_f1()
          ei => ef_im(i)%get_f1()
          dxx(1:3) = (ad*er(1:3,nn)+dd*er(1:3,nn+1))*rcr
@@ -449,8 +449,8 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       ox(1:3) = dd*b0(1:3,nn+1) + ox(1:3)
       rc = rc0
       do i = 1, num_modes
-         rcr = real(rc)
-         rci = aimag(rc)
+         rcr = 2.0*real(rc)
+         rci = 2.0*aimag(rc)
          er => ef_re(i)%get_f1()
          ei => ef_im(i)%get_f1()
          dxx(1:3) = (ad*er(1:3,nn)+dd*er(1:3,nn+1))*rcr
@@ -884,8 +884,8 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
       dx = dd*psi0(1,nn+1) + dx
       rc = rc0
       do i = 1, num_modes
-         rcr = real(rc)
-         rci = aimag(rc)
+         rcr = 2.0*real(rc)
+         rci = 2.0*aimag(rc)
          psir => psi_re(i)%get_f1()
          psii => psi_im(i)%get_f1()
          dx = dx + (ad*psir(1,nn)+dd*psir(1,nn+1))*rcr
