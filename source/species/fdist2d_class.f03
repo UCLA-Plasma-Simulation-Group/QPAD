@@ -13,7 +13,7 @@ implicit none
 
 private
 
-public :: fdist2d, fdist2d_000
+public :: fdist2d, fdist2d_000, fdist2d_012
 
 type, abstract :: fdist2d
    private
@@ -74,6 +74,24 @@ type, extends(fdist2d) :: fdist2d_000
                   
 end type fdist2d_000
 !
+type, extends(fdist2d) :: fdist2d_012
+! hollow channel with f(r) profile
+   private
+! xppc, yppc = particle per cell in x and y directions
+   integer :: ppc1, ppc2, nmode
+   real :: qm, den
+   ! real :: cx, cy
+   real, dimension(:), allocatable :: r, fr
+   character(len=:), allocatable :: long_prof
+   real, dimension(:), allocatable :: s, fs
+                    
+   contains
+   procedure, private :: init_fdist2d => init_fdist2d_012
+   procedure, private :: dist2d => dist2d_012
+            
+end type fdist2d_012
+!
+
 character(len=20), parameter :: cls_name = "fdist2d"
 integer, parameter :: cls_level = 2
 character(len=128) :: erstr
@@ -195,7 +213,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    t0 = 2.0*pi/ppc2 
    dr = this%dex
    den_temp = 1.0
-   ! n1p = min(n1p,220-noff1)
+   if (noff1+n1p == n1 .and. n1p > 2) n1p = n1p - 2
    if (trim(this%long_prof) == 'piecewise') then
       prof_l = size(this%fs)
       if (s<this%s(1) .or. s>this%s(prof_l)) then
@@ -274,5 +292,219 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine dist2d_000
+!
+subroutine init_fdist2d_012(this,input,i)
+
+   implicit none
+   
+   class(fdist2d_012), intent(inout) :: this
+   type(input_json), intent(inout), pointer :: input
+   integer, intent(in) :: i
+! local data
+   integer :: npf,ppc1,ppc2,n1,nmode
+   integer(kind=LG) :: npmax
+   real :: qm, den, lr, ur
+   ! real :: cx, cy
+   real :: min, max
+   ! real :: alx, aly, dx, dy
+   character(len=20) :: sn,s1
+   character(len=18), save :: sname = 'init_fdist2d_012:'
+   
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   this%pp => input%pp
+   write (sn,'(I3.3)') i
+   s1 = 'species('//trim(sn)//')'
+   call input%get('simulation.grid(1)',n1)
+   call input%get('simulation.box.r(1)',lr)
+   call input%get('simulation.box.r(2)',ur)
+   call input%get('simulation.max_mode',nmode)
+   call input%get(trim(s1)//'.profile',npf)
+   call input%get(trim(s1)//'.ppc(1)',ppc1)
+   call input%get(trim(s1)//'.ppc(2)',ppc2)
+   call input%get(trim(s1)//'.q',qm)
+   call input%get(trim(s1)//'.density',den)
+   call input%get(trim(s1)//'.longitudinal_profile',this%long_prof)
+   if (trim(this%long_prof) == 'piecewise') then
+      call input%get(trim(s1)//'.piecewise_density',this%fs)
+      call input%get(trim(s1)//'.piecewise_s',this%s)
+   end if
+   call input%get(trim(s1)//'.piecewise_radial_density',this%fr)
+   call input%get(trim(s1)//'.piecewise_r',this%r)
+
+   this%dex = (ur - lr)/real(n1)
+   this%npf = npf
+   this%nmode = nmode
+   this%ppc1 = ppc1
+   if (nmode == 0) ppc2 = 1
+   this%ppc2 = ppc2
+   this%qm = qm
+   this%den = den
+   npmax = n1*ppc1*ppc2*4
+   this%npmax = npmax
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine init_fdist2d_012
+!
+subroutine dist2d_012(this,part2d,npp,ud,s)
+   implicit none
+   class(fdist2d_012), intent(inout) :: this
+   real, dimension(:,:), pointer, intent(inout) :: part2d
+   integer(kind=LG), intent(inout) :: npp
+   class(ufield), intent(in) :: ud
+   real, intent(in) :: s 
+! local data
+   character(len=18), save :: sname = 'dist2d_012:'
+   real, dimension(:,:), pointer :: pt => null()
+   integer(kind=LG) :: nps, i, j
+   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1, ppc1h
+   real :: qm, den_temp
+   integer :: prof_l, ii
+   real :: r1, t0, t1, dr, rr
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   
+   n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
+   ppc1 = this%ppc1; ppc2 = this%ppc2; ppc1h = ppc1/2
+   t0 = 2.0*pi/ppc2 
+   dr = this%dex
+   den_temp = 1.0
+  
+   if (trim(this%long_prof) == 'piecewise') then
+      prof_l = size(this%fs)
+      if (prof_l /= size(this%s)) then
+         write (erstr,*) 'The piecewise_density and s array have different sizes!'
+         call write_err(trim(erstr))
+         return
+      end if
+      if (s<this%s(1) .or. s>this%s(prof_l)) then
+         write (erstr,*) 'The s is out of the bound!'
+         call write_err(trim(erstr))
+         return
+      end if
+      do i = 2, prof_l
+         if (this%s(i) < this%s(i-1)) then
+            write (erstr,*) 's is not monotonically increasing!'
+            call write_err(trim(erstr))
+            return
+         end if
+         if (s<=this%s(i)) then
+            den_temp = this%fs(i-1) + (this%fs(i)-this%fs(i-1))/&
+            &(this%s(i)-this%s(i-1))*(s-this%s(i-1))
+            exit
+         end if
+      end do
+   end if
+   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
+   nps = 1
+   pt => part2d
+   prof_l = size(this%fr)
+   if (prof_l /= size(this%r)) then
+      write (erstr,*) 'The piecewise_radial_density and r array have different sizes!'
+      call write_err(trim(erstr))
+      return
+   end if
+! initialize the particle positions
+   if (noff1 > 0) then       
+      do i=1, n1p
+         do i1 = 0, ppc1-1
+            rr = (i1 + 0.5)/ppc1 + i - 0.5 + noff1
+            r1 = rr*dr
+            if (r1<this%r(1) .or. r1>this%r(prof_l)) then
+               cycle
+            end if
+            do ii = 2, prof_l
+               if (this%r(ii) <= this%r(ii-1)) then
+                  write (erstr,*) 'r is not monotonically increasing!'
+                  call write_err(trim(erstr))
+                  return
+               end if
+               if (r1<=this%r(ii)) then
+                  den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+                  &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+                  exit
+               end if
+            end do
+            do i2=0, ppc2-1
+               pt(1,nps) = r1
+               pt(2,nps) = i2*t0
+               pt(3,nps) = 0.0
+               pt(4,nps) = 0.0
+               pt(5,nps) = 0.0
+               pt(6,nps) = 1.0
+               pt(7,nps) = 1.0
+               pt(8,nps) = qm*den_temp*rr
+               nps = nps + 1
+            enddo
+         enddo
+      enddo
+   else
+      do i1 = 0, ppc1h-1
+         rr = 0.5 - (i1 + 0.5)/ppc1
+         r1 = rr*dr
+         if (r1<this%r(1) .or. r1>this%r(prof_l)) then
+            cycle
+         end if
+         do ii = 2, prof_l
+            if (this%r(ii) <= this%r(ii-1)) then
+               write (erstr,*) 'r is not monotonically increasing!'
+               call write_err(trim(erstr))
+               return
+            end if
+            if (r1<=this%r(ii)) then
+               den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+               &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+               exit
+            end if
+         end do
+         do i2=0, ppc2-1
+            pt(1,nps) = r1
+            pt(2,nps) = i2*t0
+            pt(3,nps) = 0.0
+            pt(4,nps) = 0.0
+            pt(5,nps) = 0.0
+            pt(6,nps) = 1.0
+            pt(7,nps) = 1.0
+            pt(8,nps) = qm*rr*den_temp
+            nps = nps + 1
+         enddo
+      enddo
+      do i=1, n1p
+         do i1 = 0, ppc1-1
+            rr = (i1 + 0.5)/ppc1 + i - 0.5
+            r1 = rr*dr
+            if (r1<this%r(1) .or. r1>this%r(prof_l)) then
+               cycle
+            end if
+            do ii = 2, prof_l
+               if (this%r(ii) <= this%r(ii-1)) then
+                  write (erstr,*) 'r is not monotonically increasing!'
+                  call write_err(trim(erstr))
+                  return
+               end if
+               if (r1<=this%r(ii)) then
+                  den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+                  &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+                  exit
+               end if
+            end do
+            do i2=0, ppc2-1
+               pt(1,nps) = r1
+               pt(2,nps) = i2*t0
+               pt(3,nps) = 0.0
+               pt(4,nps) = 0.0
+               pt(5,nps) = 0.0
+               pt(6,nps) = 1.0
+               pt(7,nps) = 1.0
+               pt(8,nps) = qm*rr*den_temp
+               nps = nps + 1
+            enddo
+         enddo
+      enddo
+   endif
+   
+   npp = nps - 1
+   
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+end subroutine dist2d_012
 !
 end module fdist2d_class

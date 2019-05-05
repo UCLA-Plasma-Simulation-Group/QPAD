@@ -27,9 +27,9 @@ type(parallel_pipe), pointer :: pp => null()
 type(grid), pointer :: gp => null()
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
-integer :: num_modes, part_shape, i, id, j, k, nt
+integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt
 integer :: st, so ! smooth
-character(len=:), allocatable :: shape, st_str
+character(len=:), allocatable :: shape, st_str, fld_bnd_str
 character(len=2) :: s1
 real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
 type fdist2d_wrap
@@ -108,6 +108,18 @@ case default
    st = p_smooth_none
 end select
 
+call input%get( 'simulation.field_boundary', fld_bnd_str )
+  select case ( trim(fld_bnd_str) )
+  case ( 'zero' )
+    fld_bnd = p_bnd_zero
+  case ( 'conduct' )
+    fld_bnd = p_bnd_conduct
+  case ( 'open' )
+    fld_bnd = p_bnd_open
+  case default
+    call write_err( 'Invalid field boundary type!' )
+  end select
+
 nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
@@ -117,12 +129,12 @@ call cu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call amu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call dcu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
 call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-! call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam_old, iter_tol=prec )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_beam, iter_tol=prec )
-call bt%new( pp, gp, dr, dxi, num_modes, part_shape, entity=p_entity_plasma, iter_tol=prec )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape, iter_tol=prec )
+call b%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call e%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call bb%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_beam, iter_tol=prec )
+call bt%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call psi%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, iter_tol=prec )
+
 pqb => qb
 
 xdim = 8
@@ -131,6 +143,9 @@ call input%get('species(1).profile',npf)
 select case (npf)
 case (0)
    allocate(fdist2d_000::pf2d%p)
+   call pf2d%p%new(input,1)
+case (12)
+   allocate(fdist2d_012::pf2d%p)
    call pf2d%p%new(input,1)
 end select
 call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
@@ -916,7 +931,6 @@ do i = 1, nt
 
       call qb%copy_slice(j+1, p_copy_2to1)
       call qb%smooth_f1()
-      ! call bb%solve_old(qb)
       call bb%solve(qb)
       qe = 0.0
       call spe%qdp(qe)
