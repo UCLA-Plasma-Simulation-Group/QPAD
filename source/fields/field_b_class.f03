@@ -192,7 +192,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
   integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, k0, a1, a2, a3, b, dr, dr2, rmax
+  real :: idrh, idr, k0, a1, a2, a3, b, dr, dr2, rmax, ir
   real, save :: local_sum, global_sum
   character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
@@ -228,11 +228,14 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
         k0 = real(i+noff) - 0.5
 
-        a1 =  idrh * (k0-0.5) / k0
-        a2 = -idrh / k0
-        a3 = -idrh * (k0+0.5) / k0
+        ! a1 =  idrh * (k0-0.5) / k0
+        ! a2 = -idrh / k0
+        ! a3 = -idrh * (k0+0.5) / k0
 
-        this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+        ! this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+
+        ir = idr / k0
+        this%buf_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i)
 
       enddo
 
@@ -242,12 +245,15 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       do i = 1, nrp
 
         k0 = real(i+noff) - 0.5
+        ir = idr / k0
 
-        a1 =  idrh * (k0-0.5) / k0
-        a2 = -idrh / k0
-        a3 = -idrh * (k0+0.5) / k0
+        ! a1 =  idrh * (k0-0.5) / k0
+        ! a2 = -idrh / k0
+        ! a3 = -idrh * (k0+0.5) / k0
 
-        this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+        ! this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
+
+        this%buf_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i)
         local_sum = local_sum + f1_re(2,i)
 
       enddo
@@ -258,15 +264,19 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
+      ! this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
+      this%buf_re(1) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - 2.0*idr * f1_re(2,1)
     endif
     if ( idproc == nvp-1 ) then
-      a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
-      a3 = idr**2 * (nrp+noff) / (nrp+noff-0.5)
-      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp)
+      ! a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
+
+      k0 = real(nrp+noff)-0.5
+      ir = idr / k0
+      this%buf_re(nrp) = -idrh * ( 3.0 * f1_re(2,nrp) - 4.0 * f1_re(2,nrp-1) + f1_re(2,nrp-2) ) - ir * f1_re(2,nrp)
 
       select case ( this%solver_bz(0)%bnd )
       case ( p_bnd_conduct )
+        a3 = idr**2 * (nrp+noff) / (nrp+noff-0.5)
         this%buf_re(nrp) = this%buf_re(nrp) + a3 * global_sum 
       case ( p_bnd_zero, p_bnd_open )
         ! do nothing
@@ -278,29 +288,43 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     do i = 1, nrp
 
       k0 = real(i+noff) - 0.5
+      ir = idr / k0
 
-      a1 =  idrh * (k0-0.5) / k0
-      a2 = -idrh / k0
-      a3 = -idrh * (k0+0.5) / k0
-      b  =  idr * real(mode) / k0
+      ! a1 =  idrh * (k0-0.5) / k0
+      ! a2 = -idrh / k0
+      ! a3 = -idrh * (k0+0.5) / k0
+      ! b  =  idr * real(mode) / k0
 
-      this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1) - &
-                        b * f1_im(1,i)
-      this%buf_im(i) = a1 * f1_im(2,i-1) + a2 * f1_im(2,i) + a3 * f1_im(2,i+1) + &
-                        b * f1_re(1,i)
+      ! this%buf_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1) - &
+      !                   b * f1_im(1,i)
+      ! this%buf_im(i) = a1 * f1_im(2,i-1) + a2 * f1_im(2,i) + a3 * f1_im(2,i+1) + &
+      !                   b * f1_re(1,i)
+
+      this%buf_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i) - mode * ir * f1_im(1,i)
+      this%buf_im(i) = -idrh * ( f1_im(2,i+1) - f1_im(2,i-1) ) - ir * f1_im(2,i) + mode * ir * f1_re(1,i)
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
-      this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
+      ! this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
+      ! this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
+      ir = 2.0 * idr
+      this%buf_re(i) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - ir * f1_re(2,1) &
+                        - mode * ir * f1_im(1,1)
+      this%buf_im(i) = idrh * ( 3.0 * f1_im(2,1) - 4.0 * f1_im(2,2) + f1_im(2,3) ) - ir * f1_im(2,1) &
+                        + mode * ir * f1_re(1,1)
     endif
     if ( idproc == nvp-1 ) then
       k0 = real(nrp+noff) - 0.5
-      a2 = -idr * (k0+1.0) / k0
-      b  =  idr * real(mode) / k0
-      this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
-      this%buf_im(nrp) = idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
+      ir = idr / k0
+      ! a2 = -idr * (k0+1.0) / k0
+      ! b  =  idr * real(mode) / k0
+      ! this%buf_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
+      ! this%buf_im(nrp) = idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
+      this%buf_re(nrp) = -idrh * ( 3.0 * f1_re(2,nrp) - 4.0 * f1_re(2,nrp-1) + f1_re(2,nrp-2) ) - ir * f1_re(2,nrp) &
+                         -mode * ir * f1_im(1,nrp)
+      this%buf_im(nrp) = -idrh * ( 3.0 * f1_im(2,nrp) - 4.0 * f1_im(2,nrp-1) + f1_im(2,nrp-2) ) - ir * f1_im(2,nrp) &
+                         +mode * ir * f1_re(1,nrp)
     endif
 
   else
@@ -625,15 +649,15 @@ subroutine set_source_bperp_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im
       ir = 2.0 * idr
       this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
-      this%buf(3) = f1_re(1,1) + idr * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
-      this%buf(4) = f1_im(1,1) + idr * ( 3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) - f3_im(2,1)
+      this%buf(3) = f1_re(1,1) - idrh * ( 3.0 * f2_re(3,1) - 4.0 * f2_re(3,2) + f2_re(3,3) ) - f3_re(2,1)
+      this%buf(4) = f1_im(1,1) - idrh * ( 3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) - f3_im(2,1)
     endif
     if ( idproc == nvp-1 ) then
       ir = idr / (real(nrp+noff)-0.5)
       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp)
       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp)
-      this%buf(4*nrp-1) = f1_re(1,nrp) + idr * ( -3.0 * f2_re(3,nrp) + 4.0 * f2_re(3,nrp-1) - f2_re(3,nrp-2) ) - f3_re(2,nrp)
-      this%buf(4*nrp)   = f1_im(1,nrp) + idr * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)    
+      this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf(4*nrp)   = f1_im(1,nrp) + idrh * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)    
     endif
 
   else
@@ -832,7 +856,7 @@ subroutine get_solution_bperp( this, mode )
       f1_im(1,1) = ir * mode * this%buf_re(1)
       f1_im(2,1) = -idrh * ( -3.0 * this%buf_im(1) + 4.0 * this%buf_im(2) - this%buf_im(3) )
     else
-      ir = idr / ( real(1+noff) - 0.5 )
+      ir = 2.0 * idr
       f1_re(1,1) = -ir * mode * this%buf_im(1)
       f1_re(2,1) = -idrh * ( this%buf_re(2) - lbuf(1) )
       f1_im(1,1) = ir * mode * this%buf_re(1)
