@@ -47,8 +47,8 @@ type(hdf5file) :: file_beam1, file_beam2
 
 type(field_rho), pointer :: pqb => null()
 type(field_rho), target :: qe,qb
-type(field_jay) :: cu
-type(field_djdxi) :: dcu,acu,amu
+type(field_jay) :: cu, amu
+type(field_djdxi) :: dcu,acu
 type(field_b) :: b,bb,bt
 type(field_e) :: e
 type(field_psi) :: psi

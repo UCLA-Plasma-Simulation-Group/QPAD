@@ -190,8 +190,8 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    implicit none
    
    class(species2d), intent(inout) :: this
-   class(field_jay), intent(inout) :: cu
-   class(field_djdxi), intent(inout) :: amu, dcu
+   class(field_jay), intent(inout) :: cu, amu
+   class(field_djdxi), intent(inout) :: dcu
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
 ! local data

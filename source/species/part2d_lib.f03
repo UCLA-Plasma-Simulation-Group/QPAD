@@ -227,28 +227,30 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
       v1 = ox(1)*ox(1)*ip7
       v2 = ox(2)*ox(1)*ip7
-      ! v3 = ox(1)*ox(2)*ip7
+      v3 = ox(2)*ox(2)*ip7
 
       vx = vx+ox(1)*dx(3)*ip7
       vy = vy+ox(2)*dx(3)*ip7
 
-      dx(1) = ox(1)*ox(2)/r0*ip7
-      dx(2) = ox(2)*ox(2)/r0*ip7
+      ! dx(1) = ox(1)*ox(2)/r0*ip7
+      ! dx(2) = ox(2)*ox(2)/r0*ip7
 
       dxx(1) = v1 * dd
       v1 = v1 * ad
       dxx(2) = v2 * dd
       v2 = v2 * ad
+      rot1 = v3 * dd
+      v3 = v3 * ad
 
       oxx(1) = vx * dd
       vx = vx * ad
       oxx(2) = vy * dd
       vy = vy * ad
 
-      rot1 = dx(1) * dd
-      dx(1) = dx(1) * ad
-      rot2 = dx(2) * dd
-      dx(2) = dx(2) * ad
+      ! rot1 = dx(1) * dd
+      ! dx(1) = dx(1) * ad
+      ! rot2 = dx(2) * dd
+      ! dx(2) = dx(2) * ad
 
       omzt = ox(1) * dd
       ox(1) = ox(1) * ad
@@ -259,8 +261,10 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
       amu0(1,nn) = amu0(1,nn) + v1
       amu0(2,nn) = amu0(2,nn) + v2
+      amu0(3,nn) = amu0(3,nn) + v3
       amu0(1,nn+1) = amu0(1,nn+1) + dxx(1)
       amu0(2,nn+1) = amu0(2,nn+1) + dxx(2)
+      amu0(3,nn+1) = amu0(3,nn+1) + rot1
 
       dcu0(1,nn) = dcu0(1,nn) + vx
       dcu0(2,nn) = dcu0(2,nn) + vy
@@ -283,23 +287,27 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          amui => amu_im(i)%get_f1()
          amur(1,nn) = amur(1,nn) + v1*rcr
          amur(2,nn) = amur(2,nn) + v2*rcr
+         amur(3,nn) = amur(3,nn) + v3*rcr
          amur(1,nn+1) = amur(1,nn+1) + dxx(1)*rcr
          amur(2,nn+1) = amur(2,nn+1) + dxx(2)*rcr
+         amur(3,nn+1) = amur(3,nn+1) + rot1*rcr
          amui(1,nn) = amui(1,nn) + v1*rci
          amui(2,nn) = amui(2,nn) + v2*rci
+         amui(3,nn) = amui(3,nn) + v3*rci
          amui(1,nn+1) = amui(1,nn+1) + dxx(1)*rci
          amui(2,nn+1) = amui(2,nn+1) + dxx(2)*rci
+         amui(3,nn+1) = amui(3,nn+1) + rot1*rci
 
          dcur => dcu_re(i)%get_f1()
          dcui => dcu_im(i)%get_f1()
-         dcur(1,nn) = dcur(1,nn) + vx*rcr + dx(1)*rci*real(i)
-         dcur(2,nn) = dcur(2,nn) + vy*rcr + dx(2)*rci*real(i)
-         dcur(1,nn+1) = dcur(1,nn+1) + oxx(1)*rcr + rot1*rci*real(i)
-         dcur(2,nn+1) = dcur(2,nn+1) + oxx(2)*rcr + rot2*rci*real(i)
-         dcui(1,nn) = dcui(1,nn) + vx*rci - dx(1)*rcr*real(i)
-         dcui(2,nn) = dcui(2,nn) + vy*rci - dx(2)*rcr*real(i)
-         dcui(1,nn+1) = dcui(1,nn+1) + oxx(1)*rci - rot1*rcr*real(i)
-         dcui(2,nn+1) = dcui(2,nn+1) + oxx(2)*rci - rot2*rcr*real(i)
+         dcur(1,nn) = dcur(1,nn) + vx*rcr
+         dcur(2,nn) = dcur(2,nn) + vy*rcr
+         dcur(1,nn+1) = dcur(1,nn+1) + oxx(1)*rcr
+         dcur(2,nn+1) = dcur(2,nn+1) + oxx(2)*rcr
+         dcui(1,nn) = dcui(1,nn) + vx*rci
+         dcui(2,nn) = dcui(2,nn) + vy*rci
+         dcui(1,nn+1) = dcui(1,nn+1) + oxx(1)*rci
+         dcui(2,nn+1) = dcui(2,nn+1) + oxx(2)*rci
 
          cur => cu_re(i)%get_f1()
          cui => cu_im(i)%get_f1()
@@ -323,7 +331,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    if (noff == 0) then
       cu0(1:3,0) = cu0(1:3,0)/0.5
       dcu0(1:2,0) = dcu0(1:2,0)/0.5
-      amu0(1:2,0) = amu0(1:2,0)/0.5
+      amu0(1:3,0) = amu0(1:3,0)/0.5
       do i = 1, num_modes
          amur => amu_re(i)%get_f1()
          amui => amu_im(i)%get_f1()
@@ -334,15 +342,15 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
          cur(1:3,0) = cur(1:3,0)/0.5
          dcur(1:2,0) = dcur(1:2,0)/0.5
-         amur(1:2,0) = amur(1:2,0)/0.5
+         amur(1:3,0) = amur(1:3,0)/0.5
          cui(1:3,0) = cui(1:3,0)/0.5
          dcui(1:2,0) = dcui(1:2,0)/0.5
-         amui(1:2,0) = amui(1:2,0)/0.5
+         amui(1:3,0) = amui(1:3,0)/0.5
       end do      
    else
       cu0(1:3,0) = cu0(1:3,0)/(0.5+noff-1)
       dcu0(1:2,0) = dcu0(1:2,0)/(0.5+noff-1)
-      amu0(1:2,0) = amu0(1:2,0)/(0.5+noff-1)
+      amu0(1:3,0) = amu0(1:3,0)/(0.5+noff-1)
       do i = 1, num_modes
          amur => amu_re(i)%get_f1()
          amui => amu_im(i)%get_f1()
@@ -353,10 +361,10 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
          cur(1:3,0) = cur(1:3,0)/(0.5+noff-1)
          dcur(1:2,0) = dcur(1:2,0)/(0.5+noff-1)
-         amur(1:2,0) = amur(1:2,0)/(0.5+noff-1)
+         amur(1:3,0) = amur(1:3,0)/(0.5+noff-1)
          cui(1:3,0) = cui(1:3,0)/(0.5+noff-1)
          dcui(1:2,0) = dcui(1:2,0)/(0.5+noff-1)
-         amui(1:2,0) = amui(1:2,0)/(0.5+noff-1)
+         amui(1:3,0) = amui(1:3,0)/(0.5+noff-1)
       end do      
    end if
 
@@ -364,7 +372,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       r = 0.5 + j + noff - 1
       cu0(1:3,j) = cu0(1:3,j)/r
       dcu0(1:2,j) = dcu0(1:2,j)/r
-      amu0(1:2,j) = amu0(1:2,j)/r
+      amu0(1:3,j) = amu0(1:3,j)/r
    end do
 
    do i = 1, num_modes
@@ -378,10 +386,10 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          r = 0.5 + j + noff - 1
          cur(1:3,j) = cur(1:3,j)/r
          dcur(1:2,j) = dcur(1:2,j)/r
-         amur(1:2,j) = amur(1:2,j)/r
+         amur(1:3,j) = amur(1:3,j)/r
          cui(1:3,j) = cui(1:3,j)/r
          dcui(1:2,j) = dcui(1:2,j)/r
-         amui(1:2,j) = amui(1:2,j)/r
+         amui(1:3,j) = amui(1:3,j)/r
       end do
    end do      
    call write_dbg(cls_name, sname, cls_level, 'ends')

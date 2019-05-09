@@ -220,7 +220,7 @@ subroutine solve_field_djdxi( this, acu, amu )
 
   class( field_djdxi ), intent(inout) :: this
   class( field_djdxi ), intent(in) :: acu
-  class( field_djdxi ), intent(inout) :: amu
+  class( field_jay ), intent(inout) :: amu
 
   type( ufield ), dimension(:), pointer :: acu_re => null(), acu_im => null()
   type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
@@ -235,8 +235,6 @@ subroutine solve_field_djdxi( this, acu, amu )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'set source' )
-
-  ! call amu%copy_gc_f1()
 
   idr = 1.0 / this%dr
   idrh = idr * 0.5
@@ -287,34 +285,37 @@ subroutine solve_field_djdxi( this, acu, amu )
     do i = 1, nrp
       k0 = real(i+noff) - 0.5
       ir = idr / k0
-      udcu_re(1,i) = uacu_re(1,i) - idrh * ( uamu_re(1,i+1) - uamu_re(1,i-1) ) - ir*uamu_re(1,i)
-      udcu_re(2,i) = uacu_re(2,i) - idrh * ( uamu_re(2,i+1) - uamu_re(2,i-1) ) - ir*uamu_re(2,i)
-      udcu_im(1,i) = uacu_im(1,i) - idrh * ( uamu_im(1,i+1) - uamu_im(1,i-1) ) - ir*uamu_im(1,i)
-      udcu_im(2,i) = uacu_im(2,i) - idrh * ( uamu_im(2,i+1) - uamu_im(2,i-1) ) - ir*uamu_im(2,i)
-      ! udcu_im(2,i) = -uacu_im(1,i) - ir * mode * uamu_re(1,i)
+      udcu_re(1,i) = uacu_re(1,i) - idrh * ( uamu_re(1,i+1) - uamu_re(1,i-1) ) - ir*uamu_re(1,i)&
+      & + mode*ir*uamu_im(2,i)
+      udcu_re(2,i) = uacu_re(2,i) - idrh * ( uamu_re(2,i+1) - uamu_re(2,i-1) ) - ir*uamu_re(2,i)&
+      & + mode*ir*uamu_im(3,i)
+      udcu_im(1,i) = uacu_im(1,i) - idrh * ( uamu_im(1,i+1) - uamu_im(1,i-1) ) - ir*uamu_im(1,i)&
+      & - mode*ir*uamu_re(2,i)
+      udcu_im(2,i) = uacu_im(2,i) - idrh * ( uamu_im(2,i+1) - uamu_im(2,i-1) ) - ir*uamu_im(2,i)&
+      & - mode*ir*uamu_re(3,i)
     enddo
     if ( idproc == 0 ) then
       ! ir = 2.0 * idr
       udcu_re(1,1) = uacu_re(1,1) - idrh * ( 4.0 * uamu_re(1,2) - &
-      &uamu_re(1,3) - 3.0 * uamu_re(1,1) ) - 2.0*idr * uamu_re(1,1)
+      &uamu_re(1,3) - 3.0 * uamu_re(1,1) ) - 2.0*idr * uamu_re(1,1) + mode*2.0*idr*uamu_im(2,1)
       udcu_re(2,1) = uacu_re(2,1) - idrh * ( 4.0 * uamu_re(2,2) - &
-      &uamu_re(2,3) - 3.0 * uamu_re(2,1) ) - 2.0*idr * uamu_re(2,1)
+      &uamu_re(2,3) - 3.0 * uamu_re(2,1) ) - 2.0*idr * uamu_re(2,1) + mode*2.0*idr*uamu_im(3,1)
       udcu_im(1,1) = uacu_im(1,1) - idrh * ( 4.0 * uamu_im(1,2) - &
-      &uamu_im(1,3) - 3.0 * uamu_im(1,1) ) - 2.0*idr * uamu_im(1,1)
+      &uamu_im(1,3) - 3.0 * uamu_im(1,1) ) - 2.0*idr * uamu_im(1,1) - mode*2.0*idr*uamu_re(2,1)
       udcu_im(2,1) = uacu_im(2,1) - idrh * ( 4.0 * uamu_im(2,2) - &
-      &uamu_im(2,3) - 3.0 * uamu_im(2,1) ) - 2.0*idr * uamu_im(2,1)
+      &uamu_im(2,3) - 3.0 * uamu_im(2,1) ) - 2.0*idr * uamu_im(2,1) - mode*2.0*idr*uamu_re(3,1)
     endif
     if ( idproc == nvp-1 ) then
       k0 = real(nrp+noff)-0.5
       ir = idr / k0
       udcu_re(1,nrp) = uacu_re(1,nrp) + idrh * ( 4.0 * uamu_re(1,nrp-1) - &
-      &uamu_re(1,nrp-2) - 3.0 * uamu_re(1,nrp) ) - ir * uamu_re(1,nrp)
+      &uamu_re(1,nrp-2) - 3.0 * uamu_re(1,nrp) ) - ir * uamu_re(1,nrp) + mode*ir*uamu_im(2,nrp)
       udcu_re(2,nrp) = uacu_re(2,nrp) + idrh * ( 4.0 * uamu_re(2,nrp-1) - &
-      &uamu_re(2,nrp-2) - 3.0 * uamu_re(2,nrp) ) - ir * uamu_re(2,nrp)
+      &uamu_re(2,nrp-2) - 3.0 * uamu_re(2,nrp) ) - ir * uamu_re(2,nrp) + mode*ir*uamu_im(3,nrp)
       udcu_im(1,nrp) = uacu_im(1,nrp) + idrh * ( 4.0 * uamu_im(1,nrp-1) - &
-      &uamu_im(1,nrp-2) - 3.0 * uamu_im(1,nrp) ) - ir * uamu_im(1,nrp)
+      &uamu_im(1,nrp-2) - 3.0 * uamu_im(1,nrp) ) - ir * uamu_im(1,nrp) - mode*ir*uamu_re(2,nrp)
       udcu_im(2,nrp) = uacu_im(2,nrp) + idrh * ( 4.0 * uamu_im(2,nrp-1) - &
-      &uamu_im(2,nrp-2) - 3.0 * uamu_im(2,nrp) ) - ir * uamu_im(2,nrp)
+      &uamu_im(2,nrp-2) - 3.0 * uamu_im(2,nrp) ) - ir * uamu_im(2,nrp) - mode*ir*uamu_re(3,nrp)
     endif
 
   enddo
