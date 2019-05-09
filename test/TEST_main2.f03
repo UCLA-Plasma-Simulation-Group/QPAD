@@ -968,7 +968,7 @@ do i = 1, nt
       call e%solve(b,psi)
       ! cu = cu + dcu*dxi
       call dot_f1( dxi, dcu )
-      call add_f1( dcu, cu )
+      call add_f1( dcu, cu, (/1,2/), (/1,2/) )
       call spe%push(e,b)
       call e%copy_slice(j+1, p_copy_1to2)
       call b%copy_slice(j+1, p_copy_1to2)
