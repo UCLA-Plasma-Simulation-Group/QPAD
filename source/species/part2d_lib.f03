@@ -502,7 +502,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       else
          if (v2 > 0) then
             th1 = th + pi/2.0
-         else (v2 < 0) then
+         else if (v2 < 0) then
             th1 = th - pi/2.0
          else
             th1 = th

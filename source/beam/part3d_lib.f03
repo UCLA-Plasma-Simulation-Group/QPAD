@@ -415,7 +415,19 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
       v1 = r0 + acx*dtx1
       v2 = acy*dtx1
       rn = sqrt(v1*v1+v2*v2)
-      th1 = th + atan(v2/v1)
+      if (v1 > 0) then
+         th1 = th + atan(v2/v1)
+      else if (v1 < 0) then
+         th1 = th + atan(v2/v1) + pi
+      else
+         if (v2 > 0) then
+            th1 = th + pi/2.0
+         else if (v2 < 0) then
+            th1 = th - pi/2.0
+         else
+            th1 = th
+         end if
+      end if
       acz = z + dtz1
       if (rn > edge1) then 
          if (ii == npp) then
