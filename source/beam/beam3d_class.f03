@@ -125,13 +125,13 @@ subroutine qdeposit_beam3d(this,q)
    if (.not. this%evol) then
       call this%q%as(0.0)
       call this%pf%dp(this%q)
-      call this%q%copy_gc_f2()
+      call this%q%copy_gc_f2( bnd_ax = .false. )
       call add_f2( this%q, q )
    else
       call this%q%as(0.0)
       call this%pd%qdp(this%q)
       call this%q%acopy_gc_f2()
-      call this%q%copy_gc_f2()
+      call this%q%copy_gc_f2( bnd_ax = .false. )
       call add_f2( this%q, q )
    end if
    

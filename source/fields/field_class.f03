@@ -217,11 +217,12 @@ subroutine copy_slice( this, idx, dir )
 
 end subroutine copy_slice
 
-subroutine copy_gc_f1( this )
+subroutine copy_gc_f1( this, bnd_ax )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  logical, intent(in) :: bnd_ax
 
   integer :: i
   character(len=20), save :: sname = "copy_gc_f1"
@@ -230,9 +231,9 @@ subroutine copy_gc_f1( this )
   call start_tprof( 'copy guard cells' )
 
   do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_f1()
+    call this%rf_re(i)%copy_gc_f1( bnd_ax )
     if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_f1()
+    call this%rf_im(i)%copy_gc_f1( bnd_ax )
   enddo
 
   call stop_tprof( 'copy guard cells' )
@@ -240,11 +241,12 @@ subroutine copy_gc_f1( this )
 
 end subroutine copy_gc_f1
 
-subroutine copy_gc_f2( this )
+subroutine copy_gc_f2( this, bnd_ax )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  logical, intent(in) :: bnd_ax
 
   integer :: i
   character(len=20), save :: sname = "copy_gc_f2"
@@ -253,9 +255,9 @@ subroutine copy_gc_f2( this )
   call start_tprof( 'copy guard cells' )
 
   do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_f2()
+    call this%rf_re(i)%copy_gc_f2( bnd_ax )
     if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_f2()
+    call this%rf_im(i)%copy_gc_f2( bnd_ax )
   enddo
 
   call stop_tprof( 'copy guard cells' )
@@ -441,7 +443,7 @@ subroutine smooth_f1( this )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .false. )
 
   call stop_tprof( 'smooth' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
