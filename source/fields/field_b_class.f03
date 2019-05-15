@@ -952,7 +952,7 @@ subroutine solve_field_bz( this, jay )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve bz' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -993,7 +993,7 @@ subroutine solve_field_bperp_old( this, rho )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve beam bperp (old)' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -1035,7 +1035,7 @@ subroutine solve_field_bperp( this, rho )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve beam bperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -1081,7 +1081,7 @@ subroutine solve_field_bperp_iter( this, djdxi, jay )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve plasma bperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )

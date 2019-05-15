@@ -25,7 +25,7 @@ type, extends( field ) :: field_psi
 
   class( field_solver ), dimension(:), pointer :: solver => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null() ! buffer for source term
-  real :: src_mean
+  real :: src_mean, q_ax
 
   contains
 
@@ -67,7 +67,7 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, boundar
   case ( p_ps_linear )
   
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
+    gc_num(:,2) = (/2, 1/)
   
   case ( p_ps_quadratic )
 
@@ -130,7 +130,7 @@ subroutine set_source( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, dtype, ierr, comm
+  integer :: i, nrp, noff, dtype, ierr, comm, idproc
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, save :: local_sum, global_sum
   real :: dr, dr2, rmax
@@ -144,7 +144,8 @@ subroutine set_source( this, mode, q_re, q_im )
   dr2   = dr**2
   dtype = q_re%pp%getmreal()
   comm  = q_re%pp%getlgrp()
-  rmax  = (q_re%get_nd(1)-0.5) * dr
+  idproc= q_re%pp%getlidproc()
+  rmax  = q_re%get_nd(1) * dr
 
   f1_re => q_re%get_f1()
   if ( present(q_im) ) then
@@ -162,14 +163,19 @@ subroutine set_source( this, mode, q_re, q_im )
         this%buf_re(i) = -1.0 * f1_re(1,i)
       enddo
 
+      if ( idproc == 0 ) this%q_ax = -1.0*dr2*f1_re(1,0)
+      call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+
     case ( p_bnd_conduct )
       local_sum = 0.0
       do i = 1, nrp
         this%buf_re(i) = -1.0 * f1_re(1,i)
         local_sum = local_sum + this%buf_re(i) * real(i+noff-0.5) * dr2
       enddo
+      this%q_ax = -1.0*dr2*f1_re(1,0)
       ! for mode=0 the source term needs to be neutralized
       call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
+      global_sum = global_sum + this%q_ax
       this%src_mean = global_sum * 2.0 / rmax**2
       this%buf_re = this%buf_re - this%src_mean
 
@@ -199,21 +205,35 @@ subroutine get_solution( this, mode )
 
   integer :: i, nrp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: r2, rmax2
+  real :: r, r2, rmax, rmax2
   character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp   = this%rf_re(mode)%get_ndp(1)
   noff  = this%rf_re(mode)%get_noff(1)
-  rmax2 = ((this%rf_re(mode)%get_nd(1)-0.5) * this%dr)**2
+  rmax  = this%rf_re(mode)%get_nd(1) * this%dr
+  rmax2 = rmax**2
 
-  ! deneutralize the solution
-  if ( mode == 0 .and. this%solver(0)%bnd == p_bnd_conduct ) then
-    do i = 1, nrp
-      r2 = ( (i+noff-0.5) * this%dr )**2
-      this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
-    enddo
+  if ( mode == 0 ) then
+    select case ( this%solver(0)%bnd )
+    case ( p_bnd_conduct )
+
+      ! deneutralize the solution
+      do i = 1, nrp
+        r2 = ( (i+noff-0.5) * this%dr )**2
+        this%buf_re(i) = this%buf_re(i) + 0.25 * this%src_mean * (r2-rmax2)
+      enddo
+
+    case ( p_bnd_zero, p_bnd_open )
+
+      ! add contribution of the source terms on axis
+      do i = 1, nrp
+        r = (i+noff-0.5) * this%dr
+        this%buf_re(i) = this%buf_re(i) + this%q_ax * log(r/rmax)
+      enddo
+
+    end select
   endif
 
   f1_re => this%rf_re(mode)%get_f1()
@@ -265,7 +285,7 @@ subroutine solve_field_psi( this, q )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve psi' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )

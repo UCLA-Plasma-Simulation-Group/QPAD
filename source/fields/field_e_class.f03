@@ -27,18 +27,21 @@ type, extends( field ) :: field_e
   class( field_solver ), dimension(:), pointer :: solver_ez => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
+  real :: jr_ax
+
   contains
 
   generic :: new => init_field_e
   procedure :: del => end_field_e
-  ! generic :: read_input => read_input_field_e
-  generic :: solve => solve_field_ez, solve_field_eperp, solve_field_eperp_beam
+  generic :: solve => solve_field_ez, solve_field_ez_fast, &
+                      solve_field_eperp, solve_field_eperp_beam
 
   procedure, private :: init_field_e
   procedure, private :: end_field_e
   procedure, private :: set_source_ez
   procedure, private :: get_solution_ez
   procedure, private :: solve_field_ez
+  procedure, private :: solve_field_ez_fast
   procedure, private :: solve_field_eperp
   procedure, private :: solve_field_eperp_beam
 
@@ -137,7 +140,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   class( ufield ), intent(in) :: jay_re
   class( ufield ), intent(in), optional :: jay_im
 
-  integer :: i, nrp, noff, idproc, nvp
+  integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, k0, a1, a2, a3, b, ir
   character(len=20), save :: sname = 'set_source_ez'
@@ -145,12 +148,14 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'set source' )
 
-  nrp = jay_re%get_ndp(1)
-  idr = 1.0 / this%dr
-  idrh = 0.5 * idr
-  noff = jay_re%get_noff(1)
-  nvp = jay_re%pp%getlnvp()
+  nrp    = jay_re%get_ndp(1)
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+  noff   = jay_re%get_noff(1)
+  nvp    = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
+  dtype  = jay_re%pp%getmreal()
+  comm   = jay_re%pp%getlgrp()
 
   f1_re => jay_re%get_f1()
   if ( .not. associated( this%buf_re ) ) then
@@ -190,6 +195,8 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       ! this%buf_re(1) = idr * ( f1_re(1,1) + f1_re(1,2) )
+      ! this%buf_re(1) = idrh * ( -3.0 * ( f1_re(1,1) + f1_re(1,0) ) + 4.0 * f1_re(1,2) - f1_re(1,3) ) &
+      ! + 2.0*idr * ( f1_re(1,1) + f1_re(1,0) )
       this%buf_re(1) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) ) + 2.0*idr * f1_re(1,1)
     endif
     if ( idproc == nvp-1 ) then
@@ -198,6 +205,9 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
       ir = idr / k0
       this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
     endif
+
+    ! if ( idproc == 0 ) this%jr_ax = this%dr * f1_re(1,0)
+    ! call MPI_BCAST( this%jr_ax, 1, dtype, 0, comm, ierr )
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
     
@@ -253,21 +263,33 @@ subroutine get_solution_ez( this, mode )
   class( field_e ), intent(inout) :: this
   integer, intent(in) :: mode
 
-  integer :: i, nd1p
+  integer :: i, nrp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real :: r, rmax
   character(len=20), save :: sname = 'get_solution_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nd1p = this%rf_re(mode)%get_ndp(1)
+  nrp  = this%rf_re(mode)%get_ndp(1)
+  noff = this%rf_re(mode)%get_noff(1)
+  rmax = this%rf_re(mode)%get_nd(1) * this%dr
+
+  ! if ( mode == 0 ) then
+  !   ! add contribution of the source terms on axis
+  !   do i = 1, nrp
+  !     r = (i+noff-0.5) * this%dr
+  !     this%buf_re(i) = this%buf_re(i) - this%jr_ax * log(r/rmax)
+  !   enddo
+  ! endif
+
   f1_re => this%rf_re(mode)%get_f1()
-  do i = 1, nd1p
+  do i = 1, nrp
     f1_re(3,i) = this%buf_re(i)
   enddo
 
   if ( mode > 0 ) then
     f1_im => this%rf_im(mode)%get_f1()
-    do i = 1, nd1p
+    do i = 1, nrp
       f1_im(3,i) = this%buf_im(i)
     enddo
   endif
@@ -311,12 +333,69 @@ subroutine solve_field_ez( this, jay )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_ez
+
+subroutine solve_field_ez_fast( this, psi, idx )
+
+  implicit none
+
+  class( field_e ), intent(inout) :: this
+  class( field_psi ), intent(in) :: psi
+  integer, intent(in) :: idx
+
+  type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
+  type( ufield ), dimension(:), pointer :: e_re => null(), e_im => null()
+  real, dimension(:,:), pointer :: e_f1_re => null(), e_f1_im => null()
+  real, dimension(:,:), pointer :: psi_f1_re => null(), psi_f1_im => null()
+  real, dimension(:,:,:), pointer :: psi_f2_re => null(), psi_f2_im => null()
+  integer :: i, j, nrp
+  real :: idxih
+  character(len=20), save :: sname = 'solve_field_ez_fast'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve ez' )
+
+  psi_re => psi%get_rf_re()
+  psi_im => psi%get_rf_im()
+  e_re => this%get_rf_re()
+  e_im => this%get_rf_im()
+
+  nrp = e_re(0)%get_ndp(1)
+  idxih = 0.5 / this%dxi
+
+  do i = 0, this%num_modes
+
+    e_f1_re => e_re(i)%get_f1()
+    psi_f1_re => psi_re(i)%get_f1()
+    psi_f2_re => psi_re(i)%get_f2()
+
+    do j = 1, nrp
+      e_f1_re(3,j) = idxih * ( 3.0 * psi_f1_re(1,j) - 4.0 * psi_f2_re(1,j,idx-1) + psi_f2_re(1,j,idx-2) )
+    enddo
+
+    if ( i == 0 ) cycle
+
+    e_f1_im => e_im(i)%get_f1()
+    psi_f1_im => psi_im(i)%get_f1()
+    psi_f2_im => psi_im(i)%get_f2()
+
+    do j = 1, nrp
+      e_f1_im(3,j) = idxih * ( 3.0 * psi_f1_im(1,j) - 4.0 * psi_f2_im(1,j,idx-1) + psi_f2_im(1,j,idx-2) )
+    enddo
+
+  enddo
+
+  call this%copy_gc_f1( bnd_ax = .true. )
+
+  call stop_tprof( 'solve ez' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine solve_field_ez_fast
 
 subroutine solve_field_eperp( this, b, psi )
 
@@ -398,7 +477,7 @@ subroutine solve_field_eperp( this, b, psi )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve plasma eperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -447,7 +526,7 @@ subroutine solve_field_eperp_beam( this, b )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .true. )
 
   call stop_tprof( 'solve beam eperp' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )

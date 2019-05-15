@@ -320,7 +320,7 @@ subroutine solve_field_djdxi( this, acu, amu )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%copy_gc_f1( bnd_ax = .false. )
 
   call stop_tprof( 'set source' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
