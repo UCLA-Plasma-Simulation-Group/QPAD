@@ -309,9 +309,9 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       ! this%buf_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
       ! this%buf_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
       ir = 2.0 * idr
-      this%buf_re(i) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - ir * f1_re(2,1) &
+      this%buf_re(1) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - ir * f1_re(2,1) &
                         - mode * ir * f1_im(1,1)
-      this%buf_im(i) = idrh * ( 3.0 * f1_im(2,1) - 4.0 * f1_im(2,2) + f1_im(2,3) ) - ir * f1_im(2,1) &
+      this%buf_im(1) = idrh * ( 3.0 * f1_im(2,1) - 4.0 * f1_im(2,2) + f1_im(2,3) ) - ir * f1_im(2,1) &
                         + mode * ir * f1_re(1,1)
     endif
     if ( idproc == nvp-1 ) then
