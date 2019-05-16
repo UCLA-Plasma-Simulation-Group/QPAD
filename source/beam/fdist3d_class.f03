@@ -80,7 +80,7 @@ type, extends(fdist3d) :: fdist3d_000
    private
 
    integer :: npx, npy, npz
-   real :: qm, sigx, sigy, sigz
+   real :: qm, sigx, sigy, sigz,rmax,zmin,zmax
    real :: bcx, bcy, bcz, sigvx, sigvy, sigvz
    real :: cx1,cx2,cx3,cy1,cy2,cy3,gamma,np
    logical :: quiet
@@ -189,7 +189,7 @@ subroutine init_fdist3d_000(this,input,i)
    real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvx,sigvy,sigvz
    real :: cx1,cx2,cx3,cy1,cy2,cy3,gamma,np
    logical :: quiet, evol
-   real :: min, max, cwp, n0
+   real :: min, max, cwp, n0, rmax, zmin, zmax
    real :: alx, alz, dr, dz
    integer :: nr, nz, num_modes
    character(len=20) :: sn,s1
@@ -211,6 +211,7 @@ subroutine init_fdist3d_000(this,input,i)
    call input%get(trim(s1)//'.center(1)',bcx)
    alx = (max-min) 
    dr=alx/real(nr)
+   this%rmax = max   
    call input%get(trim(s1)//'.center(2)',bcy)
    call input%get('simulation.box.z(1)',min)
    call input%get('simulation.box.z(2)',max)
@@ -218,7 +219,8 @@ subroutine init_fdist3d_000(this,input,i)
    bcz = bcz -min
    alz = (max-min) 
    dz=alz/real(nz)
-   this%z0 = min
+   this%zmin = min
+   this%zmax = max
    call input%get(trim(s1)//'.profile',npf)
    call input%get(trim(s1)//'.np(1)',npx)
    call input%get(trim(s1)//'.np(2)',npy)
@@ -292,9 +294,9 @@ subroutine dist3d_000(this,part3d,npp,ud)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    real, dimension(:,:), pointer :: pt => null()
-   integer :: npx, npy, npz, n1, n2, ipbc
+   integer :: npx, npy, npz, ipbc
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
-   real :: sigx, sigy, sigz, x0, y0, z0
+   real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
    integer, dimension(2) :: noff
@@ -307,7 +309,6 @@ subroutine dist3d_000(this,part3d,npp,ud)
    
    ierr = 0; nps = 1
    npx = this%npx; npy = this%npy; npz = this%npz
-   n1 = ud%get_nd(1); n2 = ud%get_nd(2)
    pt => part3d
    vtx = this%sigvx; vty = this%sigvy; vtz = this%sigvz
    vdx = 0.0; vdy = 0.0; vdz = this%gamma
@@ -318,6 +319,9 @@ subroutine dist3d_000(this,part3d,npp,ud)
    idimp = size(part3d,1); npmax = size(part3d,2)
    noff = ud%get_noff()
    dr = this%dx; dz= this%dz
+   rmax = this%rmax
+   zmax = this%zmax
+   zmin = this%zmin
    if (noff(1) == 0) then
       edges(1) = noff(1)*dr
       edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
@@ -325,11 +329,11 @@ subroutine dist3d_000(this,part3d,npp,ud)
       edges(1) = (noff(1) + 0.5)*dr
       edges(2) = edges(1) + ud%get_ndp(1)*dr
    end if
-   edges(3) = noff(2)*dz
+   edges(3) = noff(2)*dz+zmin
    edges(4) = edges(3) + ud%get_ndp(2)*dz
-   
+
    call beam_dist000(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
-   &vdz,npx,npy,npz,n1,n2,idimp,npmax,sigx,sigy,sigz,&
+   &vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
 
    if (ierr /= 0) then

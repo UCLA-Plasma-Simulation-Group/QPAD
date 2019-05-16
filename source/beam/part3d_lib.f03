@@ -81,17 +81,17 @@ function ranorm()
 end function ranorm
 !
 subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
-&vdy,vdz,npx,npy,npz,n1,n2,idimp,npmax,sigx,&
+&vdy,vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,&
 &sigy,sigz,x0,y0,z0,cx,cy,lquiet,ierr)
 
    implicit none
 
-   integer, intent(in) :: npx,npy,npz,idimp,n1,n2
+   integer, intent(in) :: npx,npy,npz,idimp
    integer, intent(inout) :: ierr
    integer(kind=LG), intent(inout) :: npp
    integer(kind=LG), intent(in) :: npmax,nps
    real, intent(in) :: dr,dz,qm,sigx,sigy,sigz,x0,y0,z0
-   real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz
+   real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz,rmax,zmin,zmax
    real, dimension(:,:), intent(inout) :: part
    real, dimension(4), intent(in) :: edges
    real, dimension(3), intent(in) :: cx,cy
@@ -115,8 +115,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    y2 = 2.0 * y0
    r0 = sqrt(x0**2+y0**2)
    sigmar0 = sqrt(sigx**2+sigy**2)
-   borderlz = max((z0-5.0*sigz),1.0)
-   borderz = min((z0+5.0*sigz),real(n2-1))
+   borderlz = max((z0-5.0*sigz),zmin)
+   borderz = min((z0+5.0*sigz),zmax)
    np = npx*npy*npz
    
    do

@@ -51,7 +51,7 @@ type(field_jay) :: cu, amu
 type(field_djdxi) :: dcu,acu
 type(field_b) :: b,bb,bt
 type(field_e) :: e
-type(field_psi) :: psi,psi0,psi1
+type(field_psi) :: psi
 integer :: ndump = 1
 
 
@@ -134,8 +134,6 @@ call e%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_pla
 call bb%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_beam, iter_tol=prec )
 call bt%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
 call psi%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, iter_tol=prec )
-call psi0%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, iter_tol=prec )
-call psi1%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, iter_tol=prec )
 
 pqb => qb
 
@@ -917,8 +915,6 @@ do i = 1, nt
    e = 0.0
    bt = 0.0
    psi = 0.0
-   psi0 = 0.0
-   psi1 = 0.0
    do j = 1, nz
 
       call file_spe%new(&
@@ -942,16 +938,7 @@ do i = 1, nt
       call qe%copy_slice(j+1, p_copy_1to2)
       call psi%solve(qe)
       call spe%extpsi(psi)
-      ! call e%solve(cu)
-      e = 0.0
-      call dot_f1( 3.0, psi )
-      call dot_f1( -4.0, psi0 )
-      call add_f1(psi,e,(/1/),(/3/))
-      call add_f1(psi0,e,(/1/),(/3/))
-      call add_f1(psi1,e,(/1/),(/3/))
-      call dot_f1( 0.5/dxi, e )
-      call dot_f1( 1.0/3.0, psi )
-      call dot_f1( -0.25, psi0 )
+      call e%solve(psi,j+1)
       call bt%solve(cu)
       do k = 1, iter
          ! b = bt + bb
@@ -983,8 +970,6 @@ do i = 1, nt
       call e%copy_slice(j+1, p_copy_1to2)
       call b%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
-      psi1 = psi0
-      psi0 = psi
       write (2,*) "Step", j
    end do
 
