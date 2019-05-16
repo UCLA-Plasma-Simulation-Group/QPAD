@@ -204,7 +204,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    npp = npt - 1
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
-end
+end subroutine beam_dist000
 !
 subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
 ! For 3D particles

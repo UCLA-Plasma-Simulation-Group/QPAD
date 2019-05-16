@@ -195,7 +195,7 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    class(fdist2d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in) :: ud
+   class(ufield), intent(in), pointer :: ud
    real, intent(in) :: s 
 ! local data
    character(len=18), save :: sname = 'dist2d_000'
@@ -350,7 +350,7 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
    class(fdist2d_012), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part2d
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in) :: ud
+   class(ufield), intent(in), pointer :: ud
    real, intent(in) :: s 
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
