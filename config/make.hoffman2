@@ -1,0 +1,27 @@
+# Fortran compiler configuration
+FC = mpiifort -c -O3
+FC_OPTS = -r8 -fopenmp -stand f03 -FR -Tf
+
+# C compiler configuration
+CC = mpiicc -c
+CC_OPTS = -O3 -fopenmp -std=c99
+
+# Preprocessor configuration
+# FPP = gcc -C -E -x assembler-with-cpp
+
+# Python 2.x configuration. Used for automatically generate compile rules
+PYTHON = python 
+
+# Linker configuration
+LINKER = mpiifort
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
+
+# Library dependencies
+HYPRE_LIB = /u/home/a/anweimin/hypre-2.14.0/src/lib
+JSON_INC=/u/home/a/anweimin/json-fortran-6.3.0/build/include
+JSON_LIB=/u/home/a/anweimin/json-fortran-6.3.0/build/lib
+#HDF5_INC = /usr/local/hdf5/include
+#HDF5_LIB = /usr/local/hdf5/lib
+
+INCF = -I$(HDF5_INC) -I$(JSON_INC)

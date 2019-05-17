@@ -23,8 +23,8 @@ implicit none
 
 type(species2d) :: spe
 type(beam3d) :: beam1, beam2
-type(parallel_pipe), pointer :: pp => null()
-type(grid), pointer :: gp => null()
+class(parallel_pipe), pointer :: pp => null()
+class(grid), pointer :: gp => null()
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
 integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt
@@ -45,7 +45,7 @@ type(hdf5file), dimension(:), allocatable :: file_rjz, file_q1, file_qe, file_ps
 &file_er,file_eth,file_ez,file_br,file_bth,file_bz, file_q2,file_jr,file_jth,file_jz
 type(hdf5file) :: file_beam1, file_beam2
 
-type(field_rho), pointer :: pqb => null()
+class(field), pointer :: pqb => null()
 type(field_rho), target :: qe,qb
 type(field_jay) :: cu, amu
 type(field_djdxi) :: dcu,acu
