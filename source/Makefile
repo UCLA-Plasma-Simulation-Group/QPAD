@@ -1,12 +1,12 @@
 # system (must be one of the file suffix in config directory)
-sys ?= hoffman2
+sys ?= gnu_openmpi
 
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
 # main binary name
 quickpic = $(builddir)/qpad.e
 # build directory
-builddir ?= ./build
+builddir ?= build
 # binary directory
 bindir ?= ../bin
 # test directory
@@ -92,7 +92,7 @@ $(builddir)/%.o : %.c
 TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
-	cd $(builddir) && $(FC) -I$(builddir) -c $(FC_OPTS) $(<F) -o $@ $(notdir $(objs)) $(LDF)
+	@cd $(builddir) && $(FC) -I. $(FC_OPTS) $(<F) $(notdir $(objs)) $(LDF) -o $@
 	@cd $(builddir) && chmod a+x $@
 	@if [ ! -d $(bindir) ];then \
 		mkdir $(bindir); \
