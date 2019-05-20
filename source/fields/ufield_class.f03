@@ -711,7 +711,7 @@ subroutine acopy_gc_f2( this )
       do i = 1, this%dim
         this%f2(i,1,j) = this%f2(i,1,j) - this%f2(i,0,j)
         ! this%f2(i,0,j) = this%f2(i,1,j)
-        this%f2(i,0,j) = 2.0 * this%f2(i,0,j)
+        ! this%f2(i,0,j) = 2.0 * this%f2(i,0,j)
       enddo
     enddo
   endif

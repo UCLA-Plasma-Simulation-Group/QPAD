@@ -936,8 +936,6 @@ do i = 1, nt
    end do   
    call qe%write_hdf5(file_s,1,8,8,id)
 
-   call write_data( qe%rf_re(0)%f2(1,0,:), 'f0.txt' )
-
    call file_psi(1)%new(&
    &n = i,&
    &t = i*dt)
@@ -1049,7 +1047,6 @@ do i = 1, nt
       &t = i*dt)
    end do   
    call cu%write_hdf5(file_jr,1,8,8,id)
-   call write_data( cu%rf_re(0)%f2(1,0,:), 'jr0.txt' )
 
    call file_jth(1)%new(&
    &n = i,&
