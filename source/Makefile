@@ -1,12 +1,12 @@
 # system (must be one of the file suffix in config directory)
-sys ?= gnu_openmpi
+sys ?= hoffman2
 
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
 # main binary name
 quickpic = $(builddir)/qpad.e
 # build directory
-builddir ?= build
+builddir ?= ./build
 # binary directory
 bindir ?= ../bin
 # test directory
@@ -29,7 +29,7 @@ endif
 # If AUTO_MAKE_DEPEND is TRUE, the source files below can be listed in
 # arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
-src = dtimer.c param.f03 system.f03 parallel_class.f03 debug_tool.f03
+src = dtimer.c param.f03 sys.f03 parallel_class.f03 debug_tool.f03
 src += parallel_pipe_class.f03
 src += grid_class.f03
 src += input_class.f03
@@ -83,7 +83,7 @@ $(builddir) :
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
-	@cd $(builddir) && $(FC) $(INCF) $(FC_OPTS) -c $(<F) -o $(@F)
+	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F)
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
@@ -92,7 +92,7 @@ $(builddir)/%.o : %.c
 TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
 	@cp $< $(builddir)
-	@cd $(builddir) && $(FC) $(FC_OPTS) -o $@ $(<F) $(notdir $(objs)) $(LDF)
+	cd $(builddir) && $(FC) -I$(builddir) -c $(FC_OPTS) $(<F) -o $@ $(notdir $(objs)) $(LDF)
 	@cd $(builddir) && chmod a+x $@
 	@if [ ! -d $(bindir) ];then \
 		mkdir $(bindir); \
