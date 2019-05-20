@@ -8,7 +8,7 @@ use ufield_class
 use input_class
 use part3d_lib
 use param
-use system
+use sys
 
    
 implicit none

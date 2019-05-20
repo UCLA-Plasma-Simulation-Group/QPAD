@@ -6,7 +6,7 @@ use parallel_pipe_class
 use ufield_class
 use input_class
 use param
-use system
+use sys
 
 
 implicit none

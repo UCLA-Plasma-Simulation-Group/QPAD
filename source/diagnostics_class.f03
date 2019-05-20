@@ -6,7 +6,7 @@ use sim_fields_class
 use sim_beams_class
 use sim_species_class
 use field_class
-use system
+use sys
 use input_class
 
 implicit none

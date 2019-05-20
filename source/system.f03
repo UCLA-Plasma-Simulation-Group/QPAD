@@ -1,4 +1,4 @@
-module system
+module sys
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
@@ -395,4 +395,4 @@ subroutine write_tprof()
 
 end subroutine write_tprof
 
-end module system
+end module sys

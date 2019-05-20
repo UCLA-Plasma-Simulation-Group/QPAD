@@ -4,7 +4,7 @@ use parallel_pipe_class
 use grid_class
 use hdf5io_class
 use param
-use system
+use sys
 use mpi
 
 implicit none

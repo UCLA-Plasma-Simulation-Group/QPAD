@@ -2,7 +2,7 @@ module ufield_smooth_class
 
 use ufield_class
 use param
-use system
+use sys
 use mpi
 
 implicit none

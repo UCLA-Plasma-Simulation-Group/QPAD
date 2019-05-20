@@ -1,7 +1,7 @@
 program quickpic
 
 use simulation_class
-use system
+use sys
 
 implicit none
 

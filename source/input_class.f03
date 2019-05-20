@@ -5,7 +5,7 @@ use parallel_pipe_class
 use grid_class
 use mpi
 use json_module
-use system
+use sys
    
 implicit none
 

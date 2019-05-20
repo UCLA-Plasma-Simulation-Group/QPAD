@@ -5,7 +5,7 @@ use parallel_pipe_class
 use grid_class
 use ufield_class
 use param
-use system
+use sys
 
 implicit none
 
