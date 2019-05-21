@@ -821,6 +821,8 @@ end do
 
 do i = 1, nt
 
+   if ( pp%getlidproc() == 0 ) print *, "3D step = ", i, "/", nt
+
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call qe%as(0.0)
