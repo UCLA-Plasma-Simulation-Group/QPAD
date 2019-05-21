@@ -21,7 +21,7 @@ use debug_tool
 
 implicit none
 
-type(species2d) :: spe
+type(species2d) :: spe1, spe2
 type(beam3d) :: beam1, beam2
 class(parallel_pipe), pointer :: pp => null()
 class(grid), pointer :: gp => null()
@@ -35,13 +35,13 @@ real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
 type fdist2d_wrap
    class(fdist2d), allocatable :: p
 end type fdist2d_wrap
-type(fdist2d_wrap) :: pf2d
+type(fdist2d_wrap) :: pf2d1,pf2d2
 type fdist3d_wrap
    class(fdist3d), allocatable :: p
 end type fdist3d_wrap
 type(fdist3d_wrap) :: pf3d1, pf3d2
-type(hdf5file) :: file_spe
-type(hdf5file), dimension(:), allocatable :: file_rjz, file_q1, file_qe, file_psi,&
+type(hdf5file) :: file_spe1,file_spe2
+type(hdf5file), dimension(:), allocatable :: file_rjz, file_q1, file_qe1, file_qe2, file_psi,&
 &file_er,file_eth,file_ez,file_br,file_bth,file_bz, file_q2,file_jr,file_jth,file_jz
 type(hdf5file) :: file_beam1, file_beam2
 
@@ -65,7 +65,8 @@ call write_dbg( 'main', 'test_species', 0, 'starts' )
 call input%get('simulation.max_mode',num_modes)
 allocate(file_q1(2*num_modes+1))
 allocate(file_q2(2*num_modes+1))
-allocate(file_qe(2*num_modes+1))
+allocate(file_qe1(2*num_modes+1))
+allocate(file_qe2(2*num_modes+1))
 allocate(file_rjz(2*num_modes+1))
 allocate(file_psi(2*num_modes+1))
 allocate(file_er(2*num_modes+1))
@@ -142,13 +143,24 @@ xdim = 8
 call input%get('species(1).profile',npf)
 select case (npf)
 case (0)
-   allocate(fdist2d_000::pf2d%p)
-   call pf2d%p%new(input,1)
+   allocate(fdist2d_000::pf2d1%p)
+   call pf2d1%p%new(input,1)
 case (12)
-   allocate(fdist2d_012::pf2d%p)
-   call pf2d%p%new(input,1)
+   allocate(fdist2d_012::pf2d1%p)
+   call pf2d1%p%new(input,1)
 end select
-call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
+call spe1%new(pp,gp,pf2d1%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
+
+call input%get('species(2).profile',npf)
+select case (npf)
+case (0)
+   allocate(fdist2d_000::pf2d2%p)
+   call pf2d2%p%new(input,1)
+case (12)
+   allocate(fdist2d_012::pf2d2%p)
+   call pf2d2%p%new(input,1)
+end select
+call spe2%new(pp,gp,pf2d2%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
 
 call input%get('beam(1).profile',npf)
 select case (npf)
@@ -177,6 +189,8 @@ if (pp%getidproc() == 0) then
    call system('mkdir -p ./Beam02/Raw/')
    call system('mkdir -p ./Species01/Charge/')
    call system('mkdir -p ./Species01/Raw/')
+   call system('mkdir -p ./Species02/Charge/')
+   call system('mkdir -p ./Species02/Raw/')
    call system('mkdir -p ./Fields/Rhojz/')
    call system('mkdir -p ./Fields/Psi/')
    call system('mkdir -p ./Fields/Er/')
@@ -293,7 +307,7 @@ do i = 1, num_modes
    &t = 0.0)
 end do
 
-call file_qe(1)%new(&
+call file_qe1(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&
 &axismax = (/rmax,zmax,1.0/),&
 &axisname  = (/'r  ','\xi','z  '/),&
@@ -312,7 +326,7 @@ call file_qe(1)%new(&
 
 do i = 1, num_modes
    write (s1, '(I1.1)') i
-   call file_qe(2*i)%new(&
+   call file_qe1(2*i)%new(&
    &axismin = (/rmin,zmin,0.0/),&
    &axismax = (/rmax,zmax,1.0/),&
    &axisname  = (/'r  ','\xi','z  '/),&
@@ -327,7 +341,7 @@ do i = 1, num_modes
    &label = 'Charge Density',&
    &n = 0,&
    &t = 0.0)
-   call file_qe(2*i+1)%new(&
+   call file_qe1(2*i+1)%new(&
    &axismin = (/rmin,zmin,0.0/),&
    &axismax = (/rmax,zmax,1.0/),&
    &axisname  = (/'r  ','\xi','z  '/),&
@@ -337,6 +351,57 @@ do i = 1, num_modes
    &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
    &rank = 2,&
    &filename = './Species01/Charge/',&
+   &dataname = 'qi'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Charge Density',&
+   &n = 0,&
+   &t = 0.0)
+end do
+
+call file_qe2(1)%new(&
+&axismin = (/rmin,zmin,0.0/),&
+&axismax = (/rmax,zmax,1.0/),&
+&axisname  = (/'r  ','\xi','z  '/),&
+&axislabel = (/'r  ','\xi','z  '/),&
+&timeunit = '1 / \omega_p',&
+&dt = dxi,&
+&axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+&rank = 2,&
+&filename = './Species02/Charge/',&
+&dataname = 'q0',&
+&units = 'n_0',&
+&label = 'Charge Density',&
+&n = 0,&
+&t = 0.0)
+
+
+do i = 1, num_modes
+   write (s1, '(I1.1)') i
+   call file_qe2(2*i)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Species02/Charge/',&
+   &dataname = 'qr'//trim(s1),&
+   &units = 'n_0',&
+   &label = 'Charge Density',&
+   &n = 0,&
+   &t = 0.0)
+   call file_qe2(2*i+1)%new(&
+   &axismin = (/rmin,zmin,0.0/),&
+   &axismax = (/rmax,zmax,1.0/),&
+   &axisname  = (/'r  ','\xi','z  '/),&
+   &axislabel = (/'r  ','\xi','z  '/),&
+   &timeunit = '1 / \omega_p',&
+   &dt = dxi,&
+   &axisunits = (/'c / \omega_p','c / \omega_p','c / \omega_p'/),&
+   &rank = 2,&
+   &filename = './Species02/Charge/',&
    &dataname = 'qi'//trim(s1),&
    &units = 'n_0',&
    &label = 'Charge Density',&
@@ -917,27 +982,29 @@ do i = 1, nt
    psi = 0.0
    do j = 1, nz
 
-      call file_spe%new(&
-      &timeunit = '1 / \omega_p',&
-      &dt = dxi,&
-      &ty = 'particles',&
-      &filename = './Species01/Raw/',&
-      &dataname = 'raw',&
-      &units = '',&
-      &label = 'Plasma Raw',&
-      &n = j,&
-      &t = real(j))
-      call spe%wr(file_spe)
+      ! call file_spe%new(&
+      ! &timeunit = '1 / \omega_p',&
+      ! &dt = dxi,&
+      ! &ty = 'particles',&
+      ! &filename = './Species01/Raw/',&
+      ! &dataname = 'raw',&
+      ! &units = '',&
+      ! &label = 'Plasma Raw',&
+      ! &n = j,&
+      ! &t = real(j))
+      ! call spe%wr(file_spe)
 
       call qb%copy_slice(j+1, p_copy_2to1)
       call qb%smooth_f1()
       call bb%solve(qb)
       qe = 0.0
-      call spe%qdp(qe)
+      call spe1%qdp(qe)
+      call spe2%qdp(qe)
       call qe%smooth_f1()
       call qe%copy_slice(j+1, p_copy_1to2)
       call psi%solve(qe)
-      call spe%extpsi(psi)
+      call spe1%extpsi(psi)
+      call spe2%extpsi(psi)
       call e%solve(psi,j+1)
       call bt%solve(cu)
       do k = 1, iter
@@ -947,7 +1014,8 @@ do i = 1, nt
          cu = 0.0
          acu = 0.0
          amu = 0.0
-         call spe%amjdp(e,b,cu,amu,acu)
+         call spe1%amjdp(e,b,cu,amu,acu)
+         call spe2%amjdp(e,b,cu,amu,acu)
          call acu%smooth_f1()
          call amu%smooth_f1()
          call cu%smooth_f1()
@@ -956,7 +1024,8 @@ do i = 1, nt
          ! call e%solve(cu)
          call bt%solve(cu)
          if (k == iter) then
-            call spe%cbq(j+1)
+            call spe1%cbq(j+1)
+            call spe2%cbq(j+1)
             call cu%copy_slice(j+1, p_copy_1to2)
          end if
       end do
@@ -966,7 +1035,8 @@ do i = 1, nt
       ! cu = cu + dcu*dxi
       call dot_f1( dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )
-      call spe%push(e,b)
+      call spe1%push(e,b)
+      call spe2%push(e,b)
       call e%copy_slice(j+1, p_copy_1to2)
       call b%copy_slice(j+1, p_copy_1to2)
       call psi%copy_slice(j+1, p_copy_1to2)
@@ -975,7 +1045,8 @@ do i = 1, nt
 
    call beam1%push(e,b,7,7,id)
    call beam2%push(e,b,7,7,id)
-   call spe%renew(i*dt)
+   call spe1%renew(i*dt)
+   call spe2%renew(i*dt)
 
    call stop_tprof( 'total simulation time' )
 
@@ -1047,20 +1118,34 @@ do i = 1, nt
       &t = i*dt)
       call beam2%wr(file_beam2,1,6,6,id)
    
-      call file_qe(1)%new(&
+      call file_qe1(1)%new(&
       &n = i,&
       &t = i*dt)
       
       do j = 1, num_modes
-         call file_qe(2*j)%new(&
+         call file_qe1(2*j)%new(&
          &n = i,&
          &t = i*dt)
-         call file_qe(2*j+1)%new(&
+         call file_qe1(2*j+1)%new(&
          &n = i,&
          &t = i*dt)
       end do   
-      call spe%wrq(file_qe,5,5,id)
+      call spe1%wrq(file_qe1,5,5,id)
    
+      call file_qe2(1)%new(&
+      &n = i,&
+      &t = i*dt)
+      
+      do j = 1, num_modes
+         call file_qe2(2*j)%new(&
+         &n = i,&
+         &t = i*dt)
+         call file_qe2(2*j+1)%new(&
+         &n = i,&
+         &t = i*dt)
+      end do   
+      call spe2%wrq(file_qe2,5,5,id)
+
       call file_psi(1)%new(&
       &n = i,&
       &t = i*dt)
