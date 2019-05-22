@@ -1164,7 +1164,7 @@ subroutine solve_field_bt_old( this, rho )
   character(len=20), save :: sname = 'solve_field_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve beam bt (old)' )
+  call start_tprof( 'solve beam bt' )
 
   ! call rho%copy_gc_f1()
 
@@ -1188,7 +1188,7 @@ subroutine solve_field_bt_old( this, rho )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam bt (old)' )
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt_old

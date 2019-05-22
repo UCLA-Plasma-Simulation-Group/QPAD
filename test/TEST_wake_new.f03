@@ -27,7 +27,7 @@ class(parallel_pipe), pointer :: pp => null()
 class(grid), pointer :: gp => null()
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
-integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt
+integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt, ndump
 integer :: st, so ! smooth
 character(len=:), allocatable :: shape, st_str, fld_bnd_str
 character(len=2) :: s1
@@ -117,6 +117,8 @@ call input%get( 'simulation.field_boundary', fld_bnd_str )
   case default
     call write_err( 'Invalid field boundary type!' )
   end select
+
+call input%get('simulation.ndump', ndump)
 
 nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
@@ -819,11 +821,12 @@ do i = 1, num_modes
    &t = 0.0)
 end do
 
+call start_tprof( 'total simulation time' )
+
 do i = 1, nt
 
    if ( pp%getlidproc() == 0 ) print *, "3D step = ", i, "/", nt
 
-   call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call qe%as(0.0)
    call beam%qdp(qb)
@@ -882,7 +885,10 @@ do i = 1, nt
    call beam%push(e,b,7,7,id)
    call spe%renew(i*dt)
 
-   call stop_tprof( 'total simulation time' )
+   ! diagnostics
+   if ( mod(i-1,ndump) /= 0 ) cycle
+
+   call start_tprof( 'diagnostics' )
 
    call file_q(1)%new(&
    &n = i,&
@@ -1078,8 +1084,11 @@ do i = 1, nt
    end do   
    call cu%write_hdf5(file_jz,1,8,8,id)
 
+   call stop_tprof( 'diagnostics' )
+
 end do
 
+call stop_tprof( 'total simulation time' )
 call write_tprof()
 call write_dbg( 'main', 'test_main', 0, 'ends' )
 
