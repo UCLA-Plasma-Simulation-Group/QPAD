@@ -34,7 +34,7 @@ type, extends( field ) :: field_e
   generic :: new => init_field_e
   procedure :: del => end_field_e
   generic :: solve => solve_field_ez, solve_field_ez_fast, &
-                      solve_field_eperp, solve_field_eperp_beam
+                      solve_field_et, solve_field_et_beam
 
   procedure, private :: init_field_e
   procedure, private :: end_field_e
@@ -42,8 +42,8 @@ type, extends( field ) :: field_e
   procedure, private :: get_solution_ez
   procedure, private :: solve_field_ez
   procedure, private :: solve_field_ez_fast
-  procedure, private :: solve_field_eperp
-  procedure, private :: solve_field_eperp_beam
+  procedure, private :: solve_field_et
+  procedure, private :: solve_field_et_beam
 
 end type field_e
 
@@ -397,7 +397,7 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
 end subroutine solve_field_ez_fast
 
-subroutine solve_field_eperp( this, b, psi )
+subroutine solve_field_et( this, b, psi )
 
   implicit none
 
@@ -412,10 +412,10 @@ subroutine solve_field_eperp( this, b, psi )
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
   real :: idr, idrh, ir, k0
-  character(len=20), save :: sname = 'solve_field_eperp'
+  character(len=20), save :: sname = 'solve_field_et'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve plasma eperp' )
+  call start_tprof( 'solve plasma et' )
 
   ! call psi%copy_gc_f1()
 
@@ -479,12 +479,12 @@ subroutine solve_field_eperp( this, b, psi )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve plasma eperp' )
+  call stop_tprof( 'solve plasma et' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_eperp
+end subroutine solve_field_et
 
-subroutine solve_field_eperp_beam( this, b )
+subroutine solve_field_et_beam( this, b )
 
   implicit none
 
@@ -495,10 +495,10 @@ subroutine solve_field_eperp_beam( this, b )
   real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp
-  character(len=20), save :: sname = 'solve_field_eperp_beam'
+  character(len=20), save :: sname = 'solve_field_et_beam'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve beam eperp' )
+  call start_tprof( 'solve beam et' )
 
   b_re => b%get_rf_re()
   b_im => b%get_rf_im()
@@ -528,9 +528,9 @@ subroutine solve_field_eperp_beam( this, b )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam eperp' )
+  call stop_tprof( 'solve beam et' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_eperp_beam
+end subroutine solve_field_et_beam
 
 end module field_e_class

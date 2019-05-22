@@ -876,7 +876,7 @@ do i = 1, nt
       call e%copy_slice(j, p_copy_1to2)
       call b%copy_slice(j, p_copy_1to2)
       call psi%copy_slice(j, p_copy_1to2)
-      write (2,*) "Step", j
+      ! write (2,*) "Step", j
    end do
 
    call beam%push(e,b,7,7,id)

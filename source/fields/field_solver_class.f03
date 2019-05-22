@@ -90,7 +90,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype, tol )
 
   select case ( this%kind )
 
-  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bt, p_fk_bplus, p_fk_bminus )
 
     call this%set_struct_grid( pp, gp )
     call this%set_struct_stencil()
@@ -104,7 +104,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype, tol )
 
     call this%set_struct_solver( pp )
 
-  case ( p_fk_bperp_old, p_fk_bperp_iter )
+  case ( p_fk_bt_old, p_fk_bt_iter )
 
     call this%set_ij_matrix( pp, gp, dr )
 
@@ -138,13 +138,13 @@ subroutine end_field_solver( this )
   if ( associated(HYPRE_BUF) ) deallocate( HYPRE_BUF )
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_bz, p_fk_ez, p_fk_bperp )
+  case ( p_fk_psi, p_fk_bz, p_fk_ez, p_fk_bt, p_fk_bplus, p_fk_bminus )
     call HYPRE_StructGridDestroy( this%grid, ierr )
     call HYPRE_StructStencilDestroy( this%stencil, ierr )
     call HYPRE_StructVectorDestroy( this%b, ierr )
     call HYPRE_StructVectorDestroy( this%x, ierr )
     call HYPRE_StructMatrixDestroy( this%A, ierr )
-  case ( p_fk_bperp_iter, p_fk_bperp_old )
+  case ( p_fk_bt_iter, p_fk_bt_old )
     call HYPRE_IJMatrixDestroy( this%A, ierr )
     call HYPRE_IJVectorDestroy( this%b, ierr )
     call HYPRE_IJVectorDestroy( this%x, ierr )
@@ -268,10 +268,10 @@ subroutine solve_equation( this, src_sol )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bt, p_fk_bplus, p_fk_bminus )
     call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
     call HYPRE_StructVectorAssemble( this%b, ierr )
-  case ( p_fk_bperp_old, p_fk_bperp_iter )
+  case ( p_fk_bt_old, p_fk_bt_iter )
     local_size = this%iupper - this%ilower + 1
     if ( .not. associated(rows) ) then
       allocate( rows(local_size) )
@@ -296,16 +296,13 @@ subroutine solve_equation( this, src_sol )
   case ( p_hypre_gmres )
     call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
   case ( p_hypre_amg )
-    ! call dtimer( dtime, itime, -1 )
     call HYPRE_BoomerAMGSolve( this%solver, this%par_A, this%par_b, this%par_x, ierr )
-    ! call dtimer( dtime, itime, 1 )
-    ! print *, "time = ", dtime
   end select
 
   select case ( this%kind )
-  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bperp )
+  case ( p_fk_psi, p_fk_ez, p_fk_bz, p_fk_bt, p_fk_bplus, p_fk_bminus )
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
-  case ( p_fk_bperp_old, p_fk_bperp_iter )
+  case ( p_fk_bt_old, p_fk_bt_iter )
     call HYPRE_IJVectorGetValues( this%x, local_size, rows, src_sol, ierr )
   end select
 
@@ -383,7 +380,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
   integer :: i, j, ierr, local_vol, nr, noff
   integer :: comm, lidproc, lnvp
-  real :: idr2, m, m2, k1, k2, k0, r
+  real :: idr2, m, m2, k1, k2, k0, r, rmax
   character(len=20), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -409,17 +406,49 @@ subroutine set_struct_matrix( this, pp, gp, dr )
   call HYPRE_StructMatrixCreate( comm, this%grid, this%stencil, this%A, ierr )
   call HYPRE_StructMatrixInitialize( this%A, ierr )
 
-  k0 = noff - 0.5
-  do i = 1, local_vol, this%num_stencil
-    k0 = k0 + 1.0
-    k1 = k0 - 0.5
-    k2 = k0 + 0.5
-    HYPRE_BUF(i) = k1 / k0 * idr2
-    HYPRE_BUF(i+1) = -1.0 * (2.0 + m2 / k0**2) * idr2
-    HYPRE_BUF(i+2) = k2 / k0 * idr2
-  enddo
+  ! initialize the struct matrix
+  select case ( this%kind )
+
+  case ( p_fk_psi, p_fk_bt, p_fk_ez, p_fk_bz )
+    
+    k0 = noff - 0.5
+    do i = 1, local_vol, this%num_stencil
+      k0 = k0 + 1.0
+      k1 = k0 - 0.5
+      k2 = k0 + 0.5
+      HYPRE_BUF(i)   = k1 / k0 * idr2
+      HYPRE_BUF(i+1) = -idr2 * (2.0 + m2 / k0**2)
+      HYPRE_BUF(i+2) = k2 / k0 * idr2
+    enddo
+
+  case ( p_fk_bplus )
+
+    k0 = noff - 0.5
+    do i = 1, local_vol, this%num_stencil
+      k0 = k0 + 1.0
+      k1 = k0 - 0.5
+      k2 = k0 + 0.5
+      HYPRE_BUF(i)   = k1 / k0 * idr2
+      HYPRE_BUF(i+1) = -idr2 * ( 2.0 + ((m+1)/k0)**2 ) - 1.0
+      HYPRE_BUF(i+2) = k2 / k0 * idr2
+    enddo
+
+  case ( p_fk_bminus )
+
+    k0 = noff - 0.5
+    do i = 1, local_vol, this%num_stencil
+      k0 = k0 + 1.0
+      k1 = k0 - 0.5
+      k2 = k0 + 0.5
+      HYPRE_BUF(i)   = k1 / k0 * idr2
+      HYPRE_BUF(i+1) = -idr2 * ( 2.0 + ((m-1)/k0)**2 ) - 1.0
+      HYPRE_BUF(i+2) = k2 / k0 * idr2
+    enddo
+
+  end select
 
   ! lower boundary
+  ! this coefficient is naturally zero
   if ( lidproc == 0 ) HYPRE_BUF(1) = 0.0
 
   ! upper boundary
@@ -434,31 +463,44 @@ subroutine set_struct_matrix( this, pp, gp, dr )
     
     case ( p_bnd_open )
 
+      r = ( noff + nr - 0.5 ) * dr
+      rmax = r + 0.5*dr
+
       select case ( this%kind )
       case ( p_fk_psi )
-        r = ( noff + nr - 0.5 ) * dr
         if ( this%mode == 0 ) then
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m*dr/rmax) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
-      case ( p_fk_bperp )
-        r = ( noff + nr - 0.5 ) * dr
+      case ( p_fk_bt )
         if ( this%mode == 0 ) then
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0+dr/((r+dr)*log(r+dr))) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0+dr/(rmax*log(rmax))) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m*dr/rmax) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
       case ( p_fk_ez, p_fk_bz )
         if ( this%mode == 0 ) then
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-this%mode*dr/(r+dr)) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m*dr/(rmax)) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
+      case ( p_fk_bplus )
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)*dr/(rmax)) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol) = 0.0
+      case ( p_fk_bminus )
+        ! if ( this%mode == 1 ) then
+        !   HYPRE_BUF(local_vol) = 0.0
+        ! else
+        !   HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-abs(m-1)*dr/(rmax)) * HYPRE_BUF(local_vol)
+        !   HYPRE_BUF(local_vol) = 0.0
+        ! endif
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)*dr/(rmax)) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol) = 0.0
       case default
         call write_err( 'Invalid field type!' )
       end select
@@ -612,7 +654,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(3) = 2.0*m / k0**2 * idr2
     HYPRE_BUF(4) = k_plus  / k0 * idr2
-    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
+    if ( this%kind == p_fk_bt_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols(2), HYPRE_BUF(2), ierr )
@@ -635,7 +677,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     HYPRE_BUF(2) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(3) = -2.0*m / k0**2 * idr2
     HYPRE_BUF(4) = k_plus  / k0 * idr2
-    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
+    if ( this%kind == p_fk_bt_iter ) HYPRE_BUF(2) = HYPRE_BUF(2) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols(2), HYPRE_BUF(2), ierr )
@@ -658,7 +700,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     HYPRE_BUF(2) = -2.0*m / k0**2 * idr2
     HYPRE_BUF(3) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(4) = k_plus  / k0 * idr2
-    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
+    if ( this%kind == p_fk_bt_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols(2), HYPRE_BUF(2), ierr )
@@ -681,7 +723,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
     HYPRE_BUF(2) = 2.0*m / k0**2 * idr2
     HYPRE_BUF(3) = -idr2 * (2.0 + (m2+1.0) / k0**2)
     HYPRE_BUF(4) = k_plus  / k0 * idr2
-    if ( this%kind == p_fk_bperp_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
+    if ( this%kind == p_fk_bt_iter ) HYPRE_BUF(3) = HYPRE_BUF(3) - 1.0
 
     if ( i == 1 ) then
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols(2), HYPRE_BUF(2), ierr )
