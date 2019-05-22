@@ -5,7 +5,7 @@ module part3d_lib
 use parallel_pipe_class
 use ufield_class
 use param
-use system
+use sys
 use mpi
 
 implicit none

@@ -9,7 +9,7 @@ use sim_species_class
 use diagnostics_class
 
 use input_class
-use system
+use sys
 use param
 use mpi
 

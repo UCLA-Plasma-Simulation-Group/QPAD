@@ -1,7 +1,7 @@
 program test_timing
 
 use parallel_pipe_class
-use system
+use sys
 use mpi
 
 implicit none

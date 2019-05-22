@@ -10,7 +10,7 @@ use field_e_class
 use field_psi_class
 use fdist2d_class
 use fdist3d_class
-use system
+use sys
 use param
 use species2d_class
 use beam3d_class
@@ -23,8 +23,8 @@ implicit none
 
 type(species2d) :: spe
 type(beam3d) :: beam
-type(parallel_pipe), pointer :: pp => null()
-type(grid), pointer :: gp => null()
+class(parallel_pipe), pointer :: pp => null()
+class(grid), pointer :: gp => null()
 type(input_json), pointer :: input => null()
 integer :: nr, nz, nrp, noff, xdim, npf, ierr, iter
 integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt
@@ -45,7 +45,7 @@ type(hdf5file), dimension(:), allocatable :: file_q, file_qe, file_psi, file_s,&
 &file_er,file_eth,file_ez,file_br,file_bth,file_bz,file_jr,file_jth,file_jz
 type(hdf5file) :: file_beam
 
-type(field_rho), pointer :: pqb => null()
+class(field), pointer :: pqb => null()
 type(field_rho), target :: qe,qb
 type(field_jay) :: cu, amu
 type(field_djdxi) :: dcu,acu
@@ -821,6 +821,8 @@ end do
 
 do i = 1, nt
 
+   if ( pp%getlidproc() == 0 ) print *, "3D step = ", i, "/", nt
+
    call start_tprof( 'total simulation time' )
    call qb%as(0.0)
    call qe%as(0.0)
@@ -936,8 +938,6 @@ do i = 1, nt
    end do   
    call qe%write_hdf5(file_s,1,8,8,id)
 
-   call write_data( qe%rf_re(0)%f2(1,0,:), 'f0.txt' )
-
    call file_psi(1)%new(&
    &n = i,&
    &t = i*dt)
@@ -1049,7 +1049,6 @@ do i = 1, nt
       &t = i*dt)
    end do   
    call cu%write_hdf5(file_jr,1,8,8,id)
-   call write_data( cu%rf_re(0)%f2(1,0,:), 'jr0.txt' )
 
    call file_jth(1)%new(&
    &n = i,&

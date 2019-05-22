@@ -3,7 +3,7 @@
 module part2d_class
 
 use param
-use system
+use sys
 use parallel_pipe_class
 use field_class
 use ufield_class

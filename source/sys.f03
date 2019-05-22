@@ -1,4 +1,4 @@
-module system
+module sys
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
@@ -8,7 +8,7 @@ implicit none
 private
 
 public :: init_stdout, write_stdout
-public :: init_errors, end_errors, write_err, write_wrn, write_dbg
+public :: init_errors, end_errors, set_monitor, write_err, write_wrn, write_dbg
 public :: num2str
 public :: init_tprof, write_tprof, start_tprof, stop_tprof
 
@@ -145,6 +145,16 @@ subroutine write_err( estr )
   stop
 
 end subroutine write_err
+
+subroutine set_monitor( monitor )
+
+  implicit none
+
+  integer, intent(in) :: monitor
+
+  class_monitor = monitor
+
+end subroutine set_monitor
 
 subroutine write_wrn( wstr )
 
@@ -395,4 +405,4 @@ subroutine write_tprof()
 
 end subroutine write_tprof
 
-end module system
+end module sys

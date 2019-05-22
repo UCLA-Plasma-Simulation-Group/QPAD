@@ -5,7 +5,7 @@ use parallel_pipe_class
 
 use mpi
 use param
-use system
+use sys
 use debug_tool
 
 implicit none

@@ -5,7 +5,7 @@ use field_src_class
 
 use parallel_pipe_class
 use grid_class
-use system
+use sys
 use param
 use mpi
 use ufield_class

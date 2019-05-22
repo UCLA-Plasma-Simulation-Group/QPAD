@@ -1,7 +1,7 @@
 module grid_class
 
 use parallel_pipe_class
-use system
+use sys
 
 implicit none
 

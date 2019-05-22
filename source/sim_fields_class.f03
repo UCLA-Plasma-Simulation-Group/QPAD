@@ -7,7 +7,7 @@ use field_e_class
 use field_b_class
 use field_src_class
 
-use system
+use sys
 use param
 
 implicit none

@@ -5,7 +5,7 @@ use parallel_pipe_class
 use grid_class
 use mpi
 use json_module
-use system
+use sys
    
 implicit none
 
@@ -102,6 +102,9 @@ subroutine read_input_json(this)
 
    call this%get('simulation.if_timing', if_timing)
    call init_tprof( if_timing )
+
+   call this%get('simulation.verbose', verbose)
+   call set_monitor( verbose )
    
    call this%get('simulation.nodes(2)',num_stages)
    

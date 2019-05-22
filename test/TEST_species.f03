@@ -9,7 +9,7 @@ use field_e_class
 use field_psi_class
 use fdist2d_class
 use fdist3d_class
-use system
+use sys
 use param
 use species2d_class
 use beam3d_class

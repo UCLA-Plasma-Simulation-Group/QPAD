@@ -6,7 +6,7 @@ use ufield_class
 use ufield_smooth_class
 use hdf5io_class
 use param
-use system
+use sys
 
 implicit none
 
@@ -114,6 +114,7 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
   integer, intent(in), optional :: entity, smooth_type, smooth_order
 
   integer :: i
+  integer, dimension(2,2) :: gc_num_new
   character(len=20), save :: sname = "init_field"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -130,6 +131,9 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
 
   if ( present(smooth_type) .and. present(smooth_order) ) then
     call this%smooth%new( smooth_type, smooth_order )
+    gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
+    gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
+    gc_num_new(:,2) = gc_num(:,2)
   else
     call this%smooth%new( p_smooth_none, 0 )
   endif
@@ -434,12 +438,12 @@ subroutine smooth_f1( this )
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
-      call this%smooth%smooth_f1( this%rf_re(i) )
+      call this%smooth%smooth_f1( this%rf_re(i), this%dr )
       cycle
     endif
 
-    call this%smooth%smooth_f1( this%rf_re(i) )
-    call this%smooth%smooth_f1( this%rf_im(i) )
+    call this%smooth%smooth_f1( this%rf_re(i), this%dr )
+    call this%smooth%smooth_f1( this%rf_im(i), this%dr )
 
   enddo
 

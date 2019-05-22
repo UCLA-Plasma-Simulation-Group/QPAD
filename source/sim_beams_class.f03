@@ -4,7 +4,7 @@ use beam3d_class
 use parallel_pipe_class
 use grid_class
 
-use system
+use sys
 
 implicit none
 

@@ -9,7 +9,7 @@ use field_src_class
 use field_solver_class
 use ufield_class
 use param
-use system
+use sys
 
 implicit none
 
