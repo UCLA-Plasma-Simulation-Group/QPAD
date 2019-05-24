@@ -1009,7 +1009,7 @@ subroutine get_solution_bt( this, mode )
       f1_im(1,1) = ir * mode * this%buf1_re(1)
       f1_im(2,1) = -idrh * ( -3.0 * this%buf1_im(1) + 4.0 * this%buf1_im(2) - this%buf1_im(3) )
     else
-      ir = 2.0 * idr
+      ir = idr / ( real(1+noff) - 0.5 )
       f1_re(1,1) = -ir * mode * this%buf1_im(1)
       f1_re(2,1) = -idrh * ( this%buf1_re(2) - lbuf(1) )
       f1_im(1,1) = ir * mode * this%buf1_re(1)

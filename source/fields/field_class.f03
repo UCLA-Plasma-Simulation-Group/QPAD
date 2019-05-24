@@ -38,6 +38,7 @@ end interface
 
 interface dot_f1
   module procedure dot_f1_unitary
+  module procedure dot_f1_unitary_dim
 end interface
 
 public :: field
@@ -832,6 +833,32 @@ subroutine dot_f1_unitary( a1, a2 )
   call stop_tprof( 'arithmetics' )
 
 end subroutine dot_f1_unitary
+
+subroutine dot_f1_unitary_dim( a1, a2, dim )
+
+  implicit none
+
+  real, intent(in) :: a1
+  class( field ), intent(inout) :: a2
+  integer, intent(in), dimension(:) :: dim
+
+  class( ufield ), dimension(:), pointer :: ua2_re => null(), ua2_im => null()
+  integer :: i
+
+  call start_tprof( 'arithmetics' )
+
+  ua2_re => a2%get_rf_re()
+  ua2_im => a2%get_rf_im()
+
+  do i = 0, a2%num_modes
+    call dot_f1( a1, ua2_re(i), dim )
+    if (i==0) cycle
+    call dot_f1( a1, ua2_im(i), dim )
+  enddo
+
+  call stop_tprof( 'arithmetics' )
+
+end subroutine dot_f1_unitary_dim
 
 subroutine add_f2_binary( a1, a2, a3 )
 

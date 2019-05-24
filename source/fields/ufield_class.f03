@@ -40,6 +40,7 @@ end interface
 
 interface dot_f1
   module procedure dot_f1_unitary
+  module procedure dot_f1_unitary_dim
 end interface
 
 
@@ -1190,6 +1191,24 @@ subroutine dot_f1_unitary( a, b )
   end select
 
 end subroutine dot_f1_unitary
+
+subroutine dot_f1_unitary_dim( a, b, dim )
+
+  implicit none
+
+  real, intent(in) :: a
+  class( ufield ), intent(inout) :: b
+  integer, intent(in), dimension(:) :: dim
+  
+  integer :: ndim, i
+
+  ndim = size( dim )
+
+  do i = 1, ndim
+    b%f1(dim(i),:) = b%f1(dim(i),:) * a
+  enddo
+
+end subroutine dot_f1_unitary_dim
 
 subroutine add_f2_binary( a1, a2, a3 )
 
