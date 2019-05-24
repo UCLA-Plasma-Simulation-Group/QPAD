@@ -10,7 +10,7 @@ use field_e_class
 use field_psi_class
 use fdist2d_class
 use fdist3d_class
-use system
+use sys
 use param
 use species2d_class
 use beam3d_class
@@ -31,7 +31,7 @@ integer :: num_modes, part_shape, fld_bnd, i, id, j, k, nt
 integer :: st, so ! smooth
 character(len=:), allocatable :: shape, st_str, fld_bnd_str
 character(len=2) :: s1
-real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
+real :: q0, m0, dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
 type fdist2d_wrap
    class(fdist2d), allocatable :: p
 end type fdist2d_wrap
@@ -149,18 +149,22 @@ case (12)
    allocate(fdist2d_012::pf2d1%p)
    call pf2d1%p%new(input,1)
 end select
-call spe1%new(pp,gp,pf2d1%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
+call input%get('species(1).q',q0)
+call input%get('species(1).m',m0)
+call spe1%new(pp,gp,pf2d1%p,part_shape,dr,dxi,num_modes,q0/m0,dxi,xdim,0.0,st,so)
 
 call input%get('species(2).profile',npf)
 select case (npf)
 case (0)
    allocate(fdist2d_000::pf2d2%p)
-   call pf2d2%p%new(input,1)
+   call pf2d2%p%new(input,2)
 case (12)
    allocate(fdist2d_012::pf2d2%p)
-   call pf2d2%p%new(input,1)
+   call pf2d2%p%new(input,2)
 end select
-call spe2%new(pp,gp,pf2d2%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
+call input%get('species(2).q',q0)
+call input%get('species(2).m',m0)
+call spe2%new(pp,gp,pf2d2%p,part_shape,dr,dxi,num_modes,q0/m0,dxi,xdim,0.0,st,so)
 
 call input%get('beam(1).profile',npf)
 select case (npf)
