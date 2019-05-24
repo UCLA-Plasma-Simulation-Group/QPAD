@@ -1009,7 +1009,7 @@ subroutine get_solution_bt( this, mode )
       f1_im(1,1) = ir * mode * this%buf1_re(1)
       f1_im(2,1) = -idrh * ( -3.0 * this%buf1_im(1) + 4.0 * this%buf1_im(2) - this%buf1_im(3) )
     else
-      ir = 2.0 * idr
+      ir = idr / ( real(1+noff) - 0.5 )
       f1_re(1,1) = -ir * mode * this%buf1_im(1)
       f1_re(2,1) = -idrh * ( this%buf1_re(2) - lbuf(1) )
       f1_im(1,1) = ir * mode * this%buf1_re(1)
@@ -1164,7 +1164,7 @@ subroutine solve_field_bt_old( this, rho )
   character(len=20), save :: sname = 'solve_field_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve beam bt (old)' )
+  call start_tprof( 'solve beam bt' )
 
   ! call rho%copy_gc_f1()
 
@@ -1188,7 +1188,7 @@ subroutine solve_field_bt_old( this, rho )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam bt (old)' )
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt_old
