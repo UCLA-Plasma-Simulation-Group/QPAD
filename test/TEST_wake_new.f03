@@ -888,8 +888,6 @@ do i = 1, nt
    ! diagnostics
    if ( mod(i-1,ndump) /= 0 ) cycle
 
-   call start_tprof( 'diagnostics' )
-
    call file_q(1)%new(&
    &n = i,&
    &t = i*dt)
@@ -1083,8 +1081,6 @@ do i = 1, nt
       &t = i*dt)
    end do   
    call cu%write_hdf5(file_jz,1,8,8,id)
-
-   call stop_tprof( 'diagnostics' )
 
 end do
 

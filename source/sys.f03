@@ -281,12 +281,14 @@ subroutine init_tprof( enable_timing )
   call add_tprof( 'copy slices' )
   call add_tprof( 'deposit 2D particles' )
   call add_tprof( 'push 2D particles' )
+  call add_tprof( 'move 2D particles' )
   call add_tprof( 'deposit 3D particles' )
   call add_tprof( 'push 3D particles' )
+  call add_tprof( 'move 3D particles' )
   call add_tprof( 'extract psi' )
   call add_tprof( 'arithmetics' )
-  call add_tprof( 'diagnostics' )
-  call add_tprof( 'total simulation time' )
+  call add_tprof( 'write hdf5' )
+  call add_tprof( 'total simulation time' ) ! this must be put in the last
 
   if_timing = enable_timing
 
@@ -350,8 +352,8 @@ subroutine write_tprof()
   integer :: idproc, nproc, ierr, fid = 10, i
   character(len=32) :: filename
   character(len=128) :: str
-  double precision, dimension(:), allocatable :: buf
-  double precision :: avg, max, min, std
+  double precision, dimension(:,:), allocatable :: buf
+  double precision :: avg, max, min, std, lb, prct, whole
 
   if ( (num_event == 0) .or. (.not. if_timing) ) return
 
@@ -380,26 +382,31 @@ subroutine write_tprof()
   fid = 11
   if ( idproc == 0 ) then
     open( unit=fid, file='./TIMING/stats-tprof.out', form='formatted', status='replace' )
-    write ( fid, * ) repeat( '=', 110 )
-    write ( fid, '(A30, 4A20)' ) "EVENT", "AVG TIME (s)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)"
-    write ( fid, * ) repeat( '-', 110 )
-    allocate( buf(nproc) )
+    write ( fid, * ) repeat( '=', 120 )
+    write ( fid, '(A25, A15, A10, 4A15)' ) &
+      "EVENT", "AVG TIME (s)", "(%)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)", "BALANCE (%)"
+    write ( fid, * ) repeat( '-', 120 )
+    allocate( buf( nproc, num_event ) )
   endif
 
   do i = 1, num_event
     call MPI_GATHER( t_event(i), 1, MPI_DOUBLE_PRECISION, &
-      buf, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
-    if ( idproc == 0 ) then
-      avg = sum(buf) / nproc
-      max = maxval(buf)
-      min = minval(buf)
-      std = sqrt( sum( (buf - avg)**2 ) / nproc )
-      write( fid, '(A30, 4E20.4)' ) trim(adjustl(name_event(i))), avg, max, min, std
-    endif
+      buf(1,i), 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   enddo
 
   if ( idproc == 0 ) then
-    write ( fid, * ) repeat( '=', 110 )
+    whole = sum( buf(:,num_event) )
+    do i = 1, num_event
+      avg  = sum(buf(:,i)) / nproc
+      prct = avg * nproc / whole * 100.0
+      max  = maxval(buf(:,i))
+      min  = minval(buf(:,i))
+      std  = sqrt( sum( (buf(:,i) - avg)**2 ) / nproc )
+      lb   = std / avg * 100.0
+      write( fid, '(A25, E15.2, F10.1, 3E15.2, F15.1)' ) &
+        trim(adjustl(name_event(i))), avg, prct, max, min, std, lb
+    enddo
+    write ( fid, * ) repeat( '=', 120 )
     close( unit=fid )
   endif
 

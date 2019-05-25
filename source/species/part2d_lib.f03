@@ -39,6 +39,7 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 2D particles' )
 
    noff = q_re(0)%get_noff(1)
    n1p = q_re(0)%get_ndp(1)
@@ -109,6 +110,8 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
          qi(1,j) = qi(1,j)/r
       end do      
    end do
+
+   call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine part2d_qdeposit
 !
@@ -139,6 +142,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 2D particles' )
 
    noff = ef_re(0)%get_noff(1)
    n1p = ef_re(0)%get_ndp(1)
@@ -391,7 +395,9 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          dcui(1:2,j) = dcui(1:2,j)/r
          amui(1:3,j) = amui(1:3,j)/r
       end do
-   end do      
+   end do
+
+   call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part2d_amjdeposit
@@ -422,6 +428,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'push 2D particles' )
 
    noff = ef_re(0)%get_noff(1)
    n1p = ef_re(0)%get_ndp(1)
@@ -537,6 +544,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       end if
    end do
 
+   call stop_tprof( 'push 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part2d_push
@@ -568,6 +576,8 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
    real :: edgel,edger,an,xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'move 2D particles' )
+
    nbsize = nbmax*xdim
    itermax = 20000
    ierr = 0
@@ -861,6 +871,8 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
       write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
       call write_dbg(cls_name, sname, cls_level, erstr)
    end if
+
+   call stop_tprof( 'move 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
 end subroutine part2d_pmove
@@ -883,6 +895,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
    integer :: i, noff, n1p, nn
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'extract psi' )
 
    noff = psi_re(0)%get_noff(1)
    n1p = psi_re(0)%get_ndp(1)
@@ -917,6 +930,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
       part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5*(1.0+dx)
    end do
 
+   call stop_tprof( 'extract psi' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part2d_extractpsi

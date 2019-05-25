@@ -146,7 +146,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   character(len=20), save :: sname = 'set_source_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'set source' )
+  call start_tprof( 'solve ez' )
 
   nrp    = jay_re%get_ndp(1)
   idr    = 1.0 / this%dr
@@ -251,7 +251,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
 
   endif
 
-  call stop_tprof( 'set source' )
+  call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_ez
@@ -269,6 +269,7 @@ subroutine get_solution_ez( this, mode )
   character(len=20), save :: sname = 'get_solution_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve ez' )
 
   nrp  = this%rf_re(mode)%get_ndp(1)
   noff = this%rf_re(mode)%get_noff(1)
@@ -294,6 +295,7 @@ subroutine get_solution_ez( this, mode )
     enddo
   endif
 
+  call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_ez
@@ -310,9 +312,6 @@ subroutine solve_field_ez( this, jay )
   character(len=20), save :: sname = 'solve_field_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve ez' )
-
-  ! call jay%copy_gc_f1()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -335,7 +334,6 @@ subroutine solve_field_ez( this, jay )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_ez
@@ -390,9 +388,10 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
   enddo
 
+  call stop_tprof( 'solve ez' )
+
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve ez' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_ez_fast
@@ -416,8 +415,6 @@ subroutine solve_field_et( this, b, psi )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve plasma et' )
-
-  ! call psi%copy_gc_f1()
 
   idr = 1.0 / this%dr
   idrh = idr * 0.5
@@ -477,9 +474,10 @@ subroutine solve_field_et( this, b, psi )
 
   enddo
 
+  call stop_tprof( 'solve plasma et' )
+
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve plasma et' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_et
@@ -526,9 +524,10 @@ subroutine solve_field_et_beam( this, b )
 
   enddo
 
+  call stop_tprof( 'solve beam et' )
+
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam et' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_et_beam

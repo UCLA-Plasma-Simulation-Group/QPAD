@@ -216,6 +216,7 @@ subroutine write_hdf5_single( this, file, dim )
   character(len=32), save :: sname = 'write_hdf5_single'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'write hdf5' )
 
   gsize = this%nd
   lsize = this%ndp
@@ -223,6 +224,7 @@ subroutine write_hdf5_single( this, file, dim )
 
   call pwfield( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, ierr )
 
+  call stop_tprof( 'write hdf5' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_single
@@ -242,6 +244,7 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
   character(len=32), save :: sname = 'write_hdf5_pipe'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'write hdf5' )
 
   nstage = this%pp%getnstage()
   stageid = this%pp%getstageid()
@@ -269,6 +272,7 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
       rtag, stag, id, ierr )
   endif
 
+  call stop_tprof( 'write hdf5' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
@@ -330,6 +334,7 @@ subroutine copy_gc_f1( this, bnd_ax )
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real :: pha
 
+  call start_tprof( 'copy guard cells' )
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -392,6 +397,8 @@ subroutine copy_gc_f1( this, bnd_ax )
     endif
   endif
 
+  call stop_tprof( 'copy guard cells' )
+
 end subroutine copy_gc_f1
 
 subroutine copy_gc_f2( this, bnd_ax )
@@ -408,6 +415,7 @@ subroutine copy_gc_f2( this, bnd_ax )
   real, dimension(:,:,:), allocatable :: buf1, buf2
   real :: pha
 
+  call start_tprof( 'copy guard cells' )
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -511,6 +519,8 @@ subroutine copy_gc_f2( this, bnd_ax )
   deallocate( buf1 )
   deallocate( buf2 )
 
+  call stop_tprof( 'copy guard cells' )
+
 end subroutine copy_gc_f2
 
 subroutine copy_gc_stage( this, dir )
@@ -524,6 +534,8 @@ subroutine copy_gc_stage( this, dir )
   integer :: nzp, count, dtype
   integer :: tag = 1, msgid, ierr
   integer, dimension(MPI_STATUS_SIZE) :: stat
+
+  call start_tprof( 'copy guard cells' )
 
   nvp = this%nvp(1)
   nstage = this%pp%getnstage()
@@ -581,6 +593,8 @@ subroutine copy_gc_stage( this, dir )
 
   end select
 
+  call stop_tprof( 'copy guard cells' )
+
 end subroutine copy_gc_stage
 
 subroutine acopy_gc_f1( this )
@@ -594,6 +608,8 @@ subroutine acopy_gc_f1( this )
   integer :: tag = 1, msgid, ierr, i
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:), allocatable :: buf
+
+  call start_tprof( 'copy & add guard cells' )
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -652,6 +668,8 @@ subroutine acopy_gc_f1( this )
 
   deallocate( buf )
 
+  call stop_tprof( 'copy & add guard cells' )
+
 end subroutine acopy_gc_f1
 
 subroutine acopy_gc_f2( this )
@@ -665,6 +683,8 @@ subroutine acopy_gc_f2( this )
   integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:), allocatable :: buf1, buf2
+
+  call start_tprof( 'copy & add guard cells' )
 
   idproc = this%pp%getlidproc()
   idproc_left =  idproc - 1
@@ -747,6 +767,8 @@ subroutine acopy_gc_f2( this )
   deallocate( buf1 )
   deallocate( buf2 )
 
+  call stop_tprof( 'copy & add guard cells' )
+
 end subroutine acopy_gc_f2
 
 subroutine acopy_gc_stage( this )
@@ -760,6 +782,8 @@ subroutine acopy_gc_stage( this )
   integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:), allocatable :: buf1, buf2
+
+  call start_tprof( 'copy & add guard cells' )
 
   nvp = this%nvp(1)
   nstage = this%pp%getnstage()
@@ -828,6 +852,8 @@ subroutine acopy_gc_stage( this )
 
   deallocate( buf1 )
   deallocate( buf2 )
+
+  call stop_tprof( 'copy & add guard cells' )
 
 end subroutine acopy_gc_stage
 
@@ -928,6 +954,8 @@ subroutine add_f1_unitary_dim( a, b, adim, bdim )
   
   integer :: ndim, i
 
+  call start_tprof( 'arithmetics' )
+
   ndim = size( adim )
 
   if ( all(a%gc_num(:,1)==b%gc_num(:,1)) ) then
@@ -940,6 +968,8 @@ subroutine add_f1_unitary_dim( a, b, adim, bdim )
     call write_err( "guard cells not matched!" )
   endif
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine add_f1_unitary_dim
 
 subroutine add_f1_binary( a1, a2, a3 )
@@ -948,6 +978,8 @@ subroutine add_f1_binary( a1, a2, a3 )
 
   class( * ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
+
+  call start_tprof( 'arithmetics' )
   
   select type (a1)
 
@@ -1000,6 +1032,8 @@ subroutine add_f1_binary( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine add_f1_binary
 
 subroutine add_f1_unitary( a, b )
@@ -1008,6 +1042,8 @@ subroutine add_f1_unitary( a, b )
 
   class( * ), intent(in) :: a
   class( ufield ), intent(inout) :: b
+
+  call start_tprof( 'arithmetics' )
   
   select type (a)
 
@@ -1027,6 +1063,8 @@ subroutine add_f1_unitary( a, b )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine add_f1_unitary
 
 subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
@@ -1038,6 +1076,8 @@ subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   integer, intent(in), dimension(:) :: dim1, dim2, dim3
   
   integer :: ndim, i
+
+  call start_tprof( 'arithmetics' )
 
   ndim = size( dim1 )
 
@@ -1052,6 +1092,8 @@ subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
     call write_err( "guard cells not matched!" )
   endif
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine sub_f1_binary_dim
 
 subroutine sub_f1_unitary_dim( a, b, adim, bdim )
@@ -1063,6 +1105,8 @@ subroutine sub_f1_unitary_dim( a, b, adim, bdim )
   integer, intent(in), dimension(:) :: adim, bdim
   
   integer :: ndim, i
+
+  call start_tprof( 'arithmetics' )
 
   ndim = size( adim )
 
@@ -1076,6 +1120,8 @@ subroutine sub_f1_unitary_dim( a, b, adim, bdim )
     call write_err( "guard cells not matched!" )
   endif
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine sub_f1_unitary_dim
 
 subroutine sub_f1_binary( a1, a2, a3 )
@@ -1084,6 +1130,8 @@ subroutine sub_f1_binary( a1, a2, a3 )
 
   class( * ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
+
+  call start_tprof( 'arithmetics' )
   
   select type (a1)
 
@@ -1136,6 +1184,8 @@ subroutine sub_f1_binary( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine sub_f1_binary
 
 subroutine sub_f1_unitary( a, b )
@@ -1144,6 +1194,8 @@ subroutine sub_f1_unitary( a, b )
 
   class( * ), intent(in) :: a
   class( ufield ), intent(inout) :: b
+
+  call start_tprof( 'arithmetics' )
   
   select type (a)
 
@@ -1163,6 +1215,8 @@ subroutine sub_f1_unitary( a, b )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine sub_f1_unitary
 
 subroutine dot_f1_unitary( a, b )
@@ -1171,6 +1225,8 @@ subroutine dot_f1_unitary( a, b )
 
   class( * ), intent(in) :: a
   class( ufield ), intent(inout) :: b
+
+  call start_tprof( 'arithmetics' )
   
   select type (a)
 
@@ -1190,6 +1246,8 @@ subroutine dot_f1_unitary( a, b )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine dot_f1_unitary
 
 subroutine dot_f1_unitary_dim( a, b, dim )
@@ -1202,11 +1260,15 @@ subroutine dot_f1_unitary_dim( a, b, dim )
   
   integer :: ndim, i
 
+  call start_tprof( 'arithmetics' )
+
   ndim = size( dim )
 
   do i = 1, ndim
     b%f1(dim(i),:) = b%f1(dim(i),:) * a
   enddo
+
+  call stop_tprof( 'arithmetics' )
 
 end subroutine dot_f1_unitary_dim
 
@@ -1216,6 +1278,8 @@ subroutine add_f2_binary( a1, a2, a3 )
 
   class( * ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
+
+  call start_tprof( 'arithmetics' )
   
   select type (a1)
 
@@ -1268,6 +1332,8 @@ subroutine add_f2_binary( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine add_f2_binary
 
 subroutine add_f2_unitary( a, b )
@@ -1276,6 +1342,8 @@ subroutine add_f2_unitary( a, b )
 
   class( * ), intent(in) :: a
   class( ufield ), intent(inout) :: b
+
+  call start_tprof( 'arithmetics' )
   
   select type (a)
 
@@ -1295,6 +1363,8 @@ subroutine add_f2_unitary( a, b )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine add_f2_unitary
 
 subroutine sub_f2_binary( a1, a2, a3 )
@@ -1303,6 +1373,8 @@ subroutine sub_f2_binary( a1, a2, a3 )
 
   class( * ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
+
+  call start_tprof( 'arithmetics' )
   
   select type (a1)
 
@@ -1355,6 +1427,8 @@ subroutine sub_f2_binary( a1, a2, a3 )
       call write_err( "Invalid argument type!" )
   end select
 
+  call stop_tprof( 'arithmetics' )
+
 end subroutine sub_f2_binary
 
 subroutine sub_f2_unitary( a, b )
@@ -1363,6 +1437,8 @@ subroutine sub_f2_unitary( a, b )
 
   class( * ), intent(in) :: a
   class( ufield ), intent(inout) :: b
+
+  call start_tprof( 'arithmetics' )
   
   select type (a)
 
@@ -1381,6 +1457,8 @@ subroutine sub_f2_unitary( a, b )
     class default
       call write_err( "Invalid argument type!" )
   end select
+
+  call stop_tprof( 'arithmetics' )
 
 end subroutine sub_f2_unitary
 
