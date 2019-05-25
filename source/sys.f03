@@ -403,7 +403,7 @@ subroutine write_tprof()
       min  = minval(buf(:,i))
       std  = sqrt( sum( (buf(:,i) - avg)**2 ) / nproc )
       lb   = std / avg * 100.0
-      write( fid, '(A25, E15.2, F10.1, 3E15.2, F15.1)' ) &
+      write( fid, '(A25, E15.4, F10.1, 3E15.4, F15.1)' ) &
         trim(adjustl(name_event(i))), avg, prct, max, min, std, lb
     enddo
     write ( fid, * ) repeat( '=', 120 )
