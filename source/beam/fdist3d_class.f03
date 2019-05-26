@@ -219,8 +219,9 @@ subroutine init_fdist3d_000(this,input,i)
    bcz = bcz -min
    alz = (max-min) 
    dz=alz/real(nz)
-   this%zmin = min
-   this%zmax = max
+   this%z0 = min
+   this%zmin = 0.0
+   this%zmax = max-min
    call input%get(trim(s1)//'.profile',npf)
    call input%get(trim(s1)//'.np(1)',npx)
    call input%get(trim(s1)//'.np(2)',npy)

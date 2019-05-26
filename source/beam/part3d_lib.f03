@@ -155,9 +155,9 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                if (tempy > 0.0) part(2,npt) = pi/2.0
                if (tempy < 0.0) part(2,npt) = -pi/2.0
             else if (tempx > 0) then
-               part(2,npt) = atan(tempx/tempy)
+               part(2,npt) = atan(tempy/tempx)
             else
-               part(2,npt) = atan(tempx/tempy) + pi
+               part(2,npt) = atan(tempy/tempx) + pi
             end if
             part(4,npt) = tvtx*cos(part(2,npt))+tvty*sin(part(2,npt))
             part(5,npt) = -tvtx*sin(part(2,npt))+tvty*cos(part(2,npt))
@@ -184,9 +184,9 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                   if (tempy > 0.0) part(2,npt) = pi/2.0
                   if (tempy < 0.0) part(2,npt) = -pi/2.0
                else if (tempx > 0) then
-                  part(2,npt) = atan(tempx/tempy)
+                  part(2,npt) = atan(tempy/tempx)
                else
-                  part(2,npt) = atan(tempx/tempy) + pi
+                  part(2,npt) = atan(tempy/tempx) + pi
                end if
                part(4,npt) = -tvtx*cos(part(2,npt))-tvty*sin(part(2,npt))
                part(5,npt) = tvtx*sin(part(2,npt))-tvty*cos(part(2,npt))
