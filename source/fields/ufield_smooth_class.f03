@@ -161,6 +161,8 @@ subroutine smooth_f1( this, uf, dr )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  call start_tprof( 'smooth' )
+
   pf => uf%get_f1()
 
   ! exterior boundaries of grid
@@ -279,6 +281,7 @@ subroutine smooth_f1( this, uf, dr )
 
   endif
 
+  call stop_tprof( 'smooth' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine smooth_f1

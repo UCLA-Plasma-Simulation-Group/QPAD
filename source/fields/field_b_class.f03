@@ -231,6 +231,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve bz' )
 
   nrp    = jay_re%get_ndp(1)
   idr    = 1.0 / this%dr
@@ -366,6 +367,7 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
   endif
 
+  call stop_tprof( 'solve bz' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bz
@@ -385,6 +387,7 @@ subroutine set_source_bt_old( this, mode, q_re, q_im )
   character(len=20), save :: sname = 'set_source_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve beam bt' )
 
   idproc = q_re%pp%getlidproc()
   nvp = q_re%pp%getlnvp()
@@ -487,6 +490,7 @@ subroutine set_source_bt_old( this, mode, q_re, q_im )
 
   endif
 
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt_old
@@ -507,6 +511,7 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   character(len=20), save :: sname = 'set_source_bt'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve beam bt' )
 
   nrp   = q_re%get_ndp(1)
   noff  = q_re%get_noff(1)
@@ -556,6 +561,7 @@ subroutine set_source_bt( this, mode, q_re, q_im )
     call write_err( 'Invalid input arguments!' )
   endif
 
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt
@@ -578,6 +584,7 @@ subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_i
   character(len=20), save :: sname = 'set_source_bt_iter_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bt' )
 
   dtype  = jay_re%pp%getmreal()
   comm   = jay_re%pp%getlgrp()
@@ -699,6 +706,7 @@ subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_i
 
   endif
 
+  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt_iter_old
@@ -722,6 +730,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   character(len=20), save :: sname = 'set_source_bt_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bt' )
 
   dtype  = jay_re%pp%getmreal()
   comm   = jay_re%pp%getlgrp()
@@ -819,6 +828,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
   endif
 
+  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt_iter
@@ -835,6 +845,7 @@ subroutine get_solution_bz( this, mode )
   character(len=20), save :: sname = 'get_solution_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve bz' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
 
@@ -850,6 +861,7 @@ subroutine get_solution_bz( this, mode )
     enddo
   endif
 
+  call stop_tprof( 'solve bz' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_bz
@@ -866,6 +878,7 @@ subroutine get_solution_bt_old( this, mode )
   character(len=20), save :: sname = 'get_solution_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve beam bt' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
 
@@ -883,6 +896,7 @@ subroutine get_solution_bt_old( this, mode )
     enddo
   endif
 
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_bt_old
@@ -902,6 +916,7 @@ subroutine get_solution_bt( this, mode )
   character(len=20), save :: sname = 'get_solution_bt'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve beam bt' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
   idproc = this%rf_re(mode)%pp%getlidproc()
@@ -1032,6 +1047,7 @@ subroutine get_solution_bt( this, mode )
 
   endif
 
+  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_bt
@@ -1049,6 +1065,7 @@ subroutine get_solution_bt_iter_old( this, mode )
   character(len=20), save :: sname = 'get_solution_bt_iter_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bt' )
 
   nd1p = this%rf_re(mode)%get_ndp(1)
 
@@ -1066,6 +1083,7 @@ subroutine get_solution_bt_iter_old( this, mode )
     enddo
   endif
 
+  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_bt_iter_old
@@ -1082,6 +1100,7 @@ subroutine get_solution_bt_iter( this, mode )
   character(len=20), save :: sname = 'get_solution_bt_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bt' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
 
@@ -1106,6 +1125,7 @@ subroutine get_solution_bt_iter( this, mode )
 
   endif
 
+  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine get_solution_bt_iter
@@ -1122,9 +1142,6 @@ subroutine solve_field_bz( this, jay )
   character(len=20), save :: sname = 'solve_field_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve bz' )
-
-  ! call jay%copy_gc_f1()
 
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
@@ -1147,7 +1164,6 @@ subroutine solve_field_bz( this, jay )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve bz' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bz
@@ -1164,9 +1180,6 @@ subroutine solve_field_bt_old( this, rho )
   character(len=20), save :: sname = 'solve_field_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve beam bt' )
-
-  ! call rho%copy_gc_f1()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
@@ -1188,7 +1201,6 @@ subroutine solve_field_bt_old( this, rho )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt_old
@@ -1205,9 +1217,6 @@ subroutine solve_field_bt( this, rho )
   character(len=20), save :: sname = 'solve_field_bt'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve beam bt' )
-
-  ! call rho%copy_gc_f1()
 
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
@@ -1230,7 +1239,6 @@ subroutine solve_field_bt( this, rho )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve beam bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt
@@ -1249,10 +1257,6 @@ subroutine solve_field_bt_iter_old( this, djdxi, jay )
   character(len=20), save :: sname = 'solve_field_bt_iter_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve plasma bt' )
-
-  ! call jay%copy_gc_f1()
-  ! call djdxi%copy_gc_f1() ! no need for djdxi to copy guard cells
 
   djdxi_re => djdxi%get_rf_re()
   djdxi_im => djdxi%get_rf_im()
@@ -1276,7 +1280,6 @@ subroutine solve_field_bt_iter_old( this, djdxi, jay )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt_iter_old
@@ -1295,7 +1298,6 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
   character(len=20), save :: sname = 'solve_field_bt_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'solve plasma bt' )
 
   djdxi_re => djdxi%get_rf_re()
   djdxi_im => djdxi%get_rf_im()
@@ -1323,7 +1325,6 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
 
   call this%copy_gc_f1( bnd_ax = .true. )
 
-  call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt_iter

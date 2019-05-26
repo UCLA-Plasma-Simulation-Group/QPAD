@@ -225,6 +225,7 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'deposit 3D particles' )
 
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
@@ -302,6 +303,8 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
          qi(1,j,:) = qi(1,j,:)/r
       end do      
    end do
+
+   call stop_tprof( 'deposit 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part3d_qdeposit
@@ -333,6 +336,7 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'push 3D particles' )
 
    noff1 = ef_re(0)%get_noff(1)
    n1p = ef_re(0)%get_ndp(1)
@@ -461,6 +465,7 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
       end if
    end do
 
+   call stop_tprof( 'push 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine part3d_push
@@ -499,6 +504,9 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
    integer, dimension(2) :: kb
    real(kind=DB), dimension(2) :: bflg, work
    real :: an, xt
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   call start_tprof( 'move 3D particles' )
 
    ierr = 0
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
@@ -900,6 +908,8 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
       write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
       call write_dbg(cls_name, sname, cls_level, erstr)
    end if
+
+   call stop_tprof( 'move 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
 end subroutine part3d_pmove
