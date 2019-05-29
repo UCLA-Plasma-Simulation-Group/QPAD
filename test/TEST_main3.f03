@@ -155,12 +155,18 @@ select case (npf)
 case (0)
    allocate(fdist3d_000::pf3d1%p)
    call pf3d1%p%new(input,1)
+case (1)
+   allocate(fdist3d_001::pf3d1%p)
+   call pf3d1%p%new(input,1)
 end select
 
 call input%get('beam(2).profile',npf)
 select case (npf)
 case (0)
    allocate(fdist3d_000::pf3d2%p)
+   call pf3d2%p%new(input,2)
+case (1)
+   allocate(fdist3d_001::pf3d2%p)
    call pf3d2%p%new(input,2)
 end select
 

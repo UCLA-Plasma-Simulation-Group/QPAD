@@ -2,12 +2,12 @@
 "simulation" : !note
 {
     "nodes" : [1,1], 
-    "grid" : [512,256],
+    "grid" : [512,512],
     "box" : {
         "r" : [0.0,12.0],
         "z" : [0,10.0]},
     "field_boundary" : "open",
-    "max_mode" : 0,
+    "max_mode" : 2,
     "interpolation" : "linear",
     "n0" : 1.0e16,
     "time" : 10.1,
@@ -20,25 +20,29 @@
     "restart_timestep" : 1,
     "iter" : 1,
     "solver_precision" : 1.0e-6,
-    "smooth_type" : "compensated",
-    "smooth_order" : 5,
+    "smooth_type" : "binomial",
+    "smooth_order" : 3,
     "verbose" : 0,
-    "if_timing" : true
+    "if_timing" : true,
+    "ndump" : 1
 },
 "beam" :
 [
     {
     "evolution" : true,
-    "profile" : 0,
-    "np" : [128,128,256],
+    "profile" : 1,
+    !"np" : [128,128,256],
+    "np" : [128,16,256], ! number of particles in r, theta and z direction. Specified for profile 1
     "npmax" : 10000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "peak_density" : 4.0,
+    "peak_density" : 0.1,
     "quiet_start" : true,
-    "center" : [0.0,0.0,2.0],
-    "sigma" : [0.25,0.25,0.5],
+    "center" : [0.0,0.0,2.5],
+    !"center" : [0.0,0.0,5.0],
+    "sigma" : [1.0,1.0,0.5],
+    !"sigma" : [0.25,0.25,5.0],
     "sigma_v" : [0.0,0.0,0.0],
     "centroid_x" : [0.0,0.0,0.0],
     "centroid_y" : [0.0,0.0,0.0],
