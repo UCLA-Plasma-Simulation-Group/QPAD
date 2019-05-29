@@ -152,6 +152,9 @@ select case (npf)
 case (0)
    allocate(fdist3d_000::pf3d%p)
    call pf3d%p%new(input,1)
+case (1)
+   allocate(fdist3d_001::pf3d%p)
+   call pf3d%p%new(input,1)
 end select
 
 call input%get('simulation.dt',dt)

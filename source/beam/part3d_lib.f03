@@ -101,7 +101,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    integer(kind=LG) :: i, np, npt
    integer :: j,k,l
    real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
-   real :: borderlz, borderz, r0, sigmar0
+   real :: borderlz, borderz, r0, sigmar0, trunc = 5.0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -115,8 +115,8 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    y2 = 2.0 * y0
    r0 = sqrt(x0**2+y0**2)
    sigmar0 = sqrt(sigx**2+sigy**2)
-   borderlz = max((z0-5.0*sigz),zmin)
-   borderz = min((z0+5.0*sigz),zmax)
+   borderlz = max((z0-trunc*sigz),zmin)
+   borderz = min((z0+trunc*sigz),zmax)
    np = npx*npy*npz
    
    do
@@ -133,7 +133,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       do
          tempx = ranorm()
          tempy = ranorm()
-         if ((tempx**2+tempy**2) > 25.0) then
+         if ((tempx**2+tempy**2) > trunc**2) then
             cycle          
          end if
          tempx = x0 + sigx*tempx + tempxx
@@ -205,6 +205,137 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
 end subroutine beam_dist000
+
+subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
+&vdy,vdz,npr,npth,npz,rmax,zmin,zmax,idimp,npmax,sigx,&
+&sigy,sigz,x0,y0,z0,cx,cy,lquiet,ierr)
+
+   implicit none
+
+   integer, intent(in) :: npr,npth,npz,idimp
+   integer, intent(inout) :: ierr
+   integer(kind=LG), intent(inout) :: npp
+   integer(kind=LG), intent(in) :: npmax,nps
+   real, intent(in) :: dr,dz,qm,sigx,sigy,sigz,x0,y0,z0
+   real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz,rmax,zmin,zmax
+   real, dimension(:,:), intent(inout) :: part
+   real, dimension(4), intent(in) :: edges
+   real, dimension(3), intent(in) :: cx,cy
+   logical, intent(in) :: lquiet
+! local data
+   character(len=20), save :: sname = "beam_dist001"
+   integer(kind=LG) :: i, np, npt
+   integer :: j,k,l
+   real :: tempr,tempth,tempx,tempy,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
+   real :: borderlz, borderz, qm_amp, sigr, trunc = 5.0
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   ierr = 0
+
+   npt = 1
+
+   i = 1
+   
+   x2 = 2.0 * x0
+   y2 = 2.0 * y0
+   borderlz = max((z0-trunc*sigz),zmin)
+   borderz  = min((z0+trunc*sigz),zmax)
+   np = npr*npth*npz
+
+   sigr = max( sigx, sigy )
+   
+   do
+      if (i > np) exit
+      do
+         ! tempz = z0+sigz*ranorm()
+         call random_number(tempz)
+         tempz = z0 + 2.0 * trunc * sigz * (tempz-0.5)
+         if (tempz < borderz .and. tempz > borderlz) then
+            exit          
+         end if
+      end do
+
+      tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)
+      tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
+      
+      call random_number(tempth)
+      tempth = tempth * 2.0 * pi
+      call random_number(tempr)
+      tempr  = trunc * sigr * tempr
+      tempx  = tempr * cos(tempth)
+      tempy  = tempr * sin(tempth)
+      qm_amp = trunc**2 * sigr * sigz * tempr*&
+         exp( -0.5 * ( (tempx/sigx)**2 + (tempy/sigy)**2 + ((tempz-z0)/sigz)**2 ) )
+
+      ! add offset
+      tempx = tempx + x0 + tempxx
+      tempy = tempy + y0 + tempyy
+      tempr  = sqrt( tempx**2 + tempy**2 )
+      
+      tvtx = vtx*ranorm() + vdx
+      tvty = vty*ranorm() + vdy
+      tvtz = vtz*ranorm() + vdz
+      tvtz = sqrt(tvtz*tvtz-1-tvtx*tvtx-tvty*tvty)
+
+      if ( (tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+           (tempz >= edges(3)) .and. (tempz < edges(4)) ) then
+         if (npt < npmax) then
+            part(3,npt) = tempz
+            part(1,npt) = tempr
+            if (tempx == 0.0) then
+               if (tempy == 0.0) part(2,npt) = 0.0
+               if (tempy > 0.0)  part(2,npt) = pi/2.0
+               if (tempy < 0.0)  part(2,npt) = -pi/2.0
+            else if (tempx > 0) then
+               part(2,npt) = atan(tempy/tempx)
+            else
+               part(2,npt) = atan(tempy/tempx) + pi
+            end if
+            part(4,npt) =  tvtx*cos(part(2,npt)) + tvty*sin(part(2,npt))
+            part(5,npt) = -tvtx*sin(part(2,npt)) + tvty*cos(part(2,npt))
+            part(6,npt) =  tvtz 
+            part(7,npt) = qm * qm_amp
+            npt = npt + 1
+         else
+            ierr = ierr + 1
+         end if
+      end if
+      i = i + 1   
+      if (lquiet) then
+         if (npt < npmax) then
+            tempx = x2 - tempx + 2.0*tempxx
+            tempy = y2 - tempy + 2.0*tempyy
+            tempr = sqrt(tempx**2+tempy**2)
+            if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+                (tempz >= edges(3)) .and. (tempz < edges(4))) then
+               part(3,npt) = tempz
+               part(1,npt) = tempr
+               if (tempx == 0.0) then
+                  if (tempy == 0.0) part(2,npt) = 0.0
+                  if (tempy > 0.0)  part(2,npt) = pi/2.0
+                  if (tempy < 0.0)  part(2,npt) = -pi/2.0
+               else if (tempx > 0) then
+                  part(2,npt) = atan(tempy/tempx)
+               else
+                  part(2,npt) = atan(tempy/tempx) + pi
+               end if
+               part(4,npt) = -tvtx*cos(part(2,npt)) - tvty*sin(part(2,npt))
+               part(5,npt) =  tvtx*sin(part(2,npt)) - tvty*cos(part(2,npt))
+               part(6,npt) =  tvtz 
+               part(7,npt) = qm * qm_amp
+               npt = npt + 1
+            end if
+         else 
+            ierr = ierr + 1
+         end if
+         i = i + 1
+      end if
+   enddo
+   npp = npt - 1
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   return
+end subroutine beam_dist001
 !
 subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
 ! For 3D particles

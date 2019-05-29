@@ -133,6 +133,8 @@ subroutine init_parallel_pipe(this,nst)
   this%stageid = stageid
   this%lgrp = llgrp
   this%lkstrt = this%lidproc+1
+
+  call random_seed()
        
 end subroutine init_parallel_pipe
 !      
