@@ -101,7 +101,7 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
+subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
   entity, smooth_type, smooth_order )
 
   implicit none
@@ -110,7 +110,6 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, dim
-  real, intent(in) :: dr, dxi
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity, smooth_type, smooth_order
 
@@ -121,8 +120,8 @@ subroutine init_field( this, pp, gp, dim, dr, dxi, num_modes, gc_num, &
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%num_modes = num_modes
-  this%dr = dr
-  this%dxi = dxi
+  this%dr  = gp%get_dr()
+  this%dxi = gp%get_dxi()
 
   if ( present(entity) ) then
     this%entity = entity

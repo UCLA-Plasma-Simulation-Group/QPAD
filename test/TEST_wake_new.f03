@@ -32,13 +32,7 @@ integer :: st, so ! smooth
 character(len=:), allocatable :: shape, st_str, fld_bnd_str
 character(len=2) :: s1
 real :: dr, dxi, rmin, rmax, zmin, zmax, dt, tt, prec
-type fdist2d_wrap
-   class(fdist2d), allocatable :: p
-end type fdist2d_wrap
 type(fdist2d_wrap) :: pf2d
-type fdist3d_wrap
-   class(fdist3d), allocatable :: p
-end type fdist3d_wrap
 type(fdist3d_wrap) :: pf3d
 type(hdf5file) :: file_spe
 type(hdf5file), dimension(:), allocatable :: file_q, file_qe, file_psi, file_s,&
@@ -84,7 +78,6 @@ end select
 
 call input%get('simulation.grid(1)',nr)
 call input%get('simulation.grid(2)',nz)
-call gp%new( pp, nr, nz )
 
 call input%get('simulation.box.r(1)',rmin)
 call input%get('simulation.box.r(2)',rmax)
@@ -92,6 +85,8 @@ dr = (rmax-rmin)/nr
 call input%get('simulation.box.z(1)',zmin)
 call input%get('simulation.box.z(2)',zmax)
 dxi = (zmax-zmin)/nz
+
+call gp%new( pp, nr, nz, dr, dxi )
 
 call input%get('simulation.solver_precision',prec)
 call input%get('simulation.smooth_type',st_str)
@@ -123,17 +118,17 @@ call input%get('simulation.ndump', ndump)
 nrp = gp%get_ndp(1)
 noff = gp%get_noff(1)
 
-call qb%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call qe%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call cu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call amu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call dcu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call acu%new(pp, gp, dr, dxi, num_modes, part_shape, st, so)
-call b%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
-call e%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
-call bb%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_beam, iter_tol=prec )
-call bt%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
-call psi%new( pp, gp, dr, dxi, num_modes, part_shape, fld_bnd, iter_tol=prec )
+call qb%new(pp, gp, num_modes, part_shape, st, so)
+call qe%new(pp, gp, num_modes, part_shape, st, so)
+call cu%new(pp, gp, num_modes, part_shape, st, so)
+call amu%new(pp, gp, num_modes, part_shape, st, so)
+call dcu%new(pp, gp, num_modes, part_shape, st, so)
+call acu%new(pp, gp, num_modes, part_shape, st, so)
+call b%new( pp, gp, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call e%new( pp, gp, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call bb%new( pp, gp, num_modes, part_shape, fld_bnd, entity=p_entity_beam, iter_tol=prec )
+call bt%new( pp, gp, num_modes, part_shape, fld_bnd, entity=p_entity_plasma, iter_tol=prec )
+call psi%new( pp, gp, num_modes, part_shape, fld_bnd, iter_tol=prec )
 
 pqb => qb
 
@@ -145,7 +140,7 @@ case (0)
    allocate(fdist2d_000::pf2d%p)
    call pf2d%p%new(input,1)
 end select
-call spe%new(pp,gp,pf2d%p,part_shape,dr,dxi,num_modes,-1.0,dxi,xdim,0.0,st,so)
+call spe%new(pp,gp,pf2d%p,part_shape,num_modes,-1.0,xdim,0.0,st,so)
 
 call input%get('beam(1).profile',npf)
 select case (npf)
@@ -160,7 +155,7 @@ end select
 call input%get('simulation.dt',dt)
 call input%get('simulation.time',tt)
 nt = tt/dt
-call beam%new(pp,pqb,gp,part_shape,pf3d%p,-1.0,dt,7,st,so)
+call beam%new(pp,gp,num_modes,part_shape,pf3d%p,-1.0,dt,7,st,so)
 
 call file_q(1)%new(&
 &axismin = (/rmin,zmin,0.0/),&

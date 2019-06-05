@@ -64,6 +64,7 @@ subroutine read_input_json(this)
    logical :: found, stat, if_timing
    character(len=:), allocatable :: ff, boundary, error_msg
    integer :: length, num_stages, verbose, nr, nz, psolve, ierr
+   real :: dr, dxi, min, max
    
    call p%new()
    
@@ -113,8 +114,14 @@ subroutine read_input_json(this)
    this%pp => pp
                
    call this%get('simulation.grid(1)',nr)
-
    call this%get('simulation.grid(2)',nz)
+
+   call this%get( 'simulation.box.r(1)', min )
+   call this%get( 'simulation.box.r(2)', max )
+   dr = ( max - min ) / nr
+   call this%get( 'simulation.box.z(1)', min )
+   call this%get( 'simulation.box.z(2)', max )
+   dxi = ( max - min ) / nz
 
    ! call this%get('simulation.boundary',boundary)
    
@@ -125,7 +132,7 @@ subroutine read_input_json(this)
    !    psolve = 1
    ! end select
    
-   call gp%new( pp, nr, nz )
+   call gp%new( pp, nr, nz, dr, dxi )
 
    this%gp => gp
    

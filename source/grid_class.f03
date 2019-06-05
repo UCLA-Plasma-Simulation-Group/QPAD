@@ -20,6 +20,7 @@ integer, dimension(2) :: nd ! number of global grid points
 integer, dimension(2) :: ndp ! number of local grid points
 integer, dimension(2) :: nvp ! number of processors
 integer, dimension(2) :: noff ! grid index offset
+real :: dr, dxi
 
 contains
 
@@ -29,6 +30,7 @@ generic :: get_noff => get_noff_all, get_noff_dim
 generic :: get_nd => get_nd_all, get_nd_dim
 generic :: get_ndp => get_ndp_all, get_ndp_dim
 generic :: get_nvp => get_nvp_all, get_nvp_dim
+procedure :: get_dr, get_dxi
 
 procedure, private :: init_grid, end_grid
 procedure, private :: get_noff_all, get_noff_dim
@@ -40,13 +42,14 @@ end type grid
 
 contains
 
-subroutine init_grid( this, pp, nr, nz )
+subroutine init_grid( this, pp, nr, nz, dr, dxi )
 
   implicit none
 
   class( grid ), intent(inout) :: this
   class( parallel_pipe ), intent(in) :: pp
   integer, intent(in) :: nr, nz
+  real, intent(in) :: dr, dxi
 
   integer :: lidproc, stageid, local_size, extra
   character(len=18), save :: sname = 'init_grid'
@@ -55,6 +58,9 @@ subroutine init_grid( this, pp, nr, nz )
 
   this%nd(1) = nr
   this%nd(2) = nz
+
+  this%dr = dr
+  this%dxi = dxi
 
   this%nvp(1) = pp%getlnvp()
   this%nvp(2) = pp%getnstage()
@@ -182,5 +188,27 @@ function get_noff_dim( this, dim )
   get_noff_dim = this%noff(dim)
   
 end function get_noff_dim
+
+function get_dr( this )
+
+  implicit none
+
+  class( grid ), intent(in) :: this
+  real :: get_dr
+
+  get_dr = this%dr
+  
+end function get_dr
+
+function get_dxi( this )
+
+  implicit none
+
+  class( grid ), intent(in) :: this
+  real :: get_dxi
+
+  get_dxi = this%dxi
+  
+end function get_dxi
 
 end module grid_class

@@ -15,7 +15,7 @@ implicit none
 
 private
 
-public :: fdist3d, fdist3d_000, fdist3d_001
+public :: fdist3d, fdist3d_wrap, fdist3d_000, fdist3d_001
 
 type, abstract :: fdist3d
 
@@ -45,7 +45,7 @@ end type
 
 abstract interface
 !
-subroutine ab_dist3d(this,part3d,npp,ud)
+subroutine ab_dist3d(this,part3d,npp,noff,ndp)
    import fdist3d
    import ufield
    import LG
@@ -53,7 +53,8 @@ subroutine ab_dist3d(this,part3d,npp,ud)
    class(fdist3d), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
+   ! class(ufield), intent(in), pointer :: ud
+   integer, intent(in), dimension(2) :: noff, ndp
 end subroutine ab_dist3d
 !
 subroutine ab_init_fdist3d(this,input,i)
@@ -74,6 +75,10 @@ subroutine ab_deposit_fdist3d(this,q)
 end subroutine ab_deposit_fdist3d
 !
 end interface
+
+type fdist3d_wrap
+   class(fdist3d), allocatable :: p
+end type fdist3d_wrap
 !
 type, extends(fdist3d) :: fdist3d_000
 ! Tri Gaussian profile (the same particle charge)
@@ -299,14 +304,14 @@ subroutine init_fdist3d_000(this,input,i)
 
 end subroutine init_fdist3d_000
 !
-subroutine dist3d_000(this,part3d,npp,ud)
+subroutine dist3d_000(this,part3d,npp,noff,ndp)
 
    implicit none
    
    class(fdist3d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
+   integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
 ! edges(1) = lower boundary in y of particle partition
 ! edges(2) = upper boundary in y of particle partition
@@ -318,7 +323,6 @@ subroutine dist3d_000(this,part3d,npp,ud)
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
-   integer, dimension(2) :: noff
    integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
    integer :: idimp, ierr
@@ -336,20 +340,19 @@ subroutine dist3d_000(this,part3d,npp,ud)
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
    lquiet = this%quiet
    idimp = size(part3d,1); npmax = size(part3d,2)
-   noff = ud%get_noff()
    dr = this%dx; dz= this%dz
    rmax = this%rmax
    zmax = this%zmax
    zmin = this%zmin
    if (noff(1) == 0) then
       edges(1) = noff(1)*dr
-      edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
+      edges(2) = edges(1) + (ndp(1) + 0.5)*dr
    else
       edges(1) = (noff(1) + 0.5)*dr
-      edges(2) = edges(1) + ud%get_ndp(1)*dr
+      edges(2) = edges(1) + ndp(1)*dr
    end if
    edges(3) = noff(2)*dz+zmin
-   edges(4) = edges(3) + ud%get_ndp(2)*dz
+   edges(4) = edges(3) + ndp(2)*dz
 
    call beam_dist000(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,sigz,&
@@ -507,14 +510,14 @@ subroutine init_fdist3d_001(this,input,i)
 
 end subroutine init_fdist3d_001
 !
-subroutine dist3d_001(this,part3d,npp,ud)
+subroutine dist3d_001(this,part3d,npp,noff,ndp)
 
    implicit none
    
    class(fdist3d_001), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
+   integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
 ! edges(1) = lower boundary in y of particle partition
 ! edges(2) = upper boundary in y of particle partition
@@ -526,7 +529,6 @@ subroutine dist3d_001(this,part3d,npp,ud)
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
-   integer, dimension(2) :: noff
    integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
    integer :: idimp, ierr
@@ -544,20 +546,19 @@ subroutine dist3d_001(this,part3d,npp,ud)
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
    lquiet = this%quiet
    idimp = size(part3d,1); npmax = size(part3d,2)
-   noff = ud%get_noff()
    dr = this%dx; dz= this%dz
    rmax = this%rmax
    zmax = this%zmax
    zmin = this%zmin
    if (noff(1) == 0) then
       edges(1) = noff(1)*dr
-      edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
+      edges(2) = edges(1) + (ndp(1) + 0.5)*dr
    else
       edges(1) = (noff(1) + 0.5)*dr
-      edges(2) = edges(1) + ud%get_ndp(1)*dr
+      edges(2) = edges(1) + ndp(1)*dr
    end if
    edges(3) = noff(2)*dz+zmin
-   edges(4) = edges(3) + ud%get_ndp(2)*dz
+   edges(4) = edges(3) + ndp(2)*dz
 
    call beam_dist001(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npr,npth,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,sigz,&

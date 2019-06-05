@@ -44,7 +44,7 @@ end type field_psi
 
 contains
 
-subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
+subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary, iter_tol )
 
   implicit none
 
@@ -52,15 +52,17 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, boundar
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape, boundary
-  real, intent(in) :: dr, dxi, iter_tol
+  real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
+  real :: dr
   character(len=20), save :: sname = "init_field_psi"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp = gp%get_ndp(1)
+  dr = gp%get_dr()
 
   select case ( part_shape )
   
@@ -81,7 +83,7 @@ subroutine init_field_psi( this, pp, gp, dr, dxi, num_modes, part_shape, boundar
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, entity=p_entity_plasma )
+  call this%field%new( pp, gp, dim, num_modes, gc_num, entity=p_entity_plasma )
 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )

@@ -13,7 +13,7 @@ implicit none
 
 private
 
-public :: fdist2d, fdist2d_000, fdist2d_012
+public :: fdist2d, fdist2d_wrap, fdist2d_000, fdist2d_012
 
 type, abstract :: fdist2d
    private
@@ -58,6 +58,10 @@ subroutine ab_init_fdist2d(this,input,i)
 end subroutine ab_init_fdist2d
 !
 end interface
+
+type fdist2d_wrap
+   class(fdist2d), allocatable :: p
+end type fdist2d_wrap
 !
 type, extends(fdist2d) :: fdist2d_000
 ! Transeversely uniform profile with uniform or piecewise longitudinal profile

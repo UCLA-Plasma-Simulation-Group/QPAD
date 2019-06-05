@@ -56,39 +56,34 @@ character(len=128) :: erstr
 
 contains
 !
-subroutine init_beam3d(this,pp,fd,gd,part_shape,pf,qbm,dt,xdim,smooth_type,smooth_order)
+subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type,smooth_order)
 
    implicit none
    
    class(beam3d), intent(inout) :: this
    class(grid), intent(in), pointer :: gd
-   class(field), intent(in), pointer :: fd
    class(parallel_pipe), intent(in), pointer :: pp
    class(fdist3d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt
-   integer, intent(in) :: xdim, part_shape
+   integer, intent(in) :: xdim, part_shape, max_mode
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=18), save :: sname = 'init_beam3d'
    integer :: id, num_modes, ierr
    integer, dimension(10) :: istat
-   real :: dr, dxi
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
    this%pf => pf
-   dr = fd%get_dr()
-   dxi = fd%get_dxi()
-   num_modes = fd%get_num_modes()
 
    allocate(this%pd,this%q)
    this%evol = pf%getevol()
    if ( present(smooth_type) .and. present(smooth_order) ) then
-      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape,smooth_type,smooth_order)
+      call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
    else
-      call this%q%new(pp,gd,dr,dxi,num_modes,part_shape)
+      call this%q%new(pp,gd,max_mode,part_shape)
    endif
-   call this%pd%new(pp,pf,fd,qbm,dt,xdim)
+   call this%pd%new(pp,gd,pf,qbm,dt,xdim)
    call this%pd%pmv(this%q,1,1,id)
    call MPI_WAIT(id,istat,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')

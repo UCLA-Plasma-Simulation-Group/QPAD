@@ -49,7 +49,7 @@ end type field_e
 
 contains
 
-subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
+subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, iter_tol )
 
   implicit none
 
@@ -57,13 +57,16 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, boundary,
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape, entity, boundary
-  real, intent(in) :: dr, dxi, iter_tol
+  real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
+  real :: dr
   character(len=20), save :: sname = "init_field_e"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  dr = gp%get_dr()
 
   select case ( part_shape )
   
@@ -84,7 +87,7 @@ subroutine init_field_e( this, pp, gp, dr, dxi, num_modes, part_shape, boundary,
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, dr, dxi, num_modes, gc_num, entity )
+  call this%field%new( pp, gp, dim, num_modes, gc_num, entity )
 
   ! initialize solver
   select case ( entity )

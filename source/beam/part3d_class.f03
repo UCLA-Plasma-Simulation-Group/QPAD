@@ -5,6 +5,7 @@ module part3d_class
 use param
 use sys
 use parallel_pipe_class
+use grid_class
 use field_class
 use ufield_class
 use fdist3d_class
@@ -71,20 +72,19 @@ integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 !
-subroutine init_part3d(this,pp,pf,fd,qbm,dt,xdim)
+subroutine init_part3d(this,pp,gp,pf,qbm,dt,xdim)
 
    implicit none
    
    class(part3d), intent(inout) :: this
    class(parallel_pipe), intent(in), pointer :: pp
+   class(grid), intent(in), pointer :: gp
    class(fdist3d), intent(inout) :: pf
-   class(field), pointer, intent(in) :: fd
    real, intent(in) :: qbm, dt
    integer, intent(in) :: xdim
 ! local data
    character(len=18), save :: sname = 'init_part3d'
-   integer :: noff, nxyp, nx, prof, npmax, nbmax
-   class(ufield), pointer :: ud
+   integer :: prof, npmax, nbmax
             
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
@@ -100,8 +100,7 @@ subroutine init_part3d(this,pp,pf,fd,qbm,dt,xdim)
    this%npp = 0
    prof = pf%getnpf()
    allocate(this%part(xdim,npmax),this%pbuff(xdim,nbmax))
-   ud => fd%get_rf_re(0)
-   call pf%dist(this%part,this%npp,ud)
+   call pf%dist(this%part,this%npp,gp%get_noff(),gp%get_ndp())
    this%z0 = pf%getz0()
    if (.not. allocated(sbufl)) then
       allocate(sbufl(xdim,nbmax),sbufr(xdim,nbmax))
