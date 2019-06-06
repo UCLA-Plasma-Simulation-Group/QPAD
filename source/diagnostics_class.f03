@@ -385,20 +385,17 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
     endif
   enddo ! end of j
 
-! ===============================================================================
-! THIS PART IS TO BE FINISHED
-! ===============================================================================
-  ! if (rst) then
-  !   call input%get( 'simulation.ndump_restart', ndump )
-  !   do i = 1, nbeams
-  !      call this%add_diag( &
-  !       obj      = beams%beam(i), &
-  !       df       = ndump, &
-  !       filename = './RST/Beam-'//num2str(i)//'/', &
-  !       dataname = 'RST-beam'//num2str(i)//'-'//num2str(pp%getidproc(),10) )
-  !   enddo
-  ! endif
-! ===============================================================================
+  if (rst) then
+    call input%get( 'simulation.ndump_restart', ndump )
+    do i = 1, nbeams
+       call this%add_diag( &
+        obj      = beams%beam(i), &
+        df       = ndump, &
+        filename = './RST/Beam'//num2str(i,2)//'/', &
+        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(pp%getidproc(),6), &
+        ty       = 'restart' )
+    enddo
+  endif
 
   call this%set_ndump_gcd()
 
@@ -470,6 +467,7 @@ subroutine run_sim_diag( this, tstep, dt )
         rtag = 8; stag = 8
         call obj%wrq( this%diag%files, rtag, stag, id )
       case ( p_tdiag_rst )
+        call obj%wrst( this%diag%files(1) )
       end select
     class is ( species2d )
       select case ( this%diag%ty )
@@ -478,7 +476,6 @@ subroutine run_sim_diag( this, tstep, dt )
       case ( p_tdiag_grid )
         rtag = 5; stag = 5
         call obj%wrq( this%diag%files, rtag, stag, id )
-      case ( p_tdiag_rst )
       end select
     end select
     if ( .not. this%is_tail() ) then

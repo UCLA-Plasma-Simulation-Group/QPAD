@@ -7,6 +7,7 @@ use fdist3d_class
 use input_class
 use field_class
 use field_src_class
+use hdf5io_class
 use param
 use sys
 
@@ -51,12 +52,10 @@ subroutine init_sim_beams( this, input )
   integer :: i, n
   ! real, dimension(3,100) :: arg
   ! logical :: quiet
-  real :: gamma
   real :: qm, qbm, dt
   logical :: read_rst
   integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf
-  ! type(hdf5file) :: file_rst
-  character(len=20) :: sn, sid, stime,s1
+  type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
 
   this%gp => input%gp
@@ -116,17 +115,14 @@ subroutine init_sim_beams( this, input )
     call this%beam(i)%new( this%pp, this%gp, max_mode, ps, this%pf(i)%p, &
       qbm, dt, 7, sm_type, sm_ord )
 
-    ! if ( read_rst ) then
-    !    call input%get( 'simulation.restart_timestep', rst_timestep )
-    !    write (sn,'(I4.4)') i
-    !    write (sid,'(I10.10)') this%p%getidproc()
-    !    write (stime,'(I8.8)') rst_timestep
-    !    call file_rst%new(&
-    !    &filename = './RST/Beam-'//trim(sn)//'/',&
-    !    &dataname = 'RST-beam'//trim(sn)//'-'//trim(sid),&
-    !    &n = rst_timestep)
-    !    call this%beam(i)%rrst(file_rst)
-    ! endif
+    if ( read_rst ) then
+      call input%get( 'simulation.restart_timestep', rst_timestep )
+      call file_rst%new(&
+        filename = './RST/Beam'//num2str(i,2)//'/',&
+        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(this%pp%getidproc(),6),&
+        n = rst_timestep)
+      call this%beam(i)%rrst(file_rst)
+    endif
 
   enddo
 
