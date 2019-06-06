@@ -70,4 +70,9 @@ integer, parameter :: p_mpi_forward = 1, p_mpi_backward = -1, p_mpi_bothway = 0
 ! ================================================================
 integer, parameter :: p_smooth_none = 0, p_smooth_binomial = 1, p_smooth_compensated = 2
 
+! ================================================================
+! parameters for diagnostic type
+! ================================================================
+integer, parameter :: p_tdiag_grid = 0, p_tdiag_raw = 1, p_tdiag_rst = 2
+
 end module param

@@ -54,10 +54,10 @@ subroutine init_sim_beams( this, input )
   real :: gamma
   real :: qm, qbm, dt
   logical :: read_rst
-  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode
+  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf
   ! type(hdf5file) :: file_rst
   character(len=20) :: sn, sid, stime,s1
-  character(len=:), allocatable :: str, pf_str
+  character(len=:), allocatable :: str
 
   this%gp => input%gp
   this%pp => input%pp
@@ -96,13 +96,12 @@ subroutine init_sim_beams( this, input )
 
   do i = 1, n
 
-    str = 'beam('//num2str(i)//').profile'
-    call input%get( str, pf_str )
-    select case ( trim(pf_str) )
-    case ( 'gaussian-xyz' )
+    call input%get( 'beam('//num2str(i)//').profile', npf )
+    select case ( npf )
+    case (0)
        allocate( fdist3d_000 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
-    case ( 'gaussian-cyl' )
+    case (1)
        allocate( fdist3d_001 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
   ! Add new distributions right above this line

@@ -6,7 +6,10 @@ use sim_fields_class
 use sim_beams_class
 use sim_species_class
 use field_class
+use beam3d_class
+use species2d_class
 use sys
+use param
 use input_class
 
 implicit none
@@ -22,7 +25,8 @@ type diag_node
   class( diag_node ), pointer :: next => null()
   type( hdf5file ), dimension(:), allocatable :: files
   class(*), pointer :: obj => null()
-  integer :: num_files=1, dim = 0, df=0, psample=0
+  integer :: num_files=1, dim = 0, df=0, psample=0, ty=p_tdiag_grid
+  integer :: tag=0
 
   contains
 
@@ -36,7 +40,7 @@ end type diag_node
 
 type sim_diag
 
-  private
+  ! private
 
   class( parallel_pipe ), pointer :: pp => null()
   class( diag_node ), pointer :: head => null()
@@ -60,14 +64,14 @@ end type sim_diag
 
 contains
 
-subroutine init_diag_node( this, obj, df, num_files, dim, psample )
+subroutine init_diag_node( this, obj, df, num_files, dim, psample, tag )
 
   implicit none
 
   class( diag_node ), intent(inout) :: this
   class(*), intent(in), target :: obj
   integer, intent(in) :: df
-  integer, intent(in), optional :: num_files, dim, psample
+  integer, intent(in), optional :: num_files, dim, psample, tag
 
   integer, save :: cls_level = 3
   character(len=32), save :: cls_name = 'diag_node'
@@ -80,6 +84,7 @@ subroutine init_diag_node( this, obj, df, num_files, dim, psample )
   if ( present(num_files) ) this%num_files = num_files
   if ( present(dim) ) this%dim = dim
   if ( present(psample) ) this%psample = psample
+  if ( present(tag) ) this%tag = tag
 
   if ( this%num_files > 0 ) then
     allocate( this%files( this%num_files ) )
@@ -144,7 +149,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
   class( sim_species ), intent(in), target :: species
 
   ! local data
-  integer :: nbeams, nspecies, num_modes, ndump, psample, dim
+  integer :: nbeams, nspecies, max_mode, ndump, psample, dim
   integer :: i, j, k, m, n, ierr
   real :: rmin, rmax, zmin, zmax, dt
   logical :: rst
@@ -161,7 +166,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
   this%pp => pp
   this%num_diag = 0
 
-  call input%get( 'simulation.max_mode', num_modes )
+  call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.nbeams', nbeams )
   call input%get( 'simulation.nspecies', nspecies )
 
@@ -173,122 +178,103 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
 
   call input%get( 'simulation.dump_restart', rst )
 
-! ===============================================================================
-! THIS PART IS TO BE FINISHED
-! ===============================================================================
-  ! ! add beam diagnostics
-  ! do i = 1, nbeams
-  !   call input%info( 'beam('//num2str(i),').diag', n_children=m )
-  !   do j = 1, m
-  !     call input%get( 'beam('//num2str(i),').diag'//'('//num2str(j)//').ndump', ndump )
-  !     if ( ndump > 0 ) then
-  !       call input%info( 'beam('//num2str(i),').diag'//'('//num2str(j)//').name', n_children=n )
-  !       do k = 1, n
-  !         if ( allocated(ss) ) deallocate(ss)
-  !         call input%get( 'beam('//num2str(i),').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
-  !         select case ( trim(ss) )
-  !         case ( 'charge_cyl_m' )
-  !           call this%add_diag( &
-  !             obj       = beams%beam(i), &
-  !             num_modes = num_modes, &
-  !             df        = ndump, &
-  !             dim       = 1, &
-  !             filename  = './Beam'//num2str(i)//'/Charge/', &
-  !             dataname  = 'charge', &
-  !             timeunit  = '1 / \omega_p', &
-  !             dt        = dt, &
-  !             axisname  = (/'r', '\xi', ''/), &
-  !             axislabel = (/'r', '\xi', ''/), &
-  !             axisunits = (/'c / \omega_p', 'c / \omega_p', ''/), &
-  !             axismax   = (/rmax, zmax, 0.0/), &
-  !             axismin   = (/rmin, zmin, 0.0/), &
-  !             units     = 'n_0', &
-  !             label     = 'Charge Density', &
-  !             rank      = 2 )
-  !         ! case ( 'charge' )
-  !         ! this is the diagnostics for complete combined field, to be implemented
-  !         case ( 'raw' )
-  !           call input%get( 'beam('//num2str(i),').diag'//'('//num2str(j)//').psample', psample )
-  !           call this%add_diag( &
-  !             obj       = beams%beam(i), &
-  !             df        = ndump, &
-  !             psample   = psample, &
-  !             filename  = './Beam'//num2str(i)//'/Raw/', &
-  !             dataname  = 'raw', &
-  !             timeunit  = '1 / \omega_p', &
-  !             dt        = dt, &
-  !             ty        = 'particles', &
-  !             units     = '', &
-  !             label     = 'Beam Raw' )
-  !         end select
-  !       enddo ! end of k
-  !     endif
-  !   enddo ! end of j
-  ! enddo ! end of i
+  ! add beam diagnostics
+  do i = 1, nbeams
+    call input%info( 'beam('//num2str(i)//').diag', n_children=m )
+    do j = 1, m
+      call input%get( 'beam('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'beam('//num2str(i)//').diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'beam('//num2str(i)//').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'charge_cyl_m' )
+            call this%add_diag( &
+              obj       = beams%beam(i), &
+              max_mode  = max_mode, &
+              df        = ndump, &
+              dim       = 1, &
+              filename  = './Beam'//num2str(i)//'/Charge/', &
+              dataname  = 'charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          ! case ( 'charge' )
+          ! this is the diagnostics for complete combined field, to be implemented
+          case ( 'raw' )
+            call input%get( 'beam('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
+            call this%add_diag( &
+              obj       = beams%beam(i), &
+              df        = ndump, &
+              psample   = psample, &
+              filename  = './Beam'//num2str(i)//'/Raw/', &
+              dataname  = 'raw', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              ty        = 'particles', &
+              units     = '', &
+              label     = 'Beam Raw' )
+          end select
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
 
-  ! ! add species diagnostics
-  ! do i = 1, nspecies
-  !   call input%info( 'species('//num2str(i),').diag', n_children=m )
-  !   do j = 1, m
-  !     call input%get( 'species('//num2str(i),').diag'//'('//num2str(j)//').ndump', ndump )
-  !     if ( ndump > 0 ) then
-  !       call input%info( 'species('//num2str(i),').diag'//'('//num2str(j)//').name', n_children=n )
-  !       do k = 1, n
-  !         if ( allocated(ss) ) deallocate(ss)
-  !         call input%get( 'species('//num2str(i),').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
-  !         select case ( trim(ss) )
-  !         case ( 'charge_cyl_m' )
-  !           sn1 = 'Charge'
-  !           sn2 = 'charge'
-  !           sn3 = 'n_0'
-  !           sn4 = 'Charge Density'
-  !           dim = 1
-  !           obj => species%spe(i)
-  !         case ( 'jr_cyl_m' )
-  !           sn1 = 'Jr'
-  !           sn2 = 'jr'
-  !           sn3 = 'n_0 c'
-  !           sn4 = 'J_r'
-  !           dim = 1
-  !           obj => fields%jay
-  !         case ( 'jphi_cyl_m' )
-  !           sn1 = 'Jphi'
-  !           sn2 = 'jphi'
-  !           sn3 = 'n_0 c'
-  !           sn4 = 'J_\phi'
-  !           dim = 2
-  !           obj => field%jay
-  !         case ( 'jz_cyl_m' )
-  !           sn1 = 'Jz'
-  !           sn2 = 'jz'
-  !           sn3 = 'n_0 c'
-  !           sn4 = 'J_z'
-  !           dim = 2
-  !           obj => field%jay
-  !         end select
-  !         call this%add_diag( &
-  !           obj       = obj, &
-  !           num_modes = num_modes, &
-  !           df        = ndump, &
-  !           dim       = dim, &
-            ! filename  = './Species'//num2str(i)//'/'//trim(sn1)//'/', &
-  !           dataname  = trim(sn2), &
-  !           timeunit  = '1 / \omega_p', &
-  !           dt        = dt, &
-  !           axisname  = (/'r', '\xi', ''/), &
-  !           axislabel = (/'r', '\xi', ''/), &
-  !           axisunits = (/'c / \omega_p', 'c / \omega_p', ''/), &
-  !           axismax   = (/rmax, zmax, 0.0/), &
-  !           axismin   = (/rmin, zmin, 0.0/), &
-  !           units     = trim(sn3), &
-  !           label     = trim(sn4), &
-  !           rank      = 2 )
-  !       enddo ! end of k
-  !     endif
-  !   enddo ! end of j
-  ! enddo ! end of i
-
-! ===============================================================================
+  ! add species diagnostics
+  do i = 1, nspecies
+    call input%info( 'species('//num2str(i)//').diag', n_children=m )
+    do j = 1, m
+      call input%get( 'species('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'species('//num2str(i)//').diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'species('//num2str(i)//').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'charge_cyl_m' )
+            call this%add_diag( &
+              obj       = species%spe(i), &
+              max_mode  = max_mode, &
+              df        = ndump, &
+              dim       = 1, &
+              filename  = './Species'//num2str(i)//'/'//'Charge'//'/', &
+              dataname  = 'charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          case ( 'raw' )
+            call input%get( 'species('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
+            call this%add_diag( &
+              obj       = species%spe(i), &
+              df        = ndump, &
+              psample   = psample, &
+              filename  = './Species'//num2str(i)//'/Raw/', &
+              dataname  = 'raw', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              ty        = 'particles', &
+              units     = '', &
+              label     = 'Species Raw' )
+          end select
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
 
   ! add field diagnostics
   call input%info( 'field.diag', n_children=m )
@@ -304,44 +290,72 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           sn1 = 'Er'
           sn2 = 'er'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Electric Field'
+          sn4 = 'E_r'
           dim = 1
-          obj => fields%e_spe
+          obj => fields%e
         case ( 'ephi_cyl_m' )
           sn1 = 'Ephi'
           sn2 = 'ephi'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Electric Field'
+          sn4 = 'E_\phi'
           dim = 2
-          obj => fields%e_spe
+          obj => fields%e
         case ( 'ez_cyl_m' )
           sn1 = 'Ez'
           sn2 = 'ez'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Electric Field'
+          sn4 = 'E_z'
           dim = 3
-          obj => fields%e_spe
+          obj => fields%e
         case ( 'br_cyl_m' )
           sn1 = 'Br'
           sn2 = 'br'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Magnetic Field'
+          sn4 = 'B_r'
           dim = 1
-          obj => fields%b_spe
+          obj => fields%b
         case ( 'bphi_cyl_m' )
           sn1 = 'Bphi'
           sn2 = 'bphi'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Magnetic Field'
+          sn4 = 'B_\phi'
           dim = 2
-          obj => fields%b_spe
+          obj => fields%b
         case ( 'bz_cyl_m' )
           sn1 = 'Bz'
           sn2 = 'bz'
           sn3 = 'mc\omega_p/e'
-          sn4 = 'Magnetic Field'
+          sn4 = 'B_z'
           dim = 3
-          obj => fields%b_spe
+          obj => fields%b
+        case ( 'charge_cyl_m' )
+          sn1 = 'Charge'
+          sn2 = 'charge'
+          sn3 = 'n_0'
+          sn4 = '\rho'
+          dim = 1
+          obj => fields%q_spe
+        case ( 'jr_cyl_m' )
+          sn1 = 'Jr'
+          sn2 = 'jr'
+          sn3 = 'n0 c'
+          sn4 = 'J_r'
+          dim = 1
+          obj => fields%cu
+        case ( 'jphi_cyl_m' )
+          sn1 = 'Jphi'
+          sn2 = 'jphi'
+          sn3 = 'n0 c'
+          sn4 = 'J_\phi'
+          dim = 2
+          obj => fields%cu
+        case ( 'jz_cyl_m' )
+          sn1 = 'Jz'
+          sn2 = 'jz'
+          sn3 = 'n0 c'
+          sn4 = 'J_z'
+          dim = 3
+          obj => fields%cu
         case ( 'psi_cyl_m' )
           sn1 = 'Psi'
           sn2 = 'psi'
@@ -352,7 +366,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
         end select
         call this%add_diag( &
           obj       = obj, &
-          num_modes = num_modes, &
+          max_mode  = max_mode, &
           df        = ndump, &
           dim       = dim, &
           filename  = './Fields/'//trim(sn1)//'/', &
@@ -375,7 +389,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
 ! THIS PART IS TO BE FINISHED
 ! ===============================================================================
   ! if (rst) then
-  !   call input%get( 'simulation.ndump_restart', ndump ) 
+  !   call input%get( 'simulation.ndump_restart', ndump )
   !   do i = 1, nbeams
   !      call this%add_diag( &
   !       obj      = beams%beam(i), &
@@ -428,6 +442,7 @@ subroutine run_sim_diag( this, tstep, dt )
 
   ! local data
   class(*), pointer :: obj => null()
+  integer :: dspl, stag, rtag, id
 
   integer, save :: cls_level = 3
   character(len=32), save :: cls_name = 'sim_diag'
@@ -438,17 +453,39 @@ subroutine run_sim_diag( this, tstep, dt )
   if ( .not. ( mod( tstep-1, this%ndump_gcd ) == 0 ) ) return
 
   call this%to_head()
-  do while ( .not. this%is_tail() )
+  if ( this%is_tail() ) return
+
+  do
     call this%diag%set_sim_time( tstep, tstep*dt )
     select type ( obj => this%diag%obj )
     class is ( field )
-      call obj%write_hdf5( this%diag%files, this%diag%dim )
-    ! class is ( beam )
-    ! ! to be implemented
-    ! class is ( species )
-    ! ! to be implemented
+      rtag = 8; stag = 8
+      call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, id )
+    class is ( beam3d )
+      select case ( this%diag%ty )
+      case ( p_tdiag_raw )
+        dspl = 1; rtag = 6; stag = 6
+        call obj%wr( this%diag%files(1), dspl, rtag, stag, id )
+      case ( p_tdiag_grid )
+        rtag = 8; stag = 8
+        call obj%wrq( this%diag%files, rtag, stag, id )
+      case ( p_tdiag_rst )
+      end select
+    class is ( species2d )
+      select case ( this%diag%ty )
+      case ( p_tdiag_raw )
+        call obj%wr( this%diag%files(1) )
+      case ( p_tdiag_grid )
+        rtag = 5; stag = 5
+        call obj%wrq( this%diag%files, rtag, stag, id )
+      case ( p_tdiag_rst )
+      end select
     end select
-    call this%to_next()
+    if ( .not. this%is_tail() ) then
+      call this%to_next()
+    else
+      exit
+    endif
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -456,14 +493,14 @@ subroutine run_sim_diag( this, tstep, dt )
 end subroutine run_sim_diag
 
 ! add 2d-plot diagnostics of cylindrical modes
-subroutine add_diag_cym( this, obj, num_modes, df, dim, filename, dataname, timeunit, dt, &
+subroutine add_diag_cym( this, obj, max_mode, df, dim, filename, dataname, timeunit, dt, &
   axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: num_modes, df, dim
+  integer, intent(in) :: max_mode, df, dim
   character(len=*), intent(in) :: filename, timeunit, dataname, units, label
   integer, intent(in) :: rank
   real, intent(in) :: dt
@@ -481,15 +518,18 @@ subroutine add_diag_cym( this, obj, num_modes, df, dim, filename, dataname, time
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=2*num_modes+1, dim=dim )
+    call this%head%new( obj, df, num_files=2*max_mode+1, dim=dim, tag=this%num_diag+1 )
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag )
-    call this%diag%new( obj, df, num_files=2*num_modes+1, dim=dim )
+    allocate( this%diag%next )
+    this%diag => this%diag%next
+    call this%diag%new( obj, df, num_files=2*max_mode+1, dim=dim, tag=this%num_diag+1 )
   endif
 
-  do i = 1, 2*num_modes+1
+  this%diag%ty = p_tdiag_grid
+
+  do i = 1, 2*max_mode+1
 
     if ( i == 1 ) then
       cym_str = 'Re0'
@@ -541,10 +581,13 @@ subroutine add_diag_rst( this, obj, df, filename, dataname, ty )
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag )
+    allocate( this%diag%next )
+    this%diag => this%diag%next
     call this%diag%new( obj, df, num_files=1 )
   endif
 
+  this%diag%ty = p_tdiag_rst
+  call system( 'mkdir -p '//trim(filename) )
   call this%diag%files(1)%new( &
     ty        = ty, &
     filename  = filename, &
@@ -576,14 +619,17 @@ subroutine add_diag_raw( this, obj, df, psample, filename, dataname, timeunit, d
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=1, psample=psample )
+    call this%head%new( obj, df, num_files=1, psample=psample, tag=this%num_diag+1 )
     this%diag => this%head
   else
     call this%to_tail()
-    allocate( this%diag )
-    call this%diag%new( obj, df, num_files=1, psample=psample )
+    allocate( this%diag%next )
+    this%diag => this%diag%next
+    call this%diag%new( obj, df, num_files=1, psample=psample, tag=this%num_diag+1 )
   endif
 
+  this%diag%ty = p_tdiag_raw
+  call system( 'mkdir -p '//trim(filename) )
   call this%diag%files(1)%new( &
     timeunit  = timeunit, &
     dt        = dt, &
@@ -620,6 +666,7 @@ subroutine set_ndump_gcd( this )
     ! use Euclidean algorithm to calculate GCD
     a = this%ndump_gcd
     b = this%diag%df
+    if ( b == 0 ) b = 1
     do while ( .not. ( mod(a,b) == 0 ) )
       a = b
       b = mod(a,b)
@@ -678,7 +725,7 @@ function is_tail( this )
   class( sim_diag ), intent(in) :: this
   logical :: is_tail
 
-  is_tail = ( .not. associated( this%diag ) )
+  is_tail = ( .not. associated( this%diag%next ) )
 
 end function is_tail
 

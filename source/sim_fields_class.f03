@@ -6,9 +6,9 @@ use field_psi_class
 use field_e_class
 use field_b_class
 use field_src_class
-
 use sys
 use param
+use input_class
 
 implicit none
 
@@ -24,11 +24,11 @@ type sim_fields
   class( grid ), pointer :: gp => null()
 
   type( field_psi ), allocatable :: psi
-  type( field_b ), allocatable :: b_spe, b_beam
-  type( field_e ), allocatable :: e_spe, e_beam
-  type( field_jay ), allocatable :: jay
+  type( field_b ), allocatable :: b_spe, b_beam, b
+  type( field_e ), allocatable :: e_spe, e_beam, e
+  type( field_jay ), allocatable :: cu, amu
   type( field_rho ), allocatable :: q_spe, q_beam
-  type( field_djdxi ), allocatable :: djdxi
+  type( field_djdxi ), allocatable :: dcu, acu
 
   contains
 
@@ -44,42 +44,91 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine init_sim_fields( this, pp, gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
+subroutine init_sim_fields( this, input )
 
   implicit none
 
   class( sim_fields ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  real, intent(in) :: dr, dxi, iter_tol
-  integer, intent(in) :: num_modes, part_shape, boundary
+  type( input_json ), pointer, intent(inout) :: input
 
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=20) :: s1, s2, s3
-  character(len=:), allocatable :: ff
+  character(len=:), allocatable :: str
   integer :: i,n,ndump,j,k,l,m
-  integer :: entity
+  integer :: entity, max_mode, ps, bnd, sm_type, sm_ord
+  real :: dr, dxi, tol, min, max
 
-  this%gp => gp
-  this%pp => pp
+  this%gp => input%gp
+  this%pp => input%pp
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  allocate( this%psi, this%e_spe, this%b_spe, this%e_beam, this%b_beam, &
-    this%jay, this%q_spe, this%q_beam, this%djdxi )
+  allocate( this%psi, &
+    this%e_spe, this%e_beam, this%e, &
+    this%b_spe, this%b_beam, this%b, &
+    this%cu, this%acu, this%amu, this%dcu, &
+    this%q_spe, this%q_beam )
 
-  call this%psi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, iter_tol )
-  call this%jay%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
-  call this%q_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
-  call this%q_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
-  call this%djdxi%new( this%pp, this%gp, dr, dxi, num_modes, part_shape )
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.solver_tol', tol )
+  
+  ! read field boundary type
+  call input%get( 'simulation.field_boundary', str )
+  select case ( trim(str) )
+  case ( 'open' )
+    bnd = p_bnd_open
+  case ( 'zero' )
+    bnd = p_bnd_zero
+  case default
+    call write_err( 'Invalid field boundary type! Only "open" and "zero" are supported currently.' )
+  end select
+
+  ! read interpolation type
+  call input%get( 'simulation.interpolation', str )
+  select case ( trim(str) )
+  case ( 'linear' )
+    ps = p_ps_linear
+  case default
+    call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
+  end select
+
+  ! read smooth parameters
+  call input%get( 'simulation.smooth_type', str )
+  select case ( trim(str) )
+  case ( 'none' )
+    sm_type = p_smooth_none
+  case ( 'binomial' )
+    sm_type = p_smooth_binomial
+  case ( 'compensated' )
+    sm_type = p_smooth_compensated
+  case default
+    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are supported currently.' )
+  end select
+  call input%get( 'simulation.smooth_order', sm_ord )
+
+  ! call input%get( 'simulation.box.r(1)', min )
+  ! call input%get( 'simulation.box.r(2)', max )
+  ! dr = ( max - min ) / this%gp%get_nd(1)
+  ! call input%get( 'simulation.box.z(1)', min )
+  ! call input%get( 'simulation.box.z(2)', max )
+  ! dxi = ( max - min ) / this%gp%get_nd(2)
+
+  call this%psi%new(    this%pp, this%gp, max_mode, ps, bnd, tol )
+  call this%q_spe%new(  this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%q_beam%new( this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%cu%new(     this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%dcu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%acu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%amu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
   entity = p_entity_plasma
-  call this%e_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
-  call this%b_spe%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
+  call this%e_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity, tol )
+  call this%b_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity, tol )
+  call this%e%new(      this%pp, this%gp, max_mode, ps, bnd, entity, tol )
+  call this%b%new(      this%pp, this%gp, max_mode, ps, bnd, entity, tol )
   entity = p_entity_beam
-  call this%e_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
-  call this%b_beam%new( this%pp, this%gp, dr, dxi, num_modes, part_shape, boundary, entity, iter_tol )
+  call this%e_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity, tol )
+  call this%b_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity, tol )
 
   ! call input%get('simulation.nspecies',n)
 
@@ -146,10 +195,12 @@ subroutine end_sim_fields( this )
   call this%b_spe%del()
   call this%e_beam%del()
   call this%b_beam%del()
-  call this%jay%del()
+  call this%cu%del()
+  call this%dcu%del()
+  call this%acu%del()
+  call this%amu%del()
   call this%q_spe%del()
   call this%q_beam%del()
-  call this%djdxi%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

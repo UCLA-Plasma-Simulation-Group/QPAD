@@ -39,7 +39,7 @@ type beam3d
    generic :: wr => writehdf5_beam3d
    generic :: wrq => writeq_beam3d
    generic :: wrst => writerst_beam3d       
-   generic :: rrst => readrst_beam3d       
+   generic :: rrst => readrst_beam3d
    procedure, private :: init_beam3d
    procedure, private :: end_beam3d
    procedure, private :: push_beam3d
@@ -240,5 +240,5 @@ subroutine readrst_beam3d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine readrst_beam3d
-!            
+!
 end module beam3d_class

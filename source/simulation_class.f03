@@ -7,6 +7,7 @@ use sim_fields_class
 use sim_beams_class
 use sim_species_class
 use diagnostics_class
+use field_class
 
 use input_class
 use sys
@@ -32,8 +33,8 @@ type simulation
   type( sim_beams ) :: beams
   type( sim_diag ) :: diag
   real :: dr, dxi, dt
-  integer :: iter, nstep2d, nstep1d, start2d, nbeams, nspecies, tstep
-  integer :: num_modes, interp, fld_bnd
+  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, tstep
+  integer :: ndump, max_mode
 
   contains
 
@@ -57,12 +58,10 @@ subroutine init_simulation(this)
 
   class(simulation), intent(inout) :: this
   ! local data
-  character(len=18), save :: sname = 'init_simulation:'
+  character(len=18), save :: sname = 'init_simulation'
 
-  real :: min, max, n0, dr, dxi, dt, time, solver_prec
-  integer :: nr, nz
+  real :: n0, dr, dxi, dt, time
   logical :: read_rst
-  character(len=:), allocatable :: interp_str, fld_bnd_str
 
   allocate( this%input )
   call this%input%new()
@@ -71,77 +70,34 @@ subroutine init_simulation(this)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  this%dr  = this%gp%get_dr()
+  this%dxi = this%gp%get_dxi()
+  this%nstep2d = this%gp%get_ndp(2)
+
   call this%input%get( 'simulation.n0', n0 )
-
-  call this%input%get( 'simulation.box.r(1)', min )
-  call this%input%get( 'simulation.box.r(2)', max )
-  nr = this%gp%get_nd(1)
-  dr = ( max - min ) / real(nr)
-  call this%input%get( 'simulation.box.z(1)', min )
-  call this%input%get( 'simulation.box.z(2)', max )
-  nz = this%gp%get_nd(2)
-  dxi = ( max - min ) / real(nz)
-
-  this%dr = dr
-  this%dxi = dxi
-
-  this%nstep1d = this%gp%get_ndp(2)
-
   call this%input%get( 'simulation.time', time )
   call this%input%get( 'simulation.dt', dt )
-  this%nstep2d = time/dt
+  this%nstep3d = time/dt
   this%dt = dt
 
   call this%input%get( 'simulation.read_restart', read_rst )
   if (read_rst) then
-    call this%input%get( 'simulation.restart_timestep', this%start2d )
-    this%start2d = this%start2d + 1
+    call this%input%get( 'simulation.restart_timestep', this%start3d )
+    this%start3d = this%start3d + 1
   else
-    this%start2d = 1
+    this%start3d = 1
   endif
 
   call this%input%get( 'simulation.iter', this%iter )
   call this%input%get( 'simulation.nbeams', this%nbeams )
   call this%input%get( 'simulation.nspecies', this%nspecies )
-  call this%input%get( 'simulation.max_mode', this%num_modes )
+  call this%input%get( 'simulation.max_mode', this%max_mode )
 
-  call this%input%get( 'simulation.interpolation', interp_str )
-  select case ( trim(interp_str) )
-  case ( 'linear' )
-    this%interp = p_ps_linear
-  case ( 'quadratic' )
-    this%interp = p_ps_quadratic
-  case default
-    call write_err( 'Invalid interpolation type!' )
-  end select
-
-  call this%input%get( 'simulation.field_boundary', fld_bnd_str )
-  select case ( trim(fld_bnd_str) )
-  case ( 'zero' )
-    this%fld_bnd = p_bnd_zero
-  case ( 'conduct' )
-    this%fld_bnd = p_bnd_conduct
-  case ( 'open' )
-    this%fld_bnd = p_bnd_open
-  case default
-    call write_err( 'Invalid field boundary type!' )
-  end select
-
-  call this%input%get( 'simulation.solver_precision', solver_prec )
-  call this%fields%new( this%pp, this%gp, this%dr, this%dxi, this%num_modes, this%interp, &
-    this%fld_bnd, solver_prec )
-! ===============================================================================
-! THIS PART IS TO BE FINISHED
-! ===============================================================================
-  ! call this%beams%new( ... )
-  ! call this%species%new( ... )
-! ===============================================================================
+  call this%fields%new( this%input )
+  call this%beams%new( this%input )
+  call this%species%new( this%input, (this%start3d-1)*dt )
 
   call this%diag%new( this%pp, this%input, this%fields, this%beams, this%species )
-  ! call this%beams%new(this%in,this%fields)
-  ! call this%species%new(this%in,this%fields,(this%start2d-1)*dt)
-
-  ! call this%init_diag()                 
 
   ! allocate(this%tag_spe(this%nspecies),this%tag_beam(this%nbeams))
   ! allocate(this%id_spe(this%nspecies),this%id_beam(this%nbeams))
@@ -170,18 +126,15 @@ subroutine end_simulation(this)
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%fields%del()
-! ===============================================================================
-! THIS PART IS TO BE FINISHED
-! ===============================================================================
-  ! call this%beams%del()
-  ! call this%species%del()
-! ===============================================================================
-
+  call this%beams%del()
+  call this%species%del()
   call this%diag%del()
   call this%gp%del()
   call this%pp%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+  ! call MPI_FINALIZE(ierr)
 
 end subroutine end_simulation
 
@@ -191,12 +144,98 @@ subroutine run_simulation( this )
 
   class( simulation ), intent(inout) :: this
 
-  integer :: i, j
+  integer :: i, j, k, l, id
   character(len=32), save :: sname = 'run_simulation'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ! do nothing right now
+  do i = this%start3d, this%nstep3d
+
+    this%tstep = i
+    call write_stdout( '3D step = '//num2str(i) )
+
+    call start_tprof( 'total simulation time' )
+
+    call this%fields%q_beam%as(0.0)
+    call this%fields%q_spe%as(0.0)
+    do k = 1, this%nbeams
+      call this%beams%beam(k)%qdp( this%fields%q_beam )
+    enddo
+
+    this%fields%cu    = 0.0
+    this%fields%b     = 0.0
+    this%fields%e     = 0.0
+    this%fields%b_spe = 0.0
+    this%fields%psi   = 0.0
+
+    do j = 1, this%nstep2d
+
+      call this%fields%q_beam%copy_slice( j+1, p_copy_2to1 )
+      call this%fields%q_beam%smooth_f1()
+      call this%fields%b_beam%solve( this%fields%q_beam )
+      this%fields%q_spe = 0.0
+      do k = 1, this%nspecies
+        call this%species%spe(k)%qdp( this%fields%q_spe )
+      enddo
+      call this%fields%q_spe%smooth_f1()
+      call this%fields%q_spe%copy_slice( j+1, p_copy_1to2 )
+      call this%fields%psi%solve( this%fields%q_spe )
+      do k = 1, this%nspecies
+        call this%species%spe(k)%extpsi( this%fields%psi )
+      enddo
+      call this%fields%e%solve( this%fields%psi, j+1 )
+      call this%fields%b_spe%solve( this%fields%cu )
+
+      do l = 1, this%iter
+
+        call add_f1( this%fields%b_spe, this%fields%b_beam, this%fields%b )
+        call this%fields%e%solve( this%fields%b, this%fields%psi )
+        this%fields%cu = 0.0
+        this%fields%acu = 0.0
+        this%fields%amu = 0.0
+        do k = 1, this%nspecies
+          call this%species%spe(k)%amjdp( this%fields%e, this%fields%b, &
+            this%fields%cu, this%fields%amu, this%fields%acu )
+        enddo
+        call this%fields%acu%smooth_f1()
+        call this%fields%amu%smooth_f1()
+        call this%fields%cu%smooth_f1()
+        call this%fields%dcu%solve( this%fields%acu, this%fields%amu )
+        call this%fields%b_spe%solve( this%fields%dcu, this%fields%cu )
+        call this%fields%b_spe%solve( this%fields%cu )
+        if ( l == this%iter ) then
+          do k = 1, this%nspecies
+            call this%species%spe(k)%cbq(j+1)
+          enddo
+          call this%fields%cu%copy_slice( j+1, p_copy_1to2 )
+        endif
+
+      enddo ! iteration
+
+      call add_f1( this%fields%b_spe, this%fields%b_beam, this%fields%b )
+      call this%fields%e%solve( this%fields%b, this%fields%psi )
+      call dot_f1( this%dxi, this%fields%dcu )
+      call add_f1( this%fields%dcu, this%fields%cu, (/1,2/), (/1,2/) )
+      do k = 1, this%nspecies
+        call this%species%spe(k)%push( this%fields%e, this%fields%b )
+      enddo
+      call this%fields%e%copy_slice( j+1, p_copy_1to2 )
+      call this%fields%b%copy_slice( j+1, p_copy_1to2 )
+      call this%fields%psi%copy_slice( j+1, p_copy_1to2 )
+
+    enddo ! 2d loop
+
+    do k = 1, this%nbeams
+      call this%beams%beam(k)%push( this%fields%e, this%fields%b, 7, 7, id )
+    enddo
+
+    call this%diag%run( this%tstep, this%dt )
+
+    do k = 1, this%nspecies
+      call this%species%spe(k)%renew( i*this%dt )
+    enddo
+
+  enddo ! 3d loop
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

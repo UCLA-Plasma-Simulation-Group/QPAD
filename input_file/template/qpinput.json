@@ -1,0 +1,145 @@
+{
+"simulation" : !note
+{
+    "nodes" : [1,1], 
+    "grid" : [256,438],
+    "box" : {
+        "r" : [0.0,9.395847],
+        "z" : [0,9.6]},
+    "field_boundary" : "open",
+    "max_mode" : 2,
+    "interpolation" : "linear",
+    "n0" : 4.0e16,
+    "time" : 20.1,
+    "dt" : 10.0,
+    "nbeams" : 2,
+    "nspecies" : 1,
+    "dump_restart" : false,
+    "ndump_restart" : 1,
+    "read_restart" : false,
+    "restart_timestep" : 1,
+    "iter" : 1,
+    "solver_tol" : 1.0e-12,
+    "smooth_type" : "binomial",
+    "smooth_order" : 3,
+    "verbose" : 5,
+    "if_timing" : false
+},
+"beam" :
+[
+    {
+    "evolution" : true,
+    "profile" : 1,
+    "np" : [128,16,512],
+    "npmax" : 10000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "peak_density" : 93.4633388357,
+    "quiet_start" : true,
+    "center" : [0.0,0.0,3.0066710513952833],
+    "sigma" : [0.1370828,0.1370828,0.479789533],
+    "sigma_v" : [13.70828,13.70828,0.0],
+    "centroid_x" : [0.0,0.0,0.0],
+    "centroid_y" : [0.0,0.0,0.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        }
+        !{
+        !"name" : ["raw"],
+        !"ndump" : 1,
+        !"psample" : 10
+        !}
+    ]    
+    },
+    {
+    "evolution" : true,
+    "profile" : 1,
+    "np" : [128,16,256],
+    "npmax" : 4200000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "peak_density" : 56.0780033,
+    "quiet_start" : true,
+    "center" : [0.037583388,0.0,8.644179273],
+    "center" : [0.0,0.0,8.644179273],
+    "sigma" : [0.1370828,0.1370828,0.239894766513201],
+    "sigma_v" : [13.70828,13.70828,0.0],
+    "centroid_x" : [0.0,0.0,0.0],
+    "centroid_y" : [0.0,0.0,0.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        }
+        !{
+        !"name" : ["raw"],
+        !"ndump" : 1,
+        !"psample" : 10
+        !}
+    ]    
+    }    
+],
+
+"species" :
+[
+
+    {
+    "profile" : 0,
+    "ppc" : [2,16],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "longitudinal_profile" : "uniform",
+!    "piecewise_density" : [1.0,1.5,2.5],
+!    "piecewise_s" : [0.0,100.0,200.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    },
+    {
+    "profile" : 12,
+    "ppc" : [20,2],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "longitudinal_profile" : "uniform",
+    "piecewise_density" : [1.0,1.5,2.5],
+    "piecewise_s" : [0.0,15.0,50.0],    
+    "piecewise_radial_density" : [0.0,1.0,1.0,0.0],
+    "piecewise_r" : [0.2,0.21,8.0,8.5],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 0
+        }
+    ]    
+    }
+],
+
+"field" :
+{
+    "diag" :
+    [
+        {
+            "name" : ["psi_cyl_m", "er_cyl_m", "ez_cyl_m", "bphi_cyl_m", "charge_cyl_m"],
+            "ndump" : 1
+        }
+    ]
+}
+}

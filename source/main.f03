@@ -1,4 +1,4 @@
-program quickpic
+program quickpic_quasi3d
 
 use simulation_class
 use sys
@@ -9,6 +9,6 @@ type( simulation ) :: sim
 
 call sim%new()
 call sim%run()
-call sim%end()
+call sim%del()
 
-end program quickpic
+end program quickpic_quasi3d

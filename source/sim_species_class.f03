@@ -16,7 +16,7 @@ public :: sim_species
 
 type sim_species
 
-  private
+  ! private
 
   class( parallel_pipe ), pointer :: pp => null()
   class( grid ), pointer :: gp => null()
@@ -51,9 +51,9 @@ subroutine init_sim_species( this, input, s )
   ! real, dimension(3,100) :: arg
   ! logical :: quiet
   real :: qm, qbm
-  integer :: ps, sm_type, sm_ord, max_mode
+  integer :: ps, sm_type, sm_ord, max_mode, npf
   ! type(hdf5file) :: file_rst
-  character(len=:), allocatable :: str, pf_str
+  character(len=:), allocatable :: str
 
   this%gp => input%gp
   this%pp => input%pp
@@ -91,12 +91,12 @@ subroutine init_sim_species( this, input, s )
          
   do i = 1, n
 
-    call input%get( 'species('//num2str(i)//').profile', pf_str )
-    select case ( trim(pf_str) )
-    case ( 'piecewise-linear' )
+    call input%get( 'species('//num2str(i)//').profile', npf )
+    select case ( npf )
+    case (0)
        allocate( fdist2d_000 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
-    case ( 'hollow-channel' )
+    case (12)
        allocate( fdist2d_012 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
     ! Add new distributions right above this line
