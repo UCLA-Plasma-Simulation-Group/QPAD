@@ -447,42 +447,48 @@ subroutine run_sim_diag( this, tstep, dt )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( .not. ( mod( tstep-1, this%ndump_gcd ) == 0 ) ) return
+  if ( mod( tstep-1, this%ndump_gcd ) /= 0 ) return
 
   call this%to_head()
-  if ( this%is_tail() ) return
+  if ( .not. associated(this%diag) ) return
 
   do
-    call this%diag%set_sim_time( tstep, tstep*dt )
-    select type ( obj => this%diag%obj )
-    class is ( field )
-      rtag = 8; stag = 8
-      call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, id )
-    class is ( beam3d )
-      select case ( this%diag%ty )
-      case ( p_tdiag_raw )
-        dspl = 1; rtag = 6; stag = 6
-        call obj%wr( this%diag%files(1), dspl, rtag, stag, id )
-      case ( p_tdiag_grid )
+    if ( mod( tstep-1, this%diag%df ) == 0 ) then
+
+      call this%diag%set_sim_time( tstep, tstep*dt )
+      select type ( obj => this%diag%obj )
+      class is ( field )
         rtag = 8; stag = 8
-        call obj%wrq( this%diag%files, rtag, stag, id )
-      case ( p_tdiag_rst )
-        call obj%wrst( this%diag%files(1) )
+        call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, id )
+      class is ( beam3d )
+        select case ( this%diag%ty )
+        case ( p_tdiag_raw )
+          dspl = 1; rtag = 6; stag = 6
+          call obj%wr( this%diag%files(1), dspl, rtag, stag, id )
+        case ( p_tdiag_grid )
+          rtag = 8; stag = 8
+          call obj%wrq( this%diag%files, rtag, stag, id )
+        case ( p_tdiag_rst )
+          call obj%wrst( this%diag%files(1) )
+        end select
+      class is ( species2d )
+        select case ( this%diag%ty )
+        case ( p_tdiag_raw )
+          call obj%wr( this%diag%files(1) )
+        case ( p_tdiag_grid )
+          rtag = 5; stag = 5
+          call obj%wrq( this%diag%files, rtag, stag, id )
+        end select
       end select
-    class is ( species2d )
-      select case ( this%diag%ty )
-      case ( p_tdiag_raw )
-        call obj%wr( this%diag%files(1) )
-      case ( p_tdiag_grid )
-        rtag = 5; stag = 5
-        call obj%wrq( this%diag%files, rtag, stag, id )
-      end select
-    end select
+
+    endif
+
     if ( .not. this%is_tail() ) then
       call this%to_next()
     else
       exit
     endif
+
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -649,7 +655,7 @@ subroutine set_ndump_gcd( this )
   class( sim_diag ), intent(inout) :: this
 
   ! local data
-  integer :: a, b
+  integer :: a, b, temp
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag'
@@ -659,17 +665,22 @@ subroutine set_ndump_gcd( this )
 
   call this%to_head()
   this%ndump_gcd = this%diag%df
-  do while ( .not. this%is_tail() )
+  do
     ! use Euclidean algorithm to calculate GCD
     a = this%ndump_gcd
     b = this%diag%df
     if ( b == 0 ) b = 1
-    do while ( .not. ( mod(a,b) == 0 ) )
+    do while ( mod(a,b) /= 0 )
+      temp = a
       a = b
-      b = mod(a,b)
+      b = mod(temp,b)
     enddo
     this%ndump_gcd = min( this%ndump_gcd, b )
-    call this%to_next()
+    if ( this%is_tail() ) then
+      exit
+    else
+      call this%to_next()
+    endif
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
