@@ -649,7 +649,7 @@ subroutine set_ndump_gcd( this )
   class( sim_diag ), intent(inout) :: this
 
   ! local data
-  integer :: a, b
+  integer :: a, b, temp
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag'
@@ -659,17 +659,22 @@ subroutine set_ndump_gcd( this )
 
   call this%to_head()
   this%ndump_gcd = this%diag%df
-  do while ( .not. this%is_tail() )
+  do
     ! use Euclidean algorithm to calculate GCD
     a = this%ndump_gcd
     b = this%diag%df
     if ( b == 0 ) b = 1
-    do while ( .not. ( mod(a,b) == 0 ) )
+    do while ( mod(a,b) /= 0 )
+      temp = a
       a = b
-      b = mod(a,b)
+      b = mod(temp,b)
     enddo
     this%ndump_gcd = min( this%ndump_gcd, b )
-    call this%to_next()
+    if ( this%is_tail() ) then
+      exit
+    else
+      call this%to_next()
+    endif
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
