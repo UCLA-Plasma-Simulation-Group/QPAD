@@ -4,6 +4,7 @@ use field_class
 use parallel_pipe_class
 use grid_class
 use ufield_class
+use ufield_smooth_class
 use param
 use sys
 
@@ -15,9 +16,12 @@ public :: field_rho, field_jay, field_djdxi
 
 type, extends( field ) :: field_rho
 
+  real :: q_ax ! on-axis charge
+
   contains
 
   generic :: new => init_field_rho
+  procedure :: get_q_ax1, get_q_ax2
   procedure, private :: init_field_rho
 
 end type field_rho
@@ -99,6 +103,71 @@ subroutine init_field_rho( this, pp, gp, num_modes, part_shape, &
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_rho
+
+subroutine get_q_ax1( this )
+
+  implicit none
+  class( field_rho ), intent(inout) :: this
+
+  real, dimension(:,:), pointer :: f1_re => null()
+  integer :: dtype, comm, idproc, ierr
+
+  idproc = this%rf_re(0)%pp%getlidproc()
+  comm   = this%rf_re(0)%pp%getlgrp()
+  dtype  = this%rf_re(0)%pp%getmreal()
+
+  if ( idproc == 0 ) then
+    f1_re => this%rf_re(0)%get_f1()
+    this%q_ax = -1.0 * this%dr**2 * f1_re(1,0)
+  endif
+
+  call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+
+end subroutine get_q_ax1
+
+subroutine get_q_ax2( this )
+
+  implicit none
+  class( field_rho ), intent(inout) :: this
+  ! class( ufield_smooth ), intent(in) :: smooth
+
+  real, dimension(:,:), pointer :: f1_re => null()
+  integer :: dtype, comm, idproc, nsm, i, j, ierr
+  real, dimension(:), pointer :: scoef
+  real :: dr2
+
+  idproc = this%rf_re(0)%pp%getlidproc()
+  comm   = this%rf_re(0)%pp%getlgrp()
+  dtype  = this%rf_re(0)%pp%getmreal()
+  nsm    = this%smooth%get_order()
+  dr2    = this%dr**2
+  scoef  => this%smooth%get_scoef()
+
+  if ( nsm <= 0 ) return
+
+  if ( idproc == 0 ) then
+
+    f1_re => this%rf_re(0)%get_f1()
+
+    ! add the charge smoothed out
+    do j = 1, nsm
+      do i = -nsm, -j
+        this%q_ax = this%q_ax - dr2 * f1_re(1,j) * scoef(i) * real(i+j-0.5)
+      enddo
+    enddo
+
+    ! deduct the charge smoothed in
+    do j = 1, nsm
+      do i = 1, nsm-j+1
+        this%q_ax = this%q_ax + dr2 * real(j-0.5) * f1_re(1,i) * scoef(1-j-i)
+      enddo
+    enddo
+
+  endif
+
+  call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+
+end subroutine get_q_ax2
 
 subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
   smooth_type, smooth_order )

@@ -120,8 +120,8 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%num_modes = num_modes
-  this%dr  = gp%get_dr()
-  this%dxi = gp%get_dxi()
+  this%dr        = gp%get_dr()
+  this%dxi       = gp%get_dxi()
 
   if ( present(entity) ) then
     this%entity = entity
@@ -414,6 +414,7 @@ subroutine smooth_f1( this )
   implicit none
 
   class( field ), intent(inout) :: this
+  ! logical, intent(in) :: q_cons
 
   integer :: i
   character(len=32), save :: sname = 'smooth_f1'
@@ -425,12 +426,12 @@ subroutine smooth_f1( this )
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
-      call this%smooth%smooth_f1( this%rf_re(i), this%dr )
+      call this%smooth%smooth_f1( this%rf_re(i), i )
       cycle
     endif
 
-    call this%smooth%smooth_f1( this%rf_re(i), this%dr )
-    call this%smooth%smooth_f1( this%rf_im(i), this%dr )
+    call this%smooth%smooth_f1( this%rf_re(i), i )
+    call this%smooth%smooth_f1( this%rf_im(i), i )
 
   enddo
 

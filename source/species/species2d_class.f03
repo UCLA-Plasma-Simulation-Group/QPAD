@@ -178,6 +178,8 @@ subroutine qdp_species2d(this,q)
    ! q = this%q + q + this%qn
    call add_f1( this%q, q )
    call add_f1( this%qn, q )
+
+   call q%get_q_ax1()
    
    call write_dbg(cls_name, sname, cls_level, 'ends')
    
