@@ -65,6 +65,8 @@ type :: ufield
   integer :: mode
   logical :: has_2d
 
+  real, dimension(:,:,:), allocatable :: pbuf
+
   contains
 
   generic :: new        => init_ufield, init_ufield_cp
@@ -79,9 +81,10 @@ type :: ufield
   procedure :: copy_slice
   procedure :: get_f1
   procedure :: get_f2
-  procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
-  procedure :: acopy_gc_f1, acopy_gc_f2, acopy_gc_stage
+  procedure :: copy_gc_f1, copy_gc_f2
+  procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: has2d
+  ! procedure :: pipe_send, pipe_recv
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
@@ -523,79 +526,79 @@ subroutine copy_gc_f2( this, bnd_ax )
 
 end subroutine copy_gc_f2
 
-subroutine copy_gc_stage( this, dir )
+! subroutine copy_gc_stage( this, dir )
 
-  implicit none
+!   implicit none
 
-  class( ufield ), intent(inout) :: this
-  integer, intent(in) :: dir
+!   class( ufield ), intent(inout) :: this
+!   integer, intent(in) :: dir
 
-  integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-  integer :: nzp, count, dtype
-  integer :: tag = 1, msgid, ierr
-  integer, dimension(MPI_STATUS_SIZE) :: stat
+!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
+!   integer :: nzp, count, dtype
+!   integer :: tag = 1, msgid, ierr
+!   integer, dimension(MPI_STATUS_SIZE) :: stat
 
-  call start_tprof( 'copy guard cells' )
+!   call start_tprof( 'copy guard cells' )
 
-  nvp = this%nvp(1)
-  nstage = this%pp%getnstage()
-  stageid = this%pp%getstageid()
-  idproc = this%pp%getidproc()
-  idproc_last = idproc - nvp
-  idproc_next = idproc + nvp
-  nzp = this%ndp(2)
-  comm = this%pp%getlworld()
-  dtype = this%pp%getmreal()
+!   nvp = this%nvp(1)
+!   nstage = this%pp%getnstage()
+!   stageid = this%pp%getstageid()
+!   idproc = this%pp%getidproc()
+!   idproc_last = idproc - nvp
+!   idproc_next = idproc + nvp
+!   nzp = this%ndp(2)
+!   comm = this%pp%getlworld()
+!   dtype = this%pp%getmreal()
 
-  select case (dir)
+!   select case (dir)
 
-  ! forward message passing
-  case ( p_mpi_forward )
+!   ! forward message passing
+!   case ( p_mpi_forward )
   
-    if ( this%gc_num(p_lower,2) > 0 ) then
-      count = this%dim * size(this%f2,2) * this%gc_num(p_lower,2)
-      ! receiver
-      if ( stageid > 0 ) then
-        call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),1-this%gc_num(p_lower,2)), &
-          count, dtype, idproc_last, tag, comm, msgid, ierr )
-      endif
-      ! sender
-      if ( stageid < nstage-1 ) then
-        call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
-          count, dtype, idproc_next, tag, comm, ierr )
-      endif
-      ! wait receiving finish
-      if ( stageid > 0 ) then
-        call MPI_WAIT( msgid, stat, ierr )
-      endif
-    endif
+!     if ( this%gc_num(p_lower,2) > 0 ) then
+!       count = this%dim * size(this%f2,2) * this%gc_num(p_lower,2)
+!       ! receiver
+!       if ( stageid > 0 ) then
+!         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),1-this%gc_num(p_lower,2)), &
+!           count, dtype, idproc_last, tag, comm, msgid, ierr )
+!       endif
+!       ! sender
+!       if ( stageid < nstage-1 ) then
+!         call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
+!           count, dtype, idproc_next, tag, comm, ierr )
+!       endif
+!       ! wait receiving finish
+!       if ( stageid > 0 ) then
+!         call MPI_WAIT( msgid, stat, ierr )
+!       endif
+!     endif
 
-  ! backward message passing
-  case ( p_mpi_backward )
+!   ! backward message passing
+!   case ( p_mpi_backward )
 
-    if ( this%gc_num(p_upper,2) > 0 ) then
-      count = this%dim * size(this%f2,2) * this%gc_num(p_upper,2)
-      ! receiver
-      if ( stageid < nstage-1 ) then
-        call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
-          count, dtype, idproc_next, tag, comm, msgid, ierr )
-      endif
-      ! sender
-      if ( stageid > 0 ) then
-        call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
-          count, dtype, idproc_last, tag, comm, ierr )
-      endif
-      ! wait receiving finish
-      if ( stageid < nstage-1 ) then
-        call MPI_WAIT( msgid, stat, ierr )
-      endif
-    endif
+!     if ( this%gc_num(p_upper,2) > 0 ) then
+!       count = this%dim * size(this%f2,2) * this%gc_num(p_upper,2)
+!       ! receiver
+!       if ( stageid < nstage-1 ) then
+!         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
+!           count, dtype, idproc_next, tag, comm, msgid, ierr )
+!       endif
+!       ! sender
+!       if ( stageid > 0 ) then
+!         call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
+!           count, dtype, idproc_last, tag, comm, ierr )
+!       endif
+!       ! wait receiving finish
+!       if ( stageid < nstage-1 ) then
+!         call MPI_WAIT( msgid, stat, ierr )
+!       endif
+!     endif
 
-  end select
+!   end select
 
-  call stop_tprof( 'copy guard cells' )
+!   call stop_tprof( 'copy guard cells' )
 
-end subroutine copy_gc_stage
+! end subroutine copy_gc_stage
 
 subroutine acopy_gc_f1( this )
 
@@ -771,91 +774,91 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-subroutine acopy_gc_stage( this )
+! subroutine acopy_gc_stage( this )
 
-  implicit none
+!   implicit none
 
-  class( ufield ), intent(inout) :: this
+!   class( ufield ), intent(inout) :: this
 
-  integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-  integer :: nzp, nrp, count, dtype
-  integer :: tag = 1, msgid, ierr, i, j
-  integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:,:), allocatable :: buf1, buf2
+!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
+!   integer :: nzp, nrp, count, dtype
+!   integer :: tag = 1, msgid, ierr, i, j
+!   integer, dimension(MPI_STATUS_SIZE) :: stat
+!   real, dimension(:,:), allocatable :: buf1, buf2
 
-  call start_tprof( 'copy & add guard cells' )
+!   call start_tprof( 'copy & add guard cells' )
 
-  nvp = this%nvp(1)
-  nstage = this%pp%getnstage()
-  stageid = this%pp%getstageid()
-  idproc = this%pp%getidproc()
-  idproc_last = idproc - nvp
-  idproc_next = idproc + nvp
-  nrp = this%ndp(1)
-  nzp = this%ndp(2)
-  comm = this%pp%getlworld()
-  dtype = this%pp%getmreal()
+!   nvp = this%nvp(1)
+!   nstage = this%pp%getnstage()
+!   stageid = this%pp%getstageid()
+!   idproc = this%pp%getidproc()
+!   idproc_last = idproc - nvp
+!   idproc_next = idproc + nvp
+!   nrp = this%ndp(1)
+!   nzp = this%ndp(2)
+!   comm = this%pp%getlworld()
+!   dtype = this%pp%getmreal()
 
-  count = this%dim * (nrp+1)
-  allocate( buf1( this%dim, nrp+1 ) )
-  allocate( buf2( this%dim, nrp+1 ) )
+!   count = this%dim * (nrp+1)
+!   allocate( buf1( this%dim, nrp+1 ) )
+!   allocate( buf2( this%dim, nrp+1 ) )
         
-  ! forward message passing
-  ! receiver
-  if ( stageid > 0 ) then
-    buf1 = 0.0
-    call MPI_IRECV( buf1, count, dtype, idproc_last, tag, comm, msgid, ierr )
-  endif
-  ! sender
-  if ( stageid < nstage-1 ) then
-    do j = 1, nrp+1
-      do i = 1, this%dim
-        buf2 = this%f2(i,j,nzp+1)
-      enddo
-    enddo
-    call MPI_SEND( buf2, count, dtype, idproc_next, tag, comm, ierr )
-  endif
-  ! wait receiving finish
-  if ( stageid > 0 ) then
-    call MPI_WAIT( msgid, stat, ierr )
-    do j = 1, nrp+1
-      do i = 1, this%dim
-        this%f2(i,j,1) = this%f2(i,j,1) + buf1(i,j)
-      enddo
-    enddo
-  endif
+!   ! forward message passing
+!   ! receiver
+!   if ( stageid > 0 ) then
+!     buf1 = 0.0
+!     call MPI_IRECV( buf1, count, dtype, idproc_last, tag, comm, msgid, ierr )
+!   endif
+!   ! sender
+!   if ( stageid < nstage-1 ) then
+!     do j = 1, nrp+1
+!       do i = 1, this%dim
+!         buf2 = this%f2(i,j,nzp+1)
+!       enddo
+!     enddo
+!     call MPI_SEND( buf2, count, dtype, idproc_next, tag, comm, ierr )
+!   endif
+!   ! wait receiving finish
+!   if ( stageid > 0 ) then
+!     call MPI_WAIT( msgid, stat, ierr )
+!     do j = 1, nrp+1
+!       do i = 1, this%dim
+!         this%f2(i,j,1) = this%f2(i,j,1) + buf1(i,j)
+!       enddo
+!     enddo
+!   endif
 
-  ! backward message passing
-  ! receiver
-  if ( stageid < nstage-1 ) then
-    buf1 = 0.0
-    call MPI_IRECV( buf1, count, dtype, idproc_next, tag, comm, msgid, ierr )
-  endif
-  ! sender
-  if ( stageid > 0 ) then
-    do j = 1, nrp+1
-      do i = 1, this%dim
-        buf2(i,j) = this%f2(i,j,1)
-      enddo
-    enddo
-    call MPI_SEND( buf2, count, dtype, idproc_last, tag, comm, ierr )
-  endif
-  ! wait receiving finish
-  if ( stageid < nstage-1 ) then
-    call MPI_WAIT( msgid, stat, ierr )
-    do j = 1, nrp+1
-      do i = 1, this%dim
-        this%f2(i,j,nrp+1) = buf1(i,j)
-      enddo
-    enddo
-  endif
+!   ! backward message passing
+!   ! receiver
+!   if ( stageid < nstage-1 ) then
+!     buf1 = 0.0
+!     call MPI_IRECV( buf1, count, dtype, idproc_next, tag, comm, msgid, ierr )
+!   endif
+!   ! sender
+!   if ( stageid > 0 ) then
+!     do j = 1, nrp+1
+!       do i = 1, this%dim
+!         buf2(i,j) = this%f2(i,j,1)
+!       enddo
+!     enddo
+!     call MPI_SEND( buf2, count, dtype, idproc_last, tag, comm, ierr )
+!   endif
+!   ! wait receiving finish
+!   if ( stageid < nstage-1 ) then
+!     call MPI_WAIT( msgid, stat, ierr )
+!     do j = 1, nrp+1
+!       do i = 1, this%dim
+!         this%f2(i,j,nrp+1) = buf1(i,j)
+!       enddo
+!     enddo
+!   endif
 
-  deallocate( buf1 )
-  deallocate( buf2 )
+!   deallocate( buf1 )
+!   deallocate( buf2 )
 
-  call stop_tprof( 'copy & add guard cells' )
+!   call stop_tprof( 'copy & add guard cells' )
 
-end subroutine acopy_gc_stage
+! end subroutine acopy_gc_stage
 
 subroutine assign_f1( this, that )
 

@@ -36,6 +36,12 @@ type simulation
   integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, tstep
   integer :: ndump, max_mode
 
+  ! pipeline parameters
+  integer, dimension(:), allocatable :: tag_field, id_field
+  integer, dimension(:), allocatable :: tag_spe, id_spe
+  integer, dimension(:), allocatable :: tag_beam, id_beam
+  integer, dimension(:), allocatable :: tag_diag, id_diag
+
   contains
 
   generic :: new => init_simulation
@@ -99,6 +105,9 @@ subroutine init_simulation(this)
 
   call this%diag%new( this%pp, this%input, this%fields, this%beams, this%species )
 
+  allocate( this%tag_field(10), this%id_field(10) )
+  allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
+
   ! allocate(this%tag_spe(this%nspecies),this%tag_beam(this%nbeams))
   ! allocate(this%id_spe(this%nspecies),this%id_beam(this%nbeams))
   ! allocate(this%id_bq(this%nbeams,3),this%tag_bq(this%nbeams,2))
@@ -106,8 +115,9 @@ subroutine init_simulation(this)
   ! allocate(this%id(9+size(this%diag)))
   ! this%id(:) = MPI_REQUEST_NULL
   ! this%id_spe(:) = MPI_REQUEST_NULL
-  ! this%id_beam(:) = MPI_REQUEST_NULL                 
+  this%id_beam(:) = MPI_REQUEST_NULL
   ! this%id_bq(:,:) = MPI_REQUEST_NULL                 
+  this%id_field = MPI_REQUEST_NULL
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -144,17 +154,18 @@ subroutine run_simulation( this )
 
   class( simulation ), intent(inout) :: this
 
-  integer :: i, j, k, l, id
+  integer :: i, j, k, l, ierr, id
+  integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call start_tprof( 'total simulation time' )
 
   do i = this%start3d, this%nstep3d
 
     this%tstep = i
     call write_stdout( '3D step = '//num2str(i) )
-
-    call start_tprof( 'total simulation time' )
 
     call this%fields%q_beam%as(0.0)
     call this%fields%q_spe%as(0.0)
@@ -162,7 +173,13 @@ subroutine run_simulation( this )
       call this%beams%beam(k)%qdp( this%fields%q_beam )
     enddo
 
-    this%fields%cu    = 0.0
+
+    this%tag_field(1) = ntag(); call this%fields%cu%pipe_recv( this%tag_field(1) )
+    this%tag_field(2) = ntag(); call this%fields%b%pipe_recv( this%tag_field(2) )
+    this%tag_field(3) = ntag(); call this%fields%e%pipe_recv( this%tag_field(3) )
+    this%tag_field(4) = ntag(); call this%fields%psi%pipe_recv( this%tag_field(4), nslice=2 )
+
+    call this%fields%cu%copy_slice( 1, p_copy_2to1 )
     this%fields%b     = 0.0
     this%fields%e     = 0.0
     this%fields%b_spe = 0.0
@@ -228,8 +245,20 @@ subroutine run_simulation( this )
 
     enddo ! 2d loop
 
+    call MPI_WAIT( this%id_field(1), istat, ierr )
+    call this%fields%cu%pipe_send( this%tag_field(1), this%id_field(1) )
+    call MPI_WAIT( this%id_field(2), istat, ierr )
+    call this%fields%b%pipe_send( this%tag_field(2), this%id_field(2) )
+    call MPI_WAIT( this%id_field(3), istat, ierr )
+    call this%fields%e%pipe_send( this%tag_field(3), this%id_field(3) )
+    call MPI_WAIT( this%id_field(4), istat, ierr )
+    call this%fields%psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
+
     do k = 1, this%nbeams
-      call this%beams%beam(k)%push( this%fields%e, this%fields%b, 7, 7, id )
+      this%tag_beam(k) = ntag()
+      call MPI_WAIT( this%id_beam(k), istat, ierr )
+      call this%beams%beam(k)%push( this%fields%e, this%fields%b, &
+        this%tag_beam(k), this%tag_beam(k), this%id_beam(k) )
     enddo
 
     call this%diag%run( this%tstep, this%dt )
@@ -240,8 +269,21 @@ subroutine run_simulation( this )
 
   enddo ! 3d loop
 
+  call stop_tprof( 'total simulation time' )
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine run_simulation
+
+function ntag()
+
+   implicit none
+   integer, save :: tag = 0
+   integer :: ntag
+           
+   ntag = tag
+   tag = tag + 1
+
+end function ntag
 
 end module simulation_class

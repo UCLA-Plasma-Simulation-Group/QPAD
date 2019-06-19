@@ -7,6 +7,7 @@ use ufield_smooth_class
 use hdf5io_class
 use param
 use sys
+use mpi
 
 implicit none
 
@@ -51,13 +52,16 @@ type :: field
 
   ! private
 
+  class( parallel_pipe ), pointer :: pp => null()
+  class( grid ), pointer :: gp => null()
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
   type( ufield_smooth ) :: smooth
 
   real :: dr, dxi
-  integer :: num_modes
+  integer :: num_modes, dim
   integer :: entity
+  real, dimension(:,:,:,:), allocatable :: psend_buf, precv_buf
 
   contains
 
@@ -69,8 +73,9 @@ type :: field
   procedure :: smooth_f1
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_num_modes
-  procedure :: copy_gc_f1, copy_gc_f2, copy_gc_stage
-  procedure :: acopy_gc_f1, acopy_gc_f2, acopy_gc_stage
+  procedure :: copy_gc_f1, copy_gc_f2
+  procedure :: acopy_gc_f1, acopy_gc_f2
+  procedure :: pipe_send, pipe_recv
 
   procedure, private :: init_field, init_field_cp, end_field
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
@@ -265,28 +270,6 @@ subroutine copy_gc_f2( this, bnd_ax )
 
 end subroutine copy_gc_f2
 
-subroutine copy_gc_stage( this, dir )
-
-  implicit none
-
-  class( field ), intent(inout) :: this
-  integer, intent(in) :: dir
-
-  integer :: i
-  character(len=20), save :: sname = "copy_gc_stage"
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_stage(dir)
-    if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_stage(dir)
-  enddo
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine copy_gc_stage
-
 subroutine acopy_gc_f1( this )
 
   implicit none
@@ -329,26 +312,151 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-subroutine acopy_gc_stage( this )
+subroutine pipe_send( this, stag, id, nslice )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  integer, intent(in) :: stag
+  integer, intent(inout) :: id
+  integer, intent(in), optional :: nslice
 
-  integer :: i
-  character(len=20), save :: sname = "acopy_gc_stage"
+  integer :: i, j, k, m, ns
+  integer :: idproc, idproc_des, lnvp, nvp, comm
+  integer :: nzp, n1p, count, dtype, ierr
+  integer, dimension(2) :: gc
+  character(len=20), save :: sname = "pipe_send"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
 
-  do i = 0, this%num_modes
-    call this%rf_re(i)%acopy_gc_stage()
-    if ( i == 0 ) cycle
-    call this%rf_im(i)%acopy_gc_stage()
+  ns = 1
+  if ( present(nslice) ) ns = nslice
+
+  lnvp       = this%pp%getlnvp()
+  nvp        = this%pp%getnvp()
+  idproc     = this%pp%getidproc()
+  idproc_des = idproc + lnvp
+  nzp        = this%gp%get_ndp(2)
+  n1p        = size(this%rf_re(0)%f1,2)
+  comm       = this%pp%getlworld()
+  dtype      = this%pp%getmreal()
+  gc         = this%rf_re(0)%get_gc_num(1)
+
+  if ( idproc_des >= nvp ) then
+    id = MPI_REQUEST_NULL
+    return
+  endif
+
+  if ( .not. allocated( this%psend_buf ) ) then
+    allocate( this%psend_buf( this%dim, n1p, ns, 2*this%num_modes+1 ) )
+  endif
+
+  ! copy m=0 mode
+  do k = 1, nslice
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%psend_buf(i,j,k,0) = this%rf_re(0)%f2( i, j-gc(1), nzp+1-ns+k )
+      enddo
+    enddo
   enddo
 
+  ! copy m>0 mode
+  if ( this%num_modes > 0 ) then
+    do m = 1, this%num_modes
+      do k = 1, nslice
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%psend_buf(i,j,k,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), nzp+1-ns+k )
+            this%psend_buf(i,j,k,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), nzp+1-ns+k )
+          enddo
+        enddo
+      enddo
+    enddo
+  endif
+
+  count = size( this%psend_buf )
+  call MPI_ISEND( this%psend_buf, count, dtype, idproc_des, stag, comm, id, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_ISEND failed.' )
+  endif
+
+  call stop_tprof( 'pipeline' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine acopy_gc_stage
+end subroutine pipe_send
+
+subroutine pipe_recv( this, rtag, nslice )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: rtag
+  integer, intent(in), optional :: nslice
+
+  integer :: i, j, k, m, ns
+  integer :: idproc, idproc_src, lnvp, n1p, comm
+  integer :: count, dtype, ierr, id
+  integer, dimension(2) :: gc
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  character(len=20), save :: sname = "pipe_precv"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
+
+  ns = 1
+  if ( present(nslice) ) ns = nslice
+
+  lnvp       = this%pp%getlnvp()
+  idproc     = this%pp%getidproc()
+  idproc_src = idproc - lnvp
+  comm       = this%pp%getlworld()
+  dtype      = this%pp%getmreal()
+  n1p        = size(this%rf_re(0)%f1,2)
+  gc         = this%rf_re(0)%get_gc_num(1)
+
+  if ( idproc_src < 0 ) return
+
+  if ( .not. allocated( this%precv_buf ) ) then
+    allocate( this%precv_buf( this%dim, n1p, ns, 2*this%num_modes+1 ) )
+  endif
+  
+  count = size( this%precv_buf )
+  call MPI_IRECV( this%precv_buf, count, dtype, idproc_src, rtag, comm, id, ierr )
+  call MPI_WAIT( id, stat, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_IRECV failed.' )
+  endif
+
+  ! copy m=0 mode
+  do k = 1, nslice
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%rf_re(0)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,0)
+      enddo
+    enddo
+  enddo
+
+  ! copy m>0 mode
+  if ( this%num_modes > 0 ) then
+    do m = 1, this%num_modes
+      do k = 1, nslice
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f2( i, j-gc(1), 1-ns+k ) = this%psend_buf(i,j,k,2*m-1)
+            this%rf_im(m)%f2( i, j-gc(1), 1-ns+k ) = this%psend_buf(i,j,k,2*m)
+          enddo
+        enddo
+      enddo
+    enddo
+  endif
+    
+  call stop_tprof( 'pipeline' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine pipe_recv
 
 subroutine write_hdf5_single( this, files, dim )
 
