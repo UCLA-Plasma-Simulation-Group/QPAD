@@ -33,7 +33,6 @@ type, extends( field ) :: field_b
   real, dimension(:), pointer :: buf1_re => null(), buf1_im => null()
   real, dimension(:), pointer :: buf2_re => null(), buf2_im => null()
   real, dimension(:), pointer :: buf    => null()
-  real :: src_mean
 
   contains
 
@@ -228,7 +227,6 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, k0, a1, a2, a3, b, dr, dr2, rmax, ir
-  real, save :: local_sum, global_sum
   character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
 
@@ -263,57 +261,24 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       do i = 1, nrp
 
         k0 = real(i+noff) - 0.5
-
-        ! a1 =  idrh * (k0-0.5) / k0
-        ! a2 = -idrh / k0
-        ! a3 = -idrh * (k0+0.5) / k0
-
-        ! this%buf1_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
-
         ir = idr / k0
         this%buf1_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i)
 
       enddo
-
-    case ( p_bnd_conduct )
-
-      local_sum = 0.0
-      do i = 1, nrp
-
-        k0 = real(i+noff) - 0.5
-        ir = idr / k0
-
-        ! a1 =  idrh * (k0-0.5) / k0
-        ! a2 = -idrh / k0
-        ! a3 = -idrh * (k0+0.5) / k0
-
-        ! this%buf1_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1)
-
-        this%buf1_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i)
-        local_sum = local_sum + f1_re(2,i)
-
-      enddo
-      local_sum = local_sum * dr
-      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
 
     end select
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      ! this%buf1_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) )
       this%buf1_re(1) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - 2.0*idr * f1_re(2,1)
     endif
     if ( idproc == nvp-1 ) then
-      ! a2 = -idr * (nrp+noff+0.5) / (nrp+noff-0.5)
 
       k0 = real(nrp+noff)-0.5
       ir = idr / k0
       this%buf1_re(nrp) = -idrh * ( 3.0 * f1_re(2,nrp) - 4.0 * f1_re(2,nrp-1) + f1_re(2,nrp-2) ) - ir * f1_re(2,nrp)
 
       select case ( this%solver_bz(0)%bnd )
-      case ( p_bnd_conduct )
-        a3 = idr**2 * (nrp+noff) / (nrp+noff-0.5)
-        this%buf1_re(nrp) = this%buf1_re(nrp) + a3 * global_sum 
       case ( p_bnd_zero, p_bnd_open )
         ! do nothing
       end select
@@ -326,24 +291,12 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       k0 = real(i+noff) - 0.5
       ir = idr / k0
 
-      ! a1 =  idrh * (k0-0.5) / k0
-      ! a2 = -idrh / k0
-      ! a3 = -idrh * (k0+0.5) / k0
-      ! b  =  idr * real(mode) / k0
-
-      ! this%buf1_re(i) = a1 * f1_re(2,i-1) + a2 * f1_re(2,i) + a3 * f1_re(2,i+1) - &
-      !                   b * f1_im(1,i)
-      ! this%buf1_im(i) = a1 * f1_im(2,i-1) + a2 * f1_im(2,i) + a3 * f1_im(2,i+1) + &
-      !                   b * f1_re(1,i)
-
       this%buf1_re(i) = -idrh * ( f1_re(2,i+1) - f1_re(2,i-1) ) - ir * f1_re(2,i) - mode * ir * f1_im(1,i)
       this%buf1_im(i) = -idrh * ( f1_im(2,i+1) - f1_im(2,i-1) ) - ir * f1_im(2,i) + mode * ir * f1_re(1,i)
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      ! this%buf1_re(1) = -idr * ( f1_re(2,1) + f1_re(2,2) + 2.0 * real(mode) * f1_im(1,1) )
-      ! this%buf1_im(1) = -idr * ( f1_im(2,1) + f1_im(2,2) - 2.0 * real(mode) * f1_re(1,1) )
       ir = 2.0 * idr
       this%buf1_re(1) = idrh * ( 3.0 * f1_re(2,1) - 4.0 * f1_re(2,2) + f1_re(2,3) ) - ir * f1_re(2,1) &
                         - mode * ir * f1_im(1,1)
@@ -353,10 +306,6 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     if ( idproc == nvp-1 ) then
       k0 = real(nrp+noff) - 0.5
       ir = idr / k0
-      ! a2 = -idr * (k0+1.0) / k0
-      ! b  =  idr * real(mode) / k0
-      ! this%buf1_re(nrp) = idr * f1_re(2,nrp-1) + a2 * f1_re(2,nrp) - b * f1_im(1,nrp)
-      ! this%buf1_im(nrp) = idr * f1_im(2,nrp-1) + a2 * f1_im(2,nrp) + b * f1_re(1,nrp)
       this%buf1_re(nrp) = -idrh * ( 3.0 * f1_re(2,nrp) - 4.0 * f1_re(2,nrp-1) + f1_re(2,nrp-2) ) - ir * f1_re(2,nrp) &
                          -mode * ir * f1_im(1,nrp)
       this%buf1_im(nrp) = -idrh * ( 3.0 * f1_im(2,nrp) - 4.0 * f1_im(2,nrp-1) + f1_im(2,nrp-2) ) - ir * f1_im(2,nrp) &
@@ -385,7 +334,7 @@ subroutine set_source_bt_old( this, mode, q_re, q_im )
 
   integer :: i, nrp, idproc, nvp, noff, comm, dtype, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, a1, a2, a3, b, ir, dr2, rmax, local_sum, global_sum
+  real :: idrh, idr, a1, a2, a3, b, ir, dr2, rmax
   character(len=20), save :: sname = 'set_source_bt_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -427,27 +376,6 @@ subroutine set_source_bt_old( this, mode, q_re, q_im )
 
       enddo
 
-    case ( p_bnd_conduct )
-
-      local_sum = 0.0
-      do i = 1, nrp
-
-        ! Re(Br)
-        this%buf(4*i-3) = 0.0
-        ! Im(Br)
-        this%buf(4*i-2) = 0.0
-        ! Re(Bphi)
-        this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
-        ! Im(Bphi)
-        this%buf(4*i) = 0.0
-
-        local_sum = local_sum + f1_re(1,i) * real(i+noff-0.5) * dr2
-
-      enddo
-
-      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-      global_sum = global_sum / rmax
-
     end select
 
     ! calculate the derivatives at the boundary and axis
@@ -459,8 +387,6 @@ subroutine set_source_bt_old( this, mode, q_re, q_im )
       select case ( this%solver_bt(0)%bnd )
       case ( p_bnd_zero, p_bnd_open )
         ! do nothing
-      case ( p_bnd_conduct )
-        this%buf(4*nrp-1) = this%buf(4*nrp-1) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
       end select
     endif
 
@@ -508,7 +434,6 @@ subroutine set_source_bt( this, mode, q_re, q_im )
 
   integer :: i, nrp, noff, dtype, ierr, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real, save :: local_sum, global_sum
   real ::dr, dr2, rmax
   character(len=20), save :: sname = 'set_source_bt'
 
@@ -540,18 +465,6 @@ subroutine set_source_bt( this, mode, q_re, q_im )
         this%buf1_re(i) = -1.0 * f1_re(1,i)
       enddo
 
-    case ( p_bnd_conduct )
-
-      local_sum = 0.0
-      do i = 1, nrp
-        this%buf1_re(i) = -1.0 * f1_re(1,i)
-        local_sum = local_sum + this%buf1_re(i) * real(i+noff-0.5) * dr2
-      enddo
-      ! for mode=0 the source term needs to be neutralized
-      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-      this%src_mean = global_sum * 2.0 / rmax**2
-      this%buf1_re = this%buf1_re - this%src_mean
-
     end select
 
   elseif ( mode > 0 .and. present(q_im) ) then
@@ -582,7 +495,6 @@ subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_i
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
   real :: idrh, idr, a1, a2, a3, b, ir, dr2, dr, rmax
-  real, save :: local_sum, global_sum
   character(len=20), save :: sname = 'set_source_bt_iter_old'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -630,27 +542,6 @@ subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_i
 
       enddo
 
-    case ( p_bnd_conduct )
-
-      local_sum = 0.0
-      do i = 1, nrp
-
-        ! Re(Br)
-        this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
-        ! Im(Br)
-        this%buf(4*i-2) = 0.0
-        ! Re(Bphi)
-        this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-        ! Im(Bphi)
-        this%buf(4*i) = 0.0
-
-        local_sum = local_sum + f2_re(3,i) * real(i+noff-0.5) * dr2
-
-      enddo
-
-      call MPI_ALLREDUCE( local_sum, global_sum, 1, dtype, MPI_SUM, comm, ierr )
-      global_sum = global_sum / rmax
-
     end select
 
     ! calculate the derivatives at the boundary and axis
@@ -669,8 +560,6 @@ subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_i
       select case ( this%solver_bt_iter(0)%bnd )
       case ( p_bnd_zero, p_bnd_open )
         ! do nothing
-      case ( p_bnd_conduct )
-        this%buf(4*nrp-1) = this%buf(4*nrp-1) - idr**2 * (nrp+noff) / (nrp+noff-0.5) * global_sum
       end select
     endif
 
@@ -728,7 +617,6 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
   real :: idrh, idr, a1, a2, a3, b, ir, dr2, dr, rmax
   real :: s1_re, s1_im, s2_re, s2_im
-  real, save :: local_sum, global_sum
   character(len=20), save :: sname = 'set_source_bt_iter'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -771,8 +659,6 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
         this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) ! Re(Bphi)
       enddo
 
-    case ( p_bnd_conduct )
-      call write_err('Conducting boundary not implemented for B_perp solvers.')
     end select
 
     ! calculate the derivatives at the boundary and axis
@@ -936,11 +822,6 @@ subroutine get_solution_bt( this, mode )
     select case ( this%solver_bt(0)%bnd )
     case ( p_bnd_zero, p_bnd_open )
       ! do nothing
-    case ( p_bnd_conduct )
-      do i = 1, nrp
-        r2 = ( (i+noff-0.5) * this%dr )**2
-        this%buf1_re(i) = this%buf1_re(i) + 0.25 * this%src_mean * r2
-      enddo
     end select
   endif
 
