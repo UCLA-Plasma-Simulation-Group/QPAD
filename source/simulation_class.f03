@@ -178,11 +178,11 @@ subroutine run_simulation( this )
         call this%species%spe(k)%qdp( this%fields%q_spe )
       enddo
 
-      call this%fields%q_spe%get_q_ax2() ! this must be put before smooth
+      ! call this%fields%q_spe%get_q_ax2() ! this must be put before smooth
       call this%fields%q_spe%smooth_f1()
 
       call this%fields%q_spe%copy_slice( j+1, p_copy_1to2 )
-      call this%fields%psi%solve( this%fields%q_spe )
+      call this%fields%psi%solve( this%fields%q_spe, j+1 )
       do k = 1, this%nspecies
         call this%species%spe(k)%extpsi( this%fields%psi )
       enddo

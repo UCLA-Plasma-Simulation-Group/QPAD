@@ -186,17 +186,20 @@ subroutine set_source( this, mode, q_re, q_im )
 
 end subroutine set_source
 
-subroutine get_solution( this, mode, q_ax )
+subroutine get_solution( this, mode, idx, q_ax )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  integer, intent(in) :: mode
+  integer, intent(in) :: mode, idx
   real, intent(in), optional :: q_ax
 
   integer :: i, nrp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real, dimension(:,:,:), pointer :: f2_re => null(), f2_im => null()
   real :: r, r2, rmax, rmax2
+  ! longitudinal smooth
+  real, save :: s0 = 0.545454545454545, s1 = 0.363636363636364, s2 = 0.090909090909091
   character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -222,14 +225,18 @@ subroutine get_solution( this, mode, q_ax )
   endif
 
   f1_re => this%rf_re(mode)%get_f1()
+  f2_re => this%rf_re(mode)%get_f2()
   do i = 1, nrp
     f1_re(1,i) = this%buf_re(i)
+    ! f1_re(1,i) = s0 * this%buf_re(i) + s1 * f2_re(1,i,idx-1) + s2 * f2_re(1,i,idx-2)
   enddo
 
   if ( mode > 0 ) then
     f1_im => this%rf_im(mode)%get_f1()
+    f2_im => this%rf_im(mode)%get_f2()
     do i = 1, nrp
       f1_im(1,i) = this%buf_im(i)
+      ! f1_im(1,i) = s0 * this%buf_im(i) + s1 * f2_im(1,i,idx-1) + s2 * f2_im(1,i,idx-2)
     enddo
   endif
 
@@ -238,18 +245,21 @@ subroutine get_solution( this, mode, q_ax )
 
 end subroutine get_solution
 
-subroutine solve_field_psi( this, q )
+subroutine solve_field_psi( this, q, idx )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  class( field_rho ), intent(in) :: q
+  class( field_rho ), intent(inout) :: q
+  integer, intent(in) :: idx
 
   type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
   integer :: i
   character(len=20), save :: sname = 'solve_field_psi'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call q%get_q_ax1()
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -259,14 +269,14 @@ subroutine solve_field_psi( this, q )
     if ( i == 0 ) then
       call this%set_source( i, q_re(i) )
       call this%solver(i)%solve( this%buf_re )
-      call this%get_solution( i, q%q_ax )
+      call this%get_solution( i, idx, q%q_ax )
       cycle
     endif
 
     call this%set_source( i, q_re(i), q_im(i) )
     call this%solver(i)%solve( this%buf_re )
     call this%solver(i)%solve( this%buf_im )
-    call this%get_solution(i)
+    call this%get_solution(i, idx)
 
   enddo
 
