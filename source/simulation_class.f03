@@ -106,8 +106,8 @@ subroutine init_simulation(this)
   ! allocate(this%id(9+size(this%diag)))
   ! this%id(:) = MPI_REQUEST_NULL
   ! this%id_spe(:) = MPI_REQUEST_NULL
-  ! this%id_beam(:) = MPI_REQUEST_NULL                 
-  ! this%id_bq(:,:) = MPI_REQUEST_NULL                 
+  ! this%id_beam(:) = MPI_REQUEST_NULL
+  ! this%id_bq(:,:) = MPI_REQUEST_NULL
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -148,6 +148,8 @@ subroutine run_simulation( this )
   character(len=32), save :: sname = 'run_simulation'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call this%diag%run( 0, this%dt )
 
   do i = this%start3d, this%nstep3d
 
