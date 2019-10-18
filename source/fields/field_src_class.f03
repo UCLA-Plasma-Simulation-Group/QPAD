@@ -7,6 +7,7 @@ use ufield_class
 use ufield_smooth_class
 use param
 use sys
+use mpi
 
 implicit none
 
@@ -21,7 +22,8 @@ type, extends( field ) :: field_rho
   contains
 
   generic :: new => init_field_rho
-  procedure :: get_q_ax1, get_q_ax2
+  ! procedure :: get_q_ax1, get_q_ax2
+  procedure :: get_q_ax ! get the on-axis charge according to charge conservation
   procedure, private :: init_field_rho
 
 end type field_rho
@@ -104,70 +106,83 @@ subroutine init_field_rho( this, pp, gp, num_modes, part_shape, &
 
 end subroutine init_field_rho
 
-subroutine get_q_ax1( this )
+subroutine get_q_ax( this )
 
   implicit none
   class( field_rho ), intent(inout) :: this
 
   real, dimension(:,:), pointer :: f1_re => null()
-  integer :: dtype, comm, idproc, ierr
+  integer :: dtype, comm, idproc, ierr, i, nrp, noff
+  real :: r, q_local
 
   idproc = this%rf_re(0)%pp%getlidproc()
   comm   = this%rf_re(0)%pp%getlgrp()
   dtype  = this%rf_re(0)%pp%getmreal()
+  nrp    = this%rf_re(0)%get_ndp(1)
+  noff   = this%rf_re(0)%get_noff(1)
 
-  if ( idproc == 0 ) then
-    f1_re => this%rf_re(0)%get_f1()
-    this%q_ax = -1.0 * this%dr**2 * f1_re(1,0)
-  endif
+  ! if ( idproc == 0 ) then
+  !   f1_re => this%rf_re(0)%get_f1()
+  !   this%q_ax = -1.0 * this%dr**2 * f1_re(1,0)
+  ! endif
 
-  call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+  ! call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
 
-end subroutine get_q_ax1
+  f1_re => this%rf_re(0)%get_f1()
+  q_local = 0.0
+  do i = 1, nrp
+    r = real( noff + i - 0.5 )
+    q_local = q_local + f1_re(1,i) * r
+  enddo
+  q_local = q_local * this%dr**2
 
-subroutine get_q_ax2( this )
+  call MPI_ALLREDUCE( q_local, this%q_ax, 1, dtype, MPI_SUM, comm, ierr )
 
-  implicit none
-  class( field_rho ), intent(inout) :: this
-  ! class( ufield_smooth ), intent(in) :: smooth
+end subroutine get_q_ax
 
-  real, dimension(:,:), pointer :: f1_re => null()
-  integer :: dtype, comm, idproc, nsm, i, j, ierr
-  real, dimension(:), pointer :: scoef
-  real :: dr2
+! subroutine get_q_ax2( this )
 
-  idproc = this%rf_re(0)%pp%getlidproc()
-  comm   = this%rf_re(0)%pp%getlgrp()
-  dtype  = this%rf_re(0)%pp%getmreal()
-  nsm    = this%smooth%get_order()
-  dr2    = this%dr**2
-  scoef  => this%smooth%get_scoef()
+!   implicit none
+!   class( field_rho ), intent(inout) :: this
+!   ! class( ufield_smooth ), intent(in) :: smooth
 
-  if ( nsm <= 0 ) return
+!   real, dimension(:,:), pointer :: f1_re => null()
+!   integer :: dtype, comm, idproc, nsm, i, j, ierr
+!   real, dimension(:), pointer :: scoef
+!   real :: dr2
 
-  if ( idproc == 0 ) then
+!   idproc = this%rf_re(0)%pp%getlidproc()
+!   comm   = this%rf_re(0)%pp%getlgrp()
+!   dtype  = this%rf_re(0)%pp%getmreal()
+!   nsm    = this%smooth%get_order()
+!   dr2    = this%dr**2
+!   scoef  => this%smooth%get_scoef()
 
-    f1_re => this%rf_re(0)%get_f1()
+!   if ( nsm <= 0 ) return
 
-    ! add the charge smoothed out
-    do j = 1, nsm
-      do i = -nsm, -j
-        this%q_ax = this%q_ax - dr2 * f1_re(1,j) * scoef(i) * real(i+j-0.5)
-      enddo
-    enddo
+!   if ( idproc == 0 ) then
 
-    ! deduct the charge smoothed in
-    do j = 1, nsm
-      do i = 1, nsm-j+1
-        this%q_ax = this%q_ax + dr2 * real(j-0.5) * f1_re(1,i) * scoef(1-j-i)
-      enddo
-    enddo
+!     f1_re => this%rf_re(0)%get_f1()
 
-  endif
+!     ! add the charge smoothed out
+!     do j = 1, nsm
+!       do i = -nsm, -j
+!         this%q_ax = this%q_ax - dr2 * f1_re(1,j) * scoef(i) * real(i+j-0.5)
+!       enddo
+!     enddo
 
-  call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+!     ! deduct the charge smoothed in
+!     do j = 1, nsm
+!       do i = 1, nsm-j+1
+!         this%q_ax = this%q_ax + dr2 * real(j-0.5) * f1_re(1,i) * scoef(1-j-i)
+!       enddo
+!     enddo
 
-end subroutine get_q_ax2
+!   endif
+
+!   call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
+
+! end subroutine get_q_ax2
 
 subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
   smooth_type, smooth_order )

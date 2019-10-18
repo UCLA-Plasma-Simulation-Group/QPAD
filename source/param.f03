@@ -35,7 +35,7 @@ integer, parameter :: p_ps_linear = 1, p_ps_quadratic = 2
 ! field solver order
 integer, parameter :: p_fs_2order = 1, p_fs_4order = 2
 ! boundary condition
-integer, parameter :: p_bnd_axial = 0, p_bnd_conduct = 1, p_bnd_zero = 2, p_bnd_open = 3
+integer, parameter :: p_bnd_axial = 0, p_bnd_zero = 2, p_bnd_open = 3
 ! field kind
 integer, parameter :: p_fk_psi = 0, p_fk_ez = 1, p_fk_bz = 2, &
                       p_fk_bt = 3, p_fk_bplus = 4, p_fk_bminus = 5, &

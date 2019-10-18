@@ -482,9 +482,8 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
     select case ( this%bnd )
 
-    case ( p_bnd_conduct, p_bnd_zero )
+    case ( p_bnd_zero )
 
-      ! the difference between conduct and zero boundary are reflected in the source terms
       HYPRE_BUF(local_vol) = 0.0
     
     case ( p_bnd_open )
@@ -686,7 +685,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
       select case ( this%bnd )
-      case ( p_bnd_zero, p_bnd_conduct )
+      case ( p_bnd_zero )
         ! do nothing
       case ( p_bnd_open )
         HYPRE_BUF(2) = HYPRE_BUF(2) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
@@ -709,7 +708,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+1, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
       select case ( this%bnd )
-      case ( p_bnd_conduct, p_bnd_zero )
+      case ( p_bnd_zero )
         ! do nothing
       case ( p_bnd_open )
         HYPRE_BUF(2) = HYPRE_BUF(2) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
@@ -732,7 +731,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+2, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
       select case ( this%bnd )
-      case ( p_bnd_conduct, p_bnd_zero )
+      case ( p_bnd_zero )
         ! do nothing
       case ( p_bnd_open )
         HYPRE_BUF(3) = HYPRE_BUF(3) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
@@ -755,7 +754,7 @@ subroutine set_ij_matrix( this, pp, gp, dr )
       call HYPRE_IJMatrixSetValues( this%A, 1, 3, i+3, cols(2), HYPRE_BUF(2), ierr )
     elseif ( i == 4*nr-3 ) then
       select case ( this%bnd )
-      case ( p_bnd_conduct, p_bnd_zero )
+      case ( p_bnd_zero )
         ! do nothing
       case ( p_bnd_open )
         HYPRE_BUF(3) = HYPRE_BUF(3) + (1-(m+1)*dr/rmax) * HYPRE_BUF(4)
