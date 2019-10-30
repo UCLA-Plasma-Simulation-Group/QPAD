@@ -20,8 +20,8 @@ type sim_species
 
   class( parallel_pipe ), pointer :: pp => null()
   class( grid ), pointer :: gp => null()
-  type( species2d ), dimension(:), allocatable :: spe
-  type( fdist2d_wrap ), dimension(:), allocatable :: pf
+  type( species2d ), dimension(:), pointer :: spe => null()
+  type( fdist2d_wrap ), dimension(:), pointer :: pf => null()
 
   contains
 
@@ -88,7 +88,7 @@ subroutine init_sim_species( this, input, s )
   call input%get( 'simulation.smooth_order', sm_ord )
 
   allocate( this%spe(n), this%pf(n) )
-         
+
   do i = 1, n
 
     call input%get( 'species('//num2str(i)//').profile', npf )

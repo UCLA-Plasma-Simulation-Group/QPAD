@@ -31,24 +31,24 @@ type beam3d
    class(fdist3d), pointer :: pf => null()
    logical :: evol
    contains
-   
-   generic :: new => init_beam3d
-   generic :: del => end_beam3d
+
+   generic :: new  => init_beam3d
+   generic :: del  => end_beam3d
    generic :: push => push_beam3d
-   generic :: qdp => qdeposit_beam3d
-   generic :: wr => writehdf5_beam3d
-   generic :: wrq => writeq_beam3d
-   generic :: wrst => writerst_beam3d       
+   generic :: qdp  => qdeposit_beam3d, qdeposit_beam3d_finish
+   generic :: wr   => writehdf5_beam3d
+   generic :: wrq  => writeq_beam3d
+   generic :: wrst => writerst_beam3d
    generic :: rrst => readrst_beam3d
    procedure, private :: init_beam3d
    procedure, private :: end_beam3d
    procedure, private :: push_beam3d
-   procedure, private :: qdeposit_beam3d, writehdf5_beam3d
+   procedure, private :: qdeposit_beam3d, qdeposit_beam3d_finish, writehdf5_beam3d
    procedure, private :: writerst_beam3d, readrst_beam3d
    procedure, private :: writeq_beam3d
 end type
 
-save      
+save
 
 character(len=10) :: cls_name = 'beam3d'
 integer, parameter :: cls_level = 2
@@ -59,7 +59,7 @@ contains
 subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type,smooth_order)
 
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(grid), intent(in), pointer :: gd
    class(parallel_pipe), intent(in), pointer :: pp
@@ -68,10 +68,10 @@ subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type
    integer, intent(in) :: xdim, part_shape, max_mode
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
-   character(len=18), save :: sname = 'init_beam3d'
+   character(len=32), save :: sname = 'init_beam3d'
    integer :: id, num_modes, ierr
    integer, dimension(10) :: istat
-            
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
    this%pf => pf
@@ -91,83 +91,110 @@ subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type
 end subroutine init_beam3d
 !
 subroutine end_beam3d(this)
-    
+
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
-   character(len=18), save :: sname = 'end_beam3d'
+   character(len=32), save :: sname = 'end_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%pd%del()
    call this%q%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
-            
+
 end subroutine end_beam3d
-!      
-subroutine qdeposit_beam3d(this,q)
-! deposit the charge density      
+!
+! subroutine qdeposit_beam3d(this,q)
+! ! deposit the charge density
+
+!    implicit none
+
+!    class(beam3d), intent(inout) :: this
+!    class(field_rho), intent(inout) :: q
+! ! local data
+!    character(len=32), save :: sname = 'qdeposit_beam3d'
+
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
+
+!    if (.not. this%evol) then
+!       call this%q%as(0.0)
+!       call this%pf%dp(this%q)
+!       call this%q%copy_gc_f2( bnd_ax = .false. )
+!       call add_f2( this%q, q )
+!    else
+!       call this%q%as(0.0)
+!       call this%pd%qdp(this%q)
+!       call this%q%acopy_gc_f2()
+!       call this%q%copy_gc_f2( bnd_ax = .false. )
+!       call add_f2( this%q, q )
+!    end if
+
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
+
+! end subroutine qdeposit_beam3d
+
+subroutine qdeposit_beam3d(this,q,tag,sid)
+! deposit the charge density
 
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(field_rho), intent(inout) :: q
+   integer, intent(in) :: tag
+   integer, intent(inout) :: sid
 ! local data
-   character(len=18), save :: sname = 'qdeposit_beam3d'
-            
+   character(len=32), save :: sname = 'qdeposit_beam3d'
+   integer, dimension(10) :: istat
+   integer :: ierr
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
+   call this%q%as(0.0)
+   call MPI_WAIT(sid, istat, ierr)
+
    if (.not. this%evol) then
-      call this%q%as(0.0)
       call this%pf%dp(this%q)
       call this%q%copy_gc_f2( bnd_ax = .false. )
-      call add_f2( this%q, q )
    else
-      call this%q%as(0.0)
       call this%pd%qdp(this%q)
       call this%q%acopy_gc_f2()
       call this%q%copy_gc_f2( bnd_ax = .false. )
-      call add_f2( this%q, q )
-   end if
-   
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-   
-end subroutine qdeposit_beam3d
-!
-! subroutine qdeposit_beam3d(this,id1,id2,id3,tag1,tag2)
-! ! deposit the charge density      
+   endif
 
-!    implicit none
-   
-!    class(beam3d), intent(inout) :: this
-!    integer, intent(inout) :: id1, id2, id3, tag1, tag2
-! ! local data
-!    character(len=18), save :: sname = 'qdeposit_beam3d'
-!    integer, dimension(10) :: istat
-!    integer :: ierr
-            
-!    call this%err%werrfl2(class//sname//' started')
-!    call this%q%as(0.0)
-!    call MPI_WAIT(id1,istat,ierr)
-!    call MPI_WAIT(id3,istat,ierr)
-!    call this%pd%qdp(this%q%getrs())
-!    call this%q%ag(tag1,tag1,id1)
-!    call this%q%pcg(tag2,tag2,id2,id3)    
-           
-!    call this%err%werrfl2(class//sname//' ended')
-   
-! end subroutine qdeposit_beam3d
-!     
+   call add_f2( this%q, q )
+   call this%q%pipe_gc_send(tag, sid)
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine qdeposit_beam3d
+
+subroutine qdeposit_beam3d_finish(this,tag)
+! finish deposit the charge density
+
+   implicit none
+
+   class(beam3d), intent(inout) :: this
+   integer, intent(in) :: tag
+! local data
+   character(len=32), save :: sname = 'qdeposit_beam3d_finish'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   call this%q%pipe_gc_recv(tag)
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine qdeposit_beam3d_finish
+
 subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
 
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    integer, intent(in) :: rtag, stag
-   integer, intent(inout) :: sid         
+   integer, intent(inout) :: sid
 ! local data
-   character(len=18), save :: sname = 'partpush'
+   character(len=32), save :: sname = 'partpush'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -179,48 +206,48 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
    call this%pd%pmv(ef,rtag,stag,sid)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine push_beam3d
 !
 subroutine writehdf5_beam3d(this,file,dspl,rtag,stag,id)
 
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
    integer, intent(in) :: dspl, rtag, stag
    integer, intent(inout) :: id
 ! local data
-   character(len=18), save :: sname = 'writehdf5_beam3d'
+   character(len=32), save :: sname = 'writehdf5_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%pd%wr(file,dspl,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_beam3d
-!            
+!
 subroutine writerst_beam3d(this,file)
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
 ! local data
-   character(len=18), save :: sname = 'writerst_beam3d'
+   character(len=32), save :: sname = 'writerst_beam3d'
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%pd%wrst(file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writerst_beam3d
-!       
+!
 subroutine writeq_beam3d(this,file,rtag,stag,id)
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(hdf5file), intent(in), dimension(:) :: file
    integer, intent(in) :: rtag, stag
    integer, intent(inout) :: id
 ! local data
-   character(len=18), save :: sname = 'writeq_beam3d:'
+   character(len=32), save :: sname = 'writeq_beam3d:'
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%q%write_hdf5(file,1,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -229,12 +256,12 @@ end subroutine writeq_beam3d
 !
 subroutine readrst_beam3d(this,file)
    implicit none
-   
+
    class(beam3d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
 ! local data
-   character(len=18), save :: sname = 'readrst_beam3d'
-   
+   character(len=32), save :: sname = 'readrst_beam3d'
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%pd%rrst(file)
    call write_dbg(cls_name, sname, cls_level, 'ends')

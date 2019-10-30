@@ -14,7 +14,7 @@ use field_src_class
 use field_class
 use part2d_class
 use hdf5io_class
-         
+
 implicit none
 
 private
@@ -32,7 +32,7 @@ type species2d
    class(parallel_pipe), pointer :: pp => null()
 
    contains
-   
+
    generic :: new => init_species2d
    generic :: renew => renew_species2d
    generic :: del => end_species2d
@@ -54,8 +54,8 @@ type species2d
    procedure, private :: psend_species2d
    procedure, private :: precv_species2d, writehdf5_species2d
    procedure, private :: cbq_species2d, writeq_species2d
-                     
-end type 
+
+end type
 
 save
 
@@ -69,7 +69,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
 &num_modes,qbm,xdim,s,smooth_type,smooth_order)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(parallel_pipe), intent(in), pointer :: pp
    class(grid), intent(in), pointer :: gd
@@ -86,7 +86,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    this%pf => pf
    this%pp => pp
    dt = gd%get_dxi()
-   
+
    allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu)
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
@@ -120,29 +120,29 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
 end subroutine init_species2d
 !
 subroutine end_species2d(this)
-    
+
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    character(len=18), save :: sname = 'end_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%pd%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
-            
+
 end subroutine end_species2d
 !
 subroutine renew_species2d(this,s)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    real, intent(in) :: s
 ! local data
    character(len=18), save :: sname = 'renew_species2d'
-            
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   
+
    call this%pd%renew(this%pf,this%qn,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
@@ -158,17 +158,17 @@ subroutine renew_species2d(this,s)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine renew_species2d
-!      
+!
 subroutine qdp_species2d(this,q)
-! deposit the charge density      
+! deposit the charge density
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(field_rho), intent(inout) :: q
 ! local data
    character(len=18), save :: sname = 'qdp_species2d'
-            
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%q = 0.0
@@ -178,16 +178,16 @@ subroutine qdp_species2d(this,q)
    ! q = this%q + q + this%qn
    call add_f1( this%q, q )
    call add_f1( this%qn, q )
-   
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine qdp_species2d
-!      
+!
 subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
-! deposit the current, acceleration and momentum flux      
+! deposit the current, acceleration and momentum flux
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(field_jay), intent(inout) :: cu, amu
    class(field_djdxi), intent(inout) :: dcu
@@ -214,13 +214,13 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    call add_f1( this%amu, amu )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine amjdp_species2d
-!      
+!
 subroutine push_species2d(this,ef,bf)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
@@ -231,82 +231,73 @@ subroutine push_species2d(this,ef,bf)
 
    call this%pd%push(ef,bf)
    call this%pd%pmv(this%q)
-   
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine push_species2d
 !
 subroutine extpsi_species2d(this,psi)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(field_psi), intent(in) :: psi
 ! local data
    character(len=18), save :: sname = 'extpsi_species2d'
-   
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call start_tprof( 'extract psi' )
-   
+
    call this%pd%extpsi(psi)
 
    call stop_tprof( 'extract psi' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine extpsi_species2d
 !
-subroutine psend_species2d(this)
+subroutine psend_species2d(this, tag, id)
 
    implicit none
-   
-   class(species2d), intent(inout) :: this
 
-   return
-!    integer, intent(in) :: tag
-!    integer, intent(inout) :: id
-! ! local data
-!    character(len=18), save :: sname = 'pipesend_part2d:'
-            
-!    call this%err%werrfl2(class//sname//' started')
-   
-!    call this%pd%psend(tag,id)
-   
-!    call this%err%werrfl2(class//sname//' ended')
-   
+   class(species2d), intent(inout) :: this
+   integer, intent(in) :: tag
+   integer, intent(inout) :: id
+! local data
+   character(len=18), save :: sname = 'pipesend_part2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   call this%pd%psend(tag,id)
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
 end subroutine psend_species2d
-!      
-subroutine precv_species2d(this)
+!
+subroutine precv_species2d(this, tag)
 
    implicit none
-   
-   class(species2d), intent(inout) :: this
 
-   return
-!    integer, intent(in) :: tag
-! ! local data
-!    character(len=18), save :: sname = 'precv_species2d:'
-   
-   
-!    call this%err%werrfl2(class//sname//' started')
-   
-!    call this%pd%precv(this%q%getrs(),tag)
-            
-!    call this%err%werrfl2(class//sname//' ended')
-   
+   class(species2d), intent(inout) :: this
+   integer, intent(in) :: tag
+! local data
+   character(len=18), save :: sname = 'precv_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   call this%pd%precv(tag)
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
 end subroutine precv_species2d
-!      
+!
 subroutine writehdf5_species2d(this,file)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
 ! local data
    character(len=18), save :: sname = 'writehdf5_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   
-   call this%pd%wr(file) 
+
+   call this%pd%wr(file)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -315,7 +306,7 @@ end subroutine writehdf5_species2d
 subroutine writeq_species2d(this,files,rtag,stag,id)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    class(hdf5file), dimension(:), intent(in) :: files
    integer, intent(in) :: rtag, stag
@@ -324,8 +315,8 @@ subroutine writeq_species2d(this,files,rtag,stag,id)
    character(len=18), save :: sname = 'writeq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   
-   call this%q%write_hdf5(files,1,rtag,stag,id) 
+
+   call this%q%write_hdf5(files,1,rtag,stag,id)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -334,7 +325,7 @@ end subroutine writeq_species2d
 subroutine cbq_species2d(this,pos)
 
    implicit none
-   
+
    class(species2d), intent(inout) :: this
    integer, intent(in) :: pos
 ! local data
@@ -348,5 +339,5 @@ subroutine cbq_species2d(this,pos)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine cbq_species2d
-!      
+!
 end module species2d_class

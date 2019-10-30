@@ -23,8 +23,8 @@ type sim_beams
 
   class( parallel_pipe ), pointer :: pp => null()
   class( grid ), pointer :: gp => null()
-  type( beam3d ), dimension(:), allocatable :: beam
-  type( fdist3d_wrap ), dimension(:), allocatable :: pf
+  type( beam3d ), dimension(:), pointer :: beam => null()
+  type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
 
   contains
 
@@ -111,7 +111,7 @@ subroutine init_sim_beams( this, input )
     call input%get( 'beam('//num2str(i)//').q', qm )
     call input%get( 'beam('//num2str(i)//').m', qbm )
     qbm = qm/qbm
-       
+
     call this%beam(i)%new( this%pp, this%gp, max_mode, ps, this%pf(i)%p, &
       qbm, dt, 7, sm_type, sm_ord )
 

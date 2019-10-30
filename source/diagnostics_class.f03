@@ -1,5 +1,6 @@
 module diagnostics_class
 
+use parallel_class
 use parallel_pipe_class
 use hdf5io_class
 use sim_fields_class
@@ -11,6 +12,7 @@ use species2d_class
 use sys
 use param
 use input_class
+use mpi
 
 implicit none
 
@@ -26,7 +28,7 @@ type diag_node
   type( hdf5file ), dimension(:), allocatable :: files
   class(*), pointer :: obj => null()
   integer :: num_files=1, dim = 0, df=0, psample=0, ty=p_tdiag_grid
-  integer :: tag=0
+  integer :: tag = -1, id = MPI_REQUEST_NULL
 
   contains
 
@@ -64,14 +66,14 @@ end type sim_diag
 
 contains
 
-subroutine init_diag_node( this, obj, df, num_files, dim, psample, tag )
+subroutine init_diag_node( this, obj, df, num_files, dim, psample, id )
 
   implicit none
 
   class( diag_node ), intent(inout) :: this
   class(*), intent(in), target :: obj
   integer, intent(in) :: df
-  integer, intent(in), optional :: num_files, dim, psample, tag
+  integer, intent(in), optional :: num_files, dim, psample, id
 
   integer, save :: cls_level = 3
   character(len=32), save :: cls_name = 'diag_node'
@@ -84,7 +86,7 @@ subroutine init_diag_node( this, obj, df, num_files, dim, psample, tag )
   if ( present(num_files) ) this%num_files = num_files
   if ( present(dim) ) this%dim = dim
   if ( present(psample) ) this%psample = psample
-  if ( present(tag) ) this%tag = tag
+  if ( present(id) ) this%id = id
 
   if ( this%num_files > 0 ) then
     allocate( this%files( this%num_files ) )
@@ -439,7 +441,8 @@ subroutine run_sim_diag( this, tstep, dt )
 
   ! local data
   class(*), pointer :: obj => null()
-  integer :: dspl, stag, rtag, id
+  integer :: stag, rtag, ierr
+  integer, dimension(MPI_STATUS_SIZE) :: istat
 
   integer, save :: cls_level = 3
   character(len=32), save :: cls_name = 'sim_diag'
@@ -458,16 +461,19 @@ subroutine run_sim_diag( this, tstep, dt )
       call this%diag%set_sim_time( tstep, tstep*dt )
       select type ( obj => this%diag%obj )
       class is ( field )
-        rtag = 8; stag = 8
-        call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, id )
+        rtag = ntag(); stag = rtag
+        call MPI_WAIT( this%diag%id, istat, ierr )
+        call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
       class is ( beam3d )
         select case ( this%diag%ty )
         case ( p_tdiag_raw )
-          dspl = 1; rtag = 6; stag = 6
-          call obj%wr( this%diag%files(1), dspl, rtag, stag, id )
+          rtag = ntag(); stag = rtag
+          call MPI_WAIT( this%diag%id, istat, ierr )
+          call obj%wr( this%diag%files(1), this%diag%psample, rtag, stag, this%diag%id )
         case ( p_tdiag_grid )
-          rtag = 8; stag = 8
-          call obj%wrq( this%diag%files, rtag, stag, id )
+          rtag = ntag(); stag = rtag
+          call MPI_WAIT( this%diag%id, istat, ierr )
+          call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
         case ( p_tdiag_rst )
           call obj%wrst( this%diag%files(1) )
         end select
@@ -476,8 +482,8 @@ subroutine run_sim_diag( this, tstep, dt )
         case ( p_tdiag_raw )
           call obj%wr( this%diag%files(1) )
         case ( p_tdiag_grid )
-          rtag = 5; stag = 5
-          call obj%wrq( this%diag%files, rtag, stag, id )
+          rtag = ntag(); stag = rtag
+          call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
         end select
       end select
 
@@ -521,13 +527,13 @@ subroutine add_diag_cym( this, obj, max_mode, df, dim, filename, dataname, timeu
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=2*max_mode+1, dim=dim, tag=this%num_diag+1 )
+    call this%head%new( obj, df, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=2*max_mode+1, dim=dim, tag=this%num_diag+1 )
+    call this%diag%new( obj, df, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
   endif
 
   this%diag%ty = p_tdiag_grid
@@ -622,13 +628,13 @@ subroutine add_diag_raw( this, obj, df, psample, filename, dataname, timeunit, d
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=1, psample=psample, tag=this%num_diag+1 )
+    call this%head%new( obj, df, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=1, psample=psample, tag=this%num_diag+1 )
+    call this%diag%new( obj, df, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
   endif
 
   this%diag%ty = p_tdiag_raw

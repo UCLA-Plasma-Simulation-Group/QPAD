@@ -8,6 +8,11 @@ implicit none
 private
 
 public :: parallel
+public :: ntag
+
+interface ntag
+  module procedure ntag
+end interface ntag
 
 type parallel
 
@@ -25,6 +30,9 @@ type parallel
   integer :: kstrt
   integer :: mreal, mint, mcplx, mdouble, mchar, lworld
 
+  ! these datatypes are for huge array communication
+  integer :: mreal_pack, mint_pack
+
   contains
 
   generic :: new => init_parallel
@@ -40,11 +48,11 @@ type parallel
   procedure :: getmchar
   procedure, private :: init_parallel
   procedure, private :: end_parallel
-            
-end type parallel         
+
+end type parallel
 
 contains
-!      
+!
 function getnvp(this)
 
   implicit none
@@ -54,7 +62,7 @@ function getnvp(this)
 
   getnvp = this%nvp
 
-end function getnvp         
+end function getnvp
 !
 function getidproc(this)
 
@@ -65,7 +73,7 @@ function getidproc(this)
 
   getidproc = this%idproc
 
-end function getidproc         
+end function getidproc
 !
 function getkstrt(this)
 
@@ -121,7 +129,7 @@ function getmdouble(this)
   getmdouble = this%mdouble
 
 end function getmdouble
-!      
+!
 function getmcplx(this)
 
   implicit none
@@ -144,6 +152,28 @@ function getmchar(this)
 
 end function getmchar
 !
+function getmint_pack(this)
+
+  implicit none
+
+  class(parallel), intent(in) :: this
+  integer :: getmint_pack
+
+  getmint_pack = this%mint_pack
+
+end function getmint_pack
+!
+function getmreal_pack(this)
+
+  implicit none
+
+  class(parallel), intent(in) :: this
+  integer :: getmreal_pack
+
+  getmreal_pack = this%mreal_pack
+
+end function getmreal_pack
+!
 subroutine init_parallel(this)
 
   implicit none
@@ -159,7 +189,7 @@ subroutine init_parallel(this)
   call ppinit2(this%idproc,this%nvp,this%lworld,&
   &this%mint,this%mreal,this%mdouble,this%mcplx,this%mchar)
   this%kstrt = this%idproc + 1
-   
+
 end subroutine init_parallel
 !
 subroutine ppinit2(idproc,nvp,lworld,mint,mreal,mdouble,mcplx,mchar)
@@ -219,14 +249,10 @@ subroutine ppinit2(idproc,nvp,lworld,mint,mreal,mdouble,mcplx,mchar)
      mreal = MPI_DOUBLE_PRECISION
      mcplx = MPI_DOUBLE_COMPLEX
   endif
-  ! single precision integer
-  !     if (idprec==0) then
-  !        mint = MPI_INTEGER
-  ! double precision integer
-  !     else
-  !        mint = MPI_INTEGER8
-  !     endif
-  ! operators
+
+  ! call MPI_TYPE_CONTIGUOUS( huge(1), mint, mint_pack )
+  ! call MPI_TYPE_CONTIGUOUS( huge(1), mreal, mreal_pack )
+
   nvp = nproc
 
 end subroutine ppinit2
@@ -267,7 +293,18 @@ subroutine end_parallel(this)
   ! terminate MPI execution environment
      call MPI_FINALIZE(ierror)
   endif
-  
+
 end subroutine end_parallel
 !
+function ntag()
+
+   implicit none
+   integer, save :: tag = 0
+   integer :: ntag
+
+   ntag = tag
+   tag = tag + 1
+
+end function ntag
+
 end module parallel_class

@@ -84,16 +84,9 @@ type :: ufield
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: has2d
-  ! procedure :: pipe_send, pipe_recv
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
-  ! generic :: operator(+)     => add_f1_v1, add_f1_v2
-  ! generic :: operator(-)     => sub_f1_v1, sub_f1_v2
-  ! generic :: operator(*)     => dot_f1_v1, dot_f1_v2
-  ! generic :: operator(.add.) => add_f2_v1, add_f2_v2
-  ! generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
-  ! generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
 
   procedure, private :: init_ufield, init_ufield_cp, end_ufield
   procedure, private :: get_nd_all, get_nd_dim
@@ -103,12 +96,6 @@ type :: ufield
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
-  ! procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
-  ! procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
-  ! procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
-  ! procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
-  ! procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
-  ! procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
   procedure, private :: assign_f1, assign_f2
 
 end type ufield
@@ -201,7 +188,7 @@ subroutine end_ufield( this )
   if ( associated( this%f2 ) ) deallocate( this%f2 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
-  
+
 end subroutine end_ufield
 
 subroutine write_hdf5_single( this, file, dim )
@@ -321,7 +308,7 @@ subroutine copy_slice( this, idx, dir )
   end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
-  
+
 end subroutine copy_slice
 
 subroutine copy_gc_f1( this, bnd_ax )
@@ -526,16 +513,18 @@ subroutine copy_gc_f2( this, bnd_ax )
 
 end subroutine copy_gc_f2
 
-! subroutine copy_gc_stage( this, dir )
+! subroutine copy_gc_pipe( this, dir, rtag, stag, rid, sid )
 
 !   implicit none
 
 !   class( ufield ), intent(inout) :: this
 !   integer, intent(in) :: dir
+!   integer, intent(in) :: rtag, stag
+!   integer, intent(inout) :: rid, sid
 
 !   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
 !   integer :: nzp, count, dtype
-!   integer :: tag = 1, msgid, ierr
+!   integer :: ierr
 !   integer, dimension(MPI_STATUS_SIZE) :: stat
 
 !   call start_tprof( 'copy guard cells' )
@@ -554,51 +543,59 @@ end subroutine copy_gc_f2
 
 !   ! forward message passing
 !   case ( p_mpi_forward )
-  
+
 !     if ( this%gc_num(p_lower,2) > 0 ) then
+
 !       count = this%dim * size(this%f2,2) * this%gc_num(p_lower,2)
 !       ! receiver
 !       if ( stageid > 0 ) then
 !         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),1-this%gc_num(p_lower,2)), &
-!           count, dtype, idproc_last, tag, comm, msgid, ierr )
+!           count, dtype, idproc_last, rtag, comm, rid, ierr )
+!       else
+!         rid = MPI_REQUEST_NULL
 !       endif
 !       ! sender
 !       if ( stageid < nstage-1 ) then
-!         call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
-!           count, dtype, idproc_next, tag, comm, ierr )
+!         call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
+!           count, dtype, idproc_next, stag, comm, sid, ierr )
+!       else
+!         sid = MPI_REQUEST_NULL
 !       endif
-!       ! wait receiving finish
-!       if ( stageid > 0 ) then
-!         call MPI_WAIT( msgid, stat, ierr )
-!       endif
+
+!     else
+!       call write_err( 'No guard cells for forward copy!' )
 !     endif
 
 !   ! backward message passing
 !   case ( p_mpi_backward )
 
 !     if ( this%gc_num(p_upper,2) > 0 ) then
+
 !       count = this%dim * size(this%f2,2) * this%gc_num(p_upper,2)
 !       ! receiver
 !       if ( stageid < nstage-1 ) then
 !         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
-!           count, dtype, idproc_next, tag, comm, msgid, ierr )
+!           count, dtype, idproc_next, rtag, comm, rid, ierr )
+!       else
+!         rid = MPI_REQUEST_NULL
 !       endif
 !       ! sender
 !       if ( stageid > 0 ) then
-!         call MPI_SEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
-!           count, dtype, idproc_last, tag, comm, ierr )
+!         call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
+!           count, dtype, idproc_last, stag, comm, sid, ierr )
+!       else
+!         sid = MPI_REQUEST_NULL
 !       endif
-!       ! wait receiving finish
-!       if ( stageid < nstage-1 ) then
-!         call MPI_WAIT( msgid, stat, ierr )
-!       endif
+
+!     else
+!       call write_err( 'No guard cells for backward copy!' )
 !     endif
 
 !   end select
 
 !   call stop_tprof( 'copy guard cells' )
 
-! end subroutine copy_gc_stage
+! end subroutine copy_gc_pipe
 
 subroutine acopy_gc_f1( this )
 
@@ -774,92 +771,6 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-! subroutine acopy_gc_stage( this )
-
-!   implicit none
-
-!   class( ufield ), intent(inout) :: this
-
-!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-!   integer :: nzp, nrp, count, dtype
-!   integer :: tag = 1, msgid, ierr, i, j
-!   integer, dimension(MPI_STATUS_SIZE) :: stat
-!   real, dimension(:,:), allocatable :: buf1, buf2
-
-!   call start_tprof( 'copy & add guard cells' )
-
-!   nvp = this%nvp(1)
-!   nstage = this%pp%getnstage()
-!   stageid = this%pp%getstageid()
-!   idproc = this%pp%getidproc()
-!   idproc_last = idproc - nvp
-!   idproc_next = idproc + nvp
-!   nrp = this%ndp(1)
-!   nzp = this%ndp(2)
-!   comm = this%pp%getlworld()
-!   dtype = this%pp%getmreal()
-
-!   count = this%dim * (nrp+1)
-!   allocate( buf1( this%dim, nrp+1 ) )
-!   allocate( buf2( this%dim, nrp+1 ) )
-        
-!   ! forward message passing
-!   ! receiver
-!   if ( stageid > 0 ) then
-!     buf1 = 0.0
-!     call MPI_IRECV( buf1, count, dtype, idproc_last, tag, comm, msgid, ierr )
-!   endif
-!   ! sender
-!   if ( stageid < nstage-1 ) then
-!     do j = 1, nrp+1
-!       do i = 1, this%dim
-!         buf2 = this%f2(i,j,nzp+1)
-!       enddo
-!     enddo
-!     call MPI_SEND( buf2, count, dtype, idproc_next, tag, comm, ierr )
-!   endif
-!   ! wait receiving finish
-!   if ( stageid > 0 ) then
-!     call MPI_WAIT( msgid, stat, ierr )
-!     do j = 1, nrp+1
-!       do i = 1, this%dim
-!         this%f2(i,j,1) = this%f2(i,j,1) + buf1(i,j)
-!       enddo
-!     enddo
-!   endif
-
-!   ! backward message passing
-!   ! receiver
-!   if ( stageid < nstage-1 ) then
-!     buf1 = 0.0
-!     call MPI_IRECV( buf1, count, dtype, idproc_next, tag, comm, msgid, ierr )
-!   endif
-!   ! sender
-!   if ( stageid > 0 ) then
-!     do j = 1, nrp+1
-!       do i = 1, this%dim
-!         buf2(i,j) = this%f2(i,j,1)
-!       enddo
-!     enddo
-!     call MPI_SEND( buf2, count, dtype, idproc_last, tag, comm, ierr )
-!   endif
-!   ! wait receiving finish
-!   if ( stageid < nstage-1 ) then
-!     call MPI_WAIT( msgid, stat, ierr )
-!     do j = 1, nrp+1
-!       do i = 1, this%dim
-!         this%f2(i,j,nrp+1) = buf1(i,j)
-!       enddo
-!     enddo
-!   endif
-
-!   deallocate( buf1 )
-!   deallocate( buf2 )
-
-!   call stop_tprof( 'copy & add guard cells' )
-
-! end subroutine acopy_gc_stage
-
 subroutine assign_f1( this, that )
 
   implicit none
@@ -870,7 +781,7 @@ subroutine assign_f1( this, that )
   integer :: i, j
 
   select type (that)
-    
+
     type is (real)
 
       this%f1 = that
@@ -901,7 +812,7 @@ subroutine assign_f2( this, that )
   integer :: i, j, k
 
   select type (that)
-    
+
     type is (real)
 
       this%f2 = that
@@ -929,7 +840,7 @@ subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   class( ufield ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
   integer, intent(in), dimension(:) :: dim1, dim2, dim3
-  
+
   integer :: ndim, i
 
   ndim = size( dim1 )
@@ -954,7 +865,7 @@ subroutine add_f1_unitary_dim( a, b, adim, bdim )
   class( ufield ), intent(in) :: a
   class( ufield ), intent(inout) :: b
   integer, intent(in), dimension(:) :: adim, bdim
-  
+
   integer :: ndim, i
 
   call start_tprof( 'arithmetics' )
@@ -983,7 +894,7 @@ subroutine add_f1_binary( a1, a2, a3 )
   class( ufield ), intent(inout) :: a3
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a1)
 
     type is (real)
@@ -1047,7 +958,7 @@ subroutine add_f1_unitary( a, b )
   class( ufield ), intent(inout) :: b
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a)
 
     type is (real)
@@ -1077,7 +988,7 @@ subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   class( ufield ), intent(in) :: a1, a2
   class( ufield ), intent(inout) :: a3
   integer, intent(in), dimension(:) :: dim1, dim2, dim3
-  
+
   integer :: ndim, i
 
   call start_tprof( 'arithmetics' )
@@ -1106,7 +1017,7 @@ subroutine sub_f1_unitary_dim( a, b, adim, bdim )
   class( ufield ), intent(in) :: a
   class( ufield ), intent(inout) :: b
   integer, intent(in), dimension(:) :: adim, bdim
-  
+
   integer :: ndim, i
 
   call start_tprof( 'arithmetics' )
@@ -1135,7 +1046,7 @@ subroutine sub_f1_binary( a1, a2, a3 )
   class( ufield ), intent(inout) :: a3
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a1)
 
     type is (real)
@@ -1199,7 +1110,7 @@ subroutine sub_f1_unitary( a, b )
   class( ufield ), intent(inout) :: b
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a)
 
     type is (real)
@@ -1230,7 +1141,7 @@ subroutine dot_f1_unitary( a, b )
   class( ufield ), intent(inout) :: b
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a)
 
     type is (real)
@@ -1260,7 +1171,7 @@ subroutine dot_f1_unitary_dim( a, b, dim )
   real, intent(in) :: a
   class( ufield ), intent(inout) :: b
   integer, intent(in), dimension(:) :: dim
-  
+
   integer :: ndim, i
 
   call start_tprof( 'arithmetics' )
@@ -1283,7 +1194,7 @@ subroutine add_f2_binary( a1, a2, a3 )
   class( ufield ), intent(inout) :: a3
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a1)
 
     type is (real)
@@ -1347,7 +1258,7 @@ subroutine add_f2_unitary( a, b )
   class( ufield ), intent(inout) :: b
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a)
 
     type is (real)
@@ -1378,7 +1289,7 @@ subroutine sub_f2_binary( a1, a2, a3 )
   class( ufield ), intent(inout) :: a3
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a1)
 
     type is (real)
@@ -1442,7 +1353,7 @@ subroutine sub_f2_unitary( a, b )
   class( ufield ), intent(inout) :: b
 
   call start_tprof( 'arithmetics' )
-  
+
   select type (a)
 
     type is (real)
@@ -1496,7 +1407,7 @@ function get_nd_dim( this, dim )
   integer :: get_nd_dim
 
   get_nd_dim = this%nd(dim)
-  
+
 end function get_nd_dim
 
 function get_ndp_all( this )
@@ -1519,7 +1430,7 @@ function get_ndp_dim( this, dim )
   integer :: get_ndp_dim
 
   get_ndp_dim = this%ndp(dim)
-  
+
 end function get_ndp_dim
 
 function get_gc_num_all( this )
@@ -1542,7 +1453,7 @@ function get_gc_num_dim( this, dim )
   integer, dimension(2) :: get_gc_num_dim
 
   get_gc_num_dim = this%gc_num(:,dim)
-  
+
 end function get_gc_num_dim
 
 function get_nvp_all( this )
@@ -1565,7 +1476,7 @@ function get_nvp_dim( this, dim )
   integer :: get_nvp_dim
 
   get_nvp_dim = this%nvp(dim)
-  
+
 end function get_nvp_dim
 
 function get_noff_all( this )
@@ -1588,7 +1499,7 @@ function get_noff_dim( this, dim )
   integer :: get_noff_dim
 
   get_noff_dim = this%noff(dim)
-  
+
 end function get_noff_dim
 
 function get_f1( this )
@@ -1610,7 +1521,7 @@ function get_f2( this )
   real, dimension(:,:,:), pointer :: get_f2
 
   get_f2 => this%f2
-  
+
 end function get_f2
 
 function has2d( this )
@@ -1624,302 +1535,5 @@ function has2d( this )
 
 end function has2d
 
-! function add_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, dim_min
-
-!   allocate( a3 )
-!   ! call a3%new(a1)
-
-!   select type (a2)
-
-!   type is (real)
-
-!     call a3%new(a1)
-!     a3%f1 = a1%f1 + a2
-
-!   class is (ufield)
-
-!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-
-!       dim_min = min( a1%get_dim(), a2%get_dim() )
-
-!       if ( a1%get_dim() > a2%get_dim() ) then
-!         call a3%new(a1)
-!       else
-!         call a3%new(a2)
-!       endif
-
-!       do i = 1, dim_min
-!         a3%f1(i,:) = a1%f1(i,:) + a2%f1(i,:)
-!       enddo
-
-!       if ( a1%get_dim() > a2%get_dim() ) then
-!         do i = dim_min+1, a1%dim
-!           a3%f1(i,:) = a1%f1(i,:)
-!         enddo
-!       elseif ( a1%get_dim() < a2%get_dim() ) then
-!         do i = dim_min+1, a2%dim
-!           a3%f1(i,:) = a2%f1(i,:)
-!         enddo
-!       endif      
-
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function add_f1_v1
-
-! function add_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   select type (a2)
-!   type is (real)
-!     a3%f2 = a1%f2 + a2
-!   class is (ufield)
-!     if ( all( a1%gc_num==a2%gc_num ) ) then
-!       a3%f2 = a1%f2 + a2%f2
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function add_f2_v1
-
-! function add_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f1 = a1%f1 + a2
-    
-! end function add_f1_v2
-
-! function add_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f2 = a1%f2 + a2
-
-! end function add_f2_v2
-
-! function sub_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   select type (a2)
-!   type is (real)
-!     a3%f1 = a1%f1 - a2
-!   class is (ufield)
-!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-!       a3%f1 = a1%f1 - a2%f1
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function sub_f1_v1
-
-! function sub_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   select type (a2)
-!   type is (real)
-!     a3%f2 = a1%f2 - a2
-!   class is (ufield)
-!     if ( all(a1%gc_num==a2%gc_num) ) then
-!       a3%f2 = a1%f2 - a2%f2
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function sub_f2_v1
-
-! function sub_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f1 = a2 - a1%f1
-    
-! end function sub_f1_v2
-
-! function sub_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f2 = a2 - a1%f2
-    
-! end function sub_f2_v2
-
-! function dot_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   select type (a2)
-!   type is (real)
-!     a3%f1 = a1%f1 * a2
-!   class is (ufield)
-!     if ( all(a1%gc_num(:,1)==a2%gc_num(:,1)) ) then
-!       a3%f1 = a1%f1 * a2%f1
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function dot_f1_v1
-
-! function dot_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( ufield ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   select type (a2)
-!   type is (real)
-!     a3%f2 = a1%f2 * a2
-!   class is (ufield)
-!     if ( all(a1%gc_num==a2%gc_num) ) then
-!       a3%f2 = a1%f2 * a2%f2
-!     else
-!       call write_err( "guard cells not matched!" )
-!     endif
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function dot_f2_v1
-
-! function dot_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f1 = a1%f1 * a2
-    
-! end function dot_f1_v2
-
-! function dot_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   real, intent(in) :: a2
-!   class( ufield ), intent(in) :: a1
-!   class( ufield ), allocatable :: a3
-
-!   integer :: i, j, k
-
-!   allocate( a3 )
-!   call a3%new(a1)
-
-!   a3%f2 = a1%f2 * a2
-    
-! end function dot_f2_v2
 
 end module ufield_class

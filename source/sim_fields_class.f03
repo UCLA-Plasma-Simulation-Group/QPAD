@@ -23,12 +23,12 @@ type sim_fields
   class( parallel_pipe ), pointer :: pp => null()
   class( grid ), pointer :: gp => null()
 
-  type( field_psi ), allocatable :: psi
-  type( field_b ), allocatable :: b_spe, b_beam, b
-  type( field_e ), allocatable :: e_spe, e_beam, e
-  type( field_jay ), allocatable :: cu, amu
-  type( field_rho ), allocatable :: q_spe, q_beam
-  type( field_djdxi ), allocatable :: dcu, acu
+  type( field_psi ), pointer :: psi => null()
+  type( field_b ), pointer :: b_spe => null(), b_beam => null(), b => null()
+  type( field_e ), pointer :: e_spe => null(), e_beam => null(), e => null()
+  type( field_jay ), pointer :: cu => null(), amu => null()
+  type( field_rho ), pointer :: q_spe => null(), q_beam => null()
+  type( field_djdxi ), pointer :: dcu => null(), acu => null()
 
   contains
 
@@ -72,7 +72,7 @@ subroutine init_sim_fields( this, input )
 
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.solver_tol', tol )
-  
+
   ! read field boundary type
   call input%get( 'simulation.field_boundary', str )
   select case ( trim(str) )

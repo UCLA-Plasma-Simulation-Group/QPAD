@@ -68,7 +68,7 @@ subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary, iter_t
   case ( p_ps_linear )
   
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/2, 1/)
+    gc_num(:,2) = (/4, 1/)
   
   case ( p_ps_quadratic )
 
@@ -122,13 +122,14 @@ subroutine end_field_psi( this )
 
 end subroutine end_field_psi
 
-subroutine set_source( this, mode, q_re, q_im )
+subroutine set_source( this, mode, q_ax, q_re, q_im )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
   class( ufield ), intent(in) :: q_re
   class( ufield ), intent(in), optional :: q_im
+  real, intent(in) :: q_ax
   integer, intent(in) :: mode
 
   integer :: i, nrp, noff, dtype, ierr, comm, idproc
@@ -165,6 +166,8 @@ subroutine set_source( this, mode, q_re, q_im )
         this%buf_re(i) = -1.0 * f1_re(1,i)
       enddo
 
+      if ( idproc == 0 ) this%buf_re(1) = this%buf_re(1) + q_ax / 0.5
+
       ! if ( idproc == 0 ) this%q_ax = -1.0*dr2*f1_re(1,0)
       ! call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
 
@@ -194,12 +197,17 @@ subroutine get_solution( this, mode, idx, q_ax )
   integer, intent(in) :: mode, idx
   real, intent(in), optional :: q_ax
 
-  integer :: i, nrp, noff
+  integer :: i, j, nrp, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:,:), pointer :: f2_re => null(), f2_im => null()
   real :: r, r2, rmax, rmax2
   ! longitudinal smooth
-  real, save :: s0 = 0.545454545454545, s1 = 0.363636363636364, s2 = 0.090909090909091
+  ! real, dimension(0:4), save :: s = (/ 0.429447852760736, &
+  !                                    0.343558282208589, &
+  !                                    0.171779141104294, &
+  !                                    0.049079754601227, &
+  !                                    0.006134969325153 /)
+  real, dimension(0:4), save :: s = (/ 0.38, 0.32, 0.2, 0.08, 0.02 /)
   character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -207,7 +215,7 @@ subroutine get_solution( this, mode, idx, q_ax )
 
   nrp   = this%rf_re(mode)%get_ndp(1)
   noff  = this%rf_re(mode)%get_noff(1)
-  rmax  = this%rf_re(mode)%get_nd(1) * this%dr
+  rmax  = (this%rf_re(mode)%get_nd(1)+0.5) * this%dr
   rmax2 = rmax**2
 
   if ( mode == 0 .and. present(q_ax) ) then
@@ -218,7 +226,8 @@ subroutine get_solution( this, mode, idx, q_ax )
       ! add contribution of the source terms on axis
       do i = 1, nrp
         r = (i+noff-0.5) * this%dr
-        this%buf_re(i) = this%buf_re(i) + q_ax * log(r/rmax)
+        ! this%buf_re(i) = this%buf_re(i) + q_ax * log(r/rmax)
+        this%buf_re(i) = this%buf_re(i)
       enddo
 
     end select
@@ -227,16 +236,20 @@ subroutine get_solution( this, mode, idx, q_ax )
   f1_re => this%rf_re(mode)%get_f1()
   f2_re => this%rf_re(mode)%get_f2()
   do i = 1, nrp
-    f1_re(1,i) = this%buf_re(i)
-    ! f1_re(1,i) = s0 * this%buf_re(i) + s1 * f2_re(1,i,idx-1) + s2 * f2_re(1,i,idx-2)
+    ! f1_re(1,i) = this%buf_re(i)
+    f1_re(1,i) = s(0) * this%buf_re(i)
+    do j = 1, 4
+      f1_re(1,i) = f1_re(1,i) + s(j) * f2_re(1,i,idx-j)
+    enddo
   enddo
 
   if ( mode > 0 ) then
     f1_im => this%rf_im(mode)%get_f1()
     f2_im => this%rf_im(mode)%get_f2()
     do i = 1, nrp
-      f1_im(1,i) = this%buf_im(i)
-      ! f1_im(1,i) = s0 * this%buf_im(i) + s1 * f2_im(1,i,idx-1) + s2 * f2_im(1,i,idx-2)
+      ! f1_im(1,i) = this%buf_im(i)
+      f1_im(1,i) = s(0) * this%buf_im(i)
+      f1_im(1,i) = f1_im(1,i) + s(j) * f2_im(1,i,idx-j)
     enddo
   endif
 
@@ -259,7 +272,7 @@ subroutine solve_field_psi( this, q, idx )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call q%get_q_ax1()
+  call q%get_q_ax()
 
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
@@ -267,13 +280,13 @@ subroutine solve_field_psi( this, q, idx )
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
-      call this%set_source( i, q_re(i) )
+      call this%set_source( i, q%q_ax, q_re(i) )
       call this%solver(i)%solve( this%buf_re )
       call this%get_solution( i, idx, q%q_ax )
       cycle
     endif
 
-    call this%set_source( i, q_re(i), q_im(i) )
+    call this%set_source( i, q%q_ax, q_re(i), q_im(i) )
     call this%solver(i)%solve( this%buf_re )
     call this%solver(i)%solve( this%buf_im )
     call this%get_solution(i, idx)

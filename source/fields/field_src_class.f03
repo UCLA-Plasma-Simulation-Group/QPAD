@@ -134,7 +134,7 @@ subroutine get_q_ax( this )
     r = real( noff + i - 0.5 )
     q_local = q_local + f1_re(1,i) * r
   enddo
-  q_local = q_local * this%dr**2
+  ! q_local = q_local * this%dr**2
 
   call MPI_ALLREDUCE( q_local, this%q_ax, 1, dtype, MPI_SUM, comm, ierr )
 

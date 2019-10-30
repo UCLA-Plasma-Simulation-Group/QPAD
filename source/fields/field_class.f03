@@ -72,10 +72,11 @@ type :: field
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   procedure :: smooth_f1
   procedure :: copy_slice
-  procedure :: get_dr, get_dxi, get_num_modes
+  procedure :: get_dr, get_dxi, get_num_modes, get_dim
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: pipe_send, pipe_recv
+  procedure :: pipe_gc_send, pipe_gc_recv
 
   procedure, private :: init_field, init_field_cp, end_field
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
@@ -83,19 +84,7 @@ type :: field
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
-  ! generic :: operator(+)     => add_f1_v1, add_f1_v2
-  ! generic :: operator(-)     => sub_f1_v1, sub_f1_v2
-  ! generic :: operator(*)     => dot_f1_v1, dot_f1_v2
-  ! generic :: operator(.add.) => add_f2_v1, add_f2_v2
-  ! generic :: operator(.sub.) => sub_f2_v1, sub_f2_v2
-  ! generic :: operator(.dot.) => dot_f2_v1, dot_f2_v2
 
-  ! procedure, private, pass(a1) :: add_f1_v1, add_f1_v2
-  ! procedure, private, pass(a1) :: dot_f1_v1, dot_f1_v2
-  ! procedure, private, pass(a1) :: sub_f1_v1, sub_f1_v2
-  ! procedure, private, pass(a1) :: add_f2_v1, add_f2_v2
-  ! procedure, private, pass(a1) :: dot_f2_v1, dot_f2_v2
-  ! procedure, private, pass(a1) :: sub_f2_v1, sub_f2_v2
   procedure, private :: assign_f1, assign_f2
 
 end type field
@@ -124,6 +113,9 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  this%pp        => pp
+  this%gp        => gp
+  this%dim       = dim
   this%num_modes = num_modes
   this%dr        = gp%get_dr()
   this%dxi       = gp%get_dxi()
@@ -164,6 +156,9 @@ subroutine init_field_cp( this, that )
 
   integer :: i
 
+  this%pp        => that%pp
+  this%gp        => that%gp
+  this%dim       = that%get_dim()
   this%num_modes = that%get_num_modes()
   this%dr        = that%get_dr()
   this%dxi       = that%get_dxi()
@@ -312,6 +307,232 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
+subroutine pipe_gc_send( this, tag, sid )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: tag
+  integer, intent(inout) :: sid
+
+  integer :: i, j, k, m
+  integer :: idproc, idproc_des, stageid, lnvp, comm
+  integer :: n1p, count, dtype, ierr
+  integer, dimension(2) :: gc1, gc2
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:,:,:,:), allocatable, save :: buf
+  character(len=20), save :: sname = "pipe_gc_send"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
+
+  lnvp       = this%pp%getlnvp()
+  stageid    = this%pp%getstageid()
+  idproc     = this%pp%getidproc()
+  idproc_des = idproc - lnvp
+  n1p        = size(this%rf_re(0)%f1, 2)
+  comm       = this%pp%getlworld()
+  dtype      = this%pp%getmreal()
+
+  gc1 = this%rf_re(0)%get_gc_num(1)
+  gc2 = this%rf_re(0)%get_gc_num(2)
+
+  if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
+
+  if ( stageid == 0 ) then
+    sid = MPI_REQUEST_NULL
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    return
+  endif
+
+  if ( .not. allocated(buf) ) then
+    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
+  endif
+
+  ! pack m=0 mode
+  do k = 1, gc2(p_upper)
+    do j = 1, n1p
+      do i = 1, this%dim
+        buf(i,j,k,0) = this%rf_re(0)%f2(i, j-gc1(p_lower), k)
+      enddo
+    enddo
+  enddo
+
+  ! pack m>0 modes
+  if (this%num_modes > 0) then
+    do m = 1, this%num_modes
+      do k = 1, gc2(p_upper)
+        do j = 1, n1p
+          do i = 1, this%dim
+            buf(i,j,k,2*m-1) = this%rf_re(m)%f2(i, j-gc1(p_lower), k)
+            buf(i,j,k,2*m  ) = this%rf_im(m)%f2(i, j-gc1(p_lower), k)
+          enddo
+        enddo
+      enddo
+    enddo
+  endif
+
+  count = size(buf)
+  call MPI_ISEND( buf, count, dtype, idproc_des, tag, comm, sid, ierr )
+  ! check for error
+  if (ierr /= 0) call write_err('MPI_ISEND failed.')
+
+  call stop_tprof( 'pipeline' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine pipe_gc_send
+
+subroutine pipe_gc_recv( this, tag )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: tag
+  ! integer, intent(inout) :: rid
+
+  integer :: i, j, k, m
+  integer :: idproc, idproc_src, stageid, nstage, lnvp, comm
+  integer :: n1p, nzp, count, dtype, ierr
+  integer, dimension(2) :: gc1, gc2
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  real, dimension(:,:,:,:), allocatable, save :: buf
+  character(len=20), save :: sname = "pipe_gc_recv"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
+
+  lnvp       = this%pp%getlnvp()
+  stageid    = this%pp%getstageid()
+  nstage     = this%pp%getnstage()
+  idproc     = this%pp%getidproc()
+  idproc_src = idproc + lnvp
+  n1p        = size(this%rf_re(0)%f1, 2)
+  nzp        = this%gp%get_ndp(2)
+  comm       = this%pp%getlworld()
+  dtype      = this%pp%getmreal()
+
+  gc1 = this%rf_re(0)%get_gc_num(1)
+  gc2 = this%rf_re(0)%get_gc_num(2)
+
+  if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
+
+  if ( stageid == nstage-1 ) then
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    return
+  endif
+
+  if ( .not. allocated(buf) ) then
+    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
+  endif
+
+  count = size(buf)
+  call MPI_RECV( buf, count, dtype, idproc_src, tag, comm, stat, ierr )
+  ! check for error
+  if (ierr /= 0) call write_err('MPI_RECV failed.')
+
+  ! unpack m=0 mode
+  do k = 1, gc2(p_upper)
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%rf_re(0)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,0)
+      enddo
+    enddo
+  enddo
+
+  ! unpack m>0 modes
+  if (this%num_modes > 0) then
+    do m = 1, this%num_modes
+      do k = 1, gc2(p_upper)
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,2*m-1)
+            this%rf_im(m)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,2*m  )
+          enddo
+        enddo
+      enddo
+    enddo
+  endif
+
+  call stop_tprof( 'pipeline' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine pipe_gc_recv
+
+! subroutine copy_gc_pipe( this, rtag, stag, rid, sid )
+
+!   implicit none
+
+!   class( field ), intent(inout) :: this
+!   integer, intent(in) :: rtag, stag
+!   integer, intent(inout) :: rid, sid
+
+!   integer :: i, dir
+!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
+!   integer :: nrp, nzp, count, dtype, gc_num, m
+!   integer :: ierr
+!   integer, dimension(MPI_STATUS_SIZE) :: stat
+!   real, dimension(:,:,:), allocatable, save :: rbuf, sbuf
+!   character(len=20), save :: sname = "copy_gc_pipe"
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+!   nvp = this%gp%nvp(1)
+!   nstage = this%pp%getnstage()
+!   stageid = this%pp%getstageid()
+!   idproc = this%pp%getidproc()
+!   idproc_last = idproc - nvp
+!   idproc_next = idproc + nvp
+!   nrp = this%gp%ndp(1)
+!   nzp = this%gp%ndp(2)
+!   comm = this%pp%getlworld()
+!   dtype = this%pp%getmreal()
+
+!   gc_num = this%rf_re(0)%gc_num(p_upper,2)
+
+!   if ( gc_num > 0 ) then
+
+!     if (this%num_modes == 0) then
+!       m = 1
+!     else
+!       m = 2 * this%num_modes + 1
+!     endif
+!     count = this%dim * nrp * gc_num * m
+
+!     if ( .not. allocated(rbuf) ) then
+!       allocate( rbuf(this%dim, nrp, gc_num, m), sbuf(this%dim, nrp, gc_num, m) )
+!     endif
+
+!     ! receiver
+!     if ( stageid < nstage-1 ) then
+!       call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
+!         count, dtype, idproc_next, rtag, comm, rid, ierr )
+!     else
+!       rid = MPI_REQUEST_NULL
+!     endif
+!     ! sender
+!     if ( stageid > 0 ) then
+!       call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
+!         count, dtype, idproc_last, stag, comm, sid, ierr )
+!     else
+!       sid = MPI_REQUEST_NULL
+!     endif
+
+!   else
+!     call write_err( 'No guard cells for backward copy!' )
+!   endif
+
+!   do i = 0, this%num_modes
+!     call this%rf_re(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
+!     if ( i == 0 ) cycle
+!     call this%rf_im(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
+!   enddo
+
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine copy_gc_pipe
+
 subroutine pipe_send( this, stag, id, nslice )
 
   implicit none
@@ -322,7 +543,7 @@ subroutine pipe_send( this, stag, id, nslice )
   integer, intent(in), optional :: nslice
 
   integer :: i, j, k, m, ns
-  integer :: idproc, idproc_des, lnvp, nvp, comm
+  integer :: idproc, idproc_des, lnvp, comm, stageid, nstage
   integer :: nzp, n1p, count, dtype, ierr
   integer, dimension(2) :: gc
   character(len=20), save :: sname = "pipe_send"
@@ -334,7 +555,8 @@ subroutine pipe_send( this, stag, id, nslice )
   if ( present(nslice) ) ns = nslice
 
   lnvp       = this%pp%getlnvp()
-  nvp        = this%pp%getnvp()
+  nstage     = this%pp%getnstage()
+  stageid    = this%pp%getstageid()
   idproc     = this%pp%getidproc()
   idproc_des = idproc + lnvp
   nzp        = this%gp%get_ndp(2)
@@ -343,17 +565,19 @@ subroutine pipe_send( this, stag, id, nslice )
   dtype      = this%pp%getmreal()
   gc         = this%rf_re(0)%get_gc_num(1)
 
-  if ( idproc_des >= nvp ) then
+  if ( stageid == nstage-1 ) then
     id = MPI_REQUEST_NULL
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
     return
   endif
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, ns, 2*this%num_modes+1 ) )
+    allocate( this%psend_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
   endif
 
   ! copy m=0 mode
-  do k = 1, nslice
+  do k = 1, ns
     do j = 1, n1p
       do i = 1, this%dim
         this%psend_buf(i,j,k,0) = this%rf_re(0)%f2( i, j-gc(1), nzp+1-ns+k )
@@ -364,7 +588,7 @@ subroutine pipe_send( this, stag, id, nslice )
   ! copy m>0 mode
   if ( this%num_modes > 0 ) then
     do m = 1, this%num_modes
-      do k = 1, nslice
+      do k = 1, ns
         do j = 1, n1p
           do i = 1, this%dim
             this%psend_buf(i,j,k,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), nzp+1-ns+k )
@@ -396,7 +620,7 @@ subroutine pipe_recv( this, rtag, nslice )
   integer, intent(in), optional :: nslice
 
   integer :: i, j, k, m, ns
-  integer :: idproc, idproc_src, lnvp, n1p, comm
+  integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
   integer :: count, dtype, ierr, id
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -409,6 +633,7 @@ subroutine pipe_recv( this, rtag, nslice )
   if ( present(nslice) ) ns = nslice
 
   lnvp       = this%pp%getlnvp()
+  stageid    = this%pp%getstageid()
   idproc     = this%pp%getidproc()
   idproc_src = idproc - lnvp
   comm       = this%pp%getlworld()
@@ -416,22 +641,25 @@ subroutine pipe_recv( this, rtag, nslice )
   n1p        = size(this%rf_re(0)%f1,2)
   gc         = this%rf_re(0)%get_gc_num(1)
 
-  if ( idproc_src < 0 ) return
+  if ( stageid == 0 ) then
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    return
+  endif
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, ns, 2*this%num_modes+1 ) )
+    allocate( this%precv_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
   endif
-  
+
   count = size( this%precv_buf )
-  call MPI_IRECV( this%precv_buf, count, dtype, idproc_src, rtag, comm, id, ierr )
-  call MPI_WAIT( id, stat, ierr )
+  call MPI_RECV( this%precv_buf, count, dtype, idproc_src, rtag, comm, stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
-    call write_err( 'MPI_IRECV failed.' )
+    call write_err( 'MPI_RECV failed.' )
   endif
 
   ! copy m=0 mode
-  do k = 1, nslice
+  do k = 1, ns
     do j = 1, n1p
       do i = 1, this%dim
         this%rf_re(0)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,0)
@@ -442,17 +670,17 @@ subroutine pipe_recv( this, rtag, nslice )
   ! copy m>0 mode
   if ( this%num_modes > 0 ) then
     do m = 1, this%num_modes
-      do k = 1, nslice
+      do k = 1, ns
         do j = 1, n1p
           do i = 1, this%dim
-            this%rf_re(m)%f2( i, j-gc(1), 1-ns+k ) = this%psend_buf(i,j,k,2*m-1)
-            this%rf_im(m)%f2( i, j-gc(1), 1-ns+k ) = this%psend_buf(i,j,k,2*m)
+            this%rf_re(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m-1)
+            this%rf_im(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m)
           enddo
         enddo
       enddo
     enddo
   endif
-    
+
   call stop_tprof( 'pipeline' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -530,7 +758,7 @@ subroutine smooth_f1( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( .not. this%smooth%if_smooth() ) return
-  
+
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
@@ -568,7 +796,7 @@ function get_dxi( this )
   real :: get_dxi
 
   get_dxi = this%dxi
-  
+
 end function get_dxi
 
 function get_num_modes( this )
@@ -579,8 +807,19 @@ function get_num_modes( this )
   integer :: get_num_modes
 
   get_num_modes = this%num_modes
-  
+
 end function get_num_modes
+
+function get_dim( this )
+
+  implicit none
+
+  class( field ), intent(in) :: this
+  integer :: get_dim
+
+  get_dim = this%dim
+
+end function get_dim
 
 function get_rf_re_all( this )
 
@@ -996,521 +1235,5 @@ subroutine sub_f2_unitary( a1, a2 )
   enddo
 
 end subroutine sub_f2_unitary
-
-! function add_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) + a2
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) + a2
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) + a2%get_rf_re(i)
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) + a2%get_rf_im(i)
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function add_f1_v1
-
-! function add_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     ua3_re(i) = a1%rf_re(i) + a2
-!     if (i==0) cycle
-!     ua3_im(i) = a1%rf_im(i) + a2
-!   enddo
-
-! end function add_f1_v2
-
-! function dot_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) * a2
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) * a2
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) * a2%get_rf_re(i)
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) * a2%get_rf_im(i)
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function dot_f1_v1
-
-! function dot_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     ua3_re(i) = a1%rf_re(i) * a2
-!     if (i==0) cycle
-!     ua3_im(i) = a1%rf_im(i) * a2
-!   enddo
-
-! end function dot_f1_v2
-
-! function sub_f1_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) - a2
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) - a2
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       ua3_re(i) = a1%rf_re(i) - a2%get_rf_re(i)
-!       if (i==0) cycle
-!       ua3_im(i) = a1%rf_im(i) - a2%get_rf_im(i)
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function sub_f1_v1
-
-! function sub_f1_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     ua3_re(i) = a1%rf_re(i) - a2
-!     if (i==0) cycle
-!     ua3_im(i) = a1%rf_im(i) - a2
-!   enddo
-
-! end function sub_f1_v2
-
-! subroutine add_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1, a2
-!   class( field ), intent(inout) :: a3
-!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
-!     if (i==0) cycle
-!     call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
-!   enddo
-
-! end subroutine add_f2_dim
-
-
-
-! subroutine sub_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1, a2
-!   class( field ), intent(inout) :: a3
-!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
-!     if (i==0) cycle
-!     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
-!   enddo
-
-! end subroutine sub_f2_dim
-
-! subroutine sub_f2_all( a1, a2, a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1, a2
-!   class( field ), intent(inout) :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
-!     if (i==0) cycle
-!     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
-!   enddo
-
-! end subroutine sub_f2_all
-
-! subroutine dot_f2_dim( a1, a2, a3, dim1, dim2, dim3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1, a2
-!   class( field ), intent(inout) :: a3
-!   integer, intent(in), dimension(:) :: dim1, dim2, dim3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call dot_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
-!     if (i==0) cycle
-!     call dot_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
-!   enddo
-
-! end subroutine dot_f2_dim
-
-! subroutine dot_f2_all( a1, a2, a3 )
-
-!   implicit none
-
-!   class( * ), intent(in) :: a1, a2
-!   class( field ), intent(inout) :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a1)
-
-!   type is (real)
-
-!     select type (a2)
-
-!       type is  (real)
-
-!         do i = 0, a3%num_modes
-!           call dot_f2( a1, a2, ua3_re(i) )
-!           if (i==0) cycle
-!           call dot_f2( a1, a2, ua3_im(i) )
-!         enddo
-
-!       class is (field)
-
-!         do i = 0, a3%num_modes
-!           call dot_f2( a1, a2%rf_re(i), ua3_re(i) )
-!           if (i==0) cycle
-!           call dot_f2( a1, a2%rf_im(i), ua3_im(i) )
-!         enddo
-
-!       class default
-
-!         call write_err( "invalid assignment type!" )
-
-!     end select
-
-!   class is (field)
-
-!     select type (a2)
-
-!       type is (real)
-
-!         do i = 0, a3%num_modes
-!           call dot_f2( a1%rf_re(i), a2, ua3_re(i) )
-!           if (i==0) cycle
-!           call dot_f2( a1%rf_im(i), a2, ua3_im(i) )
-!         enddo
-
-!       class is (field)
-
-!         do i = 0, a3%num_modes
-!           call dot_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
-!           if (i==0) cycle
-!           call dot_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
-!         enddo
-
-!       class default
-
-!         call write_err( "invalid assignment type!" )
-
-!     end select
-
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end subroutine dot_f2_all
-
-! function add_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .add. a2%get_rf_re(i) )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .add. a2%get_rf_im(i) )
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function add_f2_v1
-
-! function add_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call ua3_re(i)%as( a1%rf_re(i) .add. a2 )
-!     if (i==0) cycle
-!     call ua3_im(i)%as( a1%rf_im(i) .add. a2 )
-!   enddo
-
-! end function add_f2_v2
-
-! function dot_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .dot. a2%get_rf_re(i) )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .dot. a2%get_rf_im(i) )
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function dot_f2_v1
-
-! function dot_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call ua3_re(i)%as( a1%rf_re(i) .dot. a2 )
-!     if (i==0) cycle
-!     call ua3_im(i)%as( a1%rf_im(i) .dot. a2 )
-!   enddo
-
-! end function dot_f2_v2
-
-! function sub_f2_v1( a1, a2 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   class(*), intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   select type (a2)
-!   type is (real)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .sub. a2 )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .sub. a2 )
-!     enddo
-!   class is (field)
-!     do i = 0, a1%num_modes
-!       call ua3_re(i)%as( a1%rf_re(i) .sub. a2%get_rf_re(i) )
-!       if (i==0) cycle
-!       call ua3_im(i)%as( a1%rf_im(i) .sub. a2%get_rf_im(i) )
-!     enddo
-!   class default
-!     call write_err( "invalid assignment type!" )
-!   end select
-
-! end function sub_f2_v1
-
-! function sub_f2_v2( a2, a1 ) result( a3 )
-
-!   implicit none
-
-!   class( field ), intent(in) :: a1
-!   real, intent(in) :: a2
-!   class( field ), allocatable :: a3
-
-!   class( ufield ), dimension(:), pointer :: ua3_re => null(), ua3_im => null()
-!   integer :: i
-
-!   allocate(a3)
-!   call a3%new(a1)
-!   ua3_re => a3%get_rf_re()
-!   ua3_im => a3%get_rf_im()
-
-!   do i = 0, a1%num_modes
-!     call ua3_re(i)%as( a2 .sub. a1%rf_re(i) )
-!     if (i==0) cycle
-!     call ua3_im(i)%as( a2 .sub. a1%rf_im(i) )
-!   enddo
-
-! end function sub_f2_v2
 
 end module field_class
