@@ -557,7 +557,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 ) - dr*dr
+      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 ) - dr2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -626,6 +626,8 @@ subroutine set_struct_matrix( this, pp, gp, dr )
     end select
 
   endif
+
+  HYPRE_BUF = HYPRE_BUF / dr2
 
   call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
     this%stencil_idx, HYPRE_BUF, ierr )

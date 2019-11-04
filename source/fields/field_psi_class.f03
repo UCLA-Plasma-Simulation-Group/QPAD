@@ -31,13 +31,12 @@ type, extends( field ) :: field_psi
   generic :: new => init_field_psi
   procedure :: del => end_field_psi
   ! generic :: read_input => read_input_field_psi
-  generic :: solve => solve_field_psi
+  procedure :: solve => solve_field_psi
 
   procedure, private :: init_field_psi
   procedure, private :: end_field_psi
   procedure, private :: set_source
   procedure, private :: get_solution
-  procedure, private :: solve_field_psi
 
 end type field_psi
 
@@ -64,12 +63,12 @@ subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary, iter_t
   dr = gp%get_dr()
 
   select case ( part_shape )
-  
+
   case ( p_ps_linear )
-  
+
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/4, 1/)
-  
+    gc_num(:,2) = (/2, 1/)
+
   case ( p_ps_quadratic )
 
     call write_err( "Quadratic particle shape not implemented." )
@@ -122,56 +121,38 @@ subroutine end_field_psi( this )
 
 end subroutine end_field_psi
 
-subroutine set_source( this, mode, q_ax, q_re, q_im )
+subroutine set_source( this, mode, q_re, q_im )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
   class( ufield ), intent(in) :: q_re
   class( ufield ), intent(in), optional :: q_im
-  real, intent(in) :: q_ax
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, dtype, ierr, comm, idproc
+  integer :: i, nrp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real, save :: local_sum, global_sum
-  real :: dr, dr2, rmax
+  real :: dr2
   character(len=20), save :: sname = 'set_source'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve psi' )
 
-  nrp   = q_re%get_ndp(1)
-  noff  = q_re%get_noff(1)
-  dr    = this%dr
-  dr2   = dr**2
-  dtype = q_re%pp%getmreal()
-  comm  = q_re%pp%getlgrp()
-  idproc= q_re%pp%getlidproc()
-  rmax  = q_re%get_nd(1) * dr
+  nrp = q_re%get_ndp(1)
+  dr2 = this%dr**2
 
   f1_re => q_re%get_f1()
+  this%buf_re = 0.0
   if ( present(q_im) ) then
     f1_im => q_im%get_f1()
+    this%buf_im = 0.0
   endif
 
-  this%buf_re = 0.0
-  if ( present(q_im) ) this%buf_im = 0.0
   if ( mode == 0 ) then
 
-    select case ( this%solver(0)%bnd )
-
-    case ( p_bnd_zero, p_bnd_open )
-      do i = 1, nrp
-        this%buf_re(i) = -1.0 * f1_re(1,i)
-      enddo
-
-      if ( idproc == 0 ) this%buf_re(1) = this%buf_re(1) + q_ax / 0.5
-
-      ! if ( idproc == 0 ) this%q_ax = -1.0*dr2*f1_re(1,0)
-      ! call MPI_BCAST( this%q_ax, 1, dtype, 0, comm, ierr )
-
-    end select
+    do i = 1, nrp
+      this%buf_re(i) = -1.0 * f1_re(1,i)
+    enddo
 
   elseif ( mode > 0 .and. present(q_im) ) then
 
@@ -189,68 +170,36 @@ subroutine set_source( this, mode, q_ax, q_re, q_im )
 
 end subroutine set_source
 
-subroutine get_solution( this, mode, idx, q_ax )
+subroutine get_solution( this, mode )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  integer, intent(in) :: mode, idx
-  real, intent(in), optional :: q_ax
+  integer, intent(in) :: mode
 
-  integer :: i, j, nrp, noff
+  integer :: i, nrp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real, dimension(:,:,:), pointer :: f2_re => null(), f2_im => null()
-  real :: r, r2, rmax, rmax2
-  ! longitudinal smooth
-  ! real, dimension(0:4), save :: s = (/ 0.429447852760736, &
-  !                                    0.343558282208589, &
-  !                                    0.171779141104294, &
-  !                                    0.049079754601227, &
-  !                                    0.006134969325153 /)
-  real, dimension(0:4), save :: s = (/ 0.38, 0.32, 0.2, 0.08, 0.02 /)
   character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve psi' )
 
   nrp   = this%rf_re(mode)%get_ndp(1)
-  noff  = this%rf_re(mode)%get_noff(1)
-  rmax  = (this%rf_re(mode)%get_nd(1)+0.5) * this%dr
-  rmax2 = rmax**2
-
-  if ( mode == 0 .and. present(q_ax) ) then
-    select case ( this%solver(0)%bnd )
-
-    case ( p_bnd_zero, p_bnd_open )
-
-      ! add contribution of the source terms on axis
-      do i = 1, nrp
-        r = (i+noff-0.5) * this%dr
-        ! this%buf_re(i) = this%buf_re(i) + q_ax * log(r/rmax)
-        this%buf_re(i) = this%buf_re(i)
-      enddo
-
-    end select
-  endif
 
   f1_re => this%rf_re(mode)%get_f1()
-  f2_re => this%rf_re(mode)%get_f2()
   do i = 1, nrp
-    ! f1_re(1,i) = this%buf_re(i)
-    f1_re(1,i) = s(0) * this%buf_re(i)
-    do j = 1, 4
-      f1_re(1,i) = f1_re(1,i) + s(j) * f2_re(1,i,idx-j)
-    enddo
+    f1_re(1,i) = this%buf_re(i)
   enddo
 
   if ( mode > 0 ) then
     f1_im => this%rf_im(mode)%get_f1()
-    f2_im => this%rf_im(mode)%get_f2()
     do i = 1, nrp
-      ! f1_im(1,i) = this%buf_im(i)
-      f1_im(1,i) = s(0) * this%buf_im(i)
-      f1_im(1,i) = f1_im(1,i) + s(j) * f2_im(1,i,idx-j)
+      f1_im(1,i) = this%buf_im(i)
     enddo
+
+    ! psi(m>0) vanishes on axis
+    f1_re(1,1) = 0.0
+    f1_im(1,1) = 0.0
   endif
 
   call stop_tprof( 'solve psi' )
@@ -258,45 +207,152 @@ subroutine get_solution( this, mode, idx, q_ax )
 
 end subroutine get_solution
 
-subroutine solve_field_psi( this, q, idx )
+! subroutine get_solution( this, mode, idx, q_ax )
+
+!   implicit none
+
+!   class( field_psi ), intent(inout) :: this
+!   integer, intent(in) :: mode, idx
+!   real, intent(in), optional :: q_ax
+
+!   integer :: i, j, nrp, noff
+!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+!   real, dimension(:,:,:), pointer :: f2_re => null(), f2_im => null()
+!   real :: r, r2, rmax, rmax2
+!   ! longitudinal smooth
+!   ! real, dimension(0:4), save :: s = (/ 0.429447852760736, &
+!   !                                    0.343558282208589, &
+!   !                                    0.171779141104294, &
+!   !                                    0.049079754601227, &
+!   !                                    0.006134969325153 /)
+!   real, dimension(0:4), save :: s = (/ 0.38, 0.32, 0.2, 0.08, 0.02 /)
+!   character(len=20), save :: sname = 'get_solution'
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+!   call start_tprof( 'solve psi' )
+
+!   nrp   = this%rf_re(mode)%get_ndp(1)
+!   noff  = this%rf_re(mode)%get_noff(1)
+!   rmax  = (this%rf_re(mode)%get_nd(1)+0.5) * this%dr
+!   rmax2 = rmax**2
+
+!   if ( mode == 0 .and. present(q_ax) ) then
+!     select case ( this%solver(0)%bnd )
+
+!     case ( p_bnd_zero, p_bnd_open )
+
+!       ! add contribution of the source terms on axis
+!       do i = 1, nrp
+!         r = (i+noff-0.5) * this%dr
+!         ! this%buf_re(i) = this%buf_re(i) + q_ax * log(r/rmax)
+!         this%buf_re(i) = this%buf_re(i)
+!       enddo
+
+!     end select
+!   endif
+
+!   f1_re => this%rf_re(mode)%get_f1()
+!   f2_re => this%rf_re(mode)%get_f2()
+!   do i = 1, nrp
+!     ! f1_re(1,i) = this%buf_re(i)
+!     f1_re(1,i) = s(0) * this%buf_re(i)
+!     do j = 1, 4
+!       f1_re(1,i) = f1_re(1,i) + s(j) * f2_re(1,i,idx-j)
+!     enddo
+!   enddo
+
+!   if ( mode > 0 ) then
+!     f1_im => this%rf_im(mode)%get_f1()
+!     f2_im => this%rf_im(mode)%get_f2()
+!     do i = 1, nrp
+!       ! f1_im(1,i) = this%buf_im(i)
+!       f1_im(1,i) = s(0) * this%buf_im(i)
+!       f1_im(1,i) = f1_im(1,i) + s(j) * f2_im(1,i,idx-j)
+!     enddo
+!   endif
+
+!   call stop_tprof( 'solve psi' )
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine get_solution
+
+subroutine solve_field_psi( this, q )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
   class( field_rho ), intent(inout) :: q
-  integer, intent(in) :: idx
 
   type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
-  integer :: i
+  integer :: mode
   character(len=20), save :: sname = 'solve_field_psi'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call q%get_q_ax()
-
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
 
-  do i = 0, this%num_modes
+  do mode = 0, this%num_modes
 
-    if ( i == 0 ) then
-      call this%set_source( i, q%q_ax, q_re(i) )
-      call this%solver(i)%solve( this%buf_re )
-      call this%get_solution( i, idx, q%q_ax )
+    if ( mode == 0 ) then
+      call this%set_source( mode, q_re(mode) )
+      call this%solver(mode)%solve( this%buf_re )
+      call this%get_solution(mode)
       cycle
     endif
 
-    call this%set_source( i, q%q_ax, q_re(i), q_im(i) )
-    call this%solver(i)%solve( this%buf_re )
-    call this%solver(i)%solve( this%buf_im )
-    call this%get_solution(i, idx)
+    call this%set_source( mode, q_re(mode), q_im(mode) )
+    call this%solver(mode)%solve( this%buf_re )
+    call this%solver(mode)%solve( this%buf_im )
+    call this%get_solution(mode)
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. )
+  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_psi
+
+! subroutine solve_field_psi( this, q, idx )
+
+!   implicit none
+
+!   class( field_psi ), intent(inout) :: this
+!   class( field_rho ), intent(inout) :: q
+!   integer, intent(in) :: idx
+
+!   type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
+!   integer :: i
+!   character(len=20), save :: sname = 'solve_field_psi'
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+!   call q%get_q_ax()
+
+!   q_re => q%get_rf_re()
+!   q_im => q%get_rf_im()
+
+!   do i = 0, this%num_modes
+
+!     if ( i == 0 ) then
+!       call this%set_source( i, q%q_ax, q_re(i) )
+!       call this%solver(i)%solve( this%buf_re )
+!       call this%get_solution( i, idx, q%q_ax )
+!       cycle
+!     endif
+
+!     call this%set_source( i, q%q_ax, q_re(i), q_im(i) )
+!     call this%solver(i)%solve( this%buf_re )
+!     call this%solver(i)%solve( this%buf_im )
+!     call this%get_solution(i, idx)
+
+!   enddo
+
+!   call this%copy_gc_f1( bnd_ax = .true. )
+
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine solve_field_psi
 
 end module field_psi_class
