@@ -311,12 +311,11 @@ subroutine copy_slice( this, idx, dir )
 
 end subroutine copy_slice
 
-subroutine copy_gc_f1( this, bnd_ax )
+subroutine copy_gc_f1( this )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
-  logical, intent(in) :: bnd_ax
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
   integer :: nrp, count, dtype
@@ -350,21 +349,6 @@ subroutine copy_gc_f1( this, bnd_ax )
     ! wait receiving finish
     if ( idproc > 0 ) then
       call MPI_WAIT( msgid, stat, ierr )
-    else
-
-      if ( bnd_ax ) then
-        if ( mod(this%mode,2) == 0 ) then
-          pha = 1.0
-        else
-          pha = -1.0
-        endif
-        do j = 1, this%gc_num(p_lower,1)
-          do i = 1, this%dim
-            this%f1(i,1-j) = pha * this%f1(i,j)
-          enddo
-        enddo
-      endif
-
     endif
   endif
 
@@ -391,12 +375,11 @@ subroutine copy_gc_f1( this, bnd_ax )
 
 end subroutine copy_gc_f1
 
-subroutine copy_gc_f2( this, bnd_ax )
+subroutine copy_gc_f2( this )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
-  logical, intent(in) :: bnd_ax
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
   integer :: nrp, nzp, count, dtype, lgc1, ugc1, lgc2, ugc2
@@ -453,24 +436,6 @@ subroutine copy_gc_f2( this, bnd_ax )
           enddo
         enddo
       enddo
-
-    else
-
-      if ( bnd_ax ) then
-        if ( mod(this%mode,2) == 0 ) then
-          pha = 1.0
-        else
-          pha = -1.0
-        endif
-        do k = 1, size(this%f2,3)
-          do j = 1, lgc1
-            do i = 1, this%dim
-              this%f2(i,1-j,k) = pha * this%f2(i,j,k)
-            enddo
-          enddo
-        enddo
-      endif
-
     endif
   endif
 

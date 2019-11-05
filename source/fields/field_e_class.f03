@@ -325,7 +325,7 @@ end subroutine end_field_e
 
 !   enddo
 
-!   call this%copy_gc_f1( bnd_ax = .true. )
+!   call this%copy_gc_f1()
 
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -383,7 +383,7 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
   call stop_tprof( 'solve ez' )
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -487,7 +487,7 @@ subroutine solve_field_et( this, b, psi )
 
   call stop_tprof( 'solve plasma et' )
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -537,7 +537,7 @@ subroutine solve_field_et_beam( this, b )
 
   call stop_tprof( 'solve beam et' )
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

@@ -501,7 +501,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 ) - dr2
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - dr2
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -520,7 +520,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 ) - dr2
+      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - dr2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -532,7 +532,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 ) - dr2
+      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - dr2
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -557,7 +557,7 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 ) - dr2
+      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - dr2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif

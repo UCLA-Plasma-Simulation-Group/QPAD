@@ -10,7 +10,7 @@ use part3d_lib
 use param
 use sys
 
-   
+
 implicit none
 
 private
@@ -28,10 +28,10 @@ type, abstract :: fdist3d
    logical :: evol = .true.
    real :: dx, dz
    real :: z0
-                   
+
    contains
-   
-   generic :: new => init_fdist3d         
+
+   generic :: new => init_fdist3d
    generic :: del => end_fdist3d
    generic :: dist => dist3d
    generic :: dp => deposit_fdist3d
@@ -40,7 +40,7 @@ type, abstract :: fdist3d
    procedure(ab_dist3d), deferred, private :: dist3d
    procedure(ab_deposit_fdist3d), deferred, private :: deposit_fdist3d
    procedure :: getnpf, getnpmax, getevol, getdx, getdz, getz0
-            
+
 end type
 
 abstract interface
@@ -119,94 +119,94 @@ end type fdist3d_001
 character(len=10), save :: cls_name = 'fdist3d'
 integer, save :: cls_level = 2
 character(len=128), save :: erstr
-      
+
 contains
 !
 function getnpf(this)
 
    implicit none
-   
+
    class(fdist3d), intent(in) :: this
    integer :: getnpf
-   
+
    getnpf = this%npf
 
 end function getnpf
-!      
+!
 function getnpmax(this)
 
    implicit none
 
    class(fdist3d), intent(in) :: this
    integer(kind=LG) :: getnpmax
-   
+
    getnpmax = this%npmax
 
 end function getnpmax
-!      
+!
 function getevol(this)
 
    implicit none
 
    class(fdist3d), intent(in) :: this
    logical :: getevol
-   
+
    getevol = this%evol
 
 end function getevol
-!      
+!
 function getdx(this)
 
    implicit none
-   
+
    class(fdist3d), intent(in) :: this
    real :: getdx
-   
+
    getdx = this%dx
 
 end function getdx
-!      
+!
 function getdz(this)
 
    implicit none
-   
+
    class(fdist3d), intent(in) :: this
    real :: getdz
-   
+
    getdz = this%dz
 
 end function getdz
-!      
+!
 function getz0(this)
 
    implicit none
-   
+
    class(fdist3d), intent(in) :: this
    real :: getz0
-   
+
    getz0 = this%z0
 
 end function getz0
-!      
+!
 subroutine end_fdist3d(this)
-    
+
    implicit none
-   
+
    class(fdist3d), intent(inout) :: this
    character(len=18), save :: sname = 'end_fdist3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call write_dbg(cls_name, sname, cls_level, 'ends')
-            
+
 end subroutine end_fdist3d
 !
 subroutine init_fdist3d_000(this,input,i)
 
    implicit none
-   
+
    class(fdist3d_000), intent(inout) :: this
    type(input_json), intent(inout), pointer :: input
-   integer, intent(in) :: i        
+   integer, intent(in) :: i
 ! local data
    integer :: npf,npx,npy,npz,npmax
    real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvx,sigvy,sigvz
@@ -217,7 +217,7 @@ subroutine init_fdist3d_000(this,input,i)
    integer :: nr, nz, num_modes
    character(len=20) :: sn,s1
    character(len=18), save :: sname = 'init_fdist3d_000:'
-   
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%p => input%pp
@@ -232,15 +232,15 @@ subroutine init_fdist3d_000(this,input,i)
    call input%get('simulation.box.r(1)',min)
    call input%get('simulation.box.r(2)',max)
    call input%get(trim(s1)//'.center(1)',bcx)
-   alx = (max-min) 
+   alx = (max-min)
    dr=alx/real(nr)
-   this%rmax = max   
+   this%rmax = max
    call input%get(trim(s1)//'.center(2)',bcy)
    call input%get('simulation.box.z(1)',min)
    call input%get('simulation.box.z(2)',max)
    call input%get(trim(s1)//'.center(3)',bcz)
    bcz = bcz -min
-   alz = (max-min) 
+   alz = (max-min)
    dz=alz/real(nz)
    this%z0 = min
    this%zmin = 0.0
@@ -307,7 +307,7 @@ end subroutine init_fdist3d_000
 subroutine dist3d_000(this,part3d,npp,noff,ndp)
 
    implicit none
-   
+
    class(fdist3d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
@@ -329,7 +329,7 @@ subroutine dist3d_000(this,part3d,npp,noff,ndp)
    character(len=18), save :: sname = 'dist3d_000'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   
+
    ierr = 0; nps = 1
    npx = this%npx; npy = this%npy; npz = this%npz
    pt => part3d
@@ -345,13 +345,13 @@ subroutine dist3d_000(this,part3d,npp,noff,ndp)
    zmax = this%zmax
    zmin = this%zmin
    if (noff(1) == 0) then
-      edges(1) = noff(1)*dr
-      edges(2) = edges(1) + (ndp(1) + 0.5)*dr
+      edges(1) = 0.0
+      edges(2) = edges(1) + ndp(1) * dr
    else
-      edges(1) = (noff(1) + 0.5)*dr
-      edges(2) = edges(1) + ndp(1)*dr
+      edges(1) = noff(1) * dr
+      edges(2) = edges(1) + ndp(1) * dr
    end if
-   edges(3) = noff(2)*dz+zmin
+   edges(3) = noff(2)*dz + zmin
    edges(4) = edges(3) + ndp(2)*dz
 
    call beam_dist000(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
@@ -362,9 +362,9 @@ subroutine dist3d_000(this,part3d,npp,noff,ndp)
       write (erstr,*) 'beam_dist000 error'
       call write_err(cls_name//sname//erstr)
    endif
-   
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine dist3d_000
 !
 subroutine deposit_fdist3d_000(this,q)
@@ -402,7 +402,7 @@ subroutine deposit_fdist3d_000(this,q)
    sigz2 = 0.5/sigz**2
 
    do i = 1, n1p
-      r = (i + noff1 - 0.5) * dr
+      r = (i + noff1 - 1.0) * dr
       do j = 1, n2p+1
          z = (j + noff2) * dz - bcz
          q0(1,i,j) = np*exp(-r**2*sigx2-z**2*sigz2)
@@ -414,10 +414,10 @@ end subroutine deposit_fdist3d_000
 subroutine init_fdist3d_001(this,input,i)
 
    implicit none
-   
+
    class(fdist3d_001), intent(inout) :: this
    type(input_json), intent(inout), pointer :: input
-   integer, intent(in) :: i        
+   integer, intent(in) :: i
 ! local data
    integer :: npf,npr,npth,npz,npmax
    real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvx,sigvy,sigvz
@@ -428,7 +428,7 @@ subroutine init_fdist3d_001(this,input,i)
    integer :: nr, nz, num_modes
    character(len=20) :: sn,s1
    character(len=18), save :: sname = 'init_fdist3d_001:'
-   
+
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%p => input%pp
@@ -443,15 +443,15 @@ subroutine init_fdist3d_001(this,input,i)
    call input%get('simulation.box.r(1)',min)
    call input%get('simulation.box.r(2)',max)
    call input%get(trim(s1)//'.center(1)',bcx)
-   alx = (max-min) 
+   alx = (max-min)
    dr=alx/real(nr)
-   this%rmax = max   
+   this%rmax = max
    call input%get(trim(s1)//'.center(2)',bcy)
    call input%get('simulation.box.z(1)',min)
    call input%get('simulation.box.z(2)',max)
    call input%get(trim(s1)//'.center(3)',bcz)
    bcz = bcz -min
-   alz = (max-min) 
+   alz = (max-min)
    dz=alz/real(nz)
    this%z0 = min
    this%zmin = 0.0
@@ -513,7 +513,7 @@ end subroutine init_fdist3d_001
 subroutine dist3d_001(this,part3d,npp,noff,ndp)
 
    implicit none
-   
+
    class(fdist3d_001), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
@@ -535,7 +535,7 @@ subroutine dist3d_001(this,part3d,npp,noff,ndp)
    character(len=18), save :: sname = 'dist3d_001'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   
+
    ierr = 0; nps = 1
    npr = this%npr; npth = this%npth; npz = this%npz
    pt => part3d
@@ -551,10 +551,10 @@ subroutine dist3d_001(this,part3d,npp,noff,ndp)
    zmax = this%zmax
    zmin = this%zmin
    if (noff(1) == 0) then
-      edges(1) = noff(1)*dr
-      edges(2) = edges(1) + (ndp(1) + 0.5)*dr
+      edges(1) = 0.0
+      edges(2) = edges(1) + ndp(1) * dr
    else
-      edges(1) = (noff(1) + 0.5)*dr
+      edges(1) = noff(1) * dr
       edges(2) = edges(1) + ndp(1)*dr
    end if
    edges(3) = noff(2)*dz+zmin
@@ -568,9 +568,9 @@ subroutine dist3d_001(this,part3d,npp,noff,ndp)
       write (erstr,*) 'beam_dist001 error'
       call write_err(cls_name//sname//erstr)
    endif
-   
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
-   
+
 end subroutine dist3d_001
 !
 subroutine deposit_fdist3d_001(this,q)
@@ -608,7 +608,7 @@ subroutine deposit_fdist3d_001(this,q)
    sigz2 = 0.5/sigz**2
 
    do i = 1, n1p
-      r = (i + noff1 - 0.5) * dr
+      r = (i + noff1 - 1.0) * dr
       do j = 1, n2p+1
          z = (j + noff2) * dz - bcz
          q0(1,i,j) = np*exp(-r**2*sigx2-z**2*sigz2)

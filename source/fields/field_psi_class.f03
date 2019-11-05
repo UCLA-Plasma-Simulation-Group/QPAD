@@ -308,7 +308,7 @@ subroutine solve_field_psi( this, q )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -349,7 +349,7 @@ end subroutine solve_field_psi
 
 !   enddo
 
-!   call this%copy_gc_f1( bnd_ax = .true. )
+!   call this%copy_gc_f1()
 
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

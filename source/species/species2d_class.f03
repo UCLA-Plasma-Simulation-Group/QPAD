@@ -108,7 +108,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    this%cu = 0.0
    call this%pd%qdp(this%qn)
    call this%qn%acopy_gc_f1()
-   call this%qn%copy_gc_f1( bnd_ax = .false. )
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -147,7 +147,7 @@ subroutine renew_species2d(this,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
    call this%qn%acopy_gc_f1()
-   call this%qn%copy_gc_f1( bnd_ax = .false. )
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (this%pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -174,7 +174,7 @@ subroutine qdp_species2d(this,q)
    this%q = 0.0
    call this%pd%qdp(this%q)
    call this%q%acopy_gc_f1()
-   call this%q%copy_gc_f1( bnd_ax = .false. )
+   call this%q%copy_gc_f1()
    ! q = this%q + q + this%qn
    call add_f1( this%q, q )
    call add_f1( this%qn, q )
@@ -205,9 +205,9 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    call this%cu%acopy_gc_f1()
    call this%dcu%acopy_gc_f1()
    call this%amu%acopy_gc_f1()
-   call this%cu%copy_gc_f1( bnd_ax = .false. )
-   call this%dcu%copy_gc_f1( bnd_ax = .false. )
-   call this%amu%copy_gc_f1( bnd_ax = .false. )
+   call this%cu%copy_gc_f1()
+   call this%dcu%copy_gc_f1()
+   call this%amu%copy_gc_f1()
 
    call add_f1( this%cu, cu )
    call add_f1( this%dcu, dcu )

@@ -248,7 +248,7 @@ subroutine run_simulation( this )
       call q_spe%smooth_f1()
 
       call q_spe%copy_slice( j+1, p_copy_1to2 )
-      call psi%solve( q_spe, j+1 )
+      call psi%solve( q_spe )
       do k = 1, this%nspecies
         call spe(k)%extpsi( psi )
       enddo

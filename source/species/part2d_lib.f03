@@ -8,7 +8,7 @@ use ufield_class
 use param
 use sys
 use mpi
-         
+
 implicit none
 
 public
@@ -20,7 +20,7 @@ character(len=128) :: erstr
 private :: cls_name, cls_level, erstr
 
 contains
-!      
+!
 subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
 
    implicit none
@@ -35,7 +35,7 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
    integer :: i, nn, noff, n1p, j
    integer(kind=LG) :: ii
    real, dimension(:,:), pointer :: q0, qr, qi
-   real :: r, qc, th, dd, ad, rcr, rci
+   real :: r, qc, th, lq, rq, rcr, rci
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -47,72 +47,75 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
    qr => null(); qi => null()
 
    do ii = 1, npp
-      r = part(1,ii)/dr
+      r = part(1,ii)/dr + 1.0
       th = part(2,ii)
       qc = part(8,ii)
-      rc0 = cmplx(cos(th),-sin(th),kind=DB)
-      r = r + 0.5
+      rc0 = cmplx(cos(th), -sin(th), kind=DB)
       nn = r
-      dd = qc*(r - real(nn))
-      ad = qc - dd
+      rq = qc * (r - real(nn))
+      lq = qc - rq
       nn = nn - noff
-      r = q0(1,nn) + ad
-      qc = q0(1,nn+1) + dd
-      q0(1,nn) = r
-      q0(1,nn+1) = qc
+      q0(1,nn)   = q0(1,nn)   + lq
+      q0(1,nn+1) = q0(1,nn+1) + rq
       rc = rc0
       do i = 1, num_modes
          rcr = real(rc)
          rci = aimag(rc)
          qr => q_re(i)%get_f1()
          qi => q_im(i)%get_f1()
-         r = qr(1,nn) + ad*rcr
-         qc = qr(1,nn+1) + dd*rcr
-         qr(1,nn) = r
-         qr(1,nn+1) = qc
-         r = qi(1,nn) + ad*rci
-         qc = qi(1,nn+1) + dd*rci
-         qi(1,nn) = r
-         qi(1,nn+1) = qc
-         rc = rc*rc0
-      end do
-   end do
+         qr(1,nn)   = qr(1,nn)   + lq * rcr
+         qr(1,nn+1) = qr(1,nn+1) + rq * rcr
+         qi(1,nn)   = qi(1,nn)   + lq * rci
+         qi(1,nn+1) = qi(1,nn+1) + rq * rci
+         rc = rc * rc0
+      enddo
+   enddo
 
    if (noff == 0) then
-      q0(1,0) = q0(1,0)/0.5
-      do i = 1, num_modes
-         qr => q_re(i)%get_f1()
-         qi => q_im(i)%get_f1()
-         qr(1,0) = qr(1,0)/0.5
-         qi(1,0) = qi(1,0)/0.5
-      end do      
-   else
-      q0(1,0) = q0(1,0)/(0.5+noff-1)
-      do i = 1, num_modes
-         qr => q_re(i)%get_f1()
-         qi => q_im(i)%get_f1()
-         qr(1,0) = qr(1,0)/(0.5+noff-1)
-         qi(1,0) = qi(1,0)/(0.5+noff-1)
-      end do      
-   end if
 
-   do i = 1, n1p+1
-      r = 0.5 + i + noff - 1
-      q0(1,i) = q0(1,i)/r
-   end do
-      
-   do i = 1, num_modes
-      qr => q_re(i)%get_f1()
-      qi => q_im(i)%get_f1()
-      do j = 1, n1p+1
-         r = 0.5 + j + noff - 1
-         qr(1,j) = qr(1,j)/r
-         qi(1,j) = qi(1,j)/r
-      end do      
-   end do
+      q0(1,0) = 0.0 ! guard cell is useless on axis
+      q0(1,1) = 8.0 * q0(1,1)
+      do j = 2, n1p+1
+         r = j + noff - 1
+         q0(1,j) = q0(1,j) / r
+      enddo
+
+      do i = 1, num_modes
+         qr => q_re(i)%get_f1()
+         qi => q_im(i)%get_f1()
+         qr(1,0) = 0.0
+         qi(1,0) = 0.0
+         qr(1,1) = 0.0
+         qi(1,1) = 0.0
+         do j = 2, n1p+1
+            r = j + noff - 1
+            qr(1,j) = qr(1,j) / r
+            qi(1,j) = qi(1,j) / r
+         enddo
+      enddo
+
+   else
+
+      do j = 0, n1p+1
+         r = j + noff -1
+         q0(1,j) = q0(1,j) / r
+      enddo
+
+      do i = 1, num_modes
+         qr => q_re(i)%get_f1()
+         qi => q_im(i)%get_f1()
+         do j = 0, n1p+1
+            r = j + noff -1
+            qr(1,j) = qr(1,j) / r
+            qi(1,j) = qi(1,j) / r
+         enddo
+      enddo
+
+   endif
 
    call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
+
 end subroutine part2d_qdeposit
 !
 subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
@@ -164,7 +167,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       p7 = part(7,ii)
       qc = part(8,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0/dr + 0.5      
+      r = r0/dr + 1.0
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
@@ -333,9 +336,16 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    end do
 
    if (noff == 0) then
-      cu0(1:3,0) = cu0(1:3,0)/0.5
-      dcu0(1:2,0) = dcu0(1:2,0)/0.5
-      amu0(1:3,0) = amu0(1:3,0)/0.5
+
+      ! guard cells on the axis are useless
+      cu0(1:3,0)  = 0.0
+      dcu0(1:2,0) = 0.0
+      amu0(1:3,0) = 0.0
+      !
+      cu0(1:2,1)  = 0.0
+      cu0(3,1)    = 8.0 * cu0(3,1)
+      dcu0(1:2,1) = 0.0
+      amu0(1:3,1) = 0.0
       do i = 1, num_modes
          amur => amu_re(i)%get_f1()
          amui => amu_im(i)%get_f1()
@@ -343,59 +353,93 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
          dcui => dcu_im(i)%get_f1()
          cur => cu_re(i)%get_f1()
          cui => cu_im(i)%get_f1()
+         ! guard cells on the axis are useless
+         cur(1:3,0)  = 0.0
+         dcur(1:2,0) = 0.0
+         amur(1:3,0) = 0.0
+         cui(1:3,0)  = 0.0
+         dcui(1:2,0) = 0.0
+         amui(1:3,0) = 0.0
 
-         cur(1:3,0) = cur(1:3,0)/0.5
-         dcur(1:2,0) = dcur(1:2,0)/0.5
-         amur(1:3,0) = amur(1:3,0)/0.5
-         cui(1:3,0) = cui(1:3,0)/0.5
-         dcui(1:2,0) = dcui(1:2,0)/0.5
-         amui(1:3,0) = amui(1:3,0)/0.5
-      end do      
-   else
-      cu0(1:3,0) = cu0(1:3,0)/(0.5+noff-1)
-      dcu0(1:2,0) = dcu0(1:2,0)/(0.5+noff-1)
-      amu0(1:3,0) = amu0(1:3,0)/(0.5+noff-1)
-      do i = 1, num_modes
-         amur => amu_re(i)%get_f1()
-         amui => amu_im(i)%get_f1()
-         dcur => dcu_re(i)%get_f1()
-         dcui => dcu_im(i)%get_f1()
-         cur => cu_re(i)%get_f1()
-         cui => cu_im(i)%get_f1()
-
-         cur(1:3,0) = cur(1:3,0)/(0.5+noff-1)
-         dcur(1:2,0) = dcur(1:2,0)/(0.5+noff-1)
-         amur(1:3,0) = amur(1:3,0)/(0.5+noff-1)
-         cui(1:3,0) = cui(1:3,0)/(0.5+noff-1)
-         dcui(1:2,0) = dcui(1:2,0)/(0.5+noff-1)
-         amui(1:3,0) = amui(1:3,0)/(0.5+noff-1)
-      end do      
-   end if
-
-   do j = 1, n1p+1
-      r = 0.5 + j + noff - 1
-      cu0(1:3,j) = cu0(1:3,j)/r
-      dcu0(1:2,j) = dcu0(1:2,j)/r
-      amu0(1:3,j) = amu0(1:3,j)/r
-   end do
-
-   do i = 1, num_modes
-      amur => amu_re(i)%get_f1()
-      amui => amu_im(i)%get_f1()
-      dcur => dcu_re(i)%get_f1()
-      dcui => dcu_im(i)%get_f1()
-      cur => cu_re(i)%get_f1()
-      cui => cu_im(i)%get_f1()
-      do j = 1, n1p+1
-         r = 0.5 + j + noff - 1
-         cur(1:3,j) = cur(1:3,j)/r
-         dcur(1:2,j) = dcur(1:2,j)/r
-         amur(1:3,j) = amur(1:3,j)/r
-         cui(1:3,j) = cui(1:3,j)/r
-         dcui(1:2,j) = dcui(1:2,j)/r
-         amui(1:3,j) = amui(1:3,j)/r
+         if ( i == 1 ) then
+            cur(1:2,1)  = 8.0 * cur(1:2,1)
+            cur(3,1)    = 0.0
+            dcur(1:2,1) = 8.0 * dcur(1:2,1)
+            amur(1:3,1) = 0.0
+            cui(1:2,1)  = 8.0 * cui(1:2,1)
+            cui(3,1)    = 0.0
+            dcui(1:2,1) = 8.0 * dcui(1:2,1)
+            amui(1:3,1) = 0.0
+         elseif ( i == 2 ) then
+            cur(1:3,1)  = 0.0
+            dcur(1:2,1) = 0.0
+            amur(1:3,1) = 8.0 * amur(1:3,1)
+            cui(1:3,1)  = 0.0
+            dcui(1:2,1) = 0.0
+            amui(1:3,1) = 8.0 * amui(1:3,1)
+         else
+            cur(1:3,1)  = 0.0
+            dcur(1:2,1) = 0.0
+            amur(1:3,1) = 0.0
+            cui(1:3,1)  = 0.0
+            dcui(1:2,1) = 0.0
+            amui(1:3,1) = 0.0
+         endif
       end do
-   end do
+
+      do j = 2, n1p+1
+         r = j + noff - 1
+         cu0(1:3,j) = cu0(1:3,j) / r
+         dcu0(1:2,j) = dcu0(1:2,j) / r
+         amu0(1:3,j) = amu0(1:3,j) / r
+      end do
+
+      do i = 1, num_modes
+         amur => amu_re(i)%get_f1()
+         amui => amu_im(i)%get_f1()
+         dcur => dcu_re(i)%get_f1()
+         dcui => dcu_im(i)%get_f1()
+         cur => cu_re(i)%get_f1()
+         cui => cu_im(i)%get_f1()
+         do j = 2, n1p+1
+            r = j + noff - 1
+            cur(1:3,j)  = cur(1:3,j) / r
+            dcur(1:2,j) = dcur(1:2,j) / r
+            amur(1:3,j) = amur(1:3,j) / r
+            cui(1:3,j)  = cui(1:3,j) / r
+            dcui(1:2,j) = dcui(1:2,j) / r
+            amui(1:3,j) = amui(1:3,j) / r
+         end do
+      end do
+
+   else
+
+      do j = 0, n1p+1
+         r = j + noff - 1
+         cu0(1:3,j) = cu0(1:3,j) / r
+         dcu0(1:2,j) = dcu0(1:2,j) / r
+         amu0(1:3,j) = amu0(1:3,j) / r
+      end do
+
+      do i = 1, num_modes
+         amur => amu_re(i)%get_f1()
+         amui => amu_im(i)%get_f1()
+         dcur => dcu_re(i)%get_f1()
+         dcui => dcu_im(i)%get_f1()
+         cur => cu_re(i)%get_f1()
+         cui => cu_im(i)%get_f1()
+         do j = 0, n1p+1
+            r = j + noff - 1
+            cur(1:3,j) = cur(1:3,j) / r
+            dcur(1:2,j) = dcur(1:2,j) / r
+            amur(1:3,j) = amur(1:3,j) / r
+            cui(1:3,j) = cui(1:3,j) / r
+            dcui(1:2,j) = dcui(1:2,j) / r
+            amui(1:3,j) = amui(1:3,j) / r
+         end do
+      end do
+
+   end if
 
    call stop_tprof( 'deposit 2D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -438,7 +482,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    er => null(); ei => null(); br => null(); bi => null()
 
    qtmh = 0.5*qbm*dt
-   edge = (real(n1) + 0.5)*dr
+   edge = real(n1) * dr
 
    ii = 1
    do
@@ -449,7 +493,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       p7 = part(7,ii)
       qc = part(8,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0/dr + 0.5      
+      r = r0/dr + 1.0
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd
@@ -507,6 +551,8 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       dx(2) = (rot4*acx + rot5*acy + rot6*acz)*anorm + dx(2)
       dx(3) = (rot7*acx + rot8*acy + rot9*acz)*anorm + dx(3)
       dtc1 = dt/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
+
+      ! there might be some issue
       v1 = r0 + dx(1)*dtc1
       v2 = dx(2)*dtc1
       rn = sqrt(v1*v1+v2*v2)
@@ -523,7 +569,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
             th1 = th
          end if
       end if
-      if (rn >= edge) then 
+      if (rn >= edge) then
          if (ii == npp) then
             npp = npp -1
             exit
@@ -601,12 +647,12 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
    an = real(n1) - 0.5
    if (id == 0) then
       edgel = 0.0
-      edger = (real(n1p) + 0.5)*dr
+      edger = real(n1p) * dr
    else
-      edgel = (real(noff) + 0.5)*dr
+      edgel = real(noff) * dr
       edger = edgel + real(n1p)*dr
    end if
-   iter = 2 
+   iter = 2
    nter = 0
    do
       mter = 0
@@ -649,7 +695,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
 ! copy particle buffers
       do
          iter = iter + 2
-         mter = mter + 1 
+         mter = mter + 1
 ! post receive
          call MPI_IRECV(rbufl,nbsize,mreal,idl,iter-1,lgrp,msid(1),ierr)
          call MPI_IRECV(rbufr,nbsize,mreal,idr,iter,lgrp,msid(2),ierr)
@@ -688,7 +734,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          end if
          jsl(1) = jsl(1) + jss(2)
          nps = max0(nps,jsl(1)+jsr(1))
-  
+
          ibflg(2) = nps
 ! make sure sbufr and sbufl have been sent
          call MPI_WAIT(msid(3),istatus,ierr)
@@ -767,7 +813,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          ibflg(1) = nps
          ibflg(4) = -npt
          iwork = ibflg
-         call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr) 
+         call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr)
          info(2) = ibflg(1)
          info(3) = -ibflg(4)
          ierr = ibflg(1) - npmax
@@ -783,8 +829,8 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          do j = 1, jss(2)
             do i = 1, xdim
                part(i,ihole(j)) = rbufl(i,j)
-            end do 
-         end do 
+            end do
+         end do
          if (jss(1) > jsl(2)) then
             jss(2) = min0(jss(1)-jsl(2),jsr(2))
          else
@@ -864,7 +910,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
       if (ibflg(3) <=  0) exit
       nter = nter + 1
       info(4) = nter
-      write (erstr,*) "new loop, nter=", nter 
+      write (erstr,*) "new loop, nter=", nter
       call write_dbg(cls_name, sname, cls_level, erstr)
    end do
    if (nter > 0) then
@@ -908,7 +954,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
       vx = part(3,ii)
       vy = part(4,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0 + 0.5      
+      r = r0 + 1.0
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd

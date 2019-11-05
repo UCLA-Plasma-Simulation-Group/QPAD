@@ -1060,7 +1060,7 @@ subroutine solve_field_bz( this, jay )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -1097,7 +1097,7 @@ end subroutine solve_field_bz
 
 !   enddo
 
-!   call this%copy_gc_f1( bnd_ax = .true. )
+!   call this%copy_gc_f1()
 
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -1135,7 +1135,7 @@ subroutine solve_field_bt( this, rho )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -1176,7 +1176,7 @@ end subroutine solve_field_bt
 
 !   enddo
 
-!   call this%copy_gc_f1( bnd_ax = .true. )
+!   call this%copy_gc_f1()
 
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -1221,7 +1221,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. ) ! to be finished
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
