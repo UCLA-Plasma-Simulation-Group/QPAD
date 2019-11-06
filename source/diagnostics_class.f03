@@ -449,13 +449,13 @@ subroutine run_sim_diag( this, tstep, dt )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( mod( tstep-1, this%ndump_gcd ) /= 0 ) return
+  if ( mod( tstep, this%ndump_gcd ) /= 0 ) return
 
   call this%to_head()
   if ( .not. associated(this%diag) ) return
 
   do
-    if ( mod( tstep-1, this%diag%df ) == 0 ) then
+    if ( mod( tstep, this%diag%df ) == 0 ) then
 
       call this%diag%set_sim_time( tstep, tstep*dt )
       select type ( obj => this%diag%obj )
