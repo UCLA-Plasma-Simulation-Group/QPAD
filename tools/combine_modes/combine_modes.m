@@ -67,7 +67,7 @@ for ii = 1:10:n_files
     end
   end
 
-  f_comb = [ flipud(f_half2); f_half1 ];
+  f_comb = [ flipud(f_half2(2:end,:)); f_half1 ];
 
   % get hdf5 file info
   file_name_out = genFileName( hfile_out, ii );
