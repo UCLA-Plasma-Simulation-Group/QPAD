@@ -857,7 +857,6 @@ subroutine get_solution_bt( this, mode )
 
     f1_re => this%rf_re(mode)%get_f1()
     do i = 2, nrp-1
-      ir = idr / real(i+noff-1)
       f1_re(1,i) = 0.0
       f1_re(2,i) = -idrh * ( this%buf1_re(i+1) - this%buf1_re(i-1) )
     enddo

@@ -177,14 +177,15 @@ subroutine get_solution( this, mode )
   class( field_psi ), intent(inout) :: this
   integer, intent(in) :: mode
 
-  integer :: i, nrp
+  integer :: i, nrp, idproc
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   character(len=20), save :: sname = 'get_solution'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve psi' )
 
-  nrp   = this%rf_re(mode)%get_ndp(1)
+  nrp    = this%rf_re(mode)%get_ndp(1)
+  idproc = this%rf_re(mode)%pp%getlidproc()
 
   f1_re => this%rf_re(mode)%get_f1()
   do i = 1, nrp
@@ -198,8 +199,10 @@ subroutine get_solution( this, mode )
     enddo
 
     ! psi(m>0) vanishes on axis
-    f1_re(1,1) = 0.0
-    f1_im(1,1) = 0.0
+    if ( idproc == 0 ) then
+      f1_re(1,1) = 0.0
+      f1_im(1,1) = 0.0
+    endif
   endif
 
   call stop_tprof( 'solve psi' )
