@@ -2,7 +2,7 @@ module ufield_smooth_class
 
 use ufield_class
 use param
-use sys
+use sysutil
 use mpi
 
 implicit none
@@ -113,7 +113,7 @@ subroutine end_ufield_smooth( this )
   class( ufield_smooth ), intent(inout) :: this
 
   character(len=20), save :: sname = "end_ufield_smooth"
-  
+
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( associated(this%scoef) ) deallocate( this%scoef )
@@ -202,7 +202,7 @@ subroutine smooth_f1( this, uf, mode )
         do i = 1, dim
 
           o(i, nsm) = pf(i, j+nsm)
-          
+
           f(i) = 0.0
           ! do k = 1-j, nsm
           do k = -nsm, nsm
@@ -370,7 +370,7 @@ end subroutine smooth_f1
 
 !           r = (noff+j+nsm-0.5) * dr
 !           o(i, nsm) = pf(i, j+nsm) * r
-          
+
 !           f(i) = 0.0
 !           ! do k = 1-j, nsm
 !           do k = -nsm, nsm
@@ -519,7 +519,7 @@ end subroutine smooth_f1
 !         do i = 1, dim
 
 !           o(i, nsm) = pf(i, j+nsm)
-          
+
 !           f(i) = 0.0
 !           ! do k = 1-j, nsm
 !           do k = -nsm, nsm

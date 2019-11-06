@@ -6,7 +6,7 @@ use grid_class
 use ufield_class
 use ufield_smooth_class
 use param
-use sys
+use sysutil
 use mpi
 
 implicit none

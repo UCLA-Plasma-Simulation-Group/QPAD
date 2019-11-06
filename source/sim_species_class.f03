@@ -6,7 +6,7 @@ use grid_class
 use fdist2d_class
 use input_class
 use param
-use sys
+use sysutil
 
 implicit none
 

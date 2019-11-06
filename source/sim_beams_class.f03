@@ -9,7 +9,7 @@ use field_class
 use field_src_class
 use hdf5io_class
 use param
-use sys
+use sysutil
 
 implicit none
 

@@ -6,7 +6,7 @@ module part2d_lib
 use parallel_pipe_class
 use ufield_class
 use param
-use sys
+use sysutil
 use mpi
 
 implicit none

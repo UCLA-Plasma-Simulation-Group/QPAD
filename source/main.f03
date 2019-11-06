@@ -1,7 +1,7 @@
 program quickpic_quasi3d
 
 use simulation_class
-use sys
+use sysutil
 
 implicit none
 

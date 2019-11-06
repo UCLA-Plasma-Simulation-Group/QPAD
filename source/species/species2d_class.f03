@@ -4,7 +4,7 @@ module species2d_class
 
 use parallel_pipe_class
 use param
-use sys
+use sysutil
 use grid_class
 use fdist2d_class
 use field_psi_class

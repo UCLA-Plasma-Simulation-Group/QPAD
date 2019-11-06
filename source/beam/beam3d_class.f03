@@ -4,7 +4,7 @@ module beam3d_class
 
 use parallel_pipe_class
 use param
-use sys
+use sysutil
 use fdist3d_class
 use grid_class
 use field_src_class

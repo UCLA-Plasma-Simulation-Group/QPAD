@@ -9,7 +9,7 @@ use sim_species_class
 use field_class
 use beam3d_class
 use species2d_class
-use sys
+use sysutil
 use param
 use input_class
 use mpi

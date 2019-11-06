@@ -1,7 +1,7 @@
 module grid_class
 
 use parallel_pipe_class
-use sys
+use sysutil
 
 implicit none
 
@@ -88,13 +88,13 @@ subroutine end_grid( this )
   implicit none
 
   class( grid ), intent(inout) :: this
-  
+
   character(len=18), save :: sname = 'end_grid'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   ! this routine is only a place-holder now, do nothing.
   call write_dbg( cls_name, sname, cls_level, 'ends' )
-  
+
 end subroutine end_grid
 
 function get_nd_all( this )
@@ -117,7 +117,7 @@ function get_nd_dim( this, dim )
   integer :: get_nd_dim
 
   get_nd_dim = this%nd(dim)
-  
+
 end function get_nd_dim
 
 function get_ndp_all( this )
@@ -140,7 +140,7 @@ function get_ndp_dim( this, dim )
   integer :: get_ndp_dim
 
   get_ndp_dim = this%ndp(dim)
-  
+
 end function get_ndp_dim
 
 function get_nvp_all( this )
@@ -163,7 +163,7 @@ function get_nvp_dim( this, dim )
   integer :: get_nvp_dim
 
   get_nvp_dim = this%nvp(dim)
-  
+
 end function get_nvp_dim
 
 function get_noff_all( this )
@@ -186,7 +186,7 @@ function get_noff_dim( this, dim )
   integer :: get_noff_dim
 
   get_noff_dim = this%noff(dim)
-  
+
 end function get_noff_dim
 
 function get_dr( this )
@@ -197,7 +197,7 @@ function get_dr( this )
   real :: get_dr
 
   get_dr = this%dr
-  
+
 end function get_dr
 
 function get_dxi( this )
@@ -208,7 +208,7 @@ function get_dxi( this )
   real :: get_dxi
 
   get_dxi = this%dxi
-  
+
 end function get_dxi
 
 end module grid_class

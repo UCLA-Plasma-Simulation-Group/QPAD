@@ -16,7 +16,7 @@ use beam3d_class
 use species2d_class
 
 use input_class
-use sys
+use sysutil
 use param
 use mpi
 
