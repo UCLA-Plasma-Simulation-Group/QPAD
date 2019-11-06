@@ -99,7 +99,6 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist000"
    integer(kind=LG) :: i, np, npt
-   integer :: j,k,l
    real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
    real :: borderlz, borderz, r0, sigmar0, trunc = 5.0
 
@@ -225,7 +224,6 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist001"
    integer(kind=LG) :: i, np, npt
-   integer :: j,k,l
    real :: tempr,tempth,tempx,tempy,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
    real :: borderlz, borderz, qm_amp, sigr, trunc = 5.0
 
@@ -466,13 +464,12 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
    integer(kind=LG) :: ii
    real, dimension(:,:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, n2, nn, mm, noff1, n1p, noff2, n2p
-   real :: edge1, edge2, qtmh, qtmh1, qtmh2, dti
-   real :: r0, r, rn, qc, qc1, th, th1, dd, ad, za, zd, rcr, rci
+   real :: edge1, edge2, qtmh
+   real :: r0, r, rn, qc, th, th1, dd, ad, za, zd, rcr, rci
    real :: zz, z
    real, dimension(3) :: dx, dxx, ox, oxx, tmp
-   real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
-   real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
-   real :: dtc1, v1, v2, ngamma, p2, dtx1, dtz1
+   real :: acx, acy, acz
+   real :: v1, v2, ngamma, p2, dtx1, dtz1
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -633,16 +630,15 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
    integer, dimension(2) :: noff
    integer, dimension(2) :: jsr, jsl, jss
    integer :: n1, n2, kstrt, nvpy, nvpz
-   integer :: nproc, lgrp, mreal, mint, mcplx, mdouble, lworld
+   integer :: lgrp, mreal, mint, lworld
    integer, parameter :: iy = 1, iz = 3
-   integer :: ierr, ic, js, ks, mnblok, i, n, m, my, mz, moff, nvp, iter
-   integer :: npr, nps, npt, kl, kr, j, j1, j2, nter, mter
+   integer :: ierr, ic, js, ks, i, n, nvp, iter
+   integer :: nps, npt, kl, kr, j, j1, j2, nter, mter
    integer :: nbsize
    integer :: itermax
    integer, dimension(10) :: istatus
    integer, dimension(4) :: ibflg, iwork, msid
    integer, dimension(2) :: kb
-   real(kind=DB), dimension(2) :: bflg, work
    real :: an, xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')

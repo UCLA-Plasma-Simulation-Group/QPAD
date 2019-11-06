@@ -61,8 +61,7 @@ subroutine init_field_rho( this, pp, gp, num_modes, part_shape, &
   integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
-  real :: dr
+  integer :: dim
   character(len=20), save :: cls_name = "field_rho"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_rho"
@@ -196,7 +195,7 @@ subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
   integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
+  integer :: dim
   character(len=20), save :: cls_name = "field_jay"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_jay"
@@ -252,7 +251,7 @@ subroutine init_field_djdxi( this, pp, gp, num_modes, part_shape, &
   integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
+  integer :: dim
   character(len=20), save :: cls_name = "field_djdxi"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_djdxi"
@@ -310,7 +309,7 @@ subroutine solve_field_djdxi( this, acu, amu )
   real, dimension(:,:), pointer :: uamu_re => null(), uamu_im => null()
   real, dimension(:,:), pointer :: udcu_re => null(), udcu_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
-  real :: idr, idrh, ir, k0
+  real :: idr, idrh, ir
   character(len=20), save :: cls_name = "field_djdxi"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = 'solve_field_djdxi'

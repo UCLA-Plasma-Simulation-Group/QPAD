@@ -224,10 +224,9 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, idproc, nvp, ierr
+  integer :: i, nrp, noff, idproc, nvp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, dr, dr2, ir
-  character(len=32) :: filename
   character(len=20), save :: sname = 'set_source_bz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -416,7 +415,7 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, dtype, ierr, comm
+  integer :: i, nrp, noff, dtype, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real ::dr, dr2, rmax
   character(len=20), save :: sname = 'set_source_bt'
@@ -589,7 +588,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   class( ufield ), intent(in), optional :: djdxi_im, jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, nvp, idproc, noff, ierr
+  integer :: i, nrp, nvp, idproc, noff
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()

@@ -319,9 +319,8 @@ subroutine copy_gc_f1( this )
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
   integer :: nrp, count, dtype
-  integer :: tag = 1, msgid, ierr, i, j
+  integer :: tag = 1, msgid, ierr
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  real :: pha
 
   call start_tprof( 'copy guard cells' )
 
@@ -386,7 +385,6 @@ subroutine copy_gc_f2( this )
   integer :: tag = 1, msgid, ierr, i, j, k
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:), allocatable :: buf1, buf2
-  real :: pha
 
   call start_tprof( 'copy guard cells' )
 
@@ -743,8 +741,6 @@ subroutine assign_f1( this, that )
   class( ufield ), intent(inout) :: this
   class(*), intent(in) :: that
 
-  integer :: i, j
-
   select type (that)
 
     type is (real)
@@ -773,8 +769,6 @@ subroutine assign_f2( this, that )
 
   class( ufield ), intent(inout) :: this
   class(*), intent(in) :: that
-
-  integer :: i, j, k
 
   select type (that)
 

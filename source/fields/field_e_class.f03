@@ -60,7 +60,7 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
   real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp
+  integer :: dim, i
   real :: dr
   character(len=20), save :: sname = "init_field_e"
 
@@ -403,7 +403,7 @@ subroutine solve_field_et( this, b, psi )
   real, dimension(:,:), pointer :: upsi_re => null(), upsi_im => null()
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
-  real :: idr, idrh, ir, k0
+  real :: idr, idrh, ir
   character(len=20), save :: sname = 'solve_field_et'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

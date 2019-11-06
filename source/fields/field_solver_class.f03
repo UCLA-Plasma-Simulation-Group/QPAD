@@ -18,9 +18,6 @@ public :: HYPRE_BUF
 character(len=20), parameter :: cls_name = "field_solver"
 integer, parameter :: cls_level = 4
 
-integer, dimension(4), save :: itime
-double precision, save :: dtime
-
 real, dimension(:), pointer, save :: HYPRE_BUF => null()
 
 type :: field_solver ! class for HYPRE solver
@@ -73,7 +70,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype, tol )
   integer, intent(in) :: kind, stype, mode, bnd
   real, intent(in) :: dr, tol
 
-  integer :: i, j, ierr, comm
+  integer :: ierr, comm
   character(len=20), save :: sname = "init_field_solver"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -193,8 +190,8 @@ subroutine set_struct_solver( this, pp )
   class( field_solver ), intent(inout) :: this
   class( parallel_pipe ), intent(in) :: pp
 
-  integer :: n_post = 1, n_pre = 1, maxiter = 1000, maxiter_pre = 10
-  integer :: i, ierr, precond_id, comm
+  integer :: n_post = 1, n_pre = 1, maxiter = 1000
+  integer :: ierr, precond_id, comm
   character(len=20), save :: sname = "set_struct_solver"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -278,8 +275,7 @@ subroutine solve_equation( this, src_sol )
   class( field_solver ), intent(inout) :: this
   real, intent(inout), dimension(:), pointer :: src_sol
 
-  integer :: local_size, i, ierr
-  integer, dimension(:), pointer, save :: rows => null()
+  integer :: ierr
   character(len=20), save :: sname = "solve_equation"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -366,7 +362,7 @@ subroutine set_struct_grid( this, pp, gp )
   class( parallel_pipe ), intent(in) :: pp
   class( grid ), intent(in) :: gp
 
-  integer :: comm, ierr, dim = 1
+  integer :: comm, ierr
   character(len=20), save :: sname = "set_struct_grid"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

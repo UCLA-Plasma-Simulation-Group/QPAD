@@ -212,7 +212,7 @@ subroutine init_fdist3d_000(this,input,i)
    real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvx,sigvy,sigvz
    real :: cx1,cx2,cx3,cy1,cy2,cy3,gamma,np
    logical :: quiet, evol
-   real :: min, max, cwp, n0, rmax, zmin, zmax
+   real :: min, max, cwp, n0
    real :: alx, alz, dr, dz
    integer :: nr, nz, num_modes
    character(len=20) :: sn,s1
@@ -318,7 +318,7 @@ subroutine dist3d_000(this,part3d,npp,noff,ndp)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    real, dimension(:,:), pointer :: pt => null()
-   integer :: npx, npy, npz, ipbc
+   integer :: npx, npy, npz
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
@@ -377,7 +377,7 @@ subroutine deposit_fdist3d_000(this,q)
    class(ufield), dimension(:), pointer :: q_re, q_im
    real, dimension(:,:,:), pointer :: q0
    real :: r, z, dr, dz
-   integer :: i, j, nn, mm, noff1, noff2, n1p, n2p
+   integer :: i, j, noff1, noff2, n1p, n2p
    real :: np, sigx, sigz, sigx2, sigz2
    real :: bcz
 
@@ -423,7 +423,7 @@ subroutine init_fdist3d_001(this,input,i)
    real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvx,sigvy,sigvz
    real :: cx1,cx2,cx3,cy1,cy2,cy3,gamma,np
    logical :: quiet, evol
-   real :: min, max, cwp, n0, rmax, zmin, zmax
+   real :: min, max, cwp, n0
    real :: alx, alz, dr, dz
    integer :: nr, nz, num_modes
    character(len=20) :: sn,s1
@@ -524,7 +524,7 @@ subroutine dist3d_001(this,part3d,npp,noff,ndp)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    real, dimension(:,:), pointer :: pt => null()
-   integer :: npr, npth, npz, ipbc
+   integer :: npr, npth, npz
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
@@ -583,7 +583,7 @@ subroutine deposit_fdist3d_001(this,q)
    class(ufield), dimension(:), pointer :: q_re, q_im
    real, dimension(:,:,:), pointer :: q0
    real :: r, z, dr, dz
-   integer :: i, j, nn, mm, noff1, noff2, n1p, n2p
+   integer :: i, j, noff1, noff2, n1p, n2p
    real :: np, sigx, sigz, sigx2, sigz2
    real :: bcz
 

@@ -131,8 +131,8 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    integer, intent(in) :: num_modes
 ! local data
    character(len=20), save :: sname = "part2d_amjdeposit"
-   integer :: i, j, k
-   integer(kind=LG) :: ii, jj, kk
+   integer :: i, j
+   integer(kind=LG) :: ii
    real, dimension(:,:), pointer :: e0,b0,cu0,dcu0,amu0
    real, dimension(:,:), pointer :: er,br,cur,dcur,amur
    real, dimension(:,:), pointer :: ei,bi,cui,dcui,amui
@@ -141,7 +141,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    real :: r0, r, qc, qc1, th, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx
    real :: ddx, ddy, vx, vy, acx, acy, omzt, omt, anorm, rot1, rot2
-   real :: v1, v2, v3, v1d, v2d
+   real :: v1, v2, v3
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -464,9 +464,9 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    real, dimension(:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, nn, noff, n1p
    real :: edge, qtmh, qtmh1, qtmh2, p6, p7, ip7
-   real :: r0, r, rn, qc, qc1, th, th1, dd, ad, rcr, rci
+   real :: r0, r, rn, qc, th, th1, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx, om
-   real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
+   real :: acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8, rot9
    real :: dtc1, v1, v2
    complex(kind=DB) :: rc, rc0
@@ -611,14 +611,14 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
 ! local data
    character(len=20), save :: sname = "part2d_pmove"
    integer :: i, j1, j2
-   integer(kind=LG) :: ii, j, npt
+   integer(kind=LG) :: j, npt
    integer, dimension(2) :: jsr, jsl, jss
    integer, dimension(4) :: ibflg, msid, iwork
    integer, dimension(MPI_STATUS_SIZE) :: istatus
    integer, dimension(10) :: info
    integer :: itermax, nvp, n1, n1p, noff, iter, nter, nps
-   integer :: id, idl, idr, mter, nbsize, n
-   integer :: mreal, mint, mcplx, mdouble, lworld, lgrp, ierr
+   integer :: id, idl, idr, mter, nbsize
+   integer :: mreal, mint, lworld, lgrp, ierr
    real :: edgel,edger,an,xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -935,7 +935,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
 ! local data
    character(len=20), save :: sname = "part2d_extractpsi"
    real, dimension(:,:), pointer :: psi0,psir,psii
-   real :: r0, r, th, vx, vy, dx, dxx, ad, dd, rci, rcr
+   real :: r0, r, th, vx, vy, dx, ad, dd, rci, rcr
    complex(kind=DB) :: rc, rc0
    integer(kind=LG) :: ii
    integer :: i, noff, n1p, nn

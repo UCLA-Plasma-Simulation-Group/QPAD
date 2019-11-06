@@ -52,7 +52,6 @@ save
 
 character(len=10) :: cls_name = 'beam3d'
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 
 contains
 !
@@ -69,7 +68,7 @@ subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=32), save :: sname = 'init_beam3d'
-   integer :: id, num_modes, ierr
+   integer :: id, ierr
    integer, dimension(10) :: istat
 
    call write_dbg(cls_name, sname, cls_level, 'starts')

@@ -498,7 +498,7 @@ subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  character(len=80) :: string
  integer(hsize_t) :: lstr
  integer(hsize_t), dimension(3) :: start
- integer :: ori, des, nvyp, stageid, mid, message, info
+ integer :: ori, des, nvyp, mid, message, info
  integer, dimension(10) :: istat
  integer(hsize_t), dimension(1) :: dims
  character(len=:), allocatable :: filename
@@ -611,7 +611,7 @@ subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
   character(len=80) :: string
   integer(hsize_t) :: lstr
   integer(hsize_t), dimension(2) :: start
-  integer :: ori, des, nvyp, stageid, mid, message, info
+  integer :: ori, des, nvyp, mid, message, info
   integer, dimension(10) :: istat
   integer(hsize_t), dimension(1) :: dims
   character(len=:), allocatable :: filename
@@ -722,7 +722,7 @@ subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  character(len=80) :: string
  integer(hsize_t) :: lstr
  integer(hsize_t), dimension(2) :: start
- integer :: ori, des, nvyp, stageid, mid, message, info
+ integer :: ori, des, nvyp, mid, message, info
  integer, dimension(10) :: istat
  integer(hsize_t), dimension(1) :: dims
  character(len=:), allocatable :: filename
@@ -813,17 +813,16 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
  integer, intent(in) :: npp,dspl
  integer, intent(inout) :: ierr
 ! local data
- integer :: tnpp, tp, color, pgrp, pid, pnvp, i, j
+ integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
  integer, dimension(:), pointer :: np
  integer, dimension(:,:), pointer:: dims
  real, dimension(:), pointer :: buff
- integer(hsize_t), dimension(1) :: start,maxdim
+ integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
  integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aspace_id
  integer :: info
- integer, dimension(10) :: istat
  character(len=:), allocatable :: filename
  character(len=8) :: st
 
@@ -985,17 +984,16 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
  integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
 ! local data
- integer :: tnpp, tp, color, pgrp, pid, pnvp, i, j
+ integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
  integer, dimension(:), pointer :: np
  integer, dimension(:,:), pointer:: dims
  real, dimension(:), pointer :: buff
- integer(hsize_t), dimension(1) :: start,maxdim
+ integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
  integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aspace_id
  integer :: info
- integer, dimension(10) :: istat
  character(len=:), allocatable :: filename
  character(len=8) :: st
 
@@ -1182,7 +1180,7 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
  integer, intent(in) :: rtag, stag
  integer, intent(inout) :: id, ierr
 ! local data
- integer :: tnpp, tp, tpo, color, pgrp, pid, pnvp, i, j
+ integer :: tnpp, tp, tpo, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
  integer, dimension(:), pointer :: np
  integer, dimension(:,:), pointer:: dims
@@ -1191,7 +1189,7 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, dcplID, memspaceID, aid
  integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aspace_id
- integer :: ori, des, nvyp, stageid, mid, message, info
+ integer :: ori, des, nvyp, mid, message, info
  integer, dimension(10) :: istat
  character(len=:), allocatable :: filename
  character(len=8) :: st
@@ -1549,7 +1547,7 @@ subroutine rpart(pp,file,part,npp,ierr)
  integer(hsize_t), dimension(1) :: ldim
  integer(hsize_t), dimension(2) :: dim
  integer(hid_t) :: treal
- integer(hid_t) :: file_id, rootID, dset_id, dspace_id, aspace_id
+ integer(hid_t) :: file_id, rootID, dset_id, dspace_id
  integer(hid_t) :: memspaceID, aid
  character(len=:), allocatable :: filename
  character(len=8) :: st

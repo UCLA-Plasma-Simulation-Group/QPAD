@@ -65,7 +65,6 @@ save
 
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
 integer(kind=LG), dimension(:), allocatable :: ihole
 
@@ -84,7 +83,7 @@ subroutine init_part2d(this,pp,pf,fd,qbm,dt,xdim,s)
 
 ! local data
    character(len=18), save :: sname = 'init_part2d'
-   integer :: xtras, noff, nxyp, nx, npmax, nbmax
+   integer :: npmax, nbmax
    class(ufield), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -134,7 +133,6 @@ subroutine renew_part2d(this,pf,fd,s)
    real, intent(in) :: s
 ! local data
    character(len=18), save :: sname = 'renew_part2d'
-   integer :: noff, prof
    class(ufield), pointer :: ud
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -280,7 +278,7 @@ subroutine pipesend_part2d(this, tag, id)
 
    ! local data
    character(len=18), save :: sname = 'pipesend_part2d'
-   integer :: des, ierr, npack
+   integer :: des, ierr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 

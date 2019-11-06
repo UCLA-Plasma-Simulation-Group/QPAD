@@ -61,7 +61,6 @@ save
 
 character(len=10) :: cls_name = 'species2d'
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 
 contains
 !

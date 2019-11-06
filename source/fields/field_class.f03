@@ -317,7 +317,6 @@ subroutine pipe_gc_send( this, tag, sid )
   integer :: idproc, idproc_des, stageid, lnvp, comm
   integer :: n1p, count, dtype, ierr
   integer, dimension(2) :: gc1, gc2
-  integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:,:), allocatable, save :: buf
   character(len=20), save :: sname = "pipe_gc_send"
 
@@ -619,7 +618,7 @@ subroutine pipe_recv( this, rtag, nslice )
 
   integer :: i, j, k, m, ns
   integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
-  integer :: count, dtype, ierr, id
+  integer :: count, dtype, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=20), save :: sname = "pipe_precv"

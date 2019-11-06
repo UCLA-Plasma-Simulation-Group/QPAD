@@ -50,7 +50,7 @@ subroutine init_ufield_smooth( this, type, order )
   real, dimension(:,:), allocatable :: kern3
   real :: comp, total
 
-  integer :: i, j
+  integer :: j
 
   character(len=20), save :: sname = "init_ufield_smooth"
 

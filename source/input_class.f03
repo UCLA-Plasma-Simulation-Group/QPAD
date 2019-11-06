@@ -62,8 +62,8 @@ subroutine read_input_json(this)
 ! local data
    character(len=18), save :: sname = 'read_input_json'
    logical :: found, stat, if_timing
-   character(len=:), allocatable :: ff, boundary, error_msg
-   integer :: length, num_stages, verbose, nr, nz, psolve, ierr
+   character(len=:), allocatable :: ff, error_msg
+   integer :: length, num_stages, verbose, nr, nz, ierr
    real :: dr, dxi, min, max
 
    call p%new()
@@ -123,22 +123,9 @@ subroutine read_input_json(this)
    call this%get( 'simulation.box.z(2)', max )
    dxi = ( max - min ) / nz
 
-   ! call this%get('simulation.boundary',boundary)
-
-   ! select case (trim(boundary))
-   ! case ("conducting")
-   !    psolve = 1
-   ! case default
-   !    psolve = 1
-   ! end select
-
    call gp%new( pp, nr, nz, dr, dxi )
 
    this%gp => gp
-
-   ! call this%get('simulation.verbose',verbose)
-
-   ! call err%setmonitor(verbose)
 
    call write_dbg( cls_name, sname, cls_level, ff )
    call write_dbg( cls_name, sname, cls_level, 'ends' )

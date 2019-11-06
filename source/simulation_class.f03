@@ -75,7 +75,7 @@ subroutine init_simulation(this)
   ! local data
   character(len=18), save :: sname = 'init_simulation'
 
-  real :: n0, dr, dxi, dt, time
+  real :: n0, dt, time
   logical :: read_rst
 
   allocate( this%input )
@@ -136,7 +136,6 @@ subroutine end_simulation(this)
 
   ! local data
   character(len=18), save :: sname = 'end_simulation'
-  integer :: ierr
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -159,7 +158,7 @@ subroutine run_simulation( this )
 
   class( simulation ), intent(inout) :: this
 
-  integer :: i, j, k, l, ierr, id
+  integer :: i, j, k, l, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation'
 

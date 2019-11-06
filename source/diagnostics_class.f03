@@ -440,7 +440,6 @@ subroutine run_sim_diag( this, tstep, dt )
   real, intent(in) :: dt
 
   ! local data
-  class(*), pointer :: obj => null()
   integer :: stag, rtag, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
 

@@ -204,11 +204,11 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
 ! local data
    character(len=18), save :: sname = 'dist2d_000'
    real, dimension(:,:), pointer :: pt => null()
-   integer(kind=LG) :: nps, i, j
+   integer(kind=LG) :: nps, i
    integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
    real :: qm, den_temp
    integer :: prof_l
-   real :: r1, t0, t1, dr
+   real :: r1, t0, dr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -275,9 +275,6 @@ subroutine init_fdist2d_012(this,input,i)
    integer :: npf,ppc1,ppc2,n1,nmode
    integer(kind=LG) :: npmax
    real :: qm, den, lr, ur
-   ! real :: cx, cy
-   real :: min, max
-   ! real :: alx, aly, dx, dy
    character(len=20) :: sn,s1
    character(len=18), save :: sname = 'init_fdist2d_012:'
 
@@ -326,11 +323,11 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
    real, dimension(:,:), pointer :: pt => null()
-   integer(kind=LG) :: nps, i, j
+   integer(kind=LG) :: nps, i
    integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
    real :: qm, den_temp
    integer :: prof_l, ii
-   real :: r1, t0, t1, dr, rr
+   real :: r1, t0, dr, rr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
