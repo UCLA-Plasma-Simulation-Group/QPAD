@@ -760,12 +760,12 @@ subroutine smooth_f1( this )
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
-      call this%smooth%smooth_f1( this%rf_re(i), i )
+      call this%smooth%smooth_f1( this%rf_re(i) )
       cycle
     endif
 
-    call this%smooth%smooth_f1( this%rf_re(i), i )
-    call this%smooth%smooth_f1( this%rf_im(i), i )
+    call this%smooth%smooth_f1( this%rf_re(i) )
+    call this%smooth%smooth_f1( this%rf_im(i) )
 
   enddo
 

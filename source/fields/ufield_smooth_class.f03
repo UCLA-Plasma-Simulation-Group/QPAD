@@ -21,6 +21,8 @@ type :: ufield_smooth
   integer :: type
   integer :: order
   real, dimension(:), pointer :: scoef => null()
+  real, dimension(:), pointer :: ax_norm_fac => null()
+  real, dimension(:), pointer :: bnd_norm_fac => null()
 
   contains
 
@@ -28,7 +30,7 @@ type :: ufield_smooth
   generic :: del => end_ufield_smooth
   procedure, private :: init_ufield_smooth
   procedure, private :: end_ufield_smooth
-  procedure :: smooth_f1
+  procedure :: smooth_f1 => smooth_f1_qcons
   procedure :: if_smooth
   procedure :: get_scoef, get_order
 
@@ -99,6 +101,18 @@ subroutine init_ufield_smooth( this, type, order )
      total = total + this%scoef(j)
     enddo
     this%scoef = this%scoef / total
+
+    ! normalization factor for on-axis smooth
+    allocate( this%ax_norm_fac(this%order) )
+    do j = 1, this%order
+      this%ax_norm_fac(j) = sum( this%scoef(1-j:this%order) )
+    enddo
+
+    ! normalization factor for outer boundary smooth
+    allocate( this%bnd_norm_fac(this%order) )
+    do j = 1, this%order
+      this%bnd_norm_fac(j) = sum( this%scoef(-this%order:this%order-j) )
+    enddo
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -123,38 +137,27 @@ subroutine end_ufield_smooth( this )
 end subroutine end_ufield_smooth
 
 !-----------------------------------------------------------------------------------------
-subroutine smooth_f1( this, uf, mode )
+subroutine smooth_f1_qcons( this, uf )
 !-----------------------------------------------------------------------------------------
+! Charge conserved smooth, used for smoothing source terms
 
   implicit none
 
   class( ufield_smooth ), intent(inout) :: this
   class( ufield ), intent(inout) :: uf
-  integer, intent(in) :: mode
-  ! logical, intent(in) :: q_cons
-  ! real, intent(inout), optional :: q_ax
 
   real, dimension(:,:), pointer :: pf => null()
-
-  integer :: ext_lb, ext_ub, int_lb, int_ub
+  integer :: int_lb, int_ub, ext_lb, ext_ub
   integer :: nsm, dim, i, j, k, idproc, nvp, nrp, noff
-  real :: pha
+  real :: r
+  real, dimension(:,:), allocatable, save :: f
 
-  real, dimension(:,:), allocatable, save :: o
-  real, dimension(:), allocatable, save :: f
-
-  character(len=20), save :: sname = "smooth_f1"
+  character(len=20), save :: sname = "smooth_f1_qcons"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
   call start_tprof( 'smooth' )
 
-  pf => uf%get_f1()
-
-  ! exterior boundaries of grid
-  ext_lb = lbound( pf, 2 )
-  ext_ub = ubound( pf, 2 )
-
+  pf     => uf%get_f1()
   nsm    = this%order
   dim    = uf%get_dim()
   idproc = uf%pp%getlidproc()
@@ -168,149 +171,99 @@ subroutine smooth_f1( this, uf, mode )
   if ( idproc == 0 )   int_lb = 1 + nsm
   if ( idproc == nvp-1 ) int_ub = nrp - nsm
 
-  if ( .not. allocated(o) ) then
-    allocate( o(p_max_xdim,-nsm:nsm), f(p_max_xdim) )
+  if ( .not. allocated(f) ) then
+    allocate( f(p_max_xdim, 1-nsm:nrp+nsm) )
   endif
-  o = 0.0
   f = 0.0
 
-  if ( nsm > 0 ) then
+  if ( nsm <= 0 ) then
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    call stop_tprof( 'smooth' )
+    return
+  endif
 
-    do k = -nsm, nsm-1
-    ! do k = 0, nsm-1
+  do j = int_lb, int_ub
+    r = real(noff + j - 1)
+    do k = -nsm, nsm
       do i = 1, dim
-        o(i,k) = pf(i, 1+k)
+        f(i,j+k) = f(i,j+k) + r * pf(i,j) * this%scoef(k)
+      enddo
+    enddo
+  enddo
+
+  ! smooth the grid points near the axis
+  if ( idproc == 0 ) then
+
+    do k = 0, nsm
+      do i = 1, dim
+        f(i,1+k) = f(i,1+k) + 0.125 * pf(i,1) * this%scoef(k) / this%ax_norm_fac(1)
       enddo
     enddo
 
-    ! smooth the axis
-    if ( idproc == 0 ) then
-
-      if ( mod(mode,2) == 0 ) then
-        pha = 1.0
-      else
-        pha = -1.0
-      endif
-
-      do k = -nsm, -1
+    do j = 2, int_lb-1
+      r = real(j-1)
+      do k = 1-j, nsm
         do i = 1, dim
-          o(i,k) = pha * pf(i,-k)
+          f(i,j+k) = f(i,j+k) + r * pf(i,j) * this%scoef(k) / this%ax_norm_fac(j)
         enddo
-      enddo
-
-      do j = 1, int_lb-1
-        do i = 1, dim
-
-          o(i, nsm) = pf(i, j+nsm)
-
-          f(i) = 0.0
-          ! do k = 1-j, nsm
-          do k = -nsm, nsm
-            f(i) = f(i) + o(i,k) * this%scoef(k)
-          enddo
-
-          ! do k = -j, nsm-1
-          do k = -nsm, nsm-1
-            o(i,k) = o(i,k+1)
-          enddo
-
-          pf(i,j) = f(i)
-
-        enddo
-      enddo
-
-      ! if ( q_cons ) then
-
-      !   if ( .not. present(q_ax) ) call write_err( 'Argument q_ax must be provided.' )
-      !   if ( dim /= 1 ) call write_err( 'Charge conserved smooth only applies for scalar field.' )
-
-      !   q_ax = 0.0
-
-      !   ! add the charge smoothed out
-      !   do j = 1, nsm
-      !     do i = -nsm, -j
-      !       q_ax = q_ax + pf(1,j) * this%scoef(i) * real(i+j-0.5)
-      !     enddo
-      !   enddo
-
-      !   ! deduct the charge smoothed in
-      !   do j = 1, nsm
-      !     do i = 1, nsm-j+1
-      !       q_ax = q_ax - real(j-0.5) * pf(1,i) * this%scoef(i)
-      !     enddo
-      !   enddo
-
-      ! endif
-
-    endif
-
-    ! smooth interior region
-    do j = int_lb, int_ub
-      do i = 1, dim
-
-        o(i, nsm) = pf(i, j+nsm)
-
-        f(i) = 0.0
-        do k = -nsm, nsm
-          f(i) = f(i) + o(i,k) * this%scoef(k)
-        enddo
-
-        do k = -nsm, nsm-1
-          o(i,k) = o(i,k+1)
-        enddo
-
-        pf(i,j) = f(i)
-
       enddo
     enddo
-
-    ! smooth outer boundary
-    if ( idproc == nvp-1 ) then
-      do j = int_ub+1, nrp
-        do i = 1, dim
-
-          k = j - int_ub
-          o(i, nsm) = pf(i, nrp-k+1)
-
-          f(i) = 0.0
-          ! do k = -nsm, nsm-j+int_ub
-          do k = -nsm, nsm
-            f(i) = f(i) + o(i,k) * this%scoef(k)
-          enddo
-
-          do k = -nsm, nsm-1
-            o(i,k) = o(i,k+1)
-          enddo
-
-          pf(i,j) = f(i)
-
-        enddo
-      enddo
-    endif
 
   endif
+
+  ! smooth the grid points near the outer boundary
+  if ( idproc == nvp-1 ) then
+
+    do j = int_ub+1, nrp
+      r = real(noff+j-1)
+      do k = -nsm, nsm-j+int_ub
+        do i = 1, dim
+          f(i,j+k) = f(i,j+k) + r * pf(i,j) * this%scoef(k) / this%bnd_norm_fac(j-int_ub)
+        enddo
+      enddo
+    enddo
+
+  endif
+
+  ! convert the smoothed charge to density
+  ext_lb = 1 - nsm
+  ext_ub = nrp + nsm
+  if ( idproc == 0 ) then
+    ext_lb = 2
+    pf(1:dim,1) = 8.0 * f(1:dim,1)
+  endif
+  if ( idproc == nvp-1 ) ext_ub = nrp
+
+  do j = ext_lb, ext_ub
+    r = real(noff + j - 1)
+    do i = 1, dim
+      pf(i,j) = f(i,j) / r
+    enddo
+  enddo
 
   call stop_tprof( 'smooth' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine smooth_f1
+end subroutine smooth_f1_qcons
 !-----------------------------------------------------------------------------------------
 
 ! !-----------------------------------------------------------------------------------------
-! subroutine smooth_f1( this, uf, dr )
+! subroutine smooth_f1( this, uf, mode )
 ! !-----------------------------------------------------------------------------------------
 
 !   implicit none
 
 !   class( ufield_smooth ), intent(inout) :: this
 !   class( ufield ), intent(inout) :: uf
-!   real, intent(in) :: dr
+!   integer, intent(in) :: mode
+!   ! logical, intent(in) :: q_cons
+!   ! real, intent(inout), optional :: q_ax
 
 !   real, dimension(:,:), pointer :: pf => null()
 
 !   integer :: ext_lb, ext_ub, int_lb, int_ub
 !   integer :: nsm, dim, i, j, k, idproc, nvp, nrp, noff
-!   real :: r
+!   real :: pha
 
 !   real, dimension(:,:), allocatable, save :: o
 !   real, dimension(:), allocatable, save :: f
@@ -351,154 +304,6 @@ end subroutine smooth_f1
 !     do k = -nsm, nsm-1
 !     ! do k = 0, nsm-1
 !       do i = 1, dim
-!         r = ( noff + 0.5 + k ) * dr
-!         o(i,k) = pf(i, 1+k) * r
-!       enddo
-!     enddo
-
-!     ! smooth the axis
-!     if ( idproc == 0 ) then
-
-!       do k = -nsm, -1
-!         do i = 1, dim
-!           o(i,k) = o(i,-k-1)
-!         enddo
-!       enddo
-
-!       do j = 1, int_lb-1
-!         do i = 1, dim
-
-!           r = (noff+j+nsm-0.5) * dr
-!           o(i, nsm) = pf(i, j+nsm) * r
-
-!           f(i) = 0.0
-!           ! do k = 1-j, nsm
-!           do k = -nsm, nsm
-!             f(i) = f(i) + o(i,k) * this%scoef(k)
-!           enddo
-
-!           ! do k = -j, nsm-1
-!           do k = -nsm, nsm-1
-!             o(i,k) = o(i,k+1)
-!           enddo
-
-!           r = (noff+j-0.5) * dr
-!           pf(i,j) = f(i) / r
-
-!         enddo
-!       enddo
-!     endif
-
-!     ! smooth interior region
-!     do j = int_lb, int_ub
-!       do i = 1, dim
-
-!         r = (noff+j+nsm-0.5) * dr
-!         o(i, nsm) = pf(i, j+nsm) * r
-
-!         f(i) = 0.0
-!         do k = -nsm, nsm
-!           f(i) = f(i) + o(i,k) * this%scoef(k)
-!         enddo
-
-!         do k = -nsm, nsm-1
-!           o(i,k) = o(i,k+1)
-!         enddo
-
-!         r = (noff+j-0.5) * dr
-!         pf(i,j) = f(i) / r
-
-!       enddo
-!     enddo
-
-!     ! smooth outer boundary
-!     if ( idproc == nvp-1 ) then
-!       do j = int_ub+1, nrp
-!         do i = 1, dim
-
-!           k = j - int_ub
-!           r = (noff+nrp-k+0.5) * dr
-!           o(i, nsm) = pf(i, nrp-k+1) * r
-
-!           f(i) = 0.0
-!           ! do k = -nsm, nsm-j+int_ub
-!           do k = -nsm, nsm
-!             f(i) = f(i) + o(i,k) * this%scoef(k)
-!           enddo
-
-!           do k = -nsm, nsm-1
-!             o(i,k) = o(i,k+1)
-!           enddo
-
-!           r = (noff+j-0.5) * dr
-!           pf(i,j) = f(i) / r
-
-!         enddo
-!       enddo
-!     endif
-
-!   endif
-
-!   call stop_tprof( 'smooth' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine smooth_f1
-! !-----------------------------------------------------------------------------------------
-
-! !-----------------------------------------------------------------------------------------
-! subroutine smooth_f1( this, uf, dr )
-! !-----------------------------------------------------------------------------------------
-
-!   implicit none
-
-!   class( ufield_smooth ), intent(inout) :: this
-!   class( ufield ), intent(inout) :: uf
-!   real, intent(in) :: dr
-
-!   real, dimension(:,:), pointer :: pf => null()
-
-!   integer :: ext_lb, ext_ub, int_lb, int_ub
-!   integer :: nsm, dim, i, j, k, idproc, nvp, nrp, noff
-!   real :: r
-
-!   real, dimension(:,:), allocatable, save :: o
-!   real, dimension(:), allocatable, save :: f, qloss, qcomp
-
-!   character(len=20), save :: sname = "smooth_f1"
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-!   pf => uf%get_f1()
-
-!   ! exterior boundaries of grid
-!   ext_lb = lbound( pf, 2 )
-!   ext_ub = ubound( pf, 2 )
-
-!   nsm    = this%order
-!   dim    = uf%get_dim()
-!   idproc = uf%pp%getlidproc()
-!   nvp    = uf%get_nvp(1)
-!   nrp    = uf%get_ndp(1)
-!   noff   = uf%get_noff(1)
-
-!   ! interior boundaries of grid
-!   int_lb = 1
-!   int_ub = nrp
-!   if ( idproc == 0 )   int_lb = 1 + nsm
-!   if ( idproc == nvp-1 ) int_ub = nrp - nsm
-
-!   if ( .not. allocated(o) ) then
-!     allocate( o(p_max_xdim,-nsm:nsm), f(p_max_xdim), &
-!       qloss(p_max_xdim), qcomp(p_max_xdim) )
-!   endif
-!   o = 0.0
-!   f = 0.0
-
-!   if ( nsm > 0 ) then
-
-!     do k = -nsm, nsm-1
-!     ! do k = 0, nsm-1
-!       do i = 1, dim
 !         o(i,k) = pf(i, 1+k)
 !       enddo
 !     enddo
@@ -506,16 +311,19 @@ end subroutine smooth_f1
 !     ! smooth the axis
 !     if ( idproc == 0 ) then
 
+!       if ( mod(mode,2) == 0 ) then
+!         pha = 1.0
+!       else
+!         pha = -1.0
+!       endif
+
 !       do k = -nsm, -1
 !         do i = 1, dim
-!           o(i,k) = o(i,-k-1)
+!           o(i,k) = pha * pf(i,-k)
 !         enddo
 !       enddo
 
-!       qloss = 0.0
-!       qcomp = 0.0
-
-!       do j = 1, int_lb-1 ! 1, nsm
+!       do j = 1, int_lb-1
 !         do i = 1, dim
 
 !           o(i, nsm) = pf(i, j+nsm)
@@ -524,13 +332,6 @@ end subroutine smooth_f1
 !           ! do k = 1-j, nsm
 !           do k = -nsm, nsm
 !             f(i) = f(i) + o(i,k) * this%scoef(k)
-!           enddo
-
-!           ! calculate charge loss and compensation
-!           r = (j-0.5) * dr
-!           do k = 1, nsm-j+1
-!             qloss(i) = qloss(i) + o(i,0) * (r-dr) * (2-k-j) * this%scoef(k+j-1)
-!             qcomp(i) = qcomp(i) + o(i,k-j) * this%scoef(k) * r
 !           enddo
 
 !           ! do k = -j, nsm-1
@@ -543,7 +344,28 @@ end subroutine smooth_f1
 !         enddo
 !       enddo
 
-!       pf(1:dim,0) = pf(1:dim,0) + ( qloss(1:dim) - qcomp(1:dim) ) / dr
+!       ! if ( q_cons ) then
+
+!       !   if ( .not. present(q_ax) ) call write_err( 'Argument q_ax must be provided.' )
+!       !   if ( dim /= 1 ) call write_err( 'Charge conserved smooth only applies for scalar field.' )
+
+!       !   q_ax = 0.0
+
+!       !   ! add the charge smoothed out
+!       !   do j = 1, nsm
+!       !     do i = -nsm, -j
+!       !       q_ax = q_ax + pf(1,j) * this%scoef(i) * real(i+j-0.5)
+!       !     enddo
+!       !   enddo
+
+!       !   ! deduct the charge smoothed in
+!       !   do j = 1, nsm
+!       !     do i = 1, nsm-j+1
+!       !       q_ax = q_ax - real(j-0.5) * pf(1,i) * this%scoef(i)
+!       !     enddo
+!       !   enddo
+
+!       ! endif
 
 !     endif
 
@@ -593,6 +415,7 @@ end subroutine smooth_f1
 
 !   endif
 
+!   call stop_tprof( 'smooth' )
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 ! end subroutine smooth_f1

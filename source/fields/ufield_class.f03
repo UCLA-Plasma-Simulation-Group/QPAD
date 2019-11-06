@@ -325,13 +325,13 @@ subroutine copy_gc_f1( this )
 
   call start_tprof( 'copy guard cells' )
 
-  idproc = this%pp%getlidproc()
-  idproc_left =  idproc - 1
+  idproc       = this%pp%getlidproc()
+  idproc_left  = idproc - 1
   idproc_right = idproc + 1
-  nrp = this%ndp(1)
-  nvp = this%pp%getlnvp()
-  comm = this%pp%getlgrp()
-  dtype = this%pp%getmreal()
+  nrp          = this%ndp(1)
+  nvp          = this%pp%getlnvp()
+  comm         = this%pp%getlgrp()
+  dtype        = this%pp%getmreal()
 
   ! forward message passing
   if ( this%gc_num(p_lower,1) > 0 ) then
