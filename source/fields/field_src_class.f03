@@ -345,9 +345,10 @@ subroutine solve_field_djdxi( this, acu, amu )
 
       ! on axis
       if ( idproc == 0 ) then
-        udcu_re(1,1) = uacu_re(1,i)
-        udcu_re(2,1) = uacu_re(2,i)
+        udcu_re(1,1) = 0.0
+        udcu_re(2,1) = 0.0
       else
+        ir = idr / real(noff)
         udcu_re(1,1) = uacu_re(1,1) - idrh * ( uamu_re(1,2) - uamu_re(1,0) ) - ir * uamu_re(1,1)
         udcu_re(2,1) = uacu_re(2,1) - idrh * ( uamu_re(2,2) - uamu_re(2,0) ) - ir * uamu_re(2,1)
       endif
@@ -376,16 +377,27 @@ subroutine solve_field_djdxi( this, acu, amu )
     enddo
 
     if ( idproc == 0 ) then
-      if ( mod(mode,2) == 0 ) then
-        udcu_re(1,1) = uacu_re(1,1)
-        udcu_re(2,1) = uacu_re(2,1)
-        udcu_im(1,1) = uacu_im(1,1)
-        udcu_im(2,1) = uacu_im(2,1)
-      else
+      if ( mode == 1 ) then
         udcu_re(1,1) = uacu_re(1,1) - 2.0 * idr * uamu_re(1,2) + mode * idr * uamu_im(2,2)
         udcu_re(2,1) = uacu_re(2,1) - 2.0 * idr * uamu_re(2,2) + mode * idr * uamu_im(3,2)
         udcu_im(1,1) = uacu_im(1,1) - 2.0 * idr * uamu_im(1,2) - mode * idr * uamu_re(2,2)
         udcu_im(2,1) = uacu_im(2,1) - 2.0 * idr * uamu_im(2,2) - mode * idr * uamu_re(3,2)
+      else
+        udcu_re(1,1) = 0.0
+        udcu_re(2,1) = 0.0
+        udcu_im(1,1) = 0.0
+        udcu_im(2,1) = 0.0
+        ! if ( mod(mode,2) == 0 ) then
+        !   udcu_re(1,1) = uacu_re(1,1)
+        !   udcu_re(2,1) = uacu_re(2,1)
+        !   udcu_im(1,1) = uacu_im(1,1)
+        !   udcu_im(2,1) = uacu_im(2,1)
+        ! else
+        !   udcu_re(1,1) = uacu_re(1,1) - 2.0 * idr * uamu_re(1,2) + mode * idr * uamu_im(2,2)
+        !   udcu_re(2,1) = uacu_re(2,1) - 2.0 * idr * uamu_re(2,2) + mode * idr * uamu_im(3,2)
+        !   udcu_im(1,1) = uacu_im(1,1) - 2.0 * idr * uamu_im(1,2) - mode * idr * uamu_re(2,2)
+        !   udcu_im(2,1) = uacu_im(2,1) - 2.0 * idr * uamu_im(2,2) - mode * idr * uamu_re(3,2)
+        ! endif
       endif
     endif
 

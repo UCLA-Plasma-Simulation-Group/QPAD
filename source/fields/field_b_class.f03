@@ -279,8 +279,13 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf1_re(1) = -2.0 * idr * f1_re(2,2) - mode * idr * f1_im(1,2)
-      this%buf1_im(1) = -2.0 * idr * f1_im(2,2) + mode * idr * f1_re(1,2)
+      if ( mod(mode,2) == 0 ) then
+        this%buf1_re(1) = -idr * f1_re(2,2)
+        this%buf1_im(1) = -idr * f1_im(2,2)
+      else
+        this%buf1_re(1) = 0.0
+        this%buf1_im(1) = 0.0
+      endif
     else
       ir = idr / real(noff)
       this%buf1_re(1) = -idrh * ( f1_re(2,2) - f1_re(2,0) ) - ir * f1_re(2,1) - mode * ir * f1_im(1,1)
@@ -629,8 +634,8 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
-      this%buf2_re(1) =  f1_re(1,1) - f3_re(2,1)
+      this%buf1_re(1) = 0.0
+      this%buf2_re(1) = 0.0
     else
       this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
       this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1)
@@ -658,16 +663,23 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
 
-      if ( mod(mode,2) == 0 ) then
-        s1_re = -f1_re(2,1)
-        s1_im = -f1_im(2,1)
-        s2_re =  f1_re(1,1)
-        s2_im =  f1_im(1,1)
-      else
+      if ( mode == 1 ) then
         s1_re = -f1_re(2,1) + idr * mode * f2_im(3,2)
         s1_im = -f1_im(2,1) - idr * mode * f2_re(3,2)
         s2_re =  f1_re(1,1) + idr * f2_re(3,2)
         s2_im =  f1_im(1,1) + idr * f2_im(3,2)
+      else
+        if ( mod(mode,2) == 0 ) then
+          s1_re = 0.0
+          s1_im = 0.0
+          s2_re = 0.0
+          s2_im = 0.0
+        else
+          s1_re = idr * mode * f2_im(3,2)
+          s1_im = idr * mode * f2_re(3,2)
+          s2_re = idr * f2_re(3,2)
+          s2_im = idr * f2_im(3,2)
+        endif
       endif
 
       this%buf1_re(1) = s1_re - s2_im - f3_re(1,1) + f3_im(2,1) ! Re(B_plus)
@@ -743,8 +755,8 @@ subroutine get_solution_bz( this, mode )
     enddo
 
     ! Bz(m>0) vanishes on axis
-    f1_re(1,1) = 0.0
-    f1_im(1,1) = 0.0
+    f1_re(3,1) = 0.0
+    f1_im(3,1) = 0.0
   endif
 
   call stop_tprof( 'solve bz' )
@@ -890,16 +902,27 @@ subroutine get_solution_bt( this, mode )
 
     if ( idproc == 0 ) then
 
-      if ( mod(mode,2) == 0 ) then
-        f1_re(1,1) = 0.0
-        f1_im(1,1) = 0.0
-        f1_re(2,1) = 0.0
-        f1_im(2,1) = 0.0
-      else
+      if ( mode == 1 ) then
         f1_re(1,1) = -idr * mode * this%buf1_im(2)
         f1_im(1,1) =  idr * mode * this%buf1_re(2)
         f1_re(2,1) = -idr * this%buf1_re(2)
         f1_im(2,1) = -idr * this%buf1_im(2)
+      else
+        f1_re(1,1) = 0.0
+        f1_im(1,1) = 0.0
+        f1_re(2,1) = 0.0
+        f1_im(2,1) = 0.0
+        ! if ( mod(mode,2) == 0 ) then
+        !   f1_re(1,1) = 0.0
+        !   f1_im(1,1) = 0.0
+        !   f1_re(2,1) = 0.0
+        !   f1_im(2,1) = 0.0
+        ! else
+        !   f1_re(1,1) = -idr * mode * this%buf1_im(2)
+        !   f1_im(1,1) =  idr * mode * this%buf1_re(2)
+        !   f1_re(2,1) = -idr * this%buf1_re(2)
+        !   f1_im(2,1) = -idr * this%buf1_im(2)
+        ! endif
       endif
 
     else
