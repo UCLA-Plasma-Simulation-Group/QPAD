@@ -263,21 +263,29 @@ subroutine copy_gc_f2( this )
 
 end subroutine copy_gc_f2
 
-subroutine acopy_gc_f1( this )
+subroutine acopy_gc_f1( this, dir, ncell )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  integer, intent(in) :: dir
+  integer, intent(in), optional :: ncell
 
-  integer :: i
+  integer :: i, nc
   character(len=20), save :: sname = "acopy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  if ( present(ncell) ) then
+    nc = ncell
+  else
+    nc = 1
+  endif
+
   do i = 0, this%num_modes
-    call this%rf_re(i)%acopy_gc_f1()
+    call this%rf_re(i)%acopy_gc_f1( dir, nc )
     if ( i == 0 ) cycle
-    call this%rf_im(i)%acopy_gc_f1()
+    call this%rf_im(i)%acopy_gc_f1( dir, nc )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -768,7 +776,7 @@ subroutine smooth_f1( this )
 
   enddo
 
-  call this%copy_gc_f1()
+  call this%acopy_gc_f1( dir=p_mpi_bothway, ncell=this%smooth%get_order() )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
