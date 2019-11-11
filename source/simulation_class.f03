@@ -20,6 +20,8 @@ use sysutil
 use param
 use mpi
 
+use debug_tool
+
 implicit none
 
 private
@@ -243,9 +245,6 @@ subroutine run_simulation( this )
         call spe(k)%qdp( q_spe )
       enddo
 
-      ! call q_spe%get_q_ax2() ! this must be put before smooth
-      call q_spe%smooth_f1()
-
       call q_spe%copy_slice( j+1, p_copy_1to2 )
       call psi%solve( q_spe )
       do k = 1, this%nspecies
@@ -264,9 +263,7 @@ subroutine run_simulation( this )
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, cu, amu, acu )
         enddo
-        call acu%smooth_f1()
-        call amu%smooth_f1()
-        call cu%smooth_f1()
+
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
         call b_spe%solve( cu )

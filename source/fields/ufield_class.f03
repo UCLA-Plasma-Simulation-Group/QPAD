@@ -636,7 +636,7 @@ subroutine acopy_gc_f1( this, dir, nc )
     if ( idproc < nvp-1 ) then
       call MPI_WAIT( msgid, stat, ierr )
       do i = 1, nc
-        this%f1(:,nrp-i+1) = this%f1(:,nrp-i+1) + buf(:,i)
+        this%f1(:,nrp-nc+i) = this%f1(:,nrp-nc+i) + buf(:,i)
       enddo
     endif
 
