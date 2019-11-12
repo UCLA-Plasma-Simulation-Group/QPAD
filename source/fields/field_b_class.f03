@@ -280,8 +280,8 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       if ( mod(mode,2) == 0 ) then
-        this%buf1_re(1) = -idr * f1_re(2,2)
-        this%buf1_im(1) = -idr * f1_im(2,2)
+        this%buf1_re(1) = -2.0 * idr * f1_re(2,2) - mode * idr * f1_im(1,2)
+        this%buf1_im(1) = -2.0 * idr * f1_im(2,2) + mode * idr * f1_re(1,2)
       else
         this%buf1_re(1) = 0.0
         this%buf1_im(1) = 0.0

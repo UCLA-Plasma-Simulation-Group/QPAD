@@ -33,14 +33,14 @@ type, extends( field ) :: field_e
 
   generic :: new => init_field_e
   procedure :: del => end_field_e
-  generic :: solve => solve_field_ez_fast, &
+  generic :: solve => solve_field_ez_fast, solve_field_ez, &
                       solve_field_et, solve_field_et_beam
 
   procedure, private :: init_field_e
   procedure, private :: end_field_e
-  ! procedure, private :: set_source_ez
-  ! procedure, private :: get_solution_ez
-  ! procedure, private :: solve_field_ez
+  procedure, private :: set_source_ez
+  procedure, private :: get_solution_ez
+  procedure, private :: solve_field_ez
   procedure, private :: solve_field_ez_fast
   procedure, private :: solve_field_et
   procedure, private :: solve_field_et_beam
@@ -60,12 +60,13 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
   real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i
+  integer :: dim, i, nrp
   real :: dr
   character(len=20), save :: sname = "init_field_e"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  nrp = gp%get_ndp(1)
   dr = gp%get_dr()
 
   select case ( part_shape )
@@ -97,6 +98,7 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
       call this%solver_ez(i)%new( pp, gp, i, dr, kind=p_fk_ez, &
         bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
     enddo
+    allocate( this%buf_re(nrp), this%buf_im(nrp) )
   case ( p_entity_beam )
     ! do nothing
   case default
@@ -134,202 +136,184 @@ subroutine end_field_e( this )
 
 end subroutine end_field_e
 
-! subroutine set_source_ez( this, mode, jay_re, jay_im )
+subroutine set_source_ez( this, mode, jay_re, jay_im )
 
-!   implicit none
+  implicit none
 
-!   class( field_e ), intent(inout) :: this
-!   integer, intent(in) :: mode
-!   class( ufield ), intent(in) :: jay_re
-!   class( ufield ), intent(in), optional :: jay_im
+  class( field_e ), intent(inout) :: this
+  class( ufield ), intent(in) :: jay_re
+  class( ufield ), intent(in), optional :: jay_im
+  integer, intent(in) :: mode
 
-!   integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   real :: idrh, idr, k0, a1, a2, a3, b, ir
-!   character(len=20), save :: sname = 'set_source_ez'
+  integer :: i, nrp, noff, idproc, nvp
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real :: idrh, idr, dr, dr2, ir
+  character(len=20), save :: sname = 'set_source_ez'
 
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve ez' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve ez' )
 
-!   nrp    = jay_re%get_ndp(1)
-!   idr    = 1.0 / this%dr
-!   idrh   = 0.5 * idr
-!   noff   = jay_re%get_noff(1)
-!   nvp    = jay_re%pp%getlnvp()
-!   idproc = jay_re%pp%getlidproc()
-!   dtype  = jay_re%pp%getmreal()
-!   comm   = jay_re%pp%getlgrp()
+  nrp    = jay_re%get_ndp(1)
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+  noff   = jay_re%get_noff(1)
+  nvp    = jay_re%pp%getlnvp()
+  idproc = jay_re%pp%getlidproc()
+  dr     = this%dr
+  dr2    = dr*dr
 
-!   f1_re => jay_re%get_f1()
-!   if ( .not. associated( this%buf_re ) ) then
-!     allocate( this%buf_re( nrp ) )
-!   elseif ( size(this%buf_re) < nrp ) then
-!     deallocate( this%buf_re )
-!     allocate( this%buf_re( nrp ) )
-!   endif
+  f1_re => jay_re%get_f1()
+  if ( present(jay_im) ) then
+    f1_im => jay_im%get_f1()
+  endif
 
-!   if ( present(jay_im) ) then
-!     f1_im => jay_im%get_f1()
-!     if ( .not. associated( this%buf_im ) ) then
-!       allocate( this%buf_im( nrp ) )
-!     elseif ( size(this%buf_im) < nrp ) then
-!       deallocate( this%buf_im )
-!       allocate( this%buf_im( nrp ) )
-!     endif
-!   endif
+  this%buf_re = 0.0
+  if ( present(jay_im) ) this%buf_im = 0.0
 
-!   this%buf_re = 0.0
-!   if ( present(jay_im) ) this%buf_im = 0.0
-!   if ( mode == 0 ) then
+  if ( mode == 0 ) then
 
-!     do i = 1, nrp
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
+      this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
+    enddo
 
-!       k0 = real(i+noff) - 0.5
-!       ir = idr / k0
-!       ! a1 = -idrh * (k0-0.5) / k0
-!       ! a2 =  idrh / k0
-!       ! a3 =  idrh * (k0+0.5) / k0
-!       ! this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1)
+    ! calculate the derivatives at the boundary and axis
+    if ( idproc == 0 ) then
+      this%buf_re(1) = 2.0 * idr * f1_re(1,2)
+    else
+      ir = idr / real(noff)
+      this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
+    endif
 
-!       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
+    if ( idproc == nvp-1 ) then
+      ir = idr / real(nrp+noff-1)
+      this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
+    endif
 
-!     enddo
+  elseif ( mode > 0 .and. present( jay_im ) ) then
 
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       ! this%buf_re(1) = idr * ( f1_re(1,1) + f1_re(1,2) )
-!       ! this%buf_re(1) = idrh * ( -3.0 * ( f1_re(1,1) + f1_re(1,0) ) + 4.0 * f1_re(1,2) - f1_re(1,3) ) &
-!       ! + 2.0*idr * ( f1_re(1,1) + f1_re(1,0) )
-!       this%buf_re(1) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) ) + 2.0*idr * f1_re(1,1)
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       ! a2 = idr * (nrp+noff+0.5) / (nrp+noff-0.5)
-!       k0 = real(nrp+noff)-0.5
-!       ir = idr / k0
-!       this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
-!     endif
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
+      this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i) - mode * ir * f1_im(2,i)
+      this%buf_im(i) = idrh * ( f1_im(1,i+1) - f1_im(1,i-1) ) + ir * f1_im(1,i) + mode * ir * f1_re(2,i)
+    enddo
 
-!     ! if ( idproc == 0 ) this%jr_ax = this%dr * f1_re(1,0)
-!     ! call MPI_BCAST( this%jr_ax, 1, dtype, 0, comm, ierr )
+    ! calculate the derivatives at the boundary and axis
+    if ( idproc == 0 ) then
+      if ( mod(mode,2) == 0 ) then
+        this%buf_re(1) = 2.0 * idr * f1_re(1,2) - mode * idr * f1_im(2,2)
+        this%buf_im(1) = 2.0 * idr * f1_im(1,2) + mode * idr * f1_re(2,2)
+      else
+        this%buf_re(1) = 0.0
+        this%buf_im(1) = 0.0
 
-!   elseif ( mode > 0 .and. present( jay_im ) ) then
+        ! since j_r(m=1) is multiplied by factor 8 on axis, the derivative on index=2 is
+        ! calculated using forward difference
+        if ( mode == 1 ) then
+          ir = idr
+          this%buf_re(2) = idr * ( f1_re(1,3) - f1_re(1,2) ) + ir * f1_re(1,2) - mode * ir * f1_im(2,2)
+          this%buf_im(2) = idr * ( f1_im(1,3) - f1_im(1,2) ) + ir * f1_im(1,2) + mode * ir * f1_re(2,2)
+        endif
+      endif
+    else
+      ir = idr / real(noff)
+      this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1) - mode * ir * f1_im(2,1)
+      this%buf_im(1) = idrh * ( f1_im(1,2) - f1_im(1,0) ) + ir * f1_im(1,1) + mode * ir * f1_re(2,1)
+    endif
 
-!     do i = 1, nrp
+    if ( idproc == nvp-1 ) then
+      ir = idr / real(nrp+noff-1)
+      this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp) &
+                         -mode * ir * f1_im(2,nrp)
+      this%buf_im(nrp) = idrh * ( 3.0 * f1_im(1,nrp) - 4.0 * f1_im(1,nrp-1) + f1_im(1,nrp-2) ) + ir * f1_im(1,nrp) &
+                         +mode * ir * f1_re(2,nrp)
+    endif
 
-!       k0 = real(i+noff) - 0.5
-!       ir = idr / k0
-!       ! a1 = -idrh * (k0-0.5) / k0
-!       ! a2 = idrh / k0
-!       ! a3 = idrh * (k0+0.5) / k0
-!       ! b  = idr * real(mode) / k0
+  else
 
-!       ! this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1) - &
-!       !                   b * f1_im(2,i)
-!       ! this%buf_im(i) = a1 * f1_im(1,i-1) + a2 * f1_im(1,i) + a3 * f1_im(1,i+1) + &
-!       !                   b * f1_re(2,i)
+    call write_err( 'Invalid input arguments!' )
 
-!       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i) - mode * ir * f1_im(2,i)
-!       this%buf_im(i) = idrh * ( f1_im(1,i+1) - f1_im(1,i-1) ) + ir * f1_im(1,i) + mode * ir * f1_re(2,i)
+  endif
 
-!     enddo
+  call stop_tprof( 'solve ez' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       ir = 2.0 * idr
-!       this%buf_re(1) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) ) + ir * f1_re(1,1) - mode * ir * f1_im(2,1)
-!       this%buf_im(1) = idrh * ( -3.0 * f1_im(1,1) + 4.0 * f1_im(1,2) - f1_im(1,3) ) + ir * f1_im(1,1) + mode * ir * f1_re(2,1)
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       k0 = real(nrp+noff) - 0.5
-!       ir = idr / k0
-!       this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp) &
-!                         - mode * ir * f1_im(2,nrp)
-!       this%buf_im(nrp) = idrh * ( 3.0 * f1_im(1,nrp) - 4.0 * f1_im(1,nrp-1) + f1_im(1,nrp-2) ) + ir * f1_im(1,nrp) &
-!                         + mode * ir * f1_re(2,nrp)
-!     endif
+end subroutine set_source_ez
 
-!   else
+subroutine get_solution_ez( this, mode )
 
-!     call write_err( 'Invalid input arguments!' )
+  implicit none
 
-!   endif
+  class( field_e ), intent(inout) :: this
+  integer, intent(in) :: mode
 
-!   call stop_tprof( 'solve ez' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+  integer :: i, nrp
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution_ez'
 
-! end subroutine set_source_ez
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve ez' )
 
-! subroutine get_solution_ez( this, mode )
+  nrp = this%rf_re(mode)%get_ndp(1)
 
-!   implicit none
+  f1_re => this%rf_re(mode)%get_f1()
+  do i = 1, nrp
+    f1_re(3,i) = this%buf_re(i)
+  enddo
 
-!   class( field_e ), intent(inout) :: this
-!   integer, intent(in) :: mode
+  if ( mode > 0 ) then
+    f1_im => this%rf_im(mode)%get_f1()
+    do i = 1, nrp
+      f1_im(3,i) = this%buf_im(i)
+    enddo
 
-!   integer :: i, nrp, noff
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   character(len=20), save :: sname = 'get_solution_ez'
+    ! Ez(m>0) vanishes on axis
+    f1_re(3,1) = 0.0
+    f1_im(3,1) = 0.0
+  endif
 
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve ez' )
+  call stop_tprof( 'solve ez' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-!   nrp  = this%rf_re(mode)%get_ndp(1)
-!   noff = this%rf_re(mode)%get_noff(1)
+end subroutine get_solution_ez
 
-!   f1_re => this%rf_re(mode)%get_f1()
-!   do i = 1, nrp
-!     f1_re(3,i) = this%buf_re(i)
-!   enddo
+subroutine solve_field_ez( this, jay )
 
-!   if ( mode > 0 ) then
-!     f1_im => this%rf_im(mode)%get_f1()
-!     do i = 1, nrp
-!       f1_im(3,i) = this%buf_im(i)
-!     enddo
-!   endif
+  implicit none
 
-!   call stop_tprof( 'solve ez' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+  class( field_e ), intent(inout) :: this
+  class( field_jay ), intent(inout) :: jay
 
-! end subroutine get_solution_ez
+  type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
+  integer :: i
+  character(len=20), save :: sname = 'solve_field_ez'
 
-! subroutine solve_field_ez( this, jay )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-!   implicit none
+  jay_re => jay%get_rf_re()
+  jay_im => jay%get_rf_im()
 
-!   class( field_e ), intent(inout) :: this
-!   class( field_jay ), intent(inout) :: jay
+  do i = 0, this%num_modes
 
-!   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
-!   integer :: i
-!   character(len=20), save :: sname = 'solve_field_ez'
+    if ( i == 0 ) then
+      call this%set_source_ez( i, jay_re(i) )
+      call this%solver_ez(i)%solve( this%buf_re )
+      call this%get_solution_ez(i)
+      cycle
+    endif
 
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+    call this%set_source_ez( i, jay_re(i), jay_im(i) )
+    call this%solver_ez(i)%solve( this%buf_re )
+    call this%solver_ez(i)%solve( this%buf_im )
+    call this%get_solution_ez(i)
 
-!   jay_re => jay%get_rf_re()
-!   jay_im => jay%get_rf_im()
+  enddo
 
-!   do i = 0, this%num_modes
+  call this%copy_gc_f1()
 
-!     if ( i == 0 ) then
-!       call this%set_source_ez( i, jay_re(i) )
-!       call this%solver_ez(i)%solve( this%buf_re )
-!       call this%get_solution_ez(i)
-!       cycle
-!     endif
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-!     call this%set_source_ez( i, jay_re(i), jay_im(i) )
-!     call this%solver_ez(i)%solve( this%buf_re )
-!     call this%solver_ez(i)%solve( this%buf_im )
-!     call this%get_solution_ez(i)
-
-!   enddo
-
-!   call this%copy_gc_f1()
-
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine solve_field_ez
+end subroutine solve_field_ez
 
 subroutine solve_field_ez_fast( this, psi, idx )
 
