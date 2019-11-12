@@ -35,7 +35,7 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
    integer :: i, nn, noff, n1p, j
    integer(kind=LG) :: ii
    real, dimension(:,:), pointer :: q0, qr, qi
-   real :: r0, r, qc, lq, rq, rcr, rci
+   real :: r, qc, th, lq, rq, rcr, rci
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -47,10 +47,10 @@ subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
    qr => null(); qi => null()
 
    do ii = 1, npp
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
+      r = part(1,ii)/dr + 1.0
+      th = part(2,ii)
       qc = part(8,ii)
-      rc0 = cmplx( part(1,ii), -part(2,ii), kind=DB) / r0
-      r = r0/dr + 1.0
+      rc0 = cmplx(cos(th), -sin(th), kind=DB)
       nn = r
       rq = qc * (r - real(nn))
       lq = qc - rq
@@ -138,10 +138,10 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    real, dimension(:,:), pointer :: ei,bi,cui,dcui,amui
    integer :: nn, noff, n1p
    real :: qtmh, qtmh1, qtmh2, dti, p6, p7, ip7
-   real :: r0, r, qc, qc1, dd, ad, rcr, rci
+   real :: r0, r, qc, qc1, th, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx
    real :: ddx, ddy, vx, vy, acx, acy, omzt, omt, anorm, rot1, rot2
-   real :: v1, v2, v3, pcos, psin
+   real :: v1, v2, v3
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -161,13 +161,12 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    qtmh = 0.5*qbm*dt
    dti = 1.0/dt
    do ii = 1, npp
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
-      pcos = part(1,ii) / r0
-      psin = part(2,ii) / r0
+      r0 = part(1,ii)
+      th = part(2,ii)
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx( pcos, psin, kind=DB )
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0/dr + 1.0
       nn = r
       dd = r - real(nn)
@@ -203,8 +202,8 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       ddx = (-1.0)*qtmh2*dx(1) + qtmh*ox(2)
       ddy = (-1.0)*qtmh2*dx(2) - qtmh*ox(1)
 ! half acceleration
-      vx = part(3,ii) * pcos + part(4,ii) * psin
-      vy = part(4,ii) * pcos - part(3,ii) * psin
+      vx = part(3,ii)
+      vy = part(4,ii)
       acx = vx + ddx
       acy = vy + ddy
 ! find inverse gamma
@@ -286,7 +285,7 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       cu0(2,nn+1) = cu0(2,nn+1) + omt
       cu0(3,nn+1) = cu0(3,nn+1) + anorm
 
-      rc0 = cmplx( pcos, -psin, kind=DB )
+      rc0 = cmplx(cos(th),sin(-th),kind=DB)
       rc = rc0
       do i = 1, num_modes
          rcr = real(rc)
@@ -465,11 +464,11 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    real, dimension(:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, nn, noff, n1p
    real :: edge, qtmh, qtmh1, qtmh2, p6, p7, ip7
-   real :: r0, r, rn, qc, dd, ad, rcr, rci
+   real :: r0, r, rn, qc, th, th1, dd, ad, rcr, rci
    real, dimension(3) :: dx, dxx, ox, oxx, om
    real :: acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8, rot9
-   real :: dtc1, x, y, pcos, psin
+   real :: dtc1, v1, v2
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -488,14 +487,12 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    ii = 1
    do
       if (ii > npp) exit
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
-      ! th = part(2,ii)
-      pcos = part(1,ii) / r0
-      psin = part(2,ii) / r0
+      r0 = part(1,ii)
+      th = part(2,ii)
       p6 = part(6,ii)
       p7 = part(7,ii)
       qc = part(8,ii)
-      rc0 = cmplx(pcos, psin, kind=DB)
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
       r = r0/dr + 1.0
       nn = r
       dd = r - real(nn)
@@ -526,16 +523,6 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
          rc = rc*rc0
       end do
 
-      ! transform (Er, Eth) to (Ex, Ey)
-      ! dxx, oxx are for temporary use here
-      dxx(1) = dx(1) * pcos - dx(2) * psin
-      dxx(2) = dx(1) * psin + dx(2) * pcos
-      dx(1:2) = dxx(1:2)
-      ! transform (Br, Bth) to (Bx, By)
-      oxx(1) = ox(1) * pcos - ox(2) * psin
-      oxx(2) = ox(1) * psin + ox(2) * pcos
-      ox(1:2) = oxx(1:2)
-
 ! calculate half impulse
       dx(1:3) = qtmh2*dx(1:3)
 ! half acceleration
@@ -563,14 +550,25 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       dx(1) = (rot1*acx + rot2*acy + rot3*acz)*anorm + dx(1)
       dx(2) = (rot4*acx + rot5*acy + rot6*acz)*anorm + dx(2)
       dx(3) = (rot7*acx + rot8*acy + rot9*acz)*anorm + dx(3)
-
       dtc1 = dt/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
 
-      ! new position
-      x = part(1,ii) + dx(1) * dtc1
-      y = part(2,ii) + dx(2) * dtc1
-      rn = sqrt(x**2 + y**2)
-
+      ! there might be some issue
+      v1 = r0 + dx(1)*dtc1
+      v2 = dx(2)*dtc1
+      rn = sqrt(v1*v1+v2*v2)
+      if (v1 > 0) then
+         th1 = th + atan(v2/v1)
+      else if (v1 < 0) then
+         th1 = th + atan(v2/v1) + pi
+      else
+         if (v2 > 0) then
+            th1 = th + pi/2.0
+         else if (v2 < 0) then
+            th1 = th - pi/2.0
+         else
+            th1 = th
+         end if
+      end if
       if (rn >= edge) then
          if (ii == npp) then
             npp = npp -1
@@ -583,10 +581,10 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
             cycle
          end if
       else
-         part(1,ii) = x
-         part(2,ii) = y
-         part(3,ii) = dx(1)
-         part(4,ii) = dx(2)
+         part(1,ii) = rn
+         part(2,ii) = th1
+         part(3,ii) = (dx(1)*v1+dx(2)*v2)/rn
+         part(4,ii) = r0*dx(2)/rn
          part(5,ii) = dx(3)
          ii = ii + 1
       end if
@@ -662,7 +660,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
       jsr(1) = 0
       jss(2) = 0
       do j = 1, npp
-         xt = sqrt( part(1,j)**2 + part(2,j)**2 )
+         xt = part(1,j)
 ! particles going down
          if (xt < edgel) then
             if (jsl(1) < nbmax) then
@@ -718,9 +716,8 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          jsr(1) = 0
          jss(2) = 0
          do j = 1, jsr(2)
-            xt = sqrt(rbufr(1,j)**2+rbufr(2,j)**2)
-            if (xt < edgel) jsl(1) = jsl(1) + 1
-            if (xt >= edger) jsr(1) = jsr(1) + 1
+            if (rbufr(1,j) < edgel) jsl(1) = jsl(1) + 1
+            if (rbufr(1,j) >= edger) jsr(1) = jsr(1) + 1
          end do
          if (jsr(1) /= 0) then
             write (erstr,*) 'Info:',jsr(1),' particles returning above'
@@ -728,9 +725,8 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          end if
 ! check if any particles coming from below belong here
          do j = 1, jsl(2)
-            xt = sqrt(rbufl(1,j)**2+rbufl(2,j)**2)
-            if (xt >= edger) jsr(1) = jsr(1) + 1
-            if (xt < edgel) jss(2) = jss(2) + 1
+            if (rbufl(1,j) >= edger) jsr(1) = jsr(1) + 1
+            if (rbufl(1,j) < edgel) jss(2) = jss(2) + 1
          end do
          if (jss(2) /= 0) then
             write (erstr,*) 'Info:',jss(2),' particles returning below'
@@ -750,7 +746,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
             jsr(1) = 0
             jss(2) = 0
             do j = 1, jsr(2)
-               xt = sqrt(rbufr(1,j)**2+rbufr(2,j)**2)
+               xt = rbufr(1,j)
 ! particles going down
                if (xt < edgel) then
                   jsl(1) = jsl(1) + 1
@@ -775,7 +771,7 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
 ! next check particles coming from below
             jss(2) = 0
             do j = 1, jsl(2)
-               xt = sqrt(rbufl(1,j)**2+rbufl(2,j)**2)
+               xt = rbufl(1,j)
 ! particles going up
                if (xt >= edger) then
                   if (jsr(1) < nbmax) then
@@ -939,7 +935,7 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
 ! local data
    character(len=20), save :: sname = "part2d_extractpsi"
    real, dimension(:,:), pointer :: psi0,psir,psii
-   real :: r0, r, vx, vy, dx, ad, dd, rci, rcr
+   real :: r0, r, th, vx, vy, dx, ad, dd, rci, rcr
    complex(kind=DB) :: rc, rc0
    integer(kind=LG) :: ii
    integer :: i, noff, n1p, nn
@@ -953,12 +949,12 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
    psir => null(); psii => null()
 
    do ii = 1, npp
-      r0 = sqrt(part(1,ii)**2+part(2,ii)**2)
-      ! th = part(2,ii)
+      r0 = part(1,ii)/dr
+      th = part(2,ii)
       vx = part(3,ii)
       vy = part(4,ii)
-      rc0 = cmplx(part(1,ii),part(2,ii),kind=DB) / r0
-      r = r0/dr + 1.0
+      rc0 = cmplx(cos(th),sin(th),kind=DB)
+      r = r0 + 1.0
       nn = r
       dd = r - real(nn)
       ad = 1.0 - dd

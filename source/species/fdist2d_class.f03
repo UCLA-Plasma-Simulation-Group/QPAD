@@ -246,8 +246,8 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
       do i1 = 0, ppc1-1
          r1 = (i1 + 0.5)/ppc1 + i - 1 + noff1
          do i2=0, ppc2-1
-            pt(1,nps) = r1*dr
-            pt(2,nps) = i2*t0
+            pt(1,nps) = r1*dr*cos(i2*t0)
+            pt(2,nps) = r1*dr*sin(i2*t0)
             pt(3,nps) = 0.0
             pt(4,nps) = 0.0
             pt(5,nps) = 0.0
@@ -393,8 +393,8 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
             end if
          end do
          do i2=0, ppc2-1
-            pt(1,nps) = r1
-            pt(2,nps) = i2*t0
+            pt(1,nps) = r1*cos(i2*t0)
+            pt(2,nps) = r1*sin(i2*t0)
             pt(3,nps) = 0.0
             pt(4,nps) = 0.0
             pt(5,nps) = 0.0
