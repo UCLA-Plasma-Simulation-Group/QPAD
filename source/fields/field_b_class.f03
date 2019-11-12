@@ -285,6 +285,14 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
       else
         this%buf1_re(1) = 0.0
         this%buf1_im(1) = 0.0
+
+        ! since j_phi(m=1) is multiplied by factor 8 on axis, the derivative on index=2 is
+        ! calculated using forward difference
+        if ( mode == 1 ) then
+          ir = idr
+          this%buf1_re(2) = -idr * ( f1_re(2,3) - f1_re(2,2) ) - ir * f1_re(2,2) - mode * ir * f1_im(1,2)
+          this%buf1_im(2) = -idr * ( f1_im(2,3) - f1_im(2,2) ) - ir * f1_im(2,2) + mode * ir * f1_re(1,2)
+        endif
       endif
     else
       ir = idr / real(noff)
@@ -636,6 +644,9 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
     if ( idproc == 0 ) then
       this%buf1_re(1) = 0.0
       this%buf2_re(1) = 0.0
+      ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
+      ! calculated using forward difference
+      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2)
     else
       this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
       this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1)
