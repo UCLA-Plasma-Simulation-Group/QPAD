@@ -250,12 +250,13 @@ subroutine run_simulation( this )
       do k = 1, this%nspecies
         call spe(k)%extpsi( psi )
       enddo
-      call e%solve( psi, j+1 )
+      ! call e%solve( psi, j+1 )
       call b_spe%solve( cu )
 
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
+        call e%solve( cu ) !!!
         call e%solve( b, psi )
         cu = 0.0
         acu = 0.0
@@ -277,6 +278,7 @@ subroutine run_simulation( this )
       enddo ! iteration
 
       call add_f1( b_spe, b_beam, b )
+      call e%solve( cu )
       call e%solve( b, psi )
       call dot_f1( this%dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )

@@ -10,6 +10,7 @@ use field_solver_class
 use ufield_class
 use param
 use sysutil
+use mpi
 
 implicit none
 
@@ -74,7 +75,7 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
   case ( p_ps_linear )
 
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
+    gc_num(:,2) = (/2, 1/)
 
   case ( p_ps_quadratic )
 
@@ -145,9 +146,9 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, idproc, nvp
+  integer :: i, nrp, noff, idproc, nvp, ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, dr, dr2, ir
+  real :: idrh, idr, dr, dr2, ir, div
   character(len=20), save :: sname = 'set_source_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -172,23 +173,35 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
 
   if ( mode == 0 ) then
 
-    do i = 2, nrp
+    div = 0.0
+    do i = 2, nrp-1
       ir = idr / real(i+noff-1)
       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
+      div = div + this%buf_re(i) * real(i+noff-1)
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      this%buf_re(1) = 2.0 * idr * f1_re(1,2)
+      ! this%buf_re(1) = 2.0 * idr * f1_re(1,2)
     else
       ir = idr / real(noff)
       this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
+      div = div + this%buf_re(1) * real(noff)
     endif
 
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
-      this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
+      ! this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
+      this%buf_re(nrp) = idrh * ( f1_re(1,nrp) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+      div = div + this%buf_re(nrp) * real(nrp+noff-1)
+    else
+      ir = idr / real(nrp+noff-1)
+      this%buf_re(nrp) = idrh * ( f1_re(1,nrp+1) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+      div = div + this%buf_re(nrp) * real(nrp+noff-1)
     endif
+
+    call MPI_REDUCE( div, this%buf_re(1), 1, this%pp%getmreal(), MPI_SUM, 0, this%pp%getlgrp(), ierr )
+    if ( idproc == 0 ) this%buf_re(1) = -8.0 * this%buf_re(1)
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
 
@@ -326,10 +339,11 @@ subroutine solve_field_ez_fast( this, psi, idx )
   type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
   type( ufield ), dimension(:), pointer :: e_re => null(), e_im => null()
   real, dimension(:,:), pointer :: e_f1_re => null(), e_f1_im => null()
+  real, dimension(:,:,:), pointer :: e_f2_re => null(), e_f2_im => null()
   real, dimension(:,:), pointer :: psi_f1_re => null(), psi_f1_im => null()
   real, dimension(:,:,:), pointer :: psi_f2_re => null(), psi_f2_im => null()
   integer :: i, j, nrp
-  real :: idxih
+  real :: idxih, idxi
   character(len=20), save :: sname = 'solve_field_ez_fast'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -342,25 +356,42 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
   nrp = e_re(0)%get_ndp(1)
   idxih = 0.5 / this%dxi
+  idxi = 1.0 / this%dxi
 
   do i = 0, this%num_modes
 
     e_f1_re => e_re(i)%get_f1()
+    e_f2_re => e_re(i)%get_f2()
     psi_f1_re => psi_re(i)%get_f1()
     psi_f2_re => psi_re(i)%get_f2()
 
     do j = 1, nrp
+      ! quadratic extrapolation
       e_f1_re(3,j) = idxih * ( 3.0 * psi_f1_re(1,j) - 4.0 * psi_f2_re(1,j,idx-1) + psi_f2_re(1,j,idx-2) )
+
+      ! linear extrapolation
+      ! e_f1_re(3,j) = idxi * ( psi_f1_re(1,j) - psi_f2_re(1,j,idx-1) )
+
+      ! smooth
+      ! e_f1_re(3,j) = ( e_f1_re(3,j) + e_f2_re(3,j,idx-1) + e_f2_re(3,j,idx-2) ) / 3
     enddo
 
     if ( i == 0 ) cycle
 
     e_f1_im => e_im(i)%get_f1()
+    e_f2_im => e_im(i)%get_f2()
     psi_f1_im => psi_im(i)%get_f1()
     psi_f2_im => psi_im(i)%get_f2()
 
     do j = 1, nrp
+      ! quadratic extrapolation
       e_f1_im(3,j) = idxih * ( 3.0 * psi_f1_im(1,j) - 4.0 * psi_f2_im(1,j,idx-1) + psi_f2_im(1,j,idx-2) )
+
+      ! linear extrapolation
+      ! e_f1_im(3,j) = idxi * ( psi_f1_im(1,j) - psi_f2_im(1,j,idx-1) )
+
+      ! smooth
+      ! e_f1_im(3,j) = ( e_f1_im(3,j) + e_f2_im(3,j,idx-1) + e_f2_im(3,j,idx-2) ) / 3
     enddo
 
   enddo
