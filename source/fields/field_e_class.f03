@@ -146,7 +146,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, idproc, nvp, ierr
+  integer :: i, nrp, noff, idproc, nvp, ierr, i1, i2
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, dr, dr2, ir, div
   character(len=20), save :: sname = 'set_source_ez'
@@ -173,31 +173,37 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
 
   if ( mode == 0 ) then
 
+    i1 = 1
+    i2 = nrp
+    if ( idproc == 0 ) i1 = 2
+    if ( idproc == nvp-1 ) i2 = nrp-2
+
     div = 0.0
-    do i = 2, nrp-1
+    do i = i1, i2
       ir = idr / real(i+noff-1)
       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
       div = div + this%buf_re(i) * real(i+noff-1)
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    if ( idproc == 0 ) then
-      ! this%buf_re(1) = 2.0 * idr * f1_re(1,2)
-    else
-      ir = idr / real(noff)
-      this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
-      div = div + this%buf_re(1) * real(noff)
-    endif
+    ! if ( idproc == 0 ) then
+    !   ! this%buf_re(1) = 2.0 * idr * f1_re(1,2)
+    ! else
+    !   ir = idr / real(noff)
+    !   this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
+    !   div = div + this%buf_re(1) * real(noff)
+    ! endif
 
     if ( idproc == nvp-1 ) then
+      ir = idr / real(nrp+noff-2)
+      this%buf_re(nrp-1) = idrh * ( f1_re(1,nrp) - f1_re(1,nrp-2) ) + ir * f1_re(1,nrp-1)
       ir = idr / real(nrp+noff-1)
-      ! this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
-      this%buf_re(nrp) = idrh * ( f1_re(1,nrp) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
-      div = div + this%buf_re(nrp) * real(nrp+noff-1)
-    else
-      ir = idr / real(nrp+noff-1)
-      this%buf_re(nrp) = idrh * ( f1_re(1,nrp+1) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
-      div = div + this%buf_re(nrp) * real(nrp+noff-1)
+      this%buf_re(nrp) = idr * ( f1_re(1,nrp) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+      div = div - idrh * (f1_re(1,nrp-2) + f1_re(1,nrp-1)) * (real(nrp+noff) - 2.5)
+    ! else
+    !   ir = idr / real(nrp+noff-1)
+    !   this%buf_re(nrp) = idrh * ( f1_re(1,nrp+1) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+    !   div = div + this%buf_re(nrp) * real(nrp+noff-1)
     endif
 
     call MPI_REDUCE( div, this%buf_re(1), 1, this%pp%getmreal(), MPI_SUM, 0, this%pp%getlgrp(), ierr )
