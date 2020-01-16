@@ -1,0 +1,204 @@
+{
+"simulation" : !note
+{
+    "nodes" : [2,1], 
+    "grid" : [256,512],
+    "box" : {
+        "r" : [0.0,6.4],
+        "z" : [0,10.0]},
+    "field_boundary" : "open",
+    "max_mode" : 1,
+    "interpolation" : "linear",
+    "n0" : 1.0e16,
+    "time" : 10.1,
+    "dt" : 10.0,
+    "nbeams" : 2,
+    "nspecies" : 1,
+    "dump_restart" : false,
+    "ndump_restart" : 1,
+    "read_restart" : false,
+    "restart_timestep" : 1,
+    "iter" : 3,
+    "solver" : "multigrid",
+    "solver_tol" : 1.0e-9,
+    "smooth_type" : "none",
+    "smooth_order" : 3,
+    "verbose" : 5,
+    "if_timing" : true
+},
+"beam" :
+[
+    {
+    "evolution" : false,
+    "profile" : 1,
+    "np" : [256,32,256], ! number of particles in r, theta and z direction. Specified for profile 1
+    "npmax" : 5000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "peak_density" : 0.1,
+    "quiet_start" : true,
+    "center" : [0.0,0.0,2.5],
+    "sigma" : [0.5,0.5,0.4],
+    "sigma_v" : [0.0,0.0,0.0],
+    "centroid_x" : [0.0,0.0,0.0],
+    "centroid_y" : [0.0,0.0,0.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 0,
+        "psample" : 10
+        }
+    ]    
+    },
+    {
+    "evolution" : false,
+    "profile" : 2,
+    "np" : [256,32,256], ! number of particles in r, theta and z direction. Specified for profile 1
+    "npmax" : 5000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "peak_density" : 0.084161,
+    "quiet_start" : true,
+    "center" : [0.0,0.0,4.5],
+    "sigma" : [0.5,0.5],
+    "sigma_v" : [0.0,0.0,0.0],
+    "centroid_x" : [0.0,0.0,0.0],
+    "centroid_y" : [0.0,0.0,0.0],
+    "piecewise_z" : [4.49999, 4.5, 6.68504, 6.68505],
+    "piecewise_fz" : [0.0,1.0,0.0,0.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 0,
+        "psample" : 10
+        }
+    ]
+    }
+],
+
+"species" :
+[
+    {
+    "profile" : 0,
+    "ppc" : [16,32],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "longitudinal_profile" : "uniform",
+!    "piecewise_density" : [1.0,1.5,2.5],
+!    "piecewise_s" : [0.0,100.0,200.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+	{
+	"name" : ["raw"],
+	"ndump" : 0,
+	"psample" : 100
+	}
+    ]    
+    },
+
+    {
+    "profile" : 12,
+    "ppc" : [2,2],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 0.0,
+!    "longitudinal_profile" : "uniform",
+    "longitudinal_profile" : "piecewise",
+    "piecewise_density" : [1.0,1.5,2.5],
+    "piecewise_s" : [0.0,15.0,50.0],    
+    "center" : [0.0,0.0],
+    "piecewise_radial_density" : [0.0,1.0,1.0,0.0],
+    "piecewise_r" : [1.0,2.0,3.0,4.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge", "jx"],
+        "ndump" : 0
+        },
+        {
+        "name" : ["charge"],
+        "ndump" : 1,
+        "slice" : [["xz", 129],["yz",129],["xy",20]]
+        }
+    ]    
+    },
+    {
+    "profile" : 11,
+    "ppc" : [2,2],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "longitudinal_profile" : "piecewise",
+    "piecewise_density" : [1.0,1.5,2.5],
+    "piecewise_s" : [0.0,15.0,50.0],    
+    "center" : [0.0,0.0],
+    "radius" : 2.0,
+    "width" : 0.5,
+    "diag" :
+    [
+        {
+        "name" : ["charge", "jx"],
+        "ndump" : 0
+        },
+        {
+        "name" : ["charge"],
+        "ndump" : 1,
+        "slice" : [["xz", 129],["yz",129],["xy",20]]
+        }
+    ]    
+    },
+    {
+    "profile" : 10,
+    "ppc" : [2,2],
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "longitudinal_profile" : "piecewise",
+    "piecewise_density" : [1.0,1.5,2.5],
+    "piecewise_s" : [0.0,15.0,50.0],    
+    "center" : [0.0,0.0],
+    "inner_radius" : [1.0,1.5],
+    "outer_radius" : [2.5,2.0],
+    "diag" :
+    [
+        {
+        "name" : ["charge", "jx"],
+        "ndump" : 0
+        },
+        {
+        "name" : ["charge"],
+        "ndump" : 1,
+        "slice" : [["xz", 129],["yz",129],["xy",20]]
+        }
+    ]    
+    }
+],
+
+"field" :
+{
+    "diag" :
+    [
+        {
+            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m"],
+            "ndump" : 1
+        }
+    ]
+}
+}

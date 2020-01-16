@@ -103,6 +103,9 @@ subroutine init_sim_beams( this, input )
     case (1)
        allocate( fdist3d_001 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
+    case (2)
+       allocate( fdist3d_002 :: this%pf(i)%p )
+       call this%pf(i)%p%new( input, i )
   ! Add new distributions right above this line
     case default
       call write_err( 'Invalid beam profile!' )
