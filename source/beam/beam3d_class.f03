@@ -4,7 +4,7 @@ module beam3d_class
 
 use parallel_pipe_class
 use param
-use sys
+use sysutil
 use fdist3d_class
 use grid_class
 use field_src_class
@@ -52,7 +52,6 @@ save
 
 character(len=10) :: cls_name = 'beam3d'
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 
 contains
 !
@@ -69,7 +68,7 @@ subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=32), save :: sname = 'init_beam3d'
-   integer :: id, num_modes, ierr
+   integer :: id, ierr
    integer, dimension(10) :: istat
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -119,13 +118,13 @@ end subroutine end_beam3d
 !    if (.not. this%evol) then
 !       call this%q%as(0.0)
 !       call this%pf%dp(this%q)
-!       call this%q%copy_gc_f2( bnd_ax = .false. )
+!       call this%q%copy_gc_f2()
 !       call add_f2( this%q, q )
 !    else
 !       call this%q%as(0.0)
 !       call this%pd%qdp(this%q)
 !       call this%q%acopy_gc_f2()
-!       call this%q%copy_gc_f2( bnd_ax = .false. )
+!       call this%q%copy_gc_f2()
 !       call add_f2( this%q, q )
 !    end if
 
@@ -154,11 +153,11 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
 
    if (.not. this%evol) then
       call this%pf%dp(this%q)
-      call this%q%copy_gc_f2( bnd_ax = .false. )
+      call this%q%copy_gc_f2()
    else
       call this%pd%qdp(this%q)
       call this%q%acopy_gc_f2()
-      call this%q%copy_gc_f2( bnd_ax = .false. )
+      call this%q%copy_gc_f2()
    endif
 
    call add_f2( this%q, q )

@@ -1,4 +1,4 @@
-module sys
+module sysutil
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
@@ -13,7 +13,7 @@ public :: num2str
 public :: init_tprof, write_tprof, start_tprof, stop_tprof
 
 integer, save :: class_monitor = 0
-integer, save :: fid_err, fid_stdout
+integer, save :: fid_err
 integer, dimension(4), save :: itime
 double precision, save :: dtime
 logical, save :: is_master
@@ -248,7 +248,7 @@ function num2str_real( number, prec ) result( str )
   if ( present(prec) ) prec_ = prec
 
   write( format_str, * ) prec_
-  write( format_str, * ) '(ES20.'//trim(adjustl(format_str))//')' 
+  write( format_str, * ) '(ES20.'//trim(adjustl(format_str))//')'
 
   write( tmp_str, format_str ) number
   clen = len_trim( adjustl(tmp_str) )
@@ -352,7 +352,6 @@ subroutine write_tprof()
 
   integer :: idproc, nproc, ierr, fid = 10, i
   character(len=32) :: filename
-  character(len=128) :: str
   double precision, dimension(:,:), allocatable :: buf
   double precision :: avg, max, min, std, lb, prct, whole
 
@@ -413,4 +412,4 @@ subroutine write_tprof()
 
 end subroutine write_tprof
 
-end module sys
+end module sysutil

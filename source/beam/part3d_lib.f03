@@ -5,7 +5,7 @@ module part3d_lib
 use parallel_pipe_class
 use ufield_class
 use param
-use sys
+use sysutil
 use mpi
 
 implicit none
@@ -99,7 +99,6 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist000"
    integer(kind=LG) :: i, np, npt
-   integer :: j,k,l
    real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
    real :: borderlz, borderz, r0, sigmar0, trunc = 5.0
 
@@ -110,7 +109,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    npt = 1
 
    i = 1
-   
+
    x2 = 2.0 * x0
    y2 = 2.0 * y0
    r0 = sqrt(x0**2+y0**2)
@@ -118,23 +117,23 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    borderlz = max((z0-trunc*sigz),zmin)
    borderz = min((z0+trunc*sigz),zmax)
    np = npx*npy*npz
-   
+
    do
       if (i > np) exit
       do
          tempz = z0+sigz*ranorm()
          if (tempz < borderz .and. tempz > borderlz) then
-            exit          
+            exit
          end if
       end do
 
-      tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)                
+      tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)
       tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
       do
          tempx = ranorm()
          tempy = ranorm()
          if ((tempx**2+tempy**2) > trunc**2) then
-            cycle          
+            cycle
          end if
          tempx = x0 + sigx*tempx + tempxx
          tempy = y0 + sigy*tempy + tempyy
@@ -161,7 +160,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
             end if
             part(4,npt) = tvtx*cos(part(2,npt))+tvty*sin(part(2,npt))
             part(5,npt) = -tvtx*sin(part(2,npt))+tvty*cos(part(2,npt))
-            part(6,npt) = tvtz 
+            part(6,npt) = tvtz
             ! part(7,npt) = qm/tempr*dr
             part(7,npt) = qm
             npt = npt + 1
@@ -169,7 +168,7 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
             ierr = ierr + 1
          end if
       end if
-      i = i + 1   
+      i = i + 1
       if (lquiet) then
          if (npt < npmax) then
             tempx = x2 - tempx + 2.0*tempxx
@@ -190,12 +189,12 @@ subroutine beam_dist000(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                end if
                part(4,npt) = -tvtx*cos(part(2,npt))-tvty*sin(part(2,npt))
                part(5,npt) = tvtx*sin(part(2,npt))-tvty*cos(part(2,npt))
-               part(6,npt) = tvtz 
+               part(6,npt) = tvtz
                ! part(7,npt) = qm/tempr*dr
                part(7,npt) = qm
                npt = npt + 1
             end if
-         else 
+         else
             ierr = ierr + 1
          end if
          i = i + 1
@@ -225,7 +224,6 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist001"
    integer(kind=LG) :: i, np, npt
-   integer :: j,k,l
    real :: tempr,tempth,tempx,tempy,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
    real :: borderlz, borderz, qm_amp, sigr, trunc = 5.0
 
@@ -236,7 +234,7 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    npt = 1
 
    i = 1
-   
+
    x2 = 2.0 * x0
    y2 = 2.0 * y0
    borderlz = max((z0-trunc*sigz),zmin)
@@ -244,7 +242,7 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    np = npr*npth*npz
 
    sigr = max( sigx, sigy )
-   
+
    do
       if (i > np) exit
       do
@@ -252,13 +250,13 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
          call random_number(tempz)
          tempz = z0 + 2.0 * trunc * sigz * (tempz-0.5)
          if (tempz < borderz .and. tempz > borderlz) then
-            exit          
+            exit
          end if
       end do
 
       tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)
       tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
-      
+
       call random_number(tempth)
       tempth = tempth * 2.0 * pi
       call random_number(tempr)
@@ -272,7 +270,7 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       tempx = tempx + x0 + tempxx
       tempy = tempy + y0 + tempyy
       tempr  = sqrt( tempx**2 + tempy**2 )
-      
+
       tvtx = vtx*ranorm() + vdx
       tvty = vty*ranorm() + vdy
       tvtz = vtz*ranorm() + vdz
@@ -294,14 +292,14 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
             end if
             part(4,npt) =  tvtx*cos(part(2,npt)) + tvty*sin(part(2,npt))
             part(5,npt) = -tvtx*sin(part(2,npt)) + tvty*cos(part(2,npt))
-            part(6,npt) =  tvtz 
+            part(6,npt) =  tvtz
             part(7,npt) = qm * qm_amp
             npt = npt + 1
          else
             ierr = ierr + 1
          end if
       end if
-      i = i + 1   
+      i = i + 1
       if (lquiet) then
          if (npt < npmax) then
             tempx = x2 - tempx + 2.0*tempxx
@@ -322,11 +320,11 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
                end if
                part(4,npt) = -tvtx*cos(part(2,npt)) - tvty*sin(part(2,npt))
                part(5,npt) =  tvtx*sin(part(2,npt)) - tvty*cos(part(2,npt))
-               part(6,npt) =  tvtz 
+               part(6,npt) =  tvtz
                part(7,npt) = qm * qm_amp
                npt = npt + 1
             end if
-         else 
+         else
             ierr = ierr + 1
          end if
          i = i + 1
@@ -337,6 +335,141 @@ subroutine beam_dist001(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    return
 end subroutine beam_dist001
 !
+
+subroutine beam_dist002(part,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
+&vdy,vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,&
+&sigy,x0,y0,z0,cx,cy,zf,lquiet,ierr)
+
+   implicit none
+
+   integer, intent(in) :: npx,npy,npz,idimp
+   integer, intent(inout) :: ierr
+   integer(kind=LG), intent(inout) :: npp
+   integer(kind=LG), intent(in) :: npmax,nps
+   real, intent(in) :: dr,dz,qm,sigx,sigy,x0,y0,z0
+   real, intent(in) :: vtx,vty,vtz,vdx,vdy,vdz,rmax,zmin,zmax
+   real, dimension(:,:), intent(inout) :: part
+   real, dimension(4), intent(in) :: edges
+   real, dimension(3), intent(in) :: cx,cy
+   real, dimension(:), intent(inout) :: zf
+   logical, intent(in) :: lquiet
+! local data
+   character(len=20), save :: sname = "beam_dist002"
+   integer(kind=LG) :: i, np, npt
+   real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
+   real :: tag, r0, sigmar0, trunc = 5.0
+   integer :: nz, j
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   ierr = 0
+
+   npt = 1
+
+   i = 1
+
+   x2 = 2.0 * x0
+   y2 = 2.0 * y0
+   r0 = sqrt(x0**2+y0**2)
+   sigmar0 = sqrt(sigx**2+sigy**2)
+   np = npx*npy*npz
+
+   nz = size(zf)
+   zf = abs(zf)
+   do j = 2, nz
+      zf(j) = zf(j-1) + zf(j)
+   enddo
+   zf = zf - zf(1)
+   zf = zf / zf(nz)
+
+   do while (i <= np)
+
+      call random_number(tag)
+      j = 1
+      do while (zf(j) <= tag)
+         j = j + 1
+      enddo
+      tempz = ( real(j-1) + (tag - zf(j-1)) / (zf(j) - zf(j-1)) ) * dz + zmin
+
+
+      tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)
+      tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
+      do
+         tempx = ranorm()
+         tempy = ranorm()
+         if ((tempx**2+tempy**2) > trunc**2) then
+            cycle
+         end if
+         tempx = x0 + sigx*tempx + tempxx
+         tempy = y0 + sigy*tempy + tempyy
+         tempr = sqrt(tempx**2+tempy**2)
+         exit
+      end do
+      tvtx = vtx*ranorm() + vdx
+      tvty = vty*ranorm() + vdy
+      tvtz = vtz*ranorm() + vdz
+      tvtz = sqrt(tvtz*tvtz-1-tvtx*tvtx-tvty*tvty)
+      if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+      &(tempz >= edges(3)) .and. (tempz < edges(4))) then
+         if (npt < npmax) then
+            part(3,npt) = tempz
+            part(1,npt) = tempr
+            if (tempx == 0.0) then
+               if (tempy == 0.0) part(2,npt) = 0.0
+               if (tempy > 0.0) part(2,npt) = pi/2.0
+               if (tempy < 0.0) part(2,npt) = -pi/2.0
+            else if (tempx > 0) then
+               part(2,npt) = atan(tempy/tempx)
+            else
+               part(2,npt) = atan(tempy/tempx) + pi
+            end if
+            part(4,npt) = tvtx*cos(part(2,npt))+tvty*sin(part(2,npt))
+            part(5,npt) = -tvtx*sin(part(2,npt))+tvty*cos(part(2,npt))
+            part(6,npt) = tvtz
+            ! part(7,npt) = qm/tempr*dr
+            part(7,npt) = qm
+            npt = npt + 1
+         else
+            ierr = ierr + 1
+         end if
+      end if
+      i = i + 1
+      if (lquiet) then
+         if (npt < npmax) then
+            tempx = x2 - tempx + 2.0*tempxx
+            tempy = y2 - tempy + 2.0*tempyy
+            tempr = sqrt(tempx**2+tempy**2)
+            if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+            &(tempz >= edges(3)) .and. (tempz < edges(4))) then
+               part(3,npt) = tempz
+               part(1,npt) = tempr
+               if (tempx == 0.0) then
+                  if (tempy == 0.0) part(2,npt) = 0.0
+                  if (tempy > 0.0) part(2,npt) = pi/2.0
+                  if (tempy < 0.0) part(2,npt) = -pi/2.0
+               else if (tempx > 0) then
+                  part(2,npt) = atan(tempy/tempx)
+               else
+                  part(2,npt) = atan(tempy/tempx) + pi
+               end if
+               part(4,npt) = -tvtx*cos(part(2,npt))-tvty*sin(part(2,npt))
+               part(5,npt) = tvtx*sin(part(2,npt))-tvty*cos(part(2,npt))
+               part(6,npt) = tvtz
+               ! part(7,npt) = qm/tempr*dr
+               part(7,npt) = qm
+               npt = npt + 1
+            end if
+         else
+            ierr = ierr + 1
+         end if
+         i = i + 1
+      end if
+   enddo
+   npp = npt - 1
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   return
+end subroutine beam_dist002
+
 subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
 ! For 3D particles
 
@@ -371,7 +504,7 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
       zz = part(3,ii)/dz
       qc = part(7,ii)
       rc0 = cmplx(cos(th),-sin(th),kind=DB)
-      r = r + 0.5
+      r = r + 1.0
       nn = r
       mm = zz
       dd = qc*(r - real(nn))
@@ -380,9 +513,9 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
       za = 1.0 - zd
       nn = nn - noff1
       mm = mm - noff2 + 1
-      q0(1,nn,mm) = q0(1,nn,mm) + ad*za
-      q0(1,nn+1,mm) = q0(1,nn+1,mm) + dd*za
-      q0(1,nn,mm+1) = q0(1,nn,mm+1) + ad*zd
+      q0(1,nn,mm)     = q0(1,nn,mm)     + ad*za
+      q0(1,nn+1,mm)   = q0(1,nn+1,mm)   + dd*za
+      q0(1,nn,mm+1)   = q0(1,nn,mm+1)   + ad*zd
       q0(1,nn+1,mm+1) = q0(1,nn+1,mm+1) + dd*zd
       rc = rc0
       do i = 1, num_modes
@@ -390,50 +523,59 @@ subroutine part3d_qdeposit(part,npp,dr,dz,q_re,q_im,num_modes)
          rci = aimag(rc)
          qr => q_re(i)%get_f2()
          qi => q_im(i)%get_f2()
-         qr(1,nn,mm) = qr(1,nn,mm) + ad*za*rcr
-         qr(1,nn+1,mm) = qr(1,nn+1,mm) + dd*za*rcr
-         qr(1,nn,mm+1) = qr(1,nn,mm+1) + ad*zd*rcr
+         qr(1,nn,mm)     = qr(1,nn,mm)     + ad*za*rcr
+         qr(1,nn+1,mm)   = qr(1,nn+1,mm)   + dd*za*rcr
+         qr(1,nn,mm+1)   = qr(1,nn,mm+1)   + ad*zd*rcr
          qr(1,nn+1,mm+1) = qr(1,nn+1,mm+1) + dd*zd*rcr
-         qi(1,nn,mm) = qi(1,nn,mm) + ad*za*rci
-         qi(1,nn+1,mm) = qi(1,nn+1,mm) + dd*za*rci
-         qi(1,nn,mm+1) = qi(1,nn,mm+1) + ad*zd*rci
+         qi(1,nn,mm)     = qi(1,nn,mm)     + ad*za*rci
+         qi(1,nn+1,mm)   = qi(1,nn+1,mm)   + dd*za*rci
+         qi(1,nn,mm+1)   = qi(1,nn,mm+1)   + ad*zd*rci
          qi(1,nn+1,mm+1) = qi(1,nn+1,mm+1) + dd*zd*rci
          rc = rc*rc0
       end do
    end do
 
    if (noff1 == 0) then
-      q0(1,0,:) = q0(1,0,:)/0.5
-      do i = 1, num_modes
-         qr => q_re(i)%get_f2()
-         qi => q_im(i)%get_f2()
-         qr(1,0,:) = qr(1,0,:)/0.5
-         qi(1,0,:) = qi(1,0,:)/0.5
-      end do      
-   else
-      q0(1,0,:) = q0(1,0,:)/(0.5+noff1-1)
-      do i = 1, num_modes
-         qr => q_re(i)%get_f2()
-         qi => q_im(i)%get_f2()
-         qr(1,0,:) = qr(1,0,:)/(0.5+noff1-1)
-         qi(1,0,:) = qi(1,0,:)/(0.5+noff1-1)
-      end do      
-   end if
 
-   do i = 1, n1p+1
-      r = 0.5 + i + noff1 - 1
-      q0(1,i,:) = q0(1,i,:)/r
-   end do
-      
-   do i = 1, num_modes
-      qr => q_re(i)%get_f2()
-      qi => q_im(i)%get_f2()
-      do j = 1, n1p+1
-         r = 0.5 + j + noff1 - 1
-         qr(1,j,:) = qr(1,j,:)/r
-         qi(1,j,:) = qi(1,j,:)/r
-      end do      
-   end do
+      q0(1,0,:) = 0.0
+      q0(1,1,:) = 8.0 * q0(1,1,:)
+      do j = 2, n1p+1
+         r = j + noff1 - 1
+         q0(1,j,:) = q0(1,j,:) / r
+      end do
+
+      do i = 1, num_modes
+         qr => q_re(i)%get_f2()
+         qi => q_im(i)%get_f2()
+         qr(1,0,:) = 0.0
+         qi(1,0,:) = 0.0
+         qr(1,1,:) = 0.0
+         qi(1,1,:) = 0.0
+         do j = 2, n1p+1
+            r = j + noff1 - 1
+            qr(1,j,:) = qr(1,j,:) / r
+            qi(1,j,:) = qi(1,j,:) / r
+         enddo
+      enddo
+
+   else
+
+      do j = 0, n1p+1
+         r = j + noff1 - 1
+         q0(1,j,:) = q0(1,j,:) / r
+      end do
+
+      do i = 1, num_modes
+         qr => q_re(i)%get_f2()
+         qi => q_im(i)%get_f2()
+         do j = 0, n1p+1
+            r = j + noff1 - 1
+            qr(1,j,:) = qr(1,j,:) / r
+            qi(1,j,:) = qi(1,j,:) / r
+         end do
+      end do
+
+   endif
 
    call stop_tprof( 'deposit 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -457,13 +599,12 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
    integer(kind=LG) :: ii
    real, dimension(:,:,:), pointer :: e0,b0,er,ei,br,bi
    integer :: n1, n2, nn, mm, noff1, n1p, noff2, n2p
-   real :: edge1, edge2, qtmh, qtmh1, qtmh2, dti
-   real :: r0, r, rn, qc, qc1, th, th1, dd, ad, za, zd, rcr, rci
+   real :: edge1, edge2, qtmh
+   real :: r0, r, rn, qc, th, th1, dd, ad, za, zd, rcr, rci
    real :: zz, z
    real, dimension(3) :: dx, dxx, ox, oxx, tmp
-   real :: ddx, ddy, vx, vy, acx, acy, acz, omt, anorm
-   real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8
-   real :: dtc1, v1, v2, ngamma, p2, dtx1, dtz1
+   real :: acx, acy, acz
+   real :: v1, v2, ngamma, p2, dtx1, dtz1
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -483,7 +624,7 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
    ! dtx = dt/dx0
    ! dtz = dt/dz0
    qtmh = qbm*dt
-   edge1 = (real(n1) - 0.5)*dr
+   edge1 = real(n1) * dr
    edge2 = (real(n2) - 1.0)*dz
 
    ii = 1
@@ -494,8 +635,8 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
       z = part(3,ii)
       qc = part(7,ii)
       rc0 = cmplx(cos(th),sin(th),kind=DB)
-      r = r0/dr + 0.5  
-      zz = z/dz    
+      r = r0/dr + 1.0
+      zz = z/dz
       nn = r
       mm = zz
       dd = r - real(nn)
@@ -564,7 +705,7 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
          end if
       end if
       acz = z + dtz1
-      if (rn > edge1) then 
+      if (rn > edge1) then
          if (ii == npp) then
             npp = npp -1
             exit
@@ -586,7 +727,7 @@ subroutine part3d_push(part,npp,dr,dz,xdim,dt,qbm,ef_re,ef_im,&
             npp = npp - 1
             cycle
          end if
-      else        
+      else
          part(1,ii) = rn
          part(2,ii) = th1
          part(3,ii) = acz
@@ -621,19 +762,18 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
 ! local data
    character(len=20), save :: sname = "part3d_pmove"
    real, dimension(4) :: edges
-   integer, dimension(2) :: noff         
+   integer, dimension(2) :: noff
    integer, dimension(2) :: jsr, jsl, jss
    integer :: n1, n2, kstrt, nvpy, nvpz
-   integer :: nproc, lgrp, mreal, mint, mcplx, mdouble, lworld
+   integer :: lgrp, mreal, mint, lworld
    integer, parameter :: iy = 1, iz = 3
-   integer :: ierr, ic, js, ks, mnblok, i, n, m, my, mz, moff, nvp, iter
-   integer :: npr, nps, npt, kl, kr, j, j1, j2, nter, mter
+   integer :: ierr, ic, js, ks, i, n, nvp, iter
+   integer :: nps, npt, kl, kr, j, j1, j2, nter, mter
    integer :: nbsize
    integer :: itermax
    integer, dimension(10) :: istatus
    integer, dimension(4) :: ibflg, iwork, msid
    integer, dimension(2) :: kb
-   real(kind=DB), dimension(2) :: bflg, work
    real :: an, xt
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -643,11 +783,11 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
    noff = ud%get_noff()
    if (noff(1) == 0) then
-      edges(1) = noff(1)*dr
-      edges(2) = edges(1) + (ud%get_ndp(1) + 0.5)*dr
+      edges(1) = 0.0
+      edges(2) = edges(1) + ud%get_ndp(1) * dr
    else
-      edges(1) = (noff(1) + 0.5)*dr
-      edges(2) = edges(1) + ud%get_ndp(1)*dr
+      edges(1) = noff(1) * dr
+      edges(2) = edges(1) + ud%get_ndp(1) * dr
    end if
    edges(3) = noff(2)*dz
    edges(4) = edges(3) + ud%get_ndp(2)*dz
@@ -692,7 +832,7 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
          return
       end if
    end if
-  
+
    iter = 2
    nter = 0
    mter = 0
@@ -933,7 +1073,7 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
     ibflg(1) = nps
     ibflg(4) = -npt
     iwork = ibflg
-    call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr) 
+    call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr)
     info(2) = ibflg(1)
     info(3) = -ibflg(4)
     ierr = ibflg(1) - npmax
@@ -1031,7 +1171,7 @@ subroutine part3d_pmove(part,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff
       if (ibflg(3) <= 0) exit
       nter = nter + 1
       info(3+n) = nter
-      write (erstr,*) "new loop, nter=", nter 
+      write (erstr,*) "new loop, nter=", nter
       call write_dbg(cls_name, sname, cls_level, erstr)
   end do
 ! information

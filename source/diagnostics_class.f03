@@ -9,7 +9,7 @@ use sim_species_class
 use field_class
 use beam3d_class
 use species2d_class
-use sys
+use sysutil
 use param
 use input_class
 use mpi
@@ -440,7 +440,6 @@ subroutine run_sim_diag( this, tstep, dt )
   real, intent(in) :: dt
 
   ! local data
-  class(*), pointer :: obj => null()
   integer :: stag, rtag, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
 
@@ -450,13 +449,13 @@ subroutine run_sim_diag( this, tstep, dt )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( mod( tstep-1, this%ndump_gcd ) /= 0 ) return
+  if ( mod( tstep, this%ndump_gcd ) /= 0 ) return
 
   call this%to_head()
   if ( .not. associated(this%diag) ) return
 
   do
-    if ( mod( tstep-1, this%diag%df ) == 0 ) then
+    if ( mod( tstep, this%diag%df ) == 0 ) then
 
       call this%diag%set_sim_time( tstep, tstep*dt )
       select type ( obj => this%diag%obj )

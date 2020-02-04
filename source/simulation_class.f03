@@ -16,9 +16,11 @@ use beam3d_class
 use species2d_class
 
 use input_class
-use sys
+use sysutil
 use param
 use mpi
+
+use debug_tool
 
 implicit none
 
@@ -75,7 +77,7 @@ subroutine init_simulation(this)
   ! local data
   character(len=18), save :: sname = 'init_simulation'
 
-  real :: n0, dr, dxi, dt, time
+  real :: n0, dt, time
   logical :: read_rst
 
   allocate( this%input )
@@ -136,7 +138,6 @@ subroutine end_simulation(this)
 
   ! local data
   character(len=18), save :: sname = 'end_simulation'
-  integer :: ierr
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -159,7 +160,7 @@ subroutine run_simulation( this )
 
   class( simulation ), intent(inout) :: this
 
-  integer :: i, j, k, l, ierr, id
+  integer :: i, j, k, l, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation'
 
@@ -193,6 +194,15 @@ subroutine run_simulation( this )
   beam => this%beams%beam
   spe  => this%species%spe
 
+
+  ! deposit beams and do diagnostics to see the initial distribution
+  call q_beam%as(0.0)
+  call q_spe%as(0.0)
+  ! pipeline data transfer for beams
+  do k = 1, this%nbeams
+    this%tag_bq(k) = ntag()
+    call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
+  enddo
   call this%diag%run( 0, this%dt )
 
   do i = this%start3d, this%nstep3d
@@ -244,20 +254,18 @@ subroutine run_simulation( this )
         call spe(k)%qdp( q_spe )
       enddo
 
-      ! call q_spe%get_q_ax2() ! this must be put before smooth
-      call q_spe%smooth_f1()
-
       call q_spe%copy_slice( j+1, p_copy_1to2 )
-      call psi%solve( q_spe, j+1 )
+      call psi%solve( q_spe )
       do k = 1, this%nspecies
         call spe(k)%extpsi( psi )
       enddo
-      call e%solve( psi, j+1 )
+      ! call e%solve( psi, j+1 )
       call b_spe%solve( cu )
 
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
+        call e%solve( cu ) !!!
         call e%solve( b, psi )
         cu = 0.0
         acu = 0.0
@@ -265,9 +273,7 @@ subroutine run_simulation( this )
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, cu, amu, acu )
         enddo
-        call acu%smooth_f1()
-        call amu%smooth_f1()
-        call cu%smooth_f1()
+
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
         call b_spe%solve( cu )
@@ -281,6 +287,7 @@ subroutine run_simulation( this )
       enddo ! iteration
 
       call add_f1( b_spe, b_beam, b )
+      call e%solve( cu )
       call e%solve( b, psi )
       call dot_f1( this%dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )

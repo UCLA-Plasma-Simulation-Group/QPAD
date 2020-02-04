@@ -4,7 +4,7 @@ module species2d_class
 
 use parallel_pipe_class
 use param
-use sys
+use sysutil
 use grid_class
 use fdist2d_class
 use field_psi_class
@@ -61,7 +61,6 @@ save
 
 character(len=10) :: cls_name = 'species2d'
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 
 contains
 !
@@ -107,8 +106,8 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    this%qn = 0.0
    this%cu = 0.0
    call this%pd%qdp(this%qn)
-   call this%qn%acopy_gc_f1()
-   call this%qn%copy_gc_f1( bnd_ax = .false. )
+   call this%qn%acopy_gc_f1( dir=p_mpi_forward )
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -146,8 +145,8 @@ subroutine renew_species2d(this,s)
    call this%pd%renew(this%pf,this%qn,s)
    this%qn = 0.0
    call this%pd%qdp(this%qn)
-   call this%qn%acopy_gc_f1()
-   call this%qn%copy_gc_f1( bnd_ax = .false. )
+   call this%qn%acopy_gc_f1( dir=p_mpi_forward )
+   call this%qn%copy_gc_f1()
    this%q = this%qn
    if (this%pp%getstageid() == 0) then
       ! call this%q%smooth(this%q)
@@ -173,8 +172,9 @@ subroutine qdp_species2d(this,q)
 
    this%q = 0.0
    call this%pd%qdp(this%q)
-   call this%q%acopy_gc_f1()
-   call this%q%copy_gc_f1( bnd_ax = .false. )
+   call this%q%acopy_gc_f1( dir=p_mpi_forward )
+   call this%q%smooth_f1()
+   call this%q%copy_gc_f1()
    ! q = this%q + q + this%qn
    call add_f1( this%q, q )
    call add_f1( this%qn, q )
@@ -202,12 +202,15 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%dcu = 0.0
    this%amu = 0.0
    call this%pd%amjdp(ef,bf,this%cu,this%amu,this%dcu)
-   call this%cu%acopy_gc_f1()
-   call this%dcu%acopy_gc_f1()
-   call this%amu%acopy_gc_f1()
-   call this%cu%copy_gc_f1( bnd_ax = .false. )
-   call this%dcu%copy_gc_f1( bnd_ax = .false. )
-   call this%amu%copy_gc_f1( bnd_ax = .false. )
+   call this%cu%acopy_gc_f1( dir=p_mpi_forward )
+   call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
+   call this%amu%acopy_gc_f1( dir=p_mpi_forward )
+   call this%cu%smooth_f1()
+   call this%dcu%smooth_f1()
+   call this%amu%smooth_f1()
+   call this%cu%copy_gc_f1()
+   call this%dcu%copy_gc_f1()
+   call this%amu%copy_gc_f1()
 
    call add_f1( this%cu, cu )
    call add_f1( this%dcu, dcu )

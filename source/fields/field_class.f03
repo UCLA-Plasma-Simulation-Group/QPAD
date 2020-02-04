@@ -6,7 +6,7 @@ use ufield_class
 use ufield_smooth_class
 use hdf5io_class
 use param
-use sys
+use sysutil
 use mpi
 
 implicit none
@@ -221,12 +221,11 @@ subroutine copy_slice( this, idx, dir )
 
 end subroutine copy_slice
 
-subroutine copy_gc_f1( this, bnd_ax )
+subroutine copy_gc_f1( this )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  logical, intent(in) :: bnd_ax
 
   integer :: i
   character(len=20), save :: sname = "copy_gc_f1"
@@ -234,21 +233,20 @@ subroutine copy_gc_f1( this, bnd_ax )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_f1( bnd_ax )
+    call this%rf_re(i)%copy_gc_f1()
     if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_f1( bnd_ax )
+    call this%rf_im(i)%copy_gc_f1()
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_f1
 
-subroutine copy_gc_f2( this, bnd_ax )
+subroutine copy_gc_f2( this )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  logical, intent(in) :: bnd_ax
 
   integer :: i
   character(len=20), save :: sname = "copy_gc_f2"
@@ -256,30 +254,38 @@ subroutine copy_gc_f2( this, bnd_ax )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%num_modes
-    call this%rf_re(i)%copy_gc_f2( bnd_ax )
+    call this%rf_re(i)%copy_gc_f2()
     if ( i == 0 ) cycle
-    call this%rf_im(i)%copy_gc_f2( bnd_ax )
+    call this%rf_im(i)%copy_gc_f2()
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine copy_gc_f2
 
-subroutine acopy_gc_f1( this )
+subroutine acopy_gc_f1( this, dir, ncell )
 
   implicit none
 
   class( field ), intent(inout) :: this
+  integer, intent(in) :: dir
+  integer, intent(in), optional :: ncell
 
-  integer :: i
+  integer :: i, nc
   character(len=20), save :: sname = "acopy_gc_f1"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  if ( present(ncell) ) then
+    nc = ncell
+  else
+    nc = 1
+  endif
+
   do i = 0, this%num_modes
-    call this%rf_re(i)%acopy_gc_f1()
+    call this%rf_re(i)%acopy_gc_f1( dir, nc )
     if ( i == 0 ) cycle
-    call this%rf_im(i)%acopy_gc_f1()
+    call this%rf_im(i)%acopy_gc_f1( dir, nc )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -319,7 +325,6 @@ subroutine pipe_gc_send( this, tag, sid )
   integer :: idproc, idproc_des, stageid, lnvp, comm
   integer :: n1p, count, dtype, ierr
   integer, dimension(2) :: gc1, gc2
-  integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:,:), allocatable, save :: buf
   character(len=20), save :: sname = "pipe_gc_send"
 
@@ -621,7 +626,7 @@ subroutine pipe_recv( this, rtag, nslice )
 
   integer :: i, j, k, m, ns
   integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
-  integer :: count, dtype, ierr, id
+  integer :: count, dtype, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=20), save :: sname = "pipe_precv"
@@ -762,16 +767,16 @@ subroutine smooth_f1( this )
   do i = 0, this%num_modes
 
     if ( i == 0 ) then
-      call this%smooth%smooth_f1( this%rf_re(i), i )
+      call this%smooth%smooth_f1( this%rf_re(i) )
       cycle
     endif
 
-    call this%smooth%smooth_f1( this%rf_re(i), i )
-    call this%smooth%smooth_f1( this%rf_im(i), i )
+    call this%smooth%smooth_f1( this%rf_re(i) )
+    call this%smooth%smooth_f1( this%rf_im(i) )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .false. )
+  call this%acopy_gc_f1( dir=p_mpi_bothway, ncell=this%smooth%get_order() )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

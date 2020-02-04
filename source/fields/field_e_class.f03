@@ -9,7 +9,8 @@ use field_src_class
 use field_solver_class
 use ufield_class
 use param
-use sys
+use sysutil
+use mpi
 
 implicit none
 
@@ -33,7 +34,7 @@ type, extends( field ) :: field_e
 
   generic :: new => init_field_e
   procedure :: del => end_field_e
-  generic :: solve => solve_field_ez, solve_field_ez_fast, &
+  generic :: solve => solve_field_ez_fast, solve_field_ez, &
                       solve_field_et, solve_field_et_beam
 
   procedure, private :: init_field_e
@@ -66,15 +67,16 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  nrp = gp%get_ndp(1)
   dr = gp%get_dr()
 
   select case ( part_shape )
-  
+
   case ( p_ps_linear )
-  
+
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
-  
+    gc_num(:,2) = (/2, 1/)
+
   case ( p_ps_quadratic )
 
     call write_err( "Quadratic particle shape not implemented." )
@@ -96,7 +98,8 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
     do i = 0, num_modes
       call this%solver_ez(i)%new( pp, gp, i, dr, kind=p_fk_ez, &
         bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
-    enddo 
+    enddo
+    allocate( this%buf_re(nrp), this%buf_im(nrp) )
   case ( p_entity_beam )
     ! do nothing
   case default
@@ -139,13 +142,13 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   implicit none
 
   class( field_e ), intent(inout) :: this
-  integer, intent(in) :: mode
   class( ufield ), intent(in) :: jay_re
   class( ufield ), intent(in), optional :: jay_im
+  integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, idproc, nvp, dtype, comm, ierr
+  integer :: i, nrp, noff, idproc, nvp, ierr, i1, i2
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: idrh, idr, k0, a1, a2, a3, b, ir
+  real :: idrh, idr, dr, dr2, ir, div
   character(len=20), save :: sname = 'set_source_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -157,95 +160,92 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   noff   = jay_re%get_noff(1)
   nvp    = jay_re%pp%getlnvp()
   idproc = jay_re%pp%getlidproc()
-  dtype  = jay_re%pp%getmreal()
-  comm   = jay_re%pp%getlgrp()
+  dr     = this%dr
+  dr2    = dr*dr
 
   f1_re => jay_re%get_f1()
-  if ( .not. associated( this%buf_re ) ) then
-    allocate( this%buf_re( nrp ) )
-  elseif ( size(this%buf_re) < nrp ) then
-    deallocate( this%buf_re )
-    allocate( this%buf_re( nrp ) )
-  endif
-
   if ( present(jay_im) ) then
     f1_im => jay_im%get_f1()
-    if ( .not. associated( this%buf_im ) ) then
-      allocate( this%buf_im( nrp ) )
-    elseif ( size(this%buf_im) < nrp ) then
-      deallocate( this%buf_im )
-      allocate( this%buf_im( nrp ) )
-    endif
   endif
 
   this%buf_re = 0.0
   if ( present(jay_im) ) this%buf_im = 0.0
+
   if ( mode == 0 ) then
-    
-    do i = 1, nrp
 
-      k0 = real(i+noff) - 0.5
-      ir = idr / k0
-      ! a1 = -idrh * (k0-0.5) / k0
-      ! a2 =  idrh / k0
-      ! a3 =  idrh * (k0+0.5) / k0
-      ! this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1)
+    i1 = 1
+    i2 = nrp
+    if ( idproc == 0 ) i1 = 2
+    if ( idproc == nvp-1 ) i2 = nrp-2
 
+    div = 0.0
+    do i = i1, i2
+      ir = idr / real(i+noff-1)
       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
-
+      div = div + this%buf_re(i) * real(i+noff-1)
     enddo
 
     ! calculate the derivatives at the boundary and axis
-    if ( idproc == 0 ) then
-      ! this%buf_re(1) = idr * ( f1_re(1,1) + f1_re(1,2) )
-      ! this%buf_re(1) = idrh * ( -3.0 * ( f1_re(1,1) + f1_re(1,0) ) + 4.0 * f1_re(1,2) - f1_re(1,3) ) &
-      ! + 2.0*idr * ( f1_re(1,1) + f1_re(1,0) )
-      this%buf_re(1) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) ) + 2.0*idr * f1_re(1,1)
-    endif
+    ! if ( idproc == 0 ) then
+    !   ! this%buf_re(1) = 2.0 * idr * f1_re(1,2)
+    ! else
+    !   ir = idr / real(noff)
+    !   this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
+    !   div = div + this%buf_re(1) * real(noff)
+    ! endif
+
     if ( idproc == nvp-1 ) then
-      ! a2 = idr * (nrp+noff+0.5) / (nrp+noff-0.5)
-      k0 = real(nrp+noff)-0.5
-      ir = idr / k0
-      this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp)
+      ir = idr / real(nrp+noff-2)
+      this%buf_re(nrp-1) = idrh * ( f1_re(1,nrp) - f1_re(1,nrp-2) ) + ir * f1_re(1,nrp-1)
+      ir = idr / real(nrp+noff-1)
+      this%buf_re(nrp) = idr * ( f1_re(1,nrp) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+      div = div - idrh * (f1_re(1,nrp-2) + f1_re(1,nrp-1)) * (real(nrp+noff) - 2.5)
+    ! else
+    !   ir = idr / real(nrp+noff-1)
+    !   this%buf_re(nrp) = idrh * ( f1_re(1,nrp+1) - f1_re(1,nrp-1) ) + ir * f1_re(1,nrp)
+    !   div = div + this%buf_re(nrp) * real(nrp+noff-1)
     endif
 
-    ! if ( idproc == 0 ) this%jr_ax = this%dr * f1_re(1,0)
-    ! call MPI_BCAST( this%jr_ax, 1, dtype, 0, comm, ierr )
+    call MPI_REDUCE( div, this%buf_re(1), 1, this%pp%getmreal(), MPI_SUM, 0, this%pp%getlgrp(), ierr )
+    if ( idproc == 0 ) this%buf_re(1) = -8.0 * this%buf_re(1)
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
-    
-    do i = 1, nrp
 
-      k0 = real(i+noff) - 0.5
-      ir = idr / k0
-      ! a1 = -idrh * (k0-0.5) / k0
-      ! a2 = idrh / k0
-      ! a3 = idrh * (k0+0.5) / k0
-      ! b  = idr * real(mode) / k0
-
-      ! this%buf_re(i) = a1 * f1_re(1,i-1) + a2 * f1_re(1,i) + a3 * f1_re(1,i+1) - &
-      !                   b * f1_im(2,i)
-      ! this%buf_im(i) = a1 * f1_im(1,i-1) + a2 * f1_im(1,i) + a3 * f1_im(1,i+1) + &
-      !                   b * f1_re(2,i)
-
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i) - mode * ir * f1_im(2,i)
       this%buf_im(i) = idrh * ( f1_im(1,i+1) - f1_im(1,i-1) ) + ir * f1_im(1,i) + mode * ir * f1_re(2,i)
-      
     enddo
 
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
-      ir = 2.0 * idr
-      this%buf_re(1) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) ) + ir * f1_re(1,1) - mode * ir * f1_im(2,1)
-      this%buf_im(1) = idrh * ( -3.0 * f1_im(1,1) + 4.0 * f1_im(1,2) - f1_im(1,3) ) + ir * f1_im(1,1) + mode * ir * f1_re(2,1)
+      if ( mod(mode,2) == 0 ) then
+        this%buf_re(1) = 2.0 * idr * f1_re(1,2) - mode * idr * f1_im(2,2)
+        this%buf_im(1) = 2.0 * idr * f1_im(1,2) + mode * idr * f1_re(2,2)
+      else
+        this%buf_re(1) = 0.0
+        this%buf_im(1) = 0.0
+
+        ! since j_r(m=1) is multiplied by factor 8 on axis, the derivative on index=2 is
+        ! calculated using forward difference
+        if ( mode == 1 ) then
+          ir = idr
+          this%buf_re(2) = idr * ( f1_re(1,3) - f1_re(1,2) ) + ir * f1_re(1,2) - mode * ir * f1_im(2,2)
+          this%buf_im(2) = idr * ( f1_im(1,3) - f1_im(1,2) ) + ir * f1_im(1,2) + mode * ir * f1_re(2,2)
+        endif
+      endif
+    else
+      ir = idr / real(noff)
+      this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1) - mode * ir * f1_im(2,1)
+      this%buf_im(1) = idrh * ( f1_im(1,2) - f1_im(1,0) ) + ir * f1_im(1,1) + mode * ir * f1_re(2,1)
     endif
+
     if ( idproc == nvp-1 ) then
-      k0 = real(nrp+noff) - 0.5
-      ir = idr / k0
+      ir = idr / real(nrp+noff-1)
       this%buf_re(nrp) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) ) + ir * f1_re(1,nrp) &
-                        - mode * ir * f1_im(2,nrp)
+                         -mode * ir * f1_im(2,nrp)
       this%buf_im(nrp) = idrh * ( 3.0 * f1_im(1,nrp) - 4.0 * f1_im(1,nrp-1) + f1_im(1,nrp-2) ) + ir * f1_im(1,nrp) &
-                        + mode * ir * f1_re(2,nrp)
+                         +mode * ir * f1_re(2,nrp)
     endif
 
   else
@@ -266,25 +266,14 @@ subroutine get_solution_ez( this, mode )
   class( field_e ), intent(inout) :: this
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff
+  integer :: i, nrp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  real :: r, rmax
   character(len=20), save :: sname = 'get_solution_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve ez' )
 
-  nrp  = this%rf_re(mode)%get_ndp(1)
-  noff = this%rf_re(mode)%get_noff(1)
-  rmax = this%rf_re(mode)%get_nd(1) * this%dr
-
-  ! if ( mode == 0 ) then
-  !   ! add contribution of the source terms on axis
-  !   do i = 1, nrp
-  !     r = (i+noff-0.5) * this%dr
-  !     this%buf_re(i) = this%buf_re(i) - this%jr_ax * log(r/rmax)
-  !   enddo
-  ! endif
+  nrp = this%rf_re(mode)%get_ndp(1)
 
   f1_re => this%rf_re(mode)%get_f1()
   do i = 1, nrp
@@ -296,6 +285,10 @@ subroutine get_solution_ez( this, mode )
     do i = 1, nrp
       f1_im(3,i) = this%buf_im(i)
     enddo
+
+    ! Ez(m>0) vanishes on axis
+    f1_re(3,1) = 0.0
+    f1_im(3,1) = 0.0
   endif
 
   call stop_tprof( 'solve ez' )
@@ -335,7 +328,7 @@ subroutine solve_field_ez( this, jay )
 
   enddo
 
-  call this%copy_gc_f1( bnd_ax = .true. )
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -352,10 +345,11 @@ subroutine solve_field_ez_fast( this, psi, idx )
   type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
   type( ufield ), dimension(:), pointer :: e_re => null(), e_im => null()
   real, dimension(:,:), pointer :: e_f1_re => null(), e_f1_im => null()
+  real, dimension(:,:,:), pointer :: e_f2_re => null(), e_f2_im => null()
   real, dimension(:,:), pointer :: psi_f1_re => null(), psi_f1_im => null()
   real, dimension(:,:,:), pointer :: psi_f2_re => null(), psi_f2_im => null()
   integer :: i, j, nrp
-  real :: idxih
+  real :: idxih, idxi
   character(len=20), save :: sname = 'solve_field_ez_fast'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -368,32 +362,49 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
   nrp = e_re(0)%get_ndp(1)
   idxih = 0.5 / this%dxi
+  idxi = 1.0 / this%dxi
 
   do i = 0, this%num_modes
 
     e_f1_re => e_re(i)%get_f1()
+    e_f2_re => e_re(i)%get_f2()
     psi_f1_re => psi_re(i)%get_f1()
     psi_f2_re => psi_re(i)%get_f2()
 
     do j = 1, nrp
+      ! quadratic extrapolation
       e_f1_re(3,j) = idxih * ( 3.0 * psi_f1_re(1,j) - 4.0 * psi_f2_re(1,j,idx-1) + psi_f2_re(1,j,idx-2) )
+
+      ! linear extrapolation
+      ! e_f1_re(3,j) = idxi * ( psi_f1_re(1,j) - psi_f2_re(1,j,idx-1) )
+
+      ! smooth
+      ! e_f1_re(3,j) = ( e_f1_re(3,j) + e_f2_re(3,j,idx-1) + e_f2_re(3,j,idx-2) ) / 3
     enddo
 
     if ( i == 0 ) cycle
 
     e_f1_im => e_im(i)%get_f1()
+    e_f2_im => e_im(i)%get_f2()
     psi_f1_im => psi_im(i)%get_f1()
     psi_f2_im => psi_im(i)%get_f2()
 
     do j = 1, nrp
+      ! quadratic extrapolation
       e_f1_im(3,j) = idxih * ( 3.0 * psi_f1_im(1,j) - 4.0 * psi_f2_im(1,j,idx-1) + psi_f2_im(1,j,idx-2) )
+
+      ! linear extrapolation
+      ! e_f1_im(3,j) = idxi * ( psi_f1_im(1,j) - psi_f2_im(1,j,idx-1) )
+
+      ! smooth
+      ! e_f1_im(3,j) = ( e_f1_im(3,j) + e_f2_im(3,j,idx-1) + e_f2_im(3,j,idx-2) ) / 3
     enddo
 
   enddo
 
   call stop_tprof( 'solve ez' )
 
-  call this%copy_gc_f1( bnd_ax = .true. )
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -413,7 +424,7 @@ subroutine solve_field_et( this, b, psi )
   real, dimension(:,:), pointer :: upsi_re => null(), upsi_im => null()
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
-  real :: idr, idrh, ir, k0
+  real :: idr, idrh, ir
   character(len=20), save :: sname = 'solve_field_et'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -423,54 +434,72 @@ subroutine solve_field_et( this, b, psi )
   idrh = idr * 0.5
   nrp = this%rf_re(0)%get_ndp(1)
 
-  b_re => b%get_rf_re()
-  b_im => b%get_rf_im()
+  b_re   => b%get_rf_re()
+  b_im   => b%get_rf_im()
   psi_re => psi%get_rf_re()
   psi_im => psi%get_rf_im()
 
-  noff = this%rf_re(0)%get_noff(1)
-  nvp = this%rf_re(0)%pp%getlnvp()
+  noff   = this%rf_re(0)%get_noff(1)
+  nvp    = this%rf_re(0)%pp%getlnvp()
   idproc = this%rf_re(0)%pp%getlidproc()
 
-  do mode = 0, this%num_modes
+  ! m=0 mode
+  ub_re   => b_re(0)%get_f1()
+  upsi_re => psi_re(0)%get_f1()
+  ue_re   => this%rf_re(0)%get_f1()
 
-    ub_re => b_re(mode)%get_f1()
+  do i = 1, nrp
+    ue_re(1,i) = ub_re(2,i) - idrh * ( upsi_re(1,i+1) - upsi_re(1,i-1) )
+    ue_re(2,i) = -ub_re(1,i)
+  enddo
+  if ( idproc == 0 ) then
+    ue_re(1,1) = 0.0
+    ue_re(2,1) = 0.0
+  endif
+  if ( idproc == nvp-1 ) then
+    ue_re(1,nrp) = ub_re(2,nrp) + idrh * ( 4.0 * upsi_re(1,nrp-1) - upsi_re(1,nrp-2) - 3.0 * upsi_re(1,nrp) )
+  endif
+
+  ! m>0 mode
+  do mode = 1, this%num_modes
+
+    ub_re   => b_re(mode)%get_f1()
+    ub_im   => b_im(mode)%get_f1()
     upsi_re => psi_re(mode)%get_f1()
-    ue_re => this%rf_re(mode)%get_f1()
-    if ( mode == 0 ) then
-      do i = 1, nrp
-        ue_re(1,i) = ub_re(2,i) - idrh * ( upsi_re(1,i+1) - upsi_re(1,i-1) )
-        ue_re(2,i) = -ub_re(1,i)
-      enddo
-      if ( idproc == 0 ) then
-        ue_re(1,1) = ub_re(2,1) - idrh * ( 4.0 * upsi_re(1,2) - upsi_re(1,3) - 3.0 * upsi_re(1,1) )
-      endif
-      if ( idproc == nvp-1 ) then
-        ue_re(1,nrp) = ub_re(2,nrp) + idrh * ( 4.0 * upsi_re(1,nrp-1) - upsi_re(1,nrp-2) - 3.0 * upsi_re(1,nrp) )
-      endif
-      cycle
-    endif
-
-    ub_im => b_im(mode)%get_f1()
     upsi_im => psi_im(mode)%get_f1()
-    ue_im => this%rf_im(mode)%get_f1()
+    ue_re   => this%rf_re(mode)%get_f1()
+    ue_im   => this%rf_im(mode)%get_f1()
 
-    do i = 1, nrp
-      k0 = real(i+noff) - 0.5
-      ir = idr / k0
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
       ue_re(1,i) = ub_re(2,i) - idrh * ( upsi_re(1,i+1) - upsi_re(1,i-1) )
-      ue_re(2,i) = -ub_re(1,i) + ir * mode * upsi_im(1,i)
-
       ue_im(1,i) = ub_im(2,i) - idrh * ( upsi_im(1,i+1) - upsi_im(1,i-1) )
+      ue_re(2,i) = -ub_re(1,i) + ir * mode * upsi_im(1,i)
       ue_im(2,i) = -ub_im(1,i) - ir * mode * upsi_re(1,i)
     enddo
+
     if ( idproc == 0 ) then
-      ir = 2.0 * idr
-      ue_re(1,1) = ub_re(2,1) - idrh * ( 4.0 * upsi_re(1,2) - upsi_re(1,3) - 3.0 * upsi_re(1,1) )
-      ue_im(1,1) = ub_im(2,1) - idrh * ( 4.0 * upsi_im(1,2) - upsi_im(1,3) - 3.0 * upsi_im(1,1) )
+      if ( mode == 1 ) then
+        ue_re(1,1) = ub_re(2,1) - idr * upsi_re(1,2)
+        ue_im(1,1) = ub_im(2,1) - idr * upsi_im(1,2)
+        ue_re(2,1) = -ub_re(1,1) + idr * upsi_im(1,2)
+        ue_im(2,1) = -ub_im(1,1) - idr * upsi_re(1,2)
+      else
+        ue_re(1,1) = 0.0
+        ue_im(1,1) = 0.0
+        ue_re(2,1) = 0.0
+        ue_im(2,1) = 0.0
+      endif
+    else
+      ir = idr / real(noff)
+      ue_re(1,1) = ub_re(2,1) - idrh * ( upsi_re(1,2) - upsi_re(1,0) )
+      ue_im(1,1) = ub_im(2,1) - idrh * ( upsi_im(1,2) - upsi_im(1,0) )
+      ue_re(2,1) = -ub_re(1,1) + ir * mode * upsi_im(1,1)
+      ue_im(2,1) = -ub_im(1,1) - ir * mode * upsi_re(1,1)
     endif
+
     if ( idproc == nvp-1 ) then
-      ir = idr / (nrp+noff-0.5)
+      ir = idr / real(nrp+noff-1)
       ue_re(1,nrp) = ub_re(2,nrp) + idrh * ( 4.0 * upsi_re(1,nrp-1) - upsi_re(1,nrp-2) - 3.0 * upsi_re(1,nrp) )
       ue_im(1,nrp) = ub_im(2,nrp) + idrh * ( 4.0 * upsi_im(1,nrp-1) - upsi_im(1,nrp-2) - 3.0 * upsi_im(1,nrp) )
     endif
@@ -479,7 +508,7 @@ subroutine solve_field_et( this, b, psi )
 
   call stop_tprof( 'solve plasma et' )
 
-  call this%copy_gc_f1( bnd_ax = .true. )
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -529,7 +558,7 @@ subroutine solve_field_et_beam( this, b )
 
   call stop_tprof( 'solve beam et' )
 
-  call this%copy_gc_f1( bnd_ax = .true. )
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

@@ -6,7 +6,7 @@ use field_psi_class
 use field_e_class
 use field_b_class
 use field_src_class
-use sys
+use sysutil
 use param
 use input_class
 
@@ -53,11 +53,9 @@ subroutine init_sim_fields( this, input )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
-  character(len=20) :: s1, s2, s3
   character(len=:), allocatable :: str
-  integer :: i,n,ndump,j,k,l,m
   integer :: entity, max_mode, ps, bnd, sm_type, sm_ord
-  real :: dr, dxi, tol, min, max
+  real :: tol
 
   this%gp => input%gp
   this%pp => input%pp
@@ -186,7 +184,6 @@ subroutine end_sim_fields( this )
   class(sim_fields), intent(inout) :: this
   ! local data
   character(len=18), save :: sname = 'end_sim_fields'
-  integer :: i, n
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 

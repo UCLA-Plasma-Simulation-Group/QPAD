@@ -9,7 +9,7 @@ use field_class
 use field_src_class
 use hdf5io_class
 use param
-use sys
+use sysutil
 
 implicit none
 
@@ -102,6 +102,9 @@ subroutine init_sim_beams( this, input )
        call this%pf(i)%p%new( input, i )
     case (1)
        allocate( fdist3d_001 :: this%pf(i)%p )
+       call this%pf(i)%p%new( input, i )
+    case (2)
+       allocate( fdist3d_002 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
   ! Add new distributions right above this line
     case default

@@ -5,8 +5,8 @@ use parallel_pipe_class
 use grid_class
 use mpi
 use json_module
-use sys
-   
+use sysutil
+
 implicit none
 
 private
@@ -21,7 +21,7 @@ type input_json
    type(json_file), private, pointer :: input => null()
 
    contains
-   
+
    generic :: new => read_input_json
    generic :: get => json_file_get_object,json_file_get_integer,&
    &json_file_get_double, json_file_get_logical,&
@@ -43,7 +43,7 @@ type input_json
    &json_file_get_string_vec,json_file_get_alloc_string_vec,&
    &json_file_get_root
    procedure, private :: json_file_variable_info
-   
+
 end type
 
 character(len=10), save :: cls_name = 'input'
@@ -53,30 +53,30 @@ type(parallel), save, target :: p
 type(parallel_pipe), save, target :: pp
 
 contains
-!      
+!
 subroutine read_input_json(this)
 
    implicit none
-   
+
    class(input_json), intent(inout) :: this
 ! local data
    character(len=18), save :: sname = 'read_input_json'
    logical :: found, stat, if_timing
-   character(len=:), allocatable :: ff, boundary, error_msg
-   integer :: length, num_stages, verbose, nr, nz, psolve, ierr
+   character(len=:), allocatable :: ff, error_msg
+   integer :: length, num_stages, verbose, nr, nz, ierr
    real :: dr, dxi, min, max
-   
+
    call p%new()
-   
+
    this%p => p
 
    call init_stdout( p%getidproc() )
    call init_errors( eunit=2, idproc=p%getidproc(), monitor=5 )
-   
+
    call write_dbg( cls_name, sname, cls_level, 'starts' )
-   
+
    call this%initialize(comment_char='!')
-   
+
    if (p%getidproc() == 0) then
       inquire(FILE='./qpinput.json', EXIST=found)
       if(found) then
@@ -94,11 +94,11 @@ subroutine read_input_json(this)
    end if
 
    call MPI_BCAST(length, 1, this%p%getmint(), 0, this%p%getlworld(), ierr)
-   
+
    if (.not. allocated(ff)) allocate(character(len=length) :: ff)
-   
+
    call MPI_BCAST(ff, length, this%p%getmchar(), 0, this%p%getlworld(), ierr)
-   
+
    call this%load_from_string(ff)
 
    call this%get('simulation.if_timing', if_timing)
@@ -106,13 +106,13 @@ subroutine read_input_json(this)
 
    call this%get('simulation.verbose', verbose)
    call set_monitor( verbose )
-   
+
    call this%get('simulation.nodes(2)',num_stages)
-   
+
    call pp%new(nst=num_stages)
-   
+
    this%pp => pp
-               
+
    call this%get('simulation.grid(1)',nr)
    call this%get('simulation.grid(2)',nz)
 
@@ -123,22 +123,9 @@ subroutine read_input_json(this)
    call this%get( 'simulation.box.z(2)', max )
    dxi = ( max - min ) / nz
 
-   ! call this%get('simulation.boundary',boundary)
-   
-   ! select case (trim(boundary))
-   ! case ("conducting")
-   !    psolve = 1
-   ! case default
-   !    psolve = 1
-   ! end select
-   
    call gp%new( pp, nr, nz, dr, dxi )
 
    this%gp => gp
-   
-   ! call this%get('simulation.verbose',verbose)
-
-   ! call err%setmonitor(verbose)
 
    call write_dbg( cls_name, sname, cls_level, ff )
    call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -151,7 +138,7 @@ subroutine initialize(this,verbose,compact_reals,print_signs,&
 &path_separator,compress_vectors,allow_duplicate_keys)
 
    implicit none
-   
+
    class(input_json), intent(inout) :: this
    logical,intent(in),optional :: verbose
    logical,intent(in),optional :: compact_reals
@@ -171,7 +158,7 @@ subroutine initialize(this,verbose,compact_reals,print_signs,&
 ! local data
    character(len=38), save :: sname = 'initialize_json_core_in_file'
    call write_dbg( cls_name, sname, cls_level, 'starts' )
-   
+
    allocate(this%input)
    call this%input%initialize(verbose,compact_reals,print_signs,&
    &real_format,spaces_per_tab,strict_type_checking,trailing_spaces_significant,&
@@ -195,7 +182,7 @@ subroutine set_json_core_in_file(this,core)
    call this%input%initialize(core)
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
-   
+
 end subroutine set_json_core_in_file
 !
 subroutine load_file(this, filename, unit)
@@ -212,7 +199,7 @@ subroutine load_file(this, filename, unit)
    call this%input%load_file(filename, unit)
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
-   
+
 end subroutine load_file
 !
 subroutine print_to_string(this, str)
@@ -284,7 +271,7 @@ subroutine json_file_get_object(this, path, p)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err( error )
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -296,7 +283,7 @@ subroutine json_file_get_integer(this, path, val)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   integer,intent(out) :: val 
+   integer,intent(out) :: val
 ! local data
    character(len=38), save :: sname = 'json_file_get_integer'
    character(len=:), allocatable :: error
@@ -309,7 +296,7 @@ subroutine json_file_get_integer(this, path, val)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -321,7 +308,7 @@ subroutine json_file_get_double(this, path, val)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   real,intent(out) :: val 
+   real,intent(out) :: val
 ! local data
    character(len=38), save :: sname = 'json_file_get_double'
    character(len=:), allocatable :: error
@@ -334,7 +321,7 @@ subroutine json_file_get_double(this, path, val)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -346,7 +333,7 @@ subroutine json_file_get_logical(this, path, val)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   logical,intent(out) :: val 
+   logical,intent(out) :: val
 ! local data
    character(len=38), save :: sname = 'json_file_get_logical'
    character(len=:), allocatable :: error
@@ -359,7 +346,7 @@ subroutine json_file_get_logical(this, path, val)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -371,7 +358,7 @@ subroutine json_file_get_string(this, path, val)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   character(len=:),allocatable,intent(out) :: val 
+   character(len=:),allocatable,intent(out) :: val
 ! local data
    character(len=38), save :: sname = 'json_file_get_string'
    character(len=:), allocatable :: error
@@ -384,7 +371,7 @@ subroutine json_file_get_string(this, path, val)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -396,7 +383,7 @@ subroutine json_file_get_integer_vec(this, path, vec)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   integer,dimension(:),allocatable,intent(out) :: vec 
+   integer,dimension(:),allocatable,intent(out) :: vec
 ! local data
    character(len=38), save :: sname = 'json_file_get_integer_vec'
    character(len=:), allocatable :: error
@@ -409,7 +396,7 @@ subroutine json_file_get_integer_vec(this, path, vec)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -421,7 +408,7 @@ subroutine json_file_get_double_vec(this, path, vec)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   real,dimension(:),allocatable,intent(out) :: vec 
+   real,dimension(:),allocatable,intent(out) :: vec
 ! local data
    character(len=38), save :: sname = 'json_file_get_double_vec'
    character(len=:), allocatable :: error
@@ -434,7 +421,7 @@ subroutine json_file_get_double_vec(this, path, vec)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -446,7 +433,7 @@ subroutine json_file_get_logical_vec(this, path, vec)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   logical,dimension(:),allocatable,intent(out) :: vec 
+   logical,dimension(:),allocatable,intent(out) :: vec
 ! local data
    character(len=38), save :: sname = 'json_file_get_logical_vec'
    character(len=:), allocatable :: error
@@ -459,7 +446,7 @@ subroutine json_file_get_logical_vec(this, path, vec)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -471,7 +458,7 @@ subroutine json_file_get_string_vec(this, path, vec)
 
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
-   character(len=*),dimension(:),allocatable,intent(out) :: vec 
+   character(len=*),dimension(:),allocatable,intent(out) :: vec
 ! local data
    character(len=38), save :: sname = 'json_file_get_string_vec'
    character(len=:), allocatable :: error
@@ -484,7 +471,7 @@ subroutine json_file_get_string_vec(this, path, vec)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -497,7 +484,7 @@ subroutine json_file_get_alloc_string_vec(this, path, vec, ilen)
    class(input_json),intent(inout) :: this
    character(len=*),intent(in) :: path
    character(len=:),dimension(:),allocatable,intent(out) :: vec
-   integer,dimension(:),allocatable,intent(out) :: ilen 
+   integer,dimension(:),allocatable,intent(out) :: ilen
 ! local data
    character(len=38), save :: sname = 'json_file_get_alloc_string_vec'
    character(len=:), allocatable :: error
@@ -510,7 +497,7 @@ subroutine json_file_get_alloc_string_vec(this, path, vec, ilen)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -530,7 +517,7 @@ subroutine json_file_get_root(this,p)
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine json_file_get_root                            
+end subroutine json_file_get_root
 !
 subroutine  json_file_variable_info(this,path,n_children)
 
@@ -555,7 +542,7 @@ subroutine  json_file_variable_info(this,path,n_children)
       call this%input%check_for_errors(st, error)
       call this%input%clear_exceptions()
       call write_err(error)
-   end if         
+   end if
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
