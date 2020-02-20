@@ -5,13 +5,12 @@
     "grid" : [256,438],
     "box" : {
         "r" : [0.0,9.395847],
-        !"r" : [0.0,18.791694],
         "z" : [0,9.6]},
     "field_boundary" : "open",
     "max_mode" : 2,
     "interpolation" : "linear",
     "n0" : 4.0e16,
-    "time" : 2.5e4,
+    "time" : 20.1,
     "dt" : 10.0,
     "nbeams" : 2,
     "nspecies" : 1,
@@ -20,26 +19,24 @@
     "read_restart" : false,
     "restart_timestep" : 1,
     "iter" : 1,
-    "solver_precision" : 1.0e-12,
+    "solver_tol" : 1.0e-12,
     "smooth_type" : "none",
     "smooth_order" : 0,
-    !"smooth_type" : "binominal",
-    !"smooth_order" : 5,
-    "verbose" : 0,
+    "verbose" : 5,
     "if_timing" : false
 },
+
 "beam" :
 [
     {
     "evolution" : true,
-    "profile" : 0,
-    "np" : [128,128,512],
+    "profile" : 1,
+    "np" : [128,16,512],
     "npmax" : 10000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
     "peak_density" : 93.4633388357,
-    !"peak_density" : 20.0,
     "quiet_start" : true,
     "center" : [0.0,0.0,3.0066710513952833],
     "sigma" : [0.1370828,0.1370828,0.479789533],
@@ -49,31 +46,25 @@
     "diag" :
     [
         {
-        "name" : ["charge"],
+        "name" : ["charge_cyl_m"],
         "ndump" : 1
         },
         {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129],["xy",20]]
-        },
-        {
         "name" : ["raw"],
-        "ndump" : 1,
-        "sample" : 10
+        "ndump" : 0,
+        "psample" : 10
         }
     ]    
     },
     {
     "evolution" : true,
-    "profile" : 0,
-    "np" : [128,128,256],
+    "profile" : 1,
+    "np" : [128,16,256],
     "npmax" : 4200000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
     "peak_density" : 56.0780033,
-    !"peak_density" : 0.0,
     "quiet_start" : true,
     "center" : [0.037583388,0.0,8.644179273],
     "center" : [0.0,0.0,8.644179273],
@@ -84,18 +75,13 @@
     "diag" :
     [
         {
-        "name" : ["charge"],
+        "name" : ["charge_cyl_m"],
         "ndump" : 1
         },
         {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129],["xy",20]]
-        },
-        {
         "name" : ["raw"],
-        "ndump" : 1,
-        "sample" : 10
+        "ndump" : 0,
+        "psample" : 10
         }
     ]    
     }    
@@ -103,7 +89,6 @@
 
 "species" :
 [
-
     {
     "profile" : 0,
     "ppc" : [2,16],
@@ -111,93 +96,16 @@
     "m" : 1.0,
     "density" : 1.0,
     "longitudinal_profile" : "uniform",
-!    "piecewise_density" : [1.0,1.5,2.5],
-!    "piecewise_s" : [0.0,100.0,200.0],
     "diag" :
     [
         {
-        "name" : ["charge", "jx"],
+        "name" : ["charge_cyl_m"],
         "ndump" : 1
         },
         {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129]]
-        }
-    ]    
-    },
-    {
-    "profile" : 12,
-    "ppc" : [20,2],
-    "q" : -1.0,
-    "m" : 1.0,
-    "density" : 1.0,
-    "longitudinal_profile" : "uniform",
-!    "longitudinal_profile" : "piecewise",
-    "piecewise_density" : [1.0,1.5,2.5],
-    "piecewise_s" : [0.0,15.0,50.0],    
-    "piecewise_radial_density" : [0.0,1.0,1.0,0.0],
-    "piecewise_r" : [0.2,0.21,8.0,8.5],
-    "diag" :
-    [
-        {
-        "name" : ["charge", "jx"],
-        "ndump" : 0
-        },
-        {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129],["xy",20]]
-        }
-    ]    
-    },
-    {
-    "profile" : 11,
-    "ppc" : [2,2],
-    "q" : -1.0,
-    "m" : 1.0,
-    "density" : 1.0,
-    "longitudinal_profile" : "piecewise",
-    "piecewise_density" : [1.0,1.5,2.5],
-    "piecewise_s" : [0.0,15.0,50.0],    
-    "center" : [0.0,0.0],
-    "radius" : 2.0,
-    "width" : 0.5,
-    "diag" :
-    [
-        {
-        "name" : ["charge", "jx"],
-        "ndump" : 0
-        },
-        {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129],["xy",20]]
-        }
-    ]    
-    },
-    {
-    "profile" : 10,
-    "ppc" : [2,2],
-    "q" : -1.0,
-    "m" : 1.0,
-    "density" : 1.0,
-    "longitudinal_profile" : "piecewise",
-    "piecewise_density" : [1.0,1.5,2.5],
-    "piecewise_s" : [0.0,15.0,50.0],    
-    "center" : [0.0,0.0],
-    "inner_radius" : [1.0,1.5],
-    "outer_radius" : [2.5,2.0],
-    "diag" :
-    [
-        {
-        "name" : ["charge", "jx"],
-        "ndump" : 0
-        },
-        {
-        "name" : ["charge"],
-        "ndump" : 1,
-        "slice" : [["xz", 129],["yz",129],["xy",20]]
+        "name" : ["raw"],
+        "ndump" : 0,
+        "psample" : 10
         }
     ]    
     }
@@ -208,7 +116,7 @@
     "diag" :
     [
         {
-            "name" : ["psi_cyl_m"],
+            "name" : ["psi_cyl_m", "er_cyl_m", "ez_cyl_m", "bphi_cyl_m", "charge_cyl_m"],
             "ndump" : 1
         }
     ]
