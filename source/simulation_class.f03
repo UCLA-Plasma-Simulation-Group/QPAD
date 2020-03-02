@@ -235,6 +235,7 @@ subroutine run_simulation( this )
     b     = 0.0
     e     = 0.0
     b_spe = 0.0
+    e_spe = 0.0
     psi   = 0.0
 
     do j = 1, this%nstep2d
@@ -287,6 +288,7 @@ subroutine run_simulation( this )
       enddo ! iteration
 
       call add_f1( b_spe, b_beam, b )
+      call e_spe%solve( b_spe, psi )
       call e%solve( cu )
       call e%solve( b, psi )
       call dot_f1( this%dxi, dcu )
@@ -297,6 +299,8 @@ subroutine run_simulation( this )
       call e%copy_slice( j+1, p_copy_1to2 )
       call b%copy_slice( j+1, p_copy_1to2 )
       call psi%copy_slice( j+1, p_copy_1to2 )
+      call b_spe%copy_slice( j+1, p_copy_1to2 )
+      call e_spe%copy_slice( j+1, p_copy_1to2 )
 
     enddo ! 2d loop
 

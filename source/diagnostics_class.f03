@@ -330,6 +330,41 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           sn4 = 'B_z'
           dim = 3
           obj => fields%b
+        case ( 'spec_er_cyl_m' )
+          sn1 = 'Er_spec'
+          sn2 = 'er'
+          sn3 = 'mc\omega_p/e'
+          sn4 = 'E_r'
+          dim = 1
+          obj => fields%e_spe
+        case ( 'spec_ephi_cyl_m' )
+          sn1 = 'Ephi_spec'
+          sn2 = 'ephi'
+          sn3 = 'mc\omega_p/e'
+          sn4 = 'E_\phi'
+          dim = 2
+          obj => fields%e_spe
+        case ( 'spec_br_cyl_m' )
+          sn1 = 'Br_spec'
+          sn2 = 'br'
+          sn3 = 'mc\omega_p/e'
+          sn4 = 'B_r'
+          dim = 1
+          obj => fields%b_spe
+        case ( 'spec_bphi_cyl_m' )
+          sn1 = 'Bphi_spec'
+          sn2 = 'bphi'
+          sn3 = 'mc\omega_p/e'
+          sn4 = 'B_\phi'
+          dim = 2
+          obj => fields%b_spe
+        case ( 'spec_bz_cyl_m' )
+          sn1 = 'Bz_spec'
+          sn2 = 'bz'
+          sn3 = 'mc\omega_p/e'
+          sn4 = 'B_z'
+          dim = 3
+          obj => fields%b_spe
         case ( 'charge_cyl_m' )
           sn1 = 'Charge'
           sn2 = 'charge'
