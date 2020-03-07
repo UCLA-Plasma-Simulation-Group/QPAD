@@ -53,7 +53,7 @@ objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
 main_obj := $(builddir)/main.o
 
 # Generate date stamp
-DATESTAMP = $$(date +%s)
+DATESTAMP := $$(date +%s)
 
 # Targets and rules
 .DEFAULT_GOAL := all
