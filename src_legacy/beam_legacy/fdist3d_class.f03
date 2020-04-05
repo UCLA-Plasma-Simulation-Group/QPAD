@@ -1,13 +1,12 @@
 ! fdist3d class for QPAD
 
-! *TODO* fdist3d class should be higher than part3d class
 module fdist3d_class
 
 use parallel_pipe_class
 use field_class
 use ufield_class
 use input_class
-use fdist3d_lib
+use part3d_lib
 use param
 use sysutil
 
@@ -46,14 +45,13 @@ end type
 
 abstract interface
 !
-subroutine ab_dist3d(this,x,p,q,npp,noff,ndp)
+subroutine ab_dist3d(this,part3d,npp,noff,ndp)
    import fdist3d
    import ufield
    import LG
    implicit none
    class(fdist3d), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
    ! class(ufield), intent(in), pointer :: ud
    integer, intent(in), dimension(2) :: noff, ndp
@@ -325,13 +323,12 @@ subroutine init_fdist3d_000(this,input,i)
 
 end subroutine init_fdist3d_000
 !
-subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_000(this,part3d,npp,noff,ndp)
 
    implicit none
 
    class(fdist3d_000), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -339,7 +336,7 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
 ! edges(2) = upper boundary in y of particle partition
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
-   ! real, dimension(:,:), pointer :: pt => null()
+   real, dimension(:,:), pointer :: pt => null()
    integer :: npx, npy, npz
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
@@ -347,21 +344,21 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
    real, dimension(4) :: edges
    integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
-   integer :: ierr
+   integer :: idimp, ierr
    character(len=18), save :: sname = 'dist3d_000'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ierr = 0; nps = 1
    npx = this%npx; npy = this%npy; npz = this%npz
-   ! pt => part3d
+   pt => part3d
    vtx = this%sigvx; vty = this%sigvy; vtz = this%sigvz
    vdx = 0.0; vdy = 0.0; vdz = this%gamma
    sigx = this%sigx; sigy = this%sigy; sigz = this%sigz
    x0 = this%bcx; y0 = this%bcy; z0 = this%bcz
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
    lquiet = this%quiet
-   npmax = size(x,2)
+   idimp = size(part3d,1); npmax = size(part3d,2)
    dr = this%dx; dz= this%dz
    rmax = this%rmax
    zmax = this%zmax
@@ -376,8 +373,8 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
    edges(3) = noff(2)*dz + zmin
    edges(4) = edges(3) + ndp(2)*dz
 
-   call beam_dist000(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
-   &vdz,npx,npy,npz,rmax,zmin,zmax,npmax,sigx,sigy,sigz,&
+   call beam_dist000(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
+   &vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
 
    if (ierr /= 0) then
@@ -532,13 +529,12 @@ subroutine init_fdist3d_001(this,input,i)
 
 end subroutine init_fdist3d_001
 !
-subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_001(this,part3d,npp,noff,ndp)
 
    implicit none
 
    class(fdist3d_001), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -546,7 +542,7 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
 ! edges(2) = upper boundary in y of particle partition
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
-   ! real, dimension(:,:), pointer :: pt => null()
+   real, dimension(:,:), pointer :: pt => null()
    integer :: npr, npth, npz
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
@@ -554,21 +550,21 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
    real, dimension(4) :: edges
    integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
-   integer :: ierr
+   integer :: idimp, ierr
    character(len=18), save :: sname = 'dist3d_001'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ierr = 0; nps = 1
    npr = this%npr; npth = this%npth; npz = this%npz
-   ! pt => part3d
+   pt => part3d
    vtx = this%sigvx; vty = this%sigvy; vtz = this%sigvz
    vdx = 0.0; vdy = 0.0; vdz = this%gamma
    sigx = this%sigx; sigy = this%sigy; sigz = this%sigz
    x0 = this%bcx; y0 = this%bcy; z0 = this%bcz
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
    lquiet = this%quiet
-   npmax = size(x,2)
+   idimp = size(part3d,1); npmax = size(part3d,2)
    dr = this%dx; dz= this%dz
    rmax = this%rmax
    zmax = this%zmax
@@ -583,8 +579,8 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
    edges(3) = noff(2)*dz+zmin
    edges(4) = edges(3) + ndp(2)*dz
 
-   call beam_dist001(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
-   &vdz,npr,npth,npz,rmax,zmin,zmax,npmax,sigx,sigy,sigz,&
+   call beam_dist001(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
+   &vdz,npr,npth,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
 
    if (ierr /= 0) then
@@ -754,13 +750,12 @@ subroutine init_fdist3d_002(this,input,i)
 
 end subroutine init_fdist3d_002
 
-subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_002(this,part3d,npp,noff,ndp)
 
    implicit none
 
    class(fdist3d_002), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), pointer, intent(inout) :: part3d
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -768,7 +763,7 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
 ! edges(2) = upper boundary in y of particle partition
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
-   ! real, dimension(:,:), pointer :: pt => null()
+   real, dimension(:,:), pointer :: pt => null()
    integer :: npx, npy, npz, nzf, nz, i, j
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, x0, y0, z0, rmax, zmin, zmax
@@ -776,7 +771,7 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
    real, dimension(4) :: edges
    integer(kind=LG) :: nps, npmax
    logical :: lquiet = .false.
-   integer :: ierr
+   integer :: idimp, ierr
    real, dimension(:), allocatable :: zf
    character(len=18), save :: sname = 'dist3d_002'
 
@@ -790,14 +785,14 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
       npp = 0
       return
    endif
-   ! pt => part3d
+   pt => part3d
    vtx = this%sigvx; vty = this%sigvy; vtz = this%sigvz
    vdx = 0.0; vdy = 0.0; vdz = this%gamma
    sigx = this%sigx; sigy = this%sigy
    x0 = this%bcx; y0 = this%bcy; z0 = this%bcz
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
    lquiet = this%quiet
-   npmax = size(x,2)
+   idimp = size(part3d,1); npmax = size(part3d,2)
    dr = this%dx; dz= this%dz
    rmax = this%rmax
    zmax = this%zmax
@@ -824,8 +819,8 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
       enddo
    enddo
 
-   call beam_dist002(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
-   &vdz,npx,npy,npz,rmax,zmin,zmax,npmax,sigx,sigy,&
+   call beam_dist002(pt,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
+   &vdz,npx,npy,npz,rmax,zmin,zmax,idimp,npmax,sigx,sigy,&
    &x0,y0,z0,cx,cy,zf,lquiet,ierr)
 
    if (ierr /= 0) then

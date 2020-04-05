@@ -30,6 +30,7 @@ endif
 # arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
 src = dtimer.c param.f03 sysutil.f03 parallel_class.f03 debug_tool.f03
+src += interpolation.f03 random.f03
 src += parallel_pipe_class.f03
 src += grid_class.f03
 src += input_class.f03
