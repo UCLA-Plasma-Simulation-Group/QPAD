@@ -13,6 +13,7 @@ private
 
 public :: hdf5file, pwfield, pwfield_pipe, pwpart, wpart, rpart
 public :: pwpart_pipe
+public :: detect_precision
 ! public ::  wfield_pipe
 
 type hdf5file

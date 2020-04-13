@@ -399,13 +399,13 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
          ! do i = 1, xdim
          !    part(i,ihole(j)) = rbufl(i,j)
          ! end do
-         x(1,ihole(j)) = x(1,j)
-         x(2,ihole(j)) = x(2,j)
-         x(3,ihole(j)) = x(3,j)
-         p(1,ihole(j)) = p(1,j)
-         p(2,ihole(j)) = p(2,j)
-         p(3,ihole(j)) = p(3,j)
-         q(ihole(j))   = q(j)
+         x(1,ihole(j)) = rbufl(1,j)
+         x(2,ihole(j)) = rbufl(2,j)
+         x(3,ihole(j)) = rbufl(3,j)
+         p(1,ihole(j)) = rbufl(4,j)
+         p(2,ihole(j)) = rbufl(5,j)
+         p(3,ihole(j)) = rbufl(6,j)
+         q(ihole(j))   = rbufl(7,j)
       end do
       if (jss(1) > jsl(2)) then
          jss(2) = min0(jss(1)-jsl(2),jsr(2))
@@ -432,13 +432,13 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             ! do i = 1, xdim
             !    part(i,j+npp) = rbufl(i,j+jss(1))
             ! end do
-            x(1,j+npp) = rbufr(1,j+jss(1))
-            x(2,j+npp) = rbufr(2,j+jss(1))
-            x(3,j+npp) = rbufr(3,j+jss(1))
-            p(1,j+npp) = rbufr(4,j+jss(1))
-            p(2,j+npp) = rbufr(5,j+jss(1))
-            p(3,j+npp) = rbufr(6,j+jss(1))
-            q(j+npp)   = rbufr(7,j+jss(1))
+            x(1,j+npp) = rbufl(1,j+jss(1))
+            x(2,j+npp) = rbufl(2,j+jss(1))
+            x(3,j+npp) = rbufl(3,j+jss(1))
+            p(1,j+npp) = rbufl(4,j+jss(1))
+            p(2,j+npp) = rbufl(5,j+jss(1))
+            p(3,j+npp) = rbufl(6,j+jss(1))
+            q(j+npp)   = rbufl(7,j+jss(1))
          end if
       end do
       if (jss(1) <= jsl(2)) then
