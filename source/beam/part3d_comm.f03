@@ -285,8 +285,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
    jsr(1) = 0
    jss(2) = 0
    do j = 1, jsr(2)
-      if (rbufr(ic,j) < edges(2*n-1)) jsl(1) = jsl(1) + 1
-      if (rbufr(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
+      ! if (rbufr(ic,j) < edges(2*n-1)) jsl(1) = jsl(1) + 1
+      ! if (rbufr(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
+      xt = sqrt( rbufr(1,j)*rbufr(1,j) + rbufr(2,j)* rbufr(2,j) )
+      if (xt < edges(2*n-1)) jsl(1) = jsl(1) + 1
+      if (xt >= edges(2*n)) jsr(1) = jsr(1) + 1
    end do
    if (jsr(1) /= 0) then
       write (erstr,*) 'Info:',jsr(1),' particles returning above'
@@ -294,8 +297,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
    end if
 ! check if any particles coming from below or back belong here
    do j = 1, jsl(2)
-      if (rbufl(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
-      if (rbufl(ic,j) < edges(2*n-1)) jss(2) = jss(2) + 1
+      ! if (rbufl(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
+      ! if (rbufl(ic,j) < edges(2*n-1)) jss(2) = jss(2) + 1
+      xt = sqrt( rbufl(1,j)*rbufl(1,j) + rbufl(2,j)* rbufl(2,j) )
+      if (xt >= edges(2*n)) jsr(1) = jsr(1) + 1
+      if (xt < edges(2*n-1)) jss(2) = jss(2) + 1
    end do
    if (jss(2) /= 0) then
       write (erstr,*) 'Info:',jss(2),' particles returning below'
@@ -316,7 +322,8 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
       jsr(1) = 0
       jss(2) = 0
       do j = 1, jsr(2)
-         xt = rbufr(ic,j)
+         ! xt = rbufr(ic,j)
+         xt = sqrt( rbufr(1,j)*rbufr(1,j) + rbufr(2,j)*rbufr(2,j) )
 ! particles going down or back
          if (xt < edges(2*n-1)) then
             jsl(1) = jsl(1) + 1
@@ -341,7 +348,8 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
 ! next check particles coming from below or back
       jss(2) = 0
       do j = 1, jsl(2)
-         xt = rbufl(ic,j)
+         ! xt = rbufl(ic,j)
+         xt = sqrt( rbufl(1,j)*rbufl(1,j) + rbufl(2,j)*rbufl(2,j) )
 ! particles going up or front
          if (xt >= edges(2*n)) then
             if (jsr(1) < nbmax) then
