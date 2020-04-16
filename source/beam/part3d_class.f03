@@ -35,9 +35,8 @@ type part3d
    ! npmax = maximum number of particles in each partition
    integer(kind=LG) :: npmax, nbmax, npp
    integer :: part_dim ! dimension of particle coordinates
-   ! real, dimension(:,:), pointer :: part => null(), pbuff => null()
+   ! particle buffer for particle manager
    real, dimension(:,:), pointer :: pbuff => null()
-
    ! array for particle position
    real, dimension(:,:), pointer :: x => null()
    ! array for particle momenta
@@ -49,6 +48,11 @@ type part3d
    ! particle upper boundaries
    real, dimension(2) :: edge
 
+   logical :: has_spin = .false.
+
+   ! anomalous magnet moment for spin push
+   real :: anom_mag_moment
+
    contains
 
    procedure :: new          => init_part3d
@@ -57,6 +61,7 @@ type part3d
    procedure :: push_boris   => push_boris_part3d
    procedure :: push_reduced => push_reduced_part3d
    procedure :: update_bound => update_bound_part3d
+   procedure, private :: push_spin => push_spin_part3d
 
    procedure :: pmv  => pmove
    procedure :: wr   => writehdf5_part3d
@@ -78,7 +83,7 @@ integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 !
-subroutine init_part3d(this,pp,gp,pf,qbm,dt)
+subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
 
    implicit none
 
@@ -87,15 +92,22 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt)
    class(grid), intent(in), pointer :: gp
    class(fdist3d), intent(inout) :: pf
    real, intent(in) :: qbm, dt
+   logical, intent(in) :: has_spin
+   real, intent(in) :: amm
 ! local data
    character(len=18), save :: sname = 'init_part3d'
    integer :: prof, npmax, nbmax
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   this%has_spin = has_spin
+   this%anom_mag_moment = amm
+
    this%pp => pp
    this%qbm = qbm
    this%dt = dt
    this%part_dim = p_x_dim + p_p_dim + 1
+   if ( this%has_spin ) this%part_dim = this%part_dim + p_s_dim
    npmax = pf%getnpmax()
    this%dr = pf%getdx()
    this%dz = pf%getdz()
@@ -104,22 +116,31 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt)
    this%edge(1) = gp%get_nd(1) * this%dr
    this%edge(2) = (gp%get_nd(2) - 1) * this%dz
 
-   ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk of code crash
+   ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
    nbmax = int(0.01*this%npmax)
    this%nbmax = nbmax
    this%npp = 0
    prof = pf%getnpf()
-   ! allocate(this%part(xdim,npmax),this%pbuff(xdim,nbmax))
+   this%z0 = pf%getz0()
 
    allocate( this%x( p_x_dim, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
    allocate( this%q( npmax ) )
+   if ( this%has_spin ) then
+      allocate( this%s( p_s_dim, npmax ) )
+   endif
 
    allocate( this%pbuff( this%part_dim, nbmax ) )
 
    ! initialize particle coordinates according to profile
-   call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), gp%get_ndp() )
-   this%z0 = pf%getz0()
+   if ( this%has_spin ) then
+      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
+         gp%get_ndp(), this%s )
+   else
+      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
+         gp%get_ndp() )
+   endif
+
    if ( .not. allocated(sbufl) ) then
       allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
       allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
@@ -137,7 +158,12 @@ subroutine end_part3d(this)
    character(len=18), save :: sname = 'end_part3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+
    deallocate( this%x, this%p, this%q, this%pbuff )
+   if ( this%has_spin ) then
+      deallocate( this%s )
+   endif
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part3d
@@ -294,9 +320,9 @@ subroutine push_boris_part3d( this, ef, bf )
    class(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    integer :: i, np, max_mode
    integer(kind=LG) :: ptrcur, pp
-   real :: qtmh, gam, ostq, u2
-   real, dimension(p_cache_size) :: gam_qtmh
-   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+   real :: qtmh, ostq, u2, gam_qtmh
+   real, dimension(p_cache_size) :: gam
+   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp, p_old
    character(len=32), save :: sname = "push_boris_part3d"
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -323,6 +349,17 @@ subroutine push_boris_part3d( this, ef, bf )
       call interp_emf( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, &
          this%dr, this%dz, bp, ep, np, ptrcur )
 
+      ! store old momenta for spin push
+      if ( this%has_spin ) then
+         pp = ptrcur
+         do i = 1, np
+            p_old(1,i) = this%p(1,pp)
+            p_old(2,i) = this%p(2,pp)
+            p_old(3,i) = this%p(3,pp)
+            pp = pp + 1
+         enddo
+      endif
+
       do i = 1, np
          ep(1,i) = ep(1,i) * qtmh
          ep(2,i) = ep(2,i) * qtmh
@@ -339,16 +376,21 @@ subroutine push_boris_part3d( this, ef, bf )
 
          ! time-centered momenta and gamma
          u2 = utmp(1,i)*utmp(1,i) + utmp(2,i)*utmp(2,i) + utmp(3,i)*utmp(3,i)
-         gam = sqrt( 1.0 + u2 )
-         gam_qtmh(i) = qtmh / gam
+         gam(i) = sqrt( 1.0 + u2 )
          pp = pp + 1
       enddo
 
       do i = 1, np
-         bp(1,i) = bp(1,i) * gam_qtmh(i)
-         bp(2,i) = bp(2,i) * gam_qtmh(i)
-         bp(3,i) = bp(3,i) * gam_qtmh(i)
+         gam_qtmh = qtmh / gam(i)
+         bp(1,i) = bp(1,i) * gam_qtmh
+         bp(2,i) = bp(2,i) * gam_qtmh
+         bp(3,i) = bp(3,i) * gam_qtmh
       enddo
+
+      ! push spin
+      if ( this%has_spin ) then
+         call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
+      endif
 
       pp = ptrcur
       do i = 1, np
@@ -391,11 +433,11 @@ subroutine push_boris_part3d( this, ef, bf )
       ! note the x(3) is xi instead of z
       pp = ptrcur
       do i = 1, np
-         gam = this%dt / &
+         gam_qtmh = this%dt / &
             sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-         this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * gam
-         this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * gam
-         this%x(3,pp) = this%x(3,pp) - this%p(3,pp) * gam + this%dt
+         this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * gam_qtmh
+         this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * gam_qtmh
+         this%x(3,pp) = this%x(3,pp) - this%p(3,pp) * gam_qtmh + this%dt
          pp = pp + 1
       enddo
 
@@ -416,15 +458,16 @@ subroutine push_reduced_part3d( this, ef, bf )
    class(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    
    integer :: i, np, max_mode
-   real :: qtm, gam
-   real, dimension(p_p_dim, p_cache_size) :: bp, ep
+   real :: qtmh, dt_gam
+   real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old
+   real, dimension(p_cache_size) :: gam
    integer(kind=LG) :: ptrcur, pp
    character(len=32), save :: sname = "push_reduced_part3d"
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call start_tprof( 'push 3D particles' )
 
-   qtm = this%qbm * this%dt
+   qtmh = this%qbm * this%dt * 0.5
    max_mode = ef%get_num_modes()
 
    ef_re => ef%get_rf_re()
@@ -445,13 +488,24 @@ subroutine push_reduced_part3d( this, ef, bf )
       call interp_emf( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
          this%dz, bp, ep, np, ptrcur )
 
+      ! store old momenta for spin push
+      if ( this%has_spin ) then
+         pp = ptrcur
+         do i = 1, np
+            p_old(1,i) = this%p(1,pp)
+            p_old(2,i) = this%p(2,pp)
+            p_old(3,i) = this%p(3,pp)
+            pp = pp + 1
+         enddo
+      endif
+
       do i = 1, np
-         ep(1,i) = ep(1,i) * qtm
-         ep(2,i) = ep(2,i) * qtm
-         ep(3,i) = ep(3,i) * qtm
-         bp(1,i) = bp(1,i) * qtm
-         bp(2,i) = bp(2,i) * qtm
-         bp(3,i) = bp(3,i) * qtm
+         ep(1,i) = ep(1,i) * qtmh
+         ep(2,i) = ep(2,i) * qtmh
+         ep(3,i) = ep(3,i) * qtmh
+         bp(1,i) = bp(1,i) * qtmh
+         bp(2,i) = bp(2,i) * qtmh
+         bp(3,i) = bp(3,i) * qtmh
          ! calculate transverse force
          ep(1,i) = ep(1,i) - bp(2,i)
          ep(2,i) = ep(2,i) + bp(1,i)
@@ -459,22 +513,37 @@ subroutine push_reduced_part3d( this, ef, bf )
 
       pp = ptrcur
       do i = 1, np
-         ! advance momenta
+         ! half advance momenta
+         this%p(1,pp) = this%p(1,pp) + ep(1,i)
+         this%p(2,pp) = this%p(2,pp) + ep(2,i)
+         this%p(3,pp) = this%p(3,pp) + ep(3,i)
+         gam(i) = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+         pp = pp + 1
+      enddo
+
+      pp = ptrcur
+      do i = 1, np
+         ! half advance momenta
          this%p(1,pp) = this%p(1,pp) + ep(1,i)
          this%p(2,pp) = this%p(2,pp) + ep(2,i)
          this%p(3,pp) = this%p(3,pp) + ep(3,i)
          pp = pp + 1
       enddo
 
+      ! push spin
+      if ( this%has_spin ) then
+         call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
+      endif
+
       ! advance the particle positions
       ! note the x(3) is xi instead of z
       pp = ptrcur
       do i = 1, np
-         gam = this%dt / &
+         dt_gam = this%dt / &
             sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-         this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * gam
-         this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * gam
-         this%x(3,pp) = this%x(3,pp) - this%p(3,pp) * gam + this%dt
+         this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dt_gam
+         this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dt_gam
+         this%x(3,pp) = this%x(3,pp) - this%p(3,pp) * dt_gam + this%dt
          pp = pp + 1
       enddo
 
@@ -484,6 +553,74 @@ subroutine push_reduced_part3d( this, ef, bf )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_reduced_part3d
+
+subroutine push_spin_part3d( this, ep, bp, p_old, gam, ptrcur, np )
+
+   implicit none
+
+   class(part3d), intent(inout) :: this
+   real, intent(in), dimension(:,:) :: ep, bp, p_old
+   real, intent(in), dimension(:) :: gam
+   integer, intent(in) :: np
+   integer(kind=LG), intent(in) :: ptrcur
+
+   ! local data
+   integer :: i, pp
+   real, dimension(p_p_dim, np) :: omega, vtemp, stemp
+   real :: a, coef, vdotb
+   character(len=32), save :: sname = "push_spin_part3d"
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   a = this%anom_mag_moment
+
+   pp = ptrcur
+   do i = 1, np
+
+      ! calculate the time-centered velocity
+      vtemp(1,i) = 0.5 * ( p_old(1,i) + this%p(1,pp) ) / gam(i)
+      vtemp(2,i) = 0.5 * ( p_old(2,i) + this%p(2,pp) ) / gam(i)
+      vtemp(3,i) = 0.5 * ( p_old(3,i) + this%p(3,pp) ) / gam(i)
+
+      ! Now calculate the precession frequency Omega
+      ! calculate contribution from B
+      coef = a + 1.0 / gam(i)
+      omega(1,i) = coef * bp(1,i) * gam(i)
+      omega(2,i) = coef * bp(2,i) * gam(i)
+      omega(3,i) = coef * bp(3,i) * gam(i)
+
+      ! calculate (v cross E) contribution
+      coef = -1.0 * ( a + 1.0 / ( 1.0 + gam(i) ) )
+      omega(1,i) = omega(1,i) + coef * ( vtemp(2,i) * ep(3,i) - vtemp(3,i) * ep(2,i) )
+      omega(2,i) = omega(2,i) + coef * ( vtemp(3,i) * ep(1,i) - vtemp(1,i) * ep(3,i) )
+      omega(3,i) = omega(3,i) + coef * ( vtemp(1,i) * ep(2,i) - vtemp(2,i) * ep(1,i) )
+
+      ! calculate (v dot B) contribution
+      ! note that omega should be multiplied by 2 because ep and bp are already
+      ! divided by 2 in dudt. But rotation vector is obtained via d = omega * dt/2,
+      ! therefore the factor 2 is canceled.
+      vdotb = vtemp(1,i) * bp(1,i) + vtemp(2,i) * bp(2,i) + vtemp(3,i) * bp(3,i)
+      coef = -1.0 * ( a * gam(i)**2 / ( 1.0 + gam(i) ) * vdotb )
+      omega(1,i) = omega(1,i) + coef * vtemp(1,i)
+      omega(2,i) = omega(2,i) + coef * vtemp(2,i)
+      omega(3,i) = omega(3,i) + coef * vtemp(3,i)
+
+      ! calculate s_prime
+      stemp(1,i) = this%s(1,pp) + ( this%s(2,pp) * omega(3,i) - this%s(3,pp) * omega(2,i) )
+      stemp(2,i) = this%s(2,pp) + ( this%s(3,pp) * omega(1,i) - this%s(1,pp) * omega(3,i) )
+      stemp(3,i) = this%s(3,pp) + ( this%s(1,pp) * omega(2,i) - this%s(2,pp) * omega(1,i) )
+
+      coef = 2.0 / ( 1.0 + omega(1,i)**2 + omega(2,i)**2 + omega(3,i)**2 )
+      this%s(1,pp) = this%s(1,pp) + coef * ( stemp(2,i) * omega(3,i) - stemp(3,i) * omega(2,i) )
+      this%s(2,pp) = this%s(2,pp) + coef * ( stemp(3,i) * omega(1,i) - stemp(1,i) * omega(3,i) )
+      this%s(3,pp) = this%s(3,pp) + coef * ( stemp(1,i) * omega(2,i) - stemp(2,i) * omega(1,i) )
+
+      pp = pp + 1
+   enddo
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_spin_part3d
 
 subroutine update_bound_part3d( this )
 
@@ -510,7 +647,9 @@ subroutine update_bound_part3d( this )
          this%x(:,i) = this%x(:, this%npp)
          this%p(:,i) = this%p(:, this%npp)
          this%q(i)   = this%q(this%npp)
-
+         if ( this%has_spin ) then
+            this%s(:,i) = this%s(:, this%npp)
+         endif
          this%npp = this%npp - 1
          cycle
       endif
@@ -520,7 +659,9 @@ subroutine update_bound_part3d( this )
          this%x(:,i) = this%x(:, this%npp)
          this%p(:,i) = this%p(:, this%npp)
          this%q(i)   = this%q(this%npp)
-
+         if ( this%has_spin ) then
+            this%s(:,i) = this%s(:, this%npp)
+         endif
          this%npp = this%npp - 1
          cycle
       endif
@@ -673,8 +814,14 @@ subroutine pmove(this,fd,rtag,stag,sid)
 
    ud => fd%get_rf_re(0)
 
-   call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-   &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
+   if ( this%has_spin ) then
+      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
+      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info, this%s)
+   else
+      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
+      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
+   endif
+
 
    if (info(1) /= 0) then
       call write_err(cls_name//sname//'pmove_part3d error')
@@ -710,8 +857,13 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
-   &this%z0,rtag,stag,id,ierr)
+   if ( this%has_spin ) then
+      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      &this%z0,rtag,stag,id,ierr, this%s)
+   else
+      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      &this%z0,rtag,stag,id,ierr)
+   endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_part3d
@@ -727,7 +879,11 @@ subroutine writerst_part3d(this,file)
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr)
+   if ( this%has_spin ) then
+      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr, this%s)
+   else
+      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr)
+   endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writerst_part3d
@@ -743,7 +899,11 @@ subroutine readrst_part3d(this,file)
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr)
+   if ( this%has_spin ) then
+      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr, this%s)
+   else
+      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr)
+   endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine readrst_part3d

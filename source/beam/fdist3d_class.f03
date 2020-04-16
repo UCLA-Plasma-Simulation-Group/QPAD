@@ -49,13 +49,14 @@ end type
 
 abstract interface
 !
-subroutine ab_dist3d(this,x,p,q,npp,noff,ndp)
+subroutine ab_dist3d(this,x,p,q,npp,noff,ndp,s)
    import fdist3d
    import ufield
    import LG
    implicit none
    class(fdist3d), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    ! class(ufield), intent(in), pointer :: ud
@@ -347,12 +348,13 @@ subroutine init_fdist3d_000(this,input,i)
 
 end subroutine init_fdist3d_000
 !
-subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_000(this,x,p,q,npp,noff,ndp,s)
 
    implicit none
 
    class(fdist3d_000), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
@@ -362,7 +364,7 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    ! real, dimension(:,:), pointer :: pt => null()
-   integer :: npx, npy, npz
+   integer :: npx, npy, npz, i
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
@@ -401,6 +403,14 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp)
    call beam_dist000(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npx,npy,npz,rmax,zmin,zmax,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
+
+   if (present(s)) then
+      do i = 1, npp
+         s(1,i) = 0.0
+         s(2,i) = 0.0
+         s(3,i) = 1.0
+      enddo
+   endif
 
    if (ierr /= 0) then
       write (erstr,*) 'beam_dist000 error'
@@ -554,12 +564,13 @@ subroutine init_fdist3d_001(this,input,i)
 
 end subroutine init_fdist3d_001
 !
-subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_001(this,x,p,q,npp,noff,ndp,s)
 
    implicit none
 
    class(fdist3d_001), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
@@ -569,7 +580,7 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    ! real, dimension(:,:), pointer :: pt => null()
-   integer :: npr, npth, npz
+   integer :: npr, npth, npz, i
    real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
    real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
    real, dimension(3) :: cx, cy
@@ -608,6 +619,14 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp)
    call beam_dist001(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npr,npth,npz,rmax,zmin,zmax,npmax,sigx,sigy,sigz,&
    &x0,y0,z0,cx,cy,lquiet,ierr)
+
+   if (present(s)) then
+      do i = 1, npp
+         s(1,i) = 0.0
+         s(2,i) = 0.0
+         s(3,i) = 1.0
+      enddo
+   endif
 
    if (ierr /= 0) then
       write (erstr,*) 'beam_dist001 error'
@@ -776,12 +795,13 @@ subroutine init_fdist3d_002(this,input,i)
 
 end subroutine init_fdist3d_002
 
-subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_002(this,x,p,q,npp,noff,ndp,s)
 
    implicit none
 
    class(fdist3d_002), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
@@ -849,6 +869,14 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp)
    call beam_dist002(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
    &vdz,npx,npy,npz,rmax,zmin,zmax,npmax,sigx,sigy,&
    &x0,y0,z0,cx,cy,zf,lquiet,ierr)
+
+   if (present(s)) then
+      do i = 1, npp
+         s(1,i) = 0.0
+         s(2,i) = 0.0
+         s(3,i) = 1.0
+      enddo
+   endif
 
    if (ierr /= 0) then
       write (erstr,*) 'beam_dist002 error'
@@ -969,7 +997,7 @@ subroutine init_fdist3d_100(this,input,i)
 
 end subroutine init_fdist3d_100
 !
-subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
+subroutine dist3d_100(this,x,p,q,npp,noff,ndp,s)
 
    use iso_c_binding
 
@@ -977,6 +1005,7 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
 
    class(fdist3d_100), intent(inout) :: this
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
@@ -992,13 +1021,16 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
    integer(hid_t) :: file_id, grp_id, treal, dtype_id
    integer(hid_t), dimension(p_x_dim) :: xdset_id
    integer(hid_t), dimension(p_p_dim) :: pdset_id
+   integer(hid_t), dimension(p_s_dim) :: sdset_id
    integer(hid_t) :: qdset_id, fspace_id, mspace_id
-   real, dimension(:,:), pointer :: xbuf, pbuf
+   real, dimension(:,:), pointer :: xbuf, pbuf, sbuf
    real, dimension(:), pointer :: qbuf
-   type(c_ptr) :: f_ptr
+   logical :: has_spin = .false.
    integer, parameter :: real_kind_8 = kind(1.0d0)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   if ( present(s) ) has_spin = .true.
 
    ! conversion factor from OSIRIS to QPAD
    xconv = 1.0 / sqrt( this%os_n0 )
@@ -1007,6 +1039,7 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
    allocate( xbuf(p_cache_size, p_x_dim) )
    allocate( pbuf(p_cache_size, p_p_dim) )
    allocate( qbuf(p_cache_size) )
+   if (has_spin) allocate( sbuf(p_cache_size, p_s_dim) )
 
    treal = detect_precision()
 
@@ -1043,6 +1076,11 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
    call h5dopen_f( grp_id, 'p3', pdset_id(2), ierr )
    call h5dopen_f( grp_id, 'p1', pdset_id(3), ierr )
    call h5dopen_f( grp_id, 'q', qdset_id, ierr )
+   if ( has_spin ) then
+      call h5dopen_f( grp_id, 's2', sdset_id(1), ierr )
+      call h5dopen_f( grp_id, 's3', sdset_id(2), ierr )
+      call h5dopen_f( grp_id, 's1', sdset_id(3), ierr )
+   endif
 
    pp = 0
    offset = 0
@@ -1078,7 +1116,6 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
          call h5dget_space_f( pdset_id(i), fspace_id, ierr )
          call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
             chunk_size, ierr) 
-         f_ptr = c_loc( pbuf(1,i) )
          call h5dread_f( pdset_id(i), h5kind_to_type(real_kind_8, H5_REAL_KIND), &
             pbuf(1,i), chunk_size, ierr, mspace_id, fspace_id )
          call h5sclose_f( fspace_id, ierr )
@@ -1088,10 +1125,21 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
       call h5dget_space_f( qdset_id, fspace_id, ierr )
       call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
          chunk_size, ierr) 
-      f_ptr = c_loc( qbuf )
       call h5dread_f( qdset_id, h5kind_to_type(real_kind_8, H5_REAL_KIND), &
          qbuf, chunk_size, ierr, mspace_id, fspace_id )
       call h5sclose_f( fspace_id, ierr )
+
+      ! read chunk from datasets s1, s2, s3
+      if ( has_spin ) then
+      do i = 1, p_s_dim
+         call h5dget_space_f( sdset_id(i), fspace_id, ierr )
+         call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
+            chunk_size, ierr) 
+         call h5dread_f( sdset_id(i), h5kind_to_type(real_kind_8, H5_REAL_KIND), &
+            sbuf(1,i), chunk_size, ierr, mspace_id, fspace_id )
+         call h5sclose_f( fspace_id, ierr )
+      enddo
+      endif
 
       ! convert and store particle data
       do i = 1, chunk_size(1)
@@ -1117,6 +1165,11 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
             p(2,pp) = pbuf(i,2)
             p(3,pp) = pbuf(i,3)
             q(pp) = qbuf(i) * qconv
+            if (has_spin) then
+               s(1,pp) = sbuf(i,1)
+               s(2,pp) = sbuf(i,2)
+               s(3,pp) = sbuf(i,3)
+            endif
          endif
 
       enddo
@@ -1135,12 +1188,18 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp)
    call h5dclose_f( pdset_id(2), ierr )
    call h5dclose_f( pdset_id(3), ierr )
    call h5dclose_f( qdset_id, ierr )
+   if (has_spin) then
+      call h5dclose_f( sdset_id(1), ierr )
+      call h5dclose_f( sdset_id(2), ierr )
+      call h5dclose_f( sdset_id(3), ierr )
+   endif
 
    call h5gclose_f( grp_id, ierr )
    call h5fclose_f( file_id, ierr )
    call h5close_f( ierr )
 
    deallocate( xbuf, pbuf, qbuf )
+   if (has_spin) deallocate( sbuf )
 
    if (ierr /= 0) then
       call write_err(cls_name//sname//'beam_dist100 error')

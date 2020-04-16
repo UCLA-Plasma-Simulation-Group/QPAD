@@ -15,11 +15,12 @@ character(len=128), private :: erstr
 contains
 
 subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
- xdim,npmax,nbmax,tag1,tag2,id,info)
+ xdim,npmax,nbmax,tag1,tag2,id,info,s)
 
    implicit none
 
    real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
    real, dimension(:), pointer, intent(inout) :: q
    real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr,pbuff
    integer(kind=LG), intent(inout) :: npp
@@ -48,9 +49,12 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
    integer, dimension(4) :: ibflg, iwork, msid
    integer, dimension(2) :: kb
    real :: an, xt
+   logical :: has_spin = .false.
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call start_tprof( 'move 3D particles' )
+
+   if ( present(s) ) has_spin = .true.
 
    ierr = 0
    n1 = ud%get_nd(1); n2 = ud%get_nd(2)
@@ -104,6 +108,13 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             p(3,j+npp) = rbufl(6,j)
             q(j+npp)   = rbufl(7,j)
          end do
+         if ( has_spin ) then
+            do j = 1, jsl(2)
+            s(1,j+npp) = rbufl(8,j)
+            s(2,j+npp) = rbufl(9,j)
+            s(3,j+npp) = rbufl(10,j)
+         end do
+         endif
          npp = jss(2)
       else
          write (erstr,*) 'particle overflow', jss(2)
@@ -142,6 +153,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             pbuff(5,jsr(1)) = p(2,j)
             pbuff(6,jsr(1)) = p(3,j)
             pbuff(7,jsr(1)) = q(j)
+            if (has_spin) then
+               pbuff(8,jsr(1))  = s(1,j)
+               pbuff(9,jsr(1))  = s(2,j)
+               pbuff(10,jsr(1)) = s(3,j)
+            endif
             ihole(jsr(1)) = j
          else
             jss(2) = 1
@@ -182,6 +198,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
          p(2,j1) = p(2,npt)
          p(3,j1) = p(3,npt)
          q(j1)   = q(npt)
+         if (has_spin) then
+            s(1,j1) = s(1,npt)
+            s(2,j1) = s(2,npt)
+            s(3,j1) = s(3,npt)
+         endif
          npt = npt - 1
       else
          npt = npt - 1
@@ -220,6 +241,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             sbufl(5,jsl(1)) = p(2,j)
             sbufl(6,jsl(1)) = p(3,j)
             sbufl(7,jsl(1)) = q(j)
+            if (has_spin) then
+               sbufl(8,jsl(1))  = s(1,j)
+               sbufl(9,jsl(1))  = s(2,j)
+               sbufl(10,jsl(1)) = s(3,j)
+            endif
             ihole(jsl(1)+jsr(1)) = j
          else
             jss(2) = 1
@@ -239,6 +265,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             sbufr(5,jsr(1)) = p(2,j)
             sbufr(6,jsr(1)) = p(3,j)
             sbufr(7,jsr(1)) = q(j)
+            if (has_spin) then
+               sbufr(8,jsr(1))  = s(1,j)
+               sbufr(9,jsr(1))  = s(2,j)
+               sbufr(10,jsr(1)) = s(3,j)
+            endif
             ihole(jsl(1)+jsr(1)) = j
          else
             jss(2) = 1
@@ -414,6 +445,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
          p(2,ihole(j)) = rbufl(5,j)
          p(3,ihole(j)) = rbufl(6,j)
          q(ihole(j))   = rbufl(7,j)
+         if (has_spin) then
+            s(1,ihole(j)) = rbufl(8,j)
+            s(2,ihole(j)) = rbufl(9,j)
+            s(3,ihole(j)) = rbufl(10,j)
+         endif
       end do
       if (jss(1) > jsl(2)) then
          jss(2) = min0(jss(1)-jsl(2),jsr(2))
@@ -434,6 +470,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             p(2,ihole(j+jsl(2))) = rbufr(5,j)
             p(3,ihole(j+jsl(2))) = rbufr(6,j)
             q(ihole(j+jsl(2)))   = rbufr(7,j)
+            if (has_spin) then
+               s(1,ihole(j+jsl(2))) = rbufr(8,j)
+               s(2,ihole(j+jsl(2))) = rbufr(9,j)
+               s(3,ihole(j+jsl(2))) = rbufr(10,j)
+            endif
          else
 ! no more holes
 ! distribute remaining particles from below or back into bottom
@@ -447,6 +488,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             p(2,j+npp) = rbufl(5,j+jss(1))
             p(3,j+npp) = rbufl(6,j+jss(1))
             q(j+npp)   = rbufl(7,j+jss(1))
+            if (has_spin) then
+               s(1,j+npp) = rbufl(8,j+jss(1))
+               s(2,j+npp) = rbufl(9,j+jss(1))
+               s(3,j+npp) = rbufl(10,j+jss(1))
+            endif
          end if
       end do
       if (jss(1) <= jsl(2)) then
@@ -478,7 +524,12 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
                p(1,ihole(j2)) = p(1,j1)
                p(2,ihole(j2)) = p(2,j1)
                p(3,ihole(j2)) = p(3,j1)
-               q(ihole(j2))   = q(j1)  
+               q(ihole(j2))   = q(j1)
+               if (has_spin) then
+                  s(1,ihole(j2)) = s(1,j1)
+                  s(2,ihole(j2)) = s(2,j1)
+                  s(3,ihole(j2)) = s(3,j1)
+               endif
             end if
          else
 ! no more holes
@@ -493,6 +544,11 @@ subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuf
             p(2,j+npp) = rbufr(5,j+jss(1))
             p(3,j+npp) = rbufr(6,j+jss(1))
             q(j+npp)   = rbufr(7,j+jss(1))
+            if (has_spin) then
+               s(1,j+npp) = rbufr(8,j+jss(1))
+               s(2,j+npp) = rbufr(9,j+jss(1))
+               s(3,j+npp) = rbufr(10,j+jss(1))
+            endif
          end if
       end do
       if (jss(2) > 0) then

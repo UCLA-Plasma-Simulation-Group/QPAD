@@ -57,7 +57,7 @@ integer, parameter :: cls_level = 2
 contains
 !
 subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
-   push_type, smooth_type, smooth_order )
+   push_type, smooth_type, smooth_order, has_spin, amm )
 
    implicit none
 
@@ -67,7 +67,9 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
    class(fdist3d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt
    integer, intent(in) :: push_type, part_shape, max_mode
-   integer, intent(in), optional :: smooth_type, smooth_order
+   integer, intent(in) :: smooth_type, smooth_order
+   logical, intent(in) :: has_spin
+   real, intent(in) :: amm
 ! local data
    character(len=32), save :: sname = 'init_beam3d'
    integer :: id, ierr
@@ -80,12 +82,8 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
 
    allocate(this%pd,this%q)
    this%evol = pf%getevol()
-   if ( present(smooth_type) .and. present(smooth_order) ) then
-      call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
-   else
-      call this%q%new(pp,gd,max_mode,part_shape)
-   endif
-   call this%pd%new(pp,gd,pf,qbm,dt)
+   call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
+   call this%pd%new(pp,gd,pf,qbm,dt,has_spin,amm)
    call this%pd%pmv(this%q,1,1,id)
    call MPI_WAIT(id,istat,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
