@@ -19,7 +19,6 @@
     "read_restart" : false,
     "restart_timestep" : 1,
     "iter" : 1,
-    "solver_tol" : 1.0e-12,
     "smooth_type" : "none",
     "smooth_order" : 0,
     "verbose" : 5,
@@ -31,6 +30,8 @@
     {
     "evolution" : true,
     "profile" : 1,
+    "push_type" : "reduced",
+    "has_spin" : false,
     "np" : [128,16,512],
     "npmax" : 10000000,
     "q" : -1.0,
