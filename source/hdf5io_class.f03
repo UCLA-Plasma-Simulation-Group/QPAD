@@ -816,9 +816,9 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
 ! local data
  integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
@@ -987,9 +987,9 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
 ! local data
  integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
@@ -1185,9 +1185,9 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
 ! local data
  integer :: tnpp, tp, tpo, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start,maxdim
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, dcplID, memspaceID, aid

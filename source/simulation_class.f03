@@ -9,6 +9,7 @@ use sim_species_class
 use diagnostics_class
 use field_class
 use field_psi_class
+use field_vpot_class
 use field_b_class
 use field_e_class
 use field_src_class
@@ -165,6 +166,7 @@ subroutine run_simulation( this )
   character(len=32), save :: sname = 'run_simulation'
 
   type(field_psi), pointer :: psi
+  type(field_vpot), pointer :: vpot
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
   type(field_jay), pointer :: cu, amu
@@ -178,6 +180,7 @@ subroutine run_simulation( this )
   call start_tprof( 'total simulation time' )
 
   psi    => this%fields%psi
+  vpot   => this%fields%vpot
   e_spe  => this%fields%e_spe
   e_beam => this%fields%e_beam
   e      => this%fields%e
@@ -294,6 +297,14 @@ subroutine run_simulation( this )
       call e_spe%solve( b_spe, psi )
       call e%solve( cu )
       call e%solve( b, psi )
+
+      ! for vector potential diagnostics
+      if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
+        if ( this%diag%has_vpotz ) call vpot%solve_vpotz( cu )
+        if ( this%diag%has_vpott ) call vpot%solve_vpott( cu )
+        call vpot%copy_slice( j+1, p_copy_1to2 )
+      endif
+
       call dot_f1( this%dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )
       do k = 1, this%nspecies
@@ -339,6 +350,8 @@ subroutine run_simulation( this )
   enddo ! 3d loop
 
   call stop_tprof( 'total simulation time' )
+
+  call write_tprof()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

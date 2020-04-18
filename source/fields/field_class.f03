@@ -126,6 +126,8 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
     this%entity = p_entity_none
   endif
 
+  gc_num_new(:,1) = gc_num(:,1)
+  gc_num_new(:,2) = gc_num(:,2)
   if ( present(smooth_type) .and. present(smooth_order) ) then
     call this%smooth%new( smooth_type, smooth_order )
     gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
@@ -138,9 +140,9 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
   allocate( this%rf_re(0:num_modes) )
   allocate( this%rf_im(num_modes) )
   do i = 0, this%num_modes
-    call this%rf_re(i)%new( pp, gp, dim, i, gc_num, has_2d=.true. )
+    call this%rf_re(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
     if (i==0) cycle
-    call this%rf_im(i)%new( pp, gp, dim, i, gc_num, has_2d=.true. )
+    call this%rf_im(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -162,6 +164,7 @@ subroutine init_field_cp( this, that )
   this%num_modes = that%get_num_modes()
   this%dr        = that%get_dr()
   this%dxi       = that%get_dxi()
+  this%entity    = that%entity
 
   allocate( this%rf_re(0:this%num_modes) )
   allocate( this%rf_im(this%num_modes) )

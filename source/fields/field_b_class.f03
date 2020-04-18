@@ -36,34 +36,26 @@ type, extends( field ) :: field_b
 
   contains
 
-  generic :: new        => init_field_b
-  procedure :: del      => end_field_b
-  generic :: solve      => solve_field_bz, solve_field_bt, solve_field_bt_iter
-  ! generic :: solve_old  => solve_field_bt_old, solve_field_bt_iter_old
+  generic :: solve => solve_field_bz, solve_field_bt, solve_field_bt_iter
+  generic :: new   => init_field_b
 
-  procedure, private :: init_field_b
-  procedure, private :: end_field_b
+  procedure :: init_field_b
+  procedure :: del => end_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
-  ! procedure, private :: set_source_bt_old
   procedure, private :: set_source_bt_iter
-  ! procedure, private :: set_source_bt_iter_old
   procedure, private :: get_solution_bz
   procedure, private :: get_solution_bt
-  ! procedure, private :: get_solution_bt_old
   procedure, private :: get_solution_bt_iter
-  ! procedure, private :: get_solution_bt_iter_old
   procedure, private :: solve_field_bz
   procedure, private :: solve_field_bt
-  ! procedure, private :: solve_field_bt_old
   procedure, private :: solve_field_bt_iter
-  ! procedure, private :: solve_field_bt_iter_old
 
 end type field_b
 
 contains
 
-subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity, iter_tol )
+subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   implicit none
 
@@ -71,7 +63,6 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity, 
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape, entity, boundary
-  real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -107,20 +98,6 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity, 
   ! initialize solver
   select case ( entity )
 
-  ! case ( p_entity_plasma_old )
-
-  !   allocate( this%solver_bz( 0:num_modes ) )
-  !   allocate( this%solver_bt_iter( 0:num_modes ) )
-  !   do i = 0, num_modes
-  !     call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
-  !       bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
-  !     call this%solver_bt_iter(i)%new( pp, gp, i, dr, kind=p_fk_bt_iter, &
-  !       bnd=boundary, stype=p_hypre_amg, tol=iter_tol )
-  !   enddo
-
-  !   allocate( this%buf(4*nrp) )
-  !   allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
-
   case ( p_entity_plasma )
 
     allocate( this%solver_bz( 0:num_modes ) )
@@ -128,32 +105,22 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity, 
     allocate( this%solver_bminus( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
-        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred )
       call this%solver_bplus(i)%new( pp, gp, i, dr, kind=p_fk_bplus, &
-        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred )
       call this%solver_bminus(i)%new( pp, gp, i, dr, kind=p_fk_bminus, &
-        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred )
     enddo
 
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
     allocate( this%buf2_re(nrp), this%buf2_im(nrp) )
-
-  case ( p_entity_beam_old )
-
-    allocate( this%solver_bt( 0:num_modes ) )
-    do i = 0, num_modes
-      call this%solver_bt(i)%new( pp, gp, i, dr, kind=p_fk_bt_old, &
-        bnd=boundary, stype=p_hypre_amg, tol=iter_tol )
-    enddo
-
-    allocate( this%buf( nrp*4 ) )
 
   case ( p_entity_beam )
 
     allocate( this%solver_bt( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_bt(i)%new( pp, gp, i, dr, kind=p_fk_bt, &
-        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred )
     enddo
 
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
@@ -180,13 +147,7 @@ subroutine end_field_b( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%entity )
-  ! case ( p_entity_plasma_old )
-  !   do i = 0, this%num_modes
-  !     call this%solver_bz(i)%del()
-  !     call this%solver_bt_iter(i)%del()
-  !   enddo
-  !   deallocate( this%solver_bz )
-  !   deallocate( this%solver_bt_iter )
+
   case ( p_entity_plasma )
     do i = 0, this%num_modes
       call this%solver_bz(i)%del()
@@ -196,7 +157,8 @@ subroutine end_field_b( this )
     deallocate( this%solver_bz )
     deallocate( this%solver_bplus )
     deallocate( this%solver_bminus )
-  case ( p_entity_beam, p_entity_beam_old )
+
+  case ( p_entity_beam )
     do i = 0, this%num_modes
       call this%solver_bt(i)%del()
     enddo
@@ -319,106 +281,6 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
 
 end subroutine set_source_bz
 
-! subroutine set_source_bt_old( this, mode, q_re, q_im )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   class( ufield ), intent(in) :: q_re
-!   class( ufield ), intent(in), optional :: q_im
-!   integer, intent(in) :: mode
-
-!   integer :: i, nrp, idproc, nvp, noff, comm, dtype, ierr
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   real :: idrh, idr, a1, a2, a3, b, ir, dr2, rmax
-!   character(len=20), save :: sname = 'set_source_bt_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve beam bt' )
-
-!   idproc = q_re%pp%getlidproc()
-!   nvp = q_re%pp%getlnvp()
-!   nrp = q_re%get_ndp(1)
-!   noff = q_re%get_noff(1)
-!   idr = 1.0 / this%dr
-!   idrh = 0.5 * idr
-!   dtype = q_re%pp%getmreal()
-!   comm = q_re%pp%getlgrp()
-!   dr2 = (this%dr)**2
-!   rmax = (q_re%get_nd(1)-0.5) * this%dr
-
-!   f1_re => q_re%get_f1()
-!   if ( present(q_im) ) then
-!     f1_im => q_im%get_f1()
-!   endif
-
-!   this%buf = 0.0
-!   if ( mode == 0 ) then
-
-!     select case ( this%solver_bt(0)%bnd )
-
-!     case ( p_bnd_zero, p_bnd_open )
-
-!       do i = 1, nrp
-
-!         ! Re(Br)
-!         this%buf(4*i-3) = 0.0
-!         ! Im(Br)
-!         this%buf(4*i-2) = 0.0
-!         ! Re(Bphi)
-!         this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
-!         ! Im(Bphi)
-!         this%buf(4*i) = 0.0
-
-!       enddo
-
-!     end select
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       this%buf(3) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) )
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       this%buf(4*nrp-1) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) )
-!       select case ( this%solver_bt(0)%bnd )
-!       case ( p_bnd_zero, p_bnd_open )
-!         ! do nothing
-!       end select
-!     endif
-
-!   elseif ( mode > 0 .and. present( q_im ) ) then
-
-!     do i = 1, nrp
-
-!       ir = idr / (real(i+noff)-0.5)
-!       this%buf(4*i-3) =  mode * f1_im(1,i) * ir
-!       this%buf(4*i-2) = -mode * f1_re(1,i) * ir
-!       this%buf(4*i-1) = idrh * ( f1_re(1,i+1)-f1_re(1,i-1) )
-!       this%buf(4*i)   = idrh * ( f1_im(1,i+1)-f1_im(1,i-1) )
-
-!     enddo
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       this%buf(3) = idrh * ( -3.0 * f1_re(1,1) + 4.0 * f1_re(1,2) - f1_re(1,3) )
-!       this%buf(4) = idrh * ( -3.0 * f1_im(1,1) + 4.0 * f1_im(1,2) - f1_im(1,3) )
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       this%buf(4*nrp-1) = idrh * ( 3.0 * f1_re(1,nrp) - 4.0 * f1_re(1,nrp-1) + f1_re(1,nrp-2) )
-!       this%buf(4*nrp)   = idrh * ( 3.0 * f1_im(1,nrp) - 4.0 * f1_im(1,nrp-1) + f1_im(1,nrp-2) )
-!     endif
-
-!   else
-
-!     call write_err( 'Invalid input arguments!' )
-
-!   endif
-
-!   call stop_tprof( 'solve beam bt' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine set_source_bt_old
-
 subroutine set_source_bt( this, mode, q_re, q_im )
 
   implicit none
@@ -470,127 +332,6 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt
-
-! subroutine set_source_bt_iter_old( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   class( ufield ), intent(in) :: djdxi_re, jay_re
-!   class( ufield ), intent(in), optional :: djdxi_im, jay_im
-!   integer, intent(in) :: mode
-
-!   integer :: i, nrp, nvp, idproc, noff, dtype, ierr, comm
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
-!   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
-!   real :: idrh, idr, a1, a2, a3, b, ir, dr2, dr, rmax
-!   character(len=20), save :: sname = 'set_source_bt_iter_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve plasma bt' )
-
-!   dtype  = jay_re%pp%getmreal()
-!   comm   = jay_re%pp%getlgrp()
-!   nvp    = jay_re%pp%getlnvp()
-!   idproc = jay_re%pp%getlidproc()
-!   nrp    = jay_re%get_ndp(1)
-!   noff   = jay_re%get_noff(1)
-!   idr    = 1.0 / this%dr
-!   idrh   = 0.5 * idr
-!   dr     = this%dr
-!   dr2    = dr**2
-!   rmax   = (jay_re%get_nd(1)-0.5) * dr
-
-!   f1_re => djdxi_re%get_f1()
-!   f2_re => jay_re%get_f1()
-!   f3_re => this%rf_re(mode)%get_f1()
-
-!   if ( present(djdxi_im) .and. present(jay_im) ) then
-!     f1_im => djdxi_im%get_f1()
-!     f2_im => jay_im%get_f1()
-!     f3_im => this%rf_im(mode)%get_f1()
-!   endif
-
-!   this%buf = 0.0
-!   if ( mode == 0 ) then
-
-!     select case ( this%solver_bt_iter(0)%bnd )
-
-!     case ( p_bnd_zero, p_bnd_open )
-
-!       do i = 1, nrp
-
-!         ! Re(Br)
-!         this%buf(4*i-3) = -f1_re(2,i) - f3_re(1,i)
-!         ! Im(Br)
-!         this%buf(4*i-2) = 0.0
-!         ! Re(Bphi)
-!         this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-!         ! Im(Bphi)
-!         this%buf(4*i) = 0.0
-
-!       enddo
-
-!     end select
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       this%buf(1) = -f1_re(2,1) - f3_re(1,1)
-!       this%buf(2) = 0.0
-!       this%buf(3) = f1_re(1,1) + idrh * ( -3.0 * f2_re(3,1) + 4.0 * f2_re(3,2) - f2_re(3,3) ) - f3_re(2,1)
-!       this%buf(4) = 0.0
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       this%buf(4*nrp-3) = -f1_re(2,nrp) - f3_re(1,nrp)
-!       this%buf(4*nrp-2) = 0.0
-!       this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
-!       this%buf(4*nrp)   = 0.0
-
-!       select case ( this%solver_bt_iter(0)%bnd )
-!       case ( p_bnd_zero, p_bnd_open )
-!         ! do nothing
-!       end select
-!     endif
-
-!   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
-
-!     do i = 1, nrp
-
-!       ir = idr / (real(i+noff)-0.5)
-!       this%buf(4*i-3) = -f1_re(2,i) + mode * f2_im(3,i) * ir - f3_re(1,i)
-!       this%buf(4*i-2) = -f1_im(2,i) - mode * f2_re(3,i) * ir - f3_im(1,i)
-!       this%buf(4*i-1) = f1_re(1,i) + idrh * ( f2_re(3,i+1)-f2_re(3,i-1) ) - f3_re(2,i)
-!       this%buf(4*i)   = f1_im(1,i) + idrh * ( f2_im(3,i+1)-f2_im(3,i-1) ) - f3_im(2,i)
-
-!     enddo
-
-!     ! calculate the derivatives at the boundary and axis
-!     if ( idproc == 0 ) then
-!       ir = 2.0 * idr
-!       this%buf(1) = -f1_re(2,1) + mode * f2_im(3,1) * ir - f3_re(1,1)
-!       this%buf(2) = -f1_im(2,1) - mode * f2_re(3,1) * ir - f3_im(1,1)
-!       this%buf(3) = f1_re(1,1) - idrh * ( 3.0 * f2_re(3,1) - 4.0 * f2_re(3,2) + f2_re(3,3) ) - f3_re(2,1)
-!       this%buf(4) = f1_im(1,1) - idrh * ( 3.0 * f2_im(3,1) - 4.0 * f2_im(3,2) + f2_im(3,3) ) - f3_im(2,1)
-!     endif
-!     if ( idproc == nvp-1 ) then
-!       ir = idr / (real(nrp+noff)-0.5)
-!       this%buf(4*nrp-3) = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir - f3_re(1,nrp)
-!       this%buf(4*nrp-2) = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir - f3_im(1,nrp)
-!       this%buf(4*nrp-1) = f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
-!       this%buf(4*nrp)   = f1_im(1,nrp) + idrh * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) ) - f3_im(2,nrp)
-!     endif
-
-!   else
-
-!     call write_err( 'Invalid input arguments!' )
-
-!   endif
-
-!   call stop_tprof( 'solve plasma bt' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine set_source_bt_iter_old
 
 subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
@@ -775,41 +516,6 @@ subroutine get_solution_bz( this, mode )
 
 end subroutine get_solution_bz
 
-! subroutine get_solution_bt_old( this, mode )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   integer, intent(in) :: mode
-
-!   integer :: i, nd1p
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   character(len=20), save :: sname = 'get_solution_bt_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve beam bt' )
-
-!   nd1p = this%rf_re(mode)%get_ndp(1)
-
-!   f1_re => this%rf_re(mode)%get_f1()
-!   do i = 1, nd1p
-!     f1_re(1,i) = this%buf(4*i-3)
-!     f1_re(2,i) = this%buf(4*i-1)
-!   enddo
-
-!   if ( mode > 0 ) then
-!     f1_im => this%rf_im(mode)%get_f1()
-!     do i = 1, nd1p
-!       f1_im(1,i) = this%buf(4*i-2)
-!       f1_im(2,i) = this%buf(4*i)
-!     enddo
-!   endif
-
-!   call stop_tprof( 'solve beam bt' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine get_solution_bt_old
-
 subroutine get_solution_bt( this, mode )
 
   implicit none
@@ -967,42 +673,6 @@ subroutine get_solution_bt( this, mode )
 
 end subroutine get_solution_bt
 
-! subroutine get_solution_bt_iter_old( this, mode )
-! ! this is totally the same as get_solution_bt()
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   integer, intent(in) :: mode
-
-!   integer :: i, nd1p
-!   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-!   character(len=20), save :: sname = 'get_solution_bt_iter_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-!   call start_tprof( 'solve plasma bt' )
-
-!   nd1p = this%rf_re(mode)%get_ndp(1)
-
-!   f1_re => this%rf_re(mode)%get_f1()
-!   do i = 1, nd1p
-!     f1_re(1,i) = this%buf(4*i-3)
-!     f1_re(2,i) = this%buf(4*i-1)
-!   enddo
-
-!   if ( mode > 0 ) then
-!     f1_im => this%rf_im(mode)%get_f1()
-!     do i = 1, nd1p
-!       f1_im(1,i) = this%buf(4*i-2)
-!       f1_im(2,i) = this%buf(4*i)
-!     enddo
-!   endif
-
-!   call stop_tprof( 'solve plasma bt' )
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine get_solution_bt_iter_old
-
 subroutine get_solution_bt_iter( this, mode )
 
   implicit none
@@ -1098,43 +768,6 @@ subroutine solve_field_bz( this, jay )
 
 end subroutine solve_field_bz
 
-! subroutine solve_field_bt_old( this, rho )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   class( field_rho ), intent(inout) :: rho
-
-!   type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
-!   integer :: i
-!   character(len=20), save :: sname = 'solve_field_bt_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-!   rho_re => rho%get_rf_re()
-!   rho_im => rho%get_rf_im()
-
-!   do i = 0, this%num_modes
-
-!     if ( i == 0 ) then
-!       call this%set_source_bt_old( i, rho_re(i) )
-!       call this%solver_bt(i)%solve( this%buf )
-!       call this%get_solution_bt_old(i)
-!       cycle
-!     endif
-
-!     call this%set_source_bt_old( i, rho_re(i), rho_im(i) )
-!     call this%solver_bt(i)%solve( this%buf )
-!     call this%get_solution_bt_old(i)
-
-!   enddo
-
-!   call this%copy_gc_f1()
-
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine solve_field_bt_old
-
 subroutine solve_field_bt( this, rho )
 
   implicit none
@@ -1172,47 +805,6 @@ subroutine solve_field_bt( this, rho )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt
-
-! subroutine solve_field_bt_iter_old( this, djdxi, jay )
-
-!   implicit none
-
-!   class( field_b ), intent(inout) :: this
-!   class( field_djdxi ), intent(in) :: djdxi
-!   class( field_jay ), intent(inout) :: jay
-
-!   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
-!   type( ufield ), dimension(:), pointer :: djdxi_re => null(), djdxi_im => null()
-!   integer :: i
-!   character(len=20), save :: sname = 'solve_field_bt_iter_old'
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-!   djdxi_re => djdxi%get_rf_re()
-!   djdxi_im => djdxi%get_rf_im()
-!   jay_re => jay%get_rf_re()
-!   jay_im => jay%get_rf_im()
-
-!   do i = 0, this%num_modes
-
-!     if ( i == 0 ) then
-!       call this%set_source_bt_iter_old( i, djdxi_re(i), jay_re(i) )
-!       call this%solver_bt_iter(i)%solve( this%buf )
-!       call this%get_solution_bt_iter_old(i)
-!       cycle
-!     endif
-
-!     call this%set_source_bt_iter_old( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
-!     call this%solver_bt_iter(i)%solve( this%buf )
-!     call this%get_solution_bt_iter_old(i)
-
-!   enddo
-
-!   call this%copy_gc_f1()
-
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine solve_field_bt_iter_old
 
 subroutine solve_field_bt_iter( this, djdxi, jay )
 

@@ -28,21 +28,18 @@ type, extends( field ) :: field_e
   class( field_solver ), dimension(:), pointer :: solver_ez => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
-  real :: jr_ax
-
   contains
 
-  generic :: new => init_field_e
-  procedure :: del => end_field_e
   generic :: solve => solve_field_ez_fast, solve_field_ez, &
                       solve_field_et, solve_field_et_beam
+  generic :: new => init_field_e
 
-  procedure, private :: init_field_e
-  procedure, private :: end_field_e
+  procedure :: init_field_e
+  procedure :: del => end_field_e
   procedure, private :: set_source_ez
   procedure, private :: get_solution_ez
   procedure, private :: solve_field_ez
-  procedure, private :: solve_field_ez_fast
+  procedure, private :: solve_field_ez_fast ! to be deleted in future
   procedure, private :: solve_field_et
   procedure, private :: solve_field_et_beam
 
@@ -50,7 +47,7 @@ end type field_e
 
 contains
 
-subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, iter_tol )
+subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   implicit none
 
@@ -58,7 +55,6 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
   class( parallel_pipe ), intent(in), pointer :: pp
   class( grid ), intent(in), pointer :: gp
   integer, intent(in) :: num_modes, part_shape, entity, boundary
-  real, intent(in) :: iter_tol
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -97,7 +93,7 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity, 
     allocate( this%solver_ez( 0:num_modes ) )
     do i = 0, num_modes
       call this%solver_ez(i)%new( pp, gp, i, dr, kind=p_fk_ez, &
-        bnd=boundary, stype=p_hypre_cycred, tol=iter_tol )
+        bnd=boundary, stype=p_hypre_cycred )
     enddo
     allocate( this%buf_re(nrp), this%buf_im(nrp) )
   case ( p_entity_beam )
@@ -184,15 +180,6 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
       this%buf_re(i) = idrh * ( f1_re(1,i+1) - f1_re(1,i-1) ) + ir * f1_re(1,i)
       div = div + this%buf_re(i) * real(i+noff-1)
     enddo
-
-    ! calculate the derivatives at the boundary and axis
-    ! if ( idproc == 0 ) then
-    !   ! this%buf_re(1) = 2.0 * idr * f1_re(1,2)
-    ! else
-    !   ir = idr / real(noff)
-    !   this%buf_re(1) = idrh * ( f1_re(1,2) - f1_re(1,0) ) + ir * f1_re(1,1)
-    !   div = div + this%buf_re(1) * real(noff)
-    ! endif
 
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-2)

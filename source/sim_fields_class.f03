@@ -5,6 +5,7 @@ use grid_class
 use field_psi_class
 use field_e_class
 use field_b_class
+use field_vpot_class
 use field_src_class
 use sysutil
 use param
@@ -24,6 +25,7 @@ type sim_fields
   class( grid ), pointer :: gp => null()
 
   type( field_psi ), pointer :: psi => null()
+  type( field_vpot ), pointer :: vpot => null() ! just for diagnostic
   type( field_b ), pointer :: b_spe => null(), b_beam => null(), b => null()
   type( field_e ), pointer :: e_spe => null(), e_beam => null(), e => null()
   type( field_jay ), pointer :: cu => null(), amu => null()
@@ -55,7 +57,6 @@ subroutine init_sim_fields( this, input )
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=:), allocatable :: str
   integer :: entity, max_mode, ps, bnd, sm_type, sm_ord
-  real :: tol
 
   this%gp => input%gp
   this%pp => input%pp
@@ -69,7 +70,6 @@ subroutine init_sim_fields( this, input )
     this%q_spe, this%q_beam )
 
   call input%get( 'simulation.max_mode', max_mode )
-  call input%get( 'simulation.solver_tol', tol )
 
   ! read field boundary type
   call input%get( 'simulation.field_boundary', str )
@@ -105,14 +105,7 @@ subroutine init_sim_fields( this, input )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
-  ! call input%get( 'simulation.box.r(1)', min )
-  ! call input%get( 'simulation.box.r(2)', max )
-  ! dr = ( max - min ) / this%gp%get_nd(1)
-  ! call input%get( 'simulation.box.z(1)', min )
-  ! call input%get( 'simulation.box.z(2)', max )
-  ! dxi = ( max - min ) / this%gp%get_nd(2)
-
-  call this%psi%new(    this%pp, this%gp, max_mode, ps, bnd, tol )
+  call this%psi%new(    this%pp, this%gp, max_mode, ps, bnd )
   call this%q_spe%new(  this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
   call this%q_beam%new( this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
   call this%cu%new(     this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
@@ -120,58 +113,13 @@ subroutine init_sim_fields( this, input )
   call this%acu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
   call this%amu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
   entity = p_entity_plasma
-  call this%e_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity, tol )
-  call this%b_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity, tol )
-  call this%e%new(      this%pp, this%gp, max_mode, ps, bnd, entity, tol )
-  call this%b%new(      this%pp, this%gp, max_mode, ps, bnd, entity, tol )
+  call this%e_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%b_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%e%new(      this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%b%new(      this%pp, this%gp, max_mode, ps, bnd, entity )
   entity = p_entity_beam
-  call this%e_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity, tol )
-  call this%b_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity, tol )
-
-  ! call input%get('simulation.nspecies',n)
-
-  ! loop1: do i = 1, n
-  !   write (s1, '(I4.4)') i
-  !   call input%info('species('//trim(s1)//').diag',n_children=m)
-  !   do j = 1, m
-  !      write (s2, '(I4.4)') j
-  !      call input%get('species('//trim(s1)//').diag'//'('//trim(s2)//').ndump',ndump)
-  !      if (ndump>0) then
-  !         call input%info('species('//trim(s1)//').diag'//'('//trim(s2)//').name',n_children=l)
-  !         do k = 1, l
-  !            write (s3, '(I4.4)') k
-  !            if(allocated(ff)) deallocate(ff)
-  !            call input%get('species('//trim(s1)//').diag'//'('//trim(s2)//').name'&
-  !            &//'('//trim(s3)//')',ff)
-  !            if (ff == 'jx' .or. ff == 'jy' .or. ff == 'jz') then
-  !               allocate(this%cu3d)
-  !               call this%cu3d%new(this%p,this%err,this%sp3,dim=1)
-  !               exit loop1
-  !            end if
-  !         end do
-  !      end if
-  !   end do
-  ! end do loop1
-
-  ! call input%info('field.diag',n_children=n)
-
-  ! loop2: do i = 1, n
-  !   write (s1,'(I4.4)') i
-  !   call input%get('field.diag('//trim(s1)//').ndump',ndump)
-  !   if (ndump > 0) then
-  !      call input%info('field.diag('//trim(s1)//').name',n_children=m)
-  !      do j = 1, m
-  !         write (s2,'(I4.4)') j
-  !         if(allocated(ff)) deallocate(ff)
-  !         call input%get('field.diag('//trim(s1)//').name('//trim(s2)//')',ff)
-  !         if (ff == 'psi') then
-  !            allocate(this%psi3d)
-  !            call this%psi3d%new(this%p,this%err,this%sp3,dim=1)
-  !            exit loop2
-  !         end if
-  !      end do
-  !   end if
-  ! end do loop2
+  call this%e_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%b_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

@@ -275,6 +275,7 @@ subroutine init_tprof( enable_timing )
   call add_tprof( 'solve ez' )
   call add_tprof( 'solve beam et' )
   call add_tprof( 'solve plasma et' )
+  call add_tprof( 'solve plasma A' )
   call add_tprof( 'smooth' )
   call add_tprof( 'copy guard cells' )
   call add_tprof( 'copy & add guard cells' )
@@ -352,7 +353,7 @@ subroutine write_tprof()
 
   integer :: idproc, nproc, ierr, fid = 10, i
   character(len=32) :: filename
-  double precision, dimension(:,:), allocatable :: buf
+  double precision, dimension(:,:), pointer :: buf => null()
   double precision :: avg, max, min, std, lb, prct, whole
 
   if ( (num_event == 0) .or. (.not. if_timing) ) return
