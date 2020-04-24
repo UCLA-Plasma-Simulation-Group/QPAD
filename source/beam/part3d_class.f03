@@ -317,7 +317,7 @@ subroutine push_boris_part3d( this, ef, bf )
    class(field), intent(in) :: ef, bf
 
    ! local
-   class(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    integer :: i, np, max_mode
    integer(kind=LG) :: ptrcur, pp
    real :: qtmh, ostq, u2, gam_qtmh
@@ -455,7 +455,7 @@ subroutine push_reduced_part3d( this, ef, bf )
    class(part3d), intent(inout) :: this
    class(field), intent(in) :: ef, bf
    ! local
-   class(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    
    integer :: i, np, max_mode
    real :: qtmh, dt_gam
