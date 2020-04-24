@@ -60,6 +60,8 @@
     {
     "evolution" : true,
     "profile" : 1,
+    "push_type" : "reduced",
+    "has_spin" : false,
     "np" : [1024,16,256],
     "npmax" : 4250000,
     "q" : -1.0,
