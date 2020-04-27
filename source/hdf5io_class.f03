@@ -13,6 +13,7 @@ private
 
 public :: hdf5file, pwfield, pwfield_pipe, pwpart, wpart, rpart
 public :: pwpart_pipe
+public :: detect_precision
 ! public ::  wfield_pipe
 
 type hdf5file
@@ -815,9 +816,9 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
 ! local data
  integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
@@ -986,9 +987,9 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
 ! local data
  integer :: tnpp, tp, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, memspaceID, aid
@@ -1166,14 +1167,16 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
 
 end subroutine pwpart_2d_r
 !
-subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
-&id,ierr)
+subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
+&id,ierr,s)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(in) :: part
+ real, dimension(:,:), intent(in) :: x, p
+ real, dimension(:,:), intent(in), optional :: s
+ real, dimension(:), intent(in) :: q
  real, intent(in) :: z0
  integer(kind=LG), intent(in) :: npp
  integer, intent(in) :: dspl
@@ -1182,9 +1185,9 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
 ! local data
  integer :: tnpp, tp, tpo, color, pgrp, pid, pnvp, i
  integer(hsize_t), dimension(1) :: ldim
- integer, dimension(:), pointer :: np
- integer, dimension(:,:), pointer:: dims
- real, dimension(:), pointer :: buff
+ integer, dimension(:), pointer :: np => null()
+ integer, dimension(:,:), pointer:: dims => null()
+ real, dimension(:), pointer :: buff => null()
  integer(hsize_t), dimension(1) :: start,maxdim
  integer(hid_t) :: treal
  integer(hid_t) :: flplID, xferID, dcplID, memspaceID, aid
@@ -1193,7 +1196,9 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
  integer, dimension(10) :: istat
  character(len=:), allocatable :: filename
  character(len=8) :: st
+ logical :: has_spin = .false.
 
+ if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -1297,15 +1302,21 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
        endif
 
        do i = 1, 3
-          if (i == 1) then
-             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
-             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
-          else if (i == 2) then
-             buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
-             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          ! if (i == 1) then
+          !    buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
+          ! else if (i == 2) then
+          !    buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          ! else
+          !    buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)+z0
+          ! end if
+
+          if (i == 3) then
+            buff(1:tnpp) = x(i,1:((tnpp-1)*dspl+1):dspl)+z0
           else
-             buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)+z0
-          end if
+            buff(1:tnpp) = x(i,1:((tnpp-1)*dspl+1):dspl)
+          endif
 
           if (ori >=0 .and. tpo /= 0) then
              call h5dopen_f(rootID, 'x'//char(iachar('0')+i), dset_id, ierr)
@@ -1349,19 +1360,21 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
        enddo
 
        do i = 1, 3
-          if (i == 1) then
-             buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
-             &cos(part(2,1:((tnpp-1)*dspl+1):dspl)) - &
-             &part(5,1:((tnpp-1)*dspl+1):dspl)*&
-             &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
-          else if (i == 2) then
-             buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
-             &sin(part(2,1:((tnpp-1)*dspl+1):dspl)) + &
-             &part(5,1:((tnpp-1)*dspl+1):dspl)*&
-             &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
-          else
-             buff(1:tnpp) = part(6,1:((tnpp-1)*dspl+1):dspl)
-          end if
+          ! if (i == 1) then
+          !    buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &cos(part(2,1:((tnpp-1)*dspl+1):dspl)) - &
+          !    &part(5,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &sin(part(2,1:((tnpp-1)*dspl+1):dspl))
+          ! else if (i == 2) then
+          !    buff(1:tnpp) = part(4,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &sin(part(2,1:((tnpp-1)*dspl+1):dspl)) + &
+          !    &part(5,1:((tnpp-1)*dspl+1):dspl)*&
+          !    &cos(part(2,1:((tnpp-1)*dspl+1):dspl))
+          ! else
+          !    buff(1:tnpp) = part(6,1:((tnpp-1)*dspl+1):dspl)
+          ! end if
+
+          buff(1:tnpp) = p(i,1:((tnpp-1)*dspl+1):dspl)
 
           if (ori >= 0 .and. tpo /= 0) then
              call h5dopen_f(rootID, 'p'//char(iachar('0')+i), dset_id, ierr)
@@ -1395,7 +1408,7 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
              &ldim, ierr)
              call h5dwrite_f(dset_id, treal, buff, ldim, ierr, memspaceID,&
              &dspace_id, xfer_prp=xferID)
-             call wrattr_dataset(file,dset_id,unit='c/\omega_p',&
+             call wrattr_dataset(file,dset_id,unit='m_ec',&
              &name='p_'//char(iachar('0')+i))
              call h5pclose_f(dcplID, ierr)
           endif
@@ -1404,7 +1417,56 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
           call h5dclose_f(dset_id, ierr)
        enddo
 
-       buff(1:tnpp) = part(7,1:((tnpp-1)*dspl+1):dspl)
+       if (has_spin) then
+
+       do i = 1, 3
+
+          buff(1:tnpp) = s(i,1:((tnpp-1)*dspl+1):dspl)
+
+          if (ori >= 0 .and. tpo /= 0) then
+             call h5dopen_f(rootID, 's'//char(iachar('0')+i), dset_id, ierr)
+             ldim(1) = tp
+             call h5dextend_f(dset_id, ldim, ierr)
+             call h5screate_simple_f(1, ldim, dspace_id, ierr)
+             ldim(1) = tnpp
+             call h5screate_simple_f(1, ldim, memspaceID, ierr )
+             start = tpo + dims(1,pid+1) - 1
+             call h5sselect_hyperslab_f(dspace_id,H5S_SELECT_SET_F,start,&
+             &ldim,ierr)
+             call h5dwrite_f(dset_id, treal, buff, ldim, ierr, memspaceID,&
+             &dspace_id, xfer_prp=xferID)
+          else
+             maxdim = (/H5S_UNLIMITED_F/)
+             ldim(1) = 1
+             call h5screate_simple_f(1, ldim, dspace_id, ierr, maxdim)
+             call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)
+             ldim(1) = tp
+             call h5pset_chunk_f(dcplID, 1, ldim, ierr)
+             call h5dcreate_f(rootID, 's'//char(iachar('0')+i), treal,&
+             &dspace_id, dset_id, ierr, dcplID)
+             ldim(1) = tp
+             call h5dextend_f(dset_id, ldim, ierr)
+             call h5sclose_f(dspace_id, ierr)
+             call h5screate_simple_f(1, ldim, dspace_id, ierr)
+             ldim(1) = tnpp
+             call h5screate_simple_f(1, ldim, memspaceID, ierr )
+             start = tpo + dims(1,pid+1) - 1
+             call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F,start,&
+             &ldim, ierr)
+             call h5dwrite_f(dset_id, treal, buff, ldim, ierr, memspaceID,&
+             &dspace_id, xfer_prp=xferID)
+             call wrattr_dataset(file,dset_id,unit='a.u.',&
+             &name='s_'//char(iachar('0')+i))
+             call h5pclose_f(dcplID, ierr)
+          endif
+          call h5sclose_f(memspaceID, ierr)
+          call h5sclose_f(dspace_id, ierr)
+          call h5dclose_f(dset_id, ierr)
+       enddo
+
+       endif
+
+       buff(1:tnpp) = q(1:((tnpp-1)*dspl+1):dspl)
        if (ori >= 0 .and. tpo /= 0) then
           call h5dopen_f(rootID, 'q', dset_id, ierr)
           ldim(1) = tp
@@ -1469,13 +1531,15 @@ subroutine pwpart_3d_pipe(pp,file,part,npp,dspl,z0,rtag,stag,&
 
 end subroutine pwpart_3d_pipe
 ! !
-subroutine wpart(pp,file,part,npp,dspl,ierr)
+subroutine wpart(pp,file,x,p,q,npp,dspl,ierr,s)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(in) :: part
+ real, dimension(:,:), intent(in) :: x, p
+ real, dimension(:,:), intent(in), optional :: s
+ real, dimension(:), intent(in) :: q
  integer(kind=LG), intent(in) :: npp
  integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
@@ -1488,7 +1552,9 @@ subroutine wpart(pp,file,part,npp,dspl,ierr)
  integer(hid_t) :: memspaceID, aid
  character(len=:), allocatable :: filename
  character(len=8) :: st
+ logical :: has_spin = .false.
 
+ if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -1514,32 +1580,94 @@ subroutine wpart(pp,file,part,npp,dspl,ierr)
     call h5fclose_f(file_id, ierr)
     call h5close_f(ierr)
  else
-    dim(1) = size(part,1)
+    ! dim(1) = size(part,1)
+    ! dim(2) = tp
+    ! call h5screate_simple_f(2, dim, dspace_id, ierr)
+    ! call h5screate_simple_f(2, dim, memspaceID, ierr)
+    ! call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id,&
+    ! &ierr)
+    ! call wrattr_dataset(file,dset_id)
+    ! call h5dwrite_f(dset_id, treal, part(:,1:(1+(tp-1)*dspl):dspl),&
+    ! &dim, ierr, memspaceID, dspace_id)
+    ! call h5sclose_f(memspaceID, ierr)
+    ! call h5sclose_f(dspace_id, ierr)
+    ! call h5gclose_f(rootID, ierr)
+    ! call h5dclose_f(dset_id, ierr)
+    ! call h5fclose_f(file_id, ierr)
+    ! call h5close_f(ierr)
+
+    ! write position
+    dim(1) = size(x,1)
     dim(2) = tp
     call h5screate_simple_f(2, dim, dspace_id, ierr)
     call h5screate_simple_f(2, dim, memspaceID, ierr)
-    call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id,&
+    call h5dcreate_f(rootID, 'x', treal, dspace_id, dset_id,&
     &ierr)
     call wrattr_dataset(file,dset_id)
-    call h5dwrite_f(dset_id, treal, part(:,1:(1+(tp-1)*dspl):dspl),&
+    call h5dwrite_f(dset_id, treal, x(:,1:(1+(tp-1)*dspl):dspl),&
     &dim, ierr, memspaceID, dspace_id)
     call h5sclose_f(memspaceID, ierr)
     call h5sclose_f(dspace_id, ierr)
-    call h5gclose_f(rootID, ierr)
     call h5dclose_f(dset_id, ierr)
+
+    ! write momentum
+    dim(1) = size(p,1)
+    call h5screate_simple_f(2, dim, dspace_id, ierr)
+    call h5screate_simple_f(2, dim, memspaceID, ierr)
+    call h5dcreate_f(rootID, 'p', treal, dspace_id, dset_id,&
+    &ierr)
+    call wrattr_dataset(file,dset_id)
+    call h5dwrite_f(dset_id, treal, p(:,1:(1+(tp-1)*dspl):dspl),&
+    &dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    ! write spin
+    if (has_spin) then
+
+    dim(1) = size(s,1)
+    call h5screate_simple_f(2, dim, dspace_id, ierr)
+    call h5screate_simple_f(2, dim, memspaceID, ierr)
+    call h5dcreate_f(rootID, 's', treal, dspace_id, dset_id,&
+    &ierr)
+    call wrattr_dataset(file,dset_id)
+    call h5dwrite_f(dset_id, treal, s(:,1:(1+(tp-1)*dspl):dspl),&
+    &dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    endif
+
+    ! write charge
+    call h5screate_simple_f(1, dim(2), dspace_id, ierr)
+    call h5screate_simple_f(1, dim(2), memspaceID, ierr)
+    call h5dcreate_f(rootID, 'q', treal, dspace_id, dset_id,&
+    &ierr)
+    call wrattr_dataset(file,dset_id)
+    call h5dwrite_f(dset_id, treal, q(1:(1+(tp-1)*dspl):dspl),&
+    &dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    call h5gclose_f(rootID, ierr)
     call h5fclose_f(file_id, ierr)
     call h5close_f(ierr)
  end if
 
 end subroutine wpart
 !
-subroutine rpart(pp,file,part,npp,ierr)
+subroutine rpart(pp,file,x,p,q,npp,ierr,s)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(inout) :: part
+ real, dimension(:,:), intent(inout) :: x, p
+ real, dimension(:,:), intent(inout), optional :: s
+ real, dimension(:), intent(inout) :: q
  integer(kind=LG), intent(out) :: npp
  integer, intent(inout) :: ierr
 ! local data
@@ -1551,7 +1679,9 @@ subroutine rpart(pp,file,part,npp,ierr)
  integer(hid_t) :: memspaceID, aid
  character(len=:), allocatable :: filename
  character(len=8) :: st
+ logical :: has_spin = .false.
 
+ if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -1573,17 +1703,65 @@ subroutine rpart(pp,file,part,npp,ierr)
     call h5fclose_f(file_id, ierr)
     call h5close_f(ierr)
  else
-    dim(1) = size(part,1)
+    ! dim(1) = size(part,1)
+    ! dim(2) = tp
+    ! call h5screate_simple_f(2, dim, dspace_id, ierr)
+    ! call h5screate_simple_f(2, dim, memspaceID, ierr)
+    ! call h5dopen_f(rootID, file%dataname, dset_id, ierr)
+    ! call h5dread_f(dset_id, treal, part,&
+    ! &dim, ierr, memspaceID, dspace_id)
+    ! call h5sclose_f(memspaceID, ierr)
+    ! call h5sclose_f(dspace_id, ierr)
+    ! call h5gclose_f(rootID, ierr)
+    ! call h5dclose_f(dset_id, ierr)
+    ! call h5fclose_f(file_id, ierr)
+    ! call h5close_f(ierr)
+
+    ! read position
+    dim(1) = size(x,1)
     dim(2) = tp
     call h5screate_simple_f(2, dim, dspace_id, ierr)
     call h5screate_simple_f(2, dim, memspaceID, ierr)
-    call h5dopen_f(rootID, file%dataname, dset_id, ierr)
-    call h5dread_f(dset_id, treal, part,&
-    &dim, ierr, memspaceID, dspace_id)
+    call h5dopen_f(rootID, 'x', dset_id, ierr)
+    call h5dread_f(dset_id, treal, x, dim, ierr, memspaceID, dspace_id)
     call h5sclose_f(memspaceID, ierr)
     call h5sclose_f(dspace_id, ierr)
-    call h5gclose_f(rootID, ierr)
     call h5dclose_f(dset_id, ierr)
+
+    ! read momentum
+    dim(1) = size(p,1)
+    call h5screate_simple_f(2, dim, dspace_id, ierr)
+    call h5screate_simple_f(2, dim, memspaceID, ierr)
+    call h5dopen_f(rootID, 'p', dset_id, ierr)
+    call h5dread_f(dset_id, treal, p, dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    ! read spin
+    if (has_spin) then
+
+    dim(1) = size(s,1)
+    call h5screate_simple_f(2, dim, dspace_id, ierr)
+    call h5screate_simple_f(2, dim, memspaceID, ierr)
+    call h5dopen_f(rootID, 's', dset_id, ierr)
+    call h5dread_f(dset_id, treal, s, dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    endif
+
+    ! read charge
+    call h5screate_simple_f(1, dim(2), dspace_id, ierr)
+    call h5screate_simple_f(1, dim(2), memspaceID, ierr)
+    call h5dopen_f(rootID, 'q', dset_id, ierr)
+    call h5dread_f(dset_id, treal, q, dim, ierr, memspaceID, dspace_id)
+    call h5sclose_f(memspaceID, ierr)
+    call h5sclose_f(dspace_id, ierr)
+    call h5dclose_f(dset_id, ierr)
+
+    call h5gclose_f(rootID, ierr)
     call h5fclose_f(file_id, ierr)
     call h5close_f(ierr)
  end if

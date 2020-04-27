@@ -52,9 +52,9 @@ subroutine init_sim_beams( this, input )
   integer :: i, n
   ! real, dimension(3,100) :: arg
   ! logical :: quiet
-  real :: qm, qbm, dt
-  logical :: read_rst
-  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf
+  real :: qm, qbm, dt, amm = 0.0
+  logical :: read_rst, has_spin
+  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf, push_type
   type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
 
@@ -106,6 +106,9 @@ subroutine init_sim_beams( this, input )
     case (2)
        allocate( fdist3d_002 :: this%pf(i)%p )
        call this%pf(i)%p%new( input, i )
+    case (100)
+       allocate( fdist3d_100 :: this%pf(i)%p )
+       call this%pf(i)%p%new( input, i )
   ! Add new distributions right above this line
     case default
       call write_err( 'Invalid beam profile!' )
@@ -115,8 +118,24 @@ subroutine init_sim_beams( this, input )
     call input%get( 'beam('//num2str(i)//').m', qbm )
     qbm = qm/qbm
 
+    push_type = p_push_reduced
+    call input%get( 'beam('//num2str(i)//').push_type', str )
+    select case ( trim(str) )
+    case ( 'reduced' )
+      push_type = p_push_reduced
+    case ( 'boris' )
+      push_type = p_push_boris
+    case default
+      call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
+    end select
+
+    call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
+    if (has_spin) then
+      call input%get( 'beam('//num2str(i)//').anom_mag_moment', amm )
+    endif
+
     call this%beam(i)%new( this%pp, this%gp, max_mode, ps, this%pf(i)%p, &
-      qbm, dt, 7, sm_type, sm_ord )
+      qbm, dt, push_type, sm_type, sm_ord, has_spin, amm )
 
     if ( read_rst ) then
       call input%get( 'simulation.restart_timestep', rst_timestep )

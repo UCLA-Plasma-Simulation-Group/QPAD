@@ -49,6 +49,8 @@ type sim_diag
   class( diag_node ), pointer :: diag => null()
   integer :: num_diag = 0
   integer :: ndump_gcd = 0 ! greatest common divisor of all the values of ndump
+  logical :: has_vpotz = .false.
+  logical :: has_vpott = .false.
 
   contains
 
@@ -146,7 +148,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
   class( sim_diag ), intent(inout) :: this
   class( parallel_pipe ), intent(in), pointer :: pp
   class( input_json ), intent(inout) :: input
-  class( sim_fields ), intent(in), target :: fields
+  class( sim_fields ), intent(inout), target :: fields
   class( sim_beams ), intent(in), target :: beams
   class( sim_species ), intent(in), target :: species
 
@@ -291,77 +293,77 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
         case ( 'er_cyl_m' )
           sn1 = 'Er'
           sn2 = 'er'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_ec\omega_p/e'
           sn4 = 'E_r'
           dim = 1
           obj => fields%e
         case ( 'ephi_cyl_m' )
           sn1 = 'Ephi'
           sn2 = 'ephi'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_ec\omega_p/e'
           sn4 = 'E_\phi'
           dim = 2
           obj => fields%e
         case ( 'ez_cyl_m' )
           sn1 = 'Ez'
           sn2 = 'ez'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_ec\omega_p/e'
           sn4 = 'E_z'
           dim = 3
           obj => fields%e
         case ( 'br_cyl_m' )
           sn1 = 'Br'
           sn2 = 'br'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_r'
           dim = 1
           obj => fields%b
         case ( 'bphi_cyl_m' )
           sn1 = 'Bphi'
           sn2 = 'bphi'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_\phi'
           dim = 2
           obj => fields%b
         case ( 'bz_cyl_m' )
           sn1 = 'Bz'
           sn2 = 'bz'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_z'
           dim = 3
           obj => fields%b
         case ( 'spec_er_cyl_m' )
           sn1 = 'Er_spec'
           sn2 = 'er'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_ec\omega_p/e'
           sn4 = 'E_r'
           dim = 1
           obj => fields%e_spe
         case ( 'spec_ephi_cyl_m' )
           sn1 = 'Ephi_spec'
           sn2 = 'ephi'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_ec\omega_p/e'
           sn4 = 'E_\phi'
           dim = 2
           obj => fields%e_spe
         case ( 'spec_br_cyl_m' )
           sn1 = 'Br_spec'
           sn2 = 'br'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_r'
           dim = 1
           obj => fields%b_spe
         case ( 'spec_bphi_cyl_m' )
           sn1 = 'Bphi_spec'
           sn2 = 'bphi'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_\phi'
           dim = 2
           obj => fields%b_spe
         case ( 'spec_bz_cyl_m' )
           sn1 = 'Bz_spec'
           sn2 = 'bz'
-          sn3 = 'mc\omega_p/e'
+          sn3 = 'm_e\omega_p/e'
           sn4 = 'B_z'
           dim = 3
           obj => fields%b_spe
@@ -375,31 +377,70 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
         case ( 'jr_cyl_m' )
           sn1 = 'Jr'
           sn2 = 'jr'
-          sn3 = 'n0 c'
+          sn3 = 'n_0 c'
           sn4 = 'J_r'
           dim = 1
           obj => fields%cu
         case ( 'jphi_cyl_m' )
           sn1 = 'Jphi'
           sn2 = 'jphi'
-          sn3 = 'n0 c'
+          sn3 = 'n_0 c'
           sn4 = 'J_\phi'
           dim = 2
           obj => fields%cu
         case ( 'jz_cyl_m' )
           sn1 = 'Jz'
           sn2 = 'jz'
-          sn3 = 'n0 c'
+          sn3 = 'n_0 c'
           sn4 = 'J_z'
           dim = 3
           obj => fields%cu
         case ( 'psi_cyl_m' )
           sn1 = 'Psi'
           sn2 = 'psi'
-          sn3 = 'mc^2'
+          sn3 = 'm_ec^2/e'
           sn4 = '\Psi'
           dim = 1
           obj => fields%psi
+        case ( 'az_cyl_m' )
+          sn1 = 'Az'
+          sn2 = 'az'
+          sn3 = 'm_ec/e'
+          sn4 = 'A_z'
+          dim = 3
+          if ( .not. associated(fields%vpot) ) then
+            allocate( fields%vpot )
+            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+              p_bnd_open )
+          endif
+          obj => fields%vpot
+          this%has_vpotz = .true.
+        case ( 'ar_cyl_m' )
+          sn1 = 'Ar'
+          sn2 = 'ar'
+          sn3 = 'm_ec/e'
+          sn4 = 'A_r'
+          dim = 1
+          if ( .not. associated(fields%vpot) ) then
+            allocate( fields%vpot )
+            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+              p_bnd_open )
+          endif
+          obj => fields%vpot
+          this%has_vpott = .true.
+        case ( 'aphi_cyl_m' )
+          sn1 = 'Aphi'
+          sn2 = 'aphi'
+          sn3 = 'm_ec/e'
+          sn4 = 'A_\phi'
+          dim = 2
+          if ( .not. associated(fields%vpot) ) then
+            allocate( fields%vpot )
+            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+              p_bnd_open )
+          endif
+          obj => fields%vpot
+          this%has_vpott = .true.
         end select
         call this%add_diag( &
           obj       = obj, &

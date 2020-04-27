@@ -19,8 +19,6 @@
     "read_restart" : false,
     "restart_timestep" : 1,
     "iter" : 1,
-    "solver" : "multigrid",
-    "solver_tol" : 1.0e-9,
     "smooth_type" : "none",
     "smooth_order" : 0,
     "verbose" : 5,
@@ -31,6 +29,8 @@
     {
     "evolution" : true,
     "profile" : 1,
+    "push_type" : "reduced",
+    "has_spin" : false,
     "np" : [128,32,256], ! number of particles in r, theta and z direction. Specified for profile 1
     "npmax" : 10000000,
     "q" : -1.0,
@@ -87,7 +87,7 @@
     "diag" :
     [
         {
-            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m"],
+            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m","az_cyl_m"],
             "ndump" : 1
         }
     ]

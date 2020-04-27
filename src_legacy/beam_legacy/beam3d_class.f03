@@ -30,7 +30,6 @@ type beam3d
    class(field_rho), allocatable :: q
    class(fdist3d), pointer :: pf => null()
    logical :: evol
-   integer :: push_type
    contains
 
    generic :: new  => init_beam3d
@@ -56,8 +55,7 @@ integer, parameter :: cls_level = 2
 
 contains
 !
-subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
-   push_type, smooth_type, smooth_order, has_spin, amm )
+subroutine init_beam3d(this,pp,gd,max_mode,part_shape,pf,qbm,dt,xdim,smooth_type,smooth_order)
 
    implicit none
 
@@ -66,10 +64,8 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
    class(parallel_pipe), intent(in), pointer :: pp
    class(fdist3d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt
-   integer, intent(in) :: push_type, part_shape, max_mode
-   integer, intent(in) :: smooth_type, smooth_order
-   logical, intent(in) :: has_spin
-   real, intent(in) :: amm
+   integer, intent(in) :: xdim, part_shape, max_mode
+   integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    character(len=32), save :: sname = 'init_beam3d'
    integer :: id, ierr
@@ -78,12 +74,15 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => pp
    this%pf => pf
-   this%push_type = push_type
 
    allocate(this%pd,this%q)
    this%evol = pf%getevol()
-   call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
-   call this%pd%new(pp,gd,pf,qbm,dt,has_spin,amm)
+   if ( present(smooth_type) .and. present(smooth_order) ) then
+      call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
+   else
+      call this%q%new(pp,gd,max_mode,part_shape)
+   endif
+   call this%pd%new(pp,gd,pf,qbm,dt,xdim)
    call this%pd%pmv(this%q,1,1,id)
    call MPI_WAIT(id,istat,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -104,6 +103,35 @@ subroutine end_beam3d(this)
 
 end subroutine end_beam3d
 !
+! subroutine qdeposit_beam3d(this,q)
+! ! deposit the charge density
+
+!    implicit none
+
+!    class(beam3d), intent(inout) :: this
+!    class(field_rho), intent(inout) :: q
+! ! local data
+!    character(len=32), save :: sname = 'qdeposit_beam3d'
+
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
+
+!    if (.not. this%evol) then
+!       call this%q%as(0.0)
+!       call this%pf%dp(this%q)
+!       call this%q%copy_gc_f2()
+!       call add_f2( this%q, q )
+!    else
+!       call this%q%as(0.0)
+!       call this%pd%qdp(this%q)
+!       call this%q%acopy_gc_f2()
+!       call this%q%copy_gc_f2()
+!       call add_f2( this%q, q )
+!    end if
+
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
+
+! end subroutine qdeposit_beam3d
+
 subroutine qdeposit_beam3d(this,q,tag,sid)
 ! deposit the charge density
 
@@ -127,7 +155,7 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
       call this%pf%dp(this%q)
       call this%q%copy_gc_f2()
    else
-      call this%pd%qdeposit(this%q)
+      call this%pd%qdp(this%q)
       call this%q%acopy_gc_f2()
       call this%q%copy_gc_f2()
    endif
@@ -173,15 +201,7 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
       call write_dbg(cls_name, sname, cls_level, 'ends')
       return
    end if
-
-   select case ( this%push_type )
-   case ( p_push_reduced )
-      call this%pd%push_reduced( ef, bf )
-   case ( p_push_boris )
-      call this%pd%push_boris( ef, bf )
-   end select
-
-   call this%pd%update_bound()
+   call this%pd%push(ef,bf)
    call this%pd%pmv(ef,rtag,stag,sid)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
