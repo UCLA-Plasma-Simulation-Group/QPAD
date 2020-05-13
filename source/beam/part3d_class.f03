@@ -686,7 +686,7 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
 
    implicit none
 
-   class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, bf_re, bf_im
+   type(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, bf_re, bf_im
    integer, intent(in) :: num_modes, np
    real, intent(in) :: dr, dz
    real, dimension(:,:), intent(in) :: x
