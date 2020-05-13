@@ -1,0 +1,33 @@
+# Configure file for CORI cluster @ NERSC
+# To use this configuration, load the modules below first
+# PrgEnv-intel/19.0.3
+# cray-hdf5-parallel/1.10.2.0 
+
+# Fortran compiler configuration
+FC = ftn -O3
+FC_OPTS = -r8 -fopenmp -stand f03 -FR -Tf
+
+# C compiler configuration
+CC = cc
+CC_OPTS = -O3 -std=c99 -fopenmp
+
+# Preprocessor configuration
+# FPP = gcc -C -E -x assembler-with-cpp
+
+# Python 2.x configuration. Used for automatically generate compile rules
+PYTHON = python 
+
+# Linker configuration
+LINKER = ftn
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -ldl -lz
+
+# Library dependencies
+HYPRE_LIB = $(HOME)/local/hypre-2.15.1/intel-19.0.3/lib
+HYPRE_INC = $(HOME)/local/hypre-2.15.1/intel-19.0.3/include
+JSON_LIB = $(HOME)/local/json-fortran-7.0.0/jsonfortran-intel-7.0.0/lib
+JSON_INC = $(HOME)/local/json-fortran-7.0.0/jsonfortran-intel-7.0.0/lib
+HDF5_INC =
+HDF5_LIB = 
+
+INCF = -I$(JSON_INC)
