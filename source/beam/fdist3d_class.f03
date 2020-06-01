@@ -148,7 +148,7 @@ type, extends(fdist3d) :: fdist3d_100
    ! integer :: npx, npy, npz
    real :: rmax, zmin, zmax
    real :: os_n0, os_fraction
-   real, dimension(3) :: os_ctr, bctr
+   real, dimension(3) :: os_ctr, bctr, os_dx
    character(len=:), allocatable :: filename
    logical :: quiet
 
@@ -985,10 +985,9 @@ subroutine init_fdist3d_100(this,input,i)
    call input%get(trim(s1)//'.center(1)', this%bctr(1))
    call input%get(trim(s1)//'.center(2)', this%bctr(2))
    call input%get(trim(s1)//'.center(3)', this%bctr(3))
-   ! may not need dx in OSIRIS
-   ! call input%get(trim(s1)//'.os_dx(1)', this%os_dx(1))
-   ! call input%get(trim(s1)//'.os_dx(2)', this%os_dx(2))
-   ! call input%get(trim(s1)//'.os_dx(3)', this%os_dx(3))
+   call input%get(trim(s1)//'.os_dx(1)', this%os_dx(1))
+   call input%get(trim(s1)//'.os_dx(2)', this%os_dx(2))
+   call input%get(trim(s1)//'.os_dx(3)', this%os_dx(3))
    call input%get(trim(s1)//'.os_n0', this%os_n0)
    call input%get(trim(s1)//'.os_fraction', this%os_fraction)
    call input%get(trim(s1)//'.filename', this%filename)
@@ -1034,7 +1033,8 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp,s)
 
    ! conversion factor from OSIRIS to QPAD
    xconv = 1.0 / sqrt( this%os_n0 )
-   qconv = this%os_n0 / ( pi * this%os_fraction )
+   qconv = product( this%os_dx ) / ( 2*pi * this%dx**2 * this%dz * &
+      sqrt(this%os_n0) * this%os_fraction )
 
    allocate( xbuf(p_cache_size, p_x_dim) )
    allocate( pbuf(p_cache_size, p_p_dim) )
