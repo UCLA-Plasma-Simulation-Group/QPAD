@@ -397,11 +397,14 @@ subroutine push_boris_part3d( this, ef, bf )
          this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i)
          this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i)
          this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i)
+         pp = pp + 1
+      enddo
 
-         this%p(1,pp) = this%p(1,i) - utmp(3,i) * bp(2,i)
-         this%p(2,pp) = this%p(2,i) - utmp(1,i) * bp(3,i)
-         this%p(3,pp) = this%p(3,i) - utmp(2,i) * bp(1,i)
-
+      pp = ptrcur
+      do i = 1, np
+         this%p(1,pp) = this%p(1,pp) - utmp(3,i) * bp(2,i)
+         this%p(2,pp) = this%p(2,pp) - utmp(1,i) * bp(3,i)
+         this%p(3,pp) = this%p(3,pp) - utmp(2,i) * bp(1,i)
          pp = pp + 1
       enddo
 
@@ -414,9 +417,17 @@ subroutine push_boris_part3d( this, ef, bf )
 
       pp = ptrcur
       do i = 1, np
-         utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
-         utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
-         utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
+         utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i)
+         utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i)
+         utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i)
+         pp = pp + 1
+      enddo
+
+      pp = ptrcur
+      do i = 1, np
+         utmp(1,i) = utmp(1,i) - this%p(3,pp) * bp(2,i)
+         utmp(2,i) = utmp(2,i) - this%p(1,pp) * bp(3,i)
+         utmp(3,i) = utmp(3,i) - this%p(2,pp) * bp(1,i)
          pp = pp + 1
       enddo
 
