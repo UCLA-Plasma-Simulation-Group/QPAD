@@ -22,7 +22,7 @@ public :: part3d
 
 type part3d
 
-   private
+   ! private
 
 ! qbm = particle charge/mass ratio
 ! dt = time interval between successive calculations
@@ -469,8 +469,9 @@ subroutine push_reduced_part3d( this, ef, bf )
    type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    
    integer :: i, np, max_mode
-   real :: qtmh, dt_gam
+   real :: qtmh, dt_gam, igam
    real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old
+   real, dimension(2, p_cache_size) :: wp
    real, dimension(p_cache_size) :: gam
    integer(kind=LG) :: ptrcur, pp
    character(len=32), save :: sname = "push_reduced_part3d"
@@ -518,15 +519,15 @@ subroutine push_reduced_part3d( this, ef, bf )
          bp(2,i) = bp(2,i) * qtmh
          bp(3,i) = bp(3,i) * qtmh
          ! calculate transverse force
-         ep(1,i) = ep(1,i) - bp(2,i)
-         ep(2,i) = ep(2,i) + bp(1,i)
+         wp(1,i) = ep(1,i) - bp(2,i)
+         wp(2,i) = ep(2,i) + bp(1,i)
       enddo
 
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + ep(1,i)
-         this%p(2,pp) = this%p(2,pp) + ep(2,i)
+         this%p(1,pp) = this%p(1,pp) + wp(1,i)
+         this%p(2,pp) = this%p(2,pp) + wp(2,i)
          this%p(3,pp) = this%p(3,pp) + ep(3,i)
          gam(i) = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
          pp = pp + 1
@@ -535,14 +536,20 @@ subroutine push_reduced_part3d( this, ef, bf )
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + ep(1,i)
-         this%p(2,pp) = this%p(2,pp) + ep(2,i)
+         this%p(1,pp) = this%p(1,pp) + wp(1,i)
+         this%p(2,pp) = this%p(2,pp) + wp(2,i)
          this%p(3,pp) = this%p(3,pp) + ep(3,i)
          pp = pp + 1
       enddo
 
       ! push spin
       if ( this%has_spin ) then
+         do i = 1, np
+            igam = 1.0 / gam(i)
+            bp(1,i) = bp(1,i) * igam
+            bp(2,i) = bp(2,i) * igam
+            bp(3,i) = bp(3,i) * igam
+         enddo
          call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
       endif
 
