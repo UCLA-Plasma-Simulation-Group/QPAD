@@ -4,594 +4,890 @@ use sysutil
 use param
 use mpi
 use parallel_pipe_class
+use grid_class
 use ufield_class
+use part3d_class
 
 implicit none
 
-character(len=10), private, save :: cls_name = 'part3d'
-integer, private, save :: cls_level = 2
-character(len=128), private :: erstr
+save
+
+! direction indicators
+! outward/inward: positive/negative direction in r
+! forward/backward: positive/negative direction in xi
+integer, parameter :: p_self = 0, &
+                      p_iwd = 1, &
+                      p_owd = 2, &
+                      p_bwd = 3, &
+                      p_fwd = 4
+
+integer, parameter :: iter_max = 1000
+
+class(parallel_pipe), pointer :: pp => null()
+class(grid), pointer :: gp => null()
+
+! send and receive buffer for MPI
+real, dimension(:,:,:), pointer :: send_buf => null()
+real, dimension(:,:,:), pointer :: recv_buf => null()
+
+! index of holes
+integer(kind=LG), dimension(:), pointer :: ihole => null()
+
+! count of MPI buffers
+integer, dimension(4) :: send_cnt = 0
+integer, dimension(4) :: recv_cnt = 0
+
+! max dimension of particle coordinates
+integer :: dim_max = 6
+
+! current buffer size, same for send and receive buffers
+integer :: buf_size = 0
+
+! self and neighbor processor id
+integer, dimension(0:4) :: pid
+
+! indicator of if neighbors are physical boundaries
+logical, dimension(4) :: phys_bnd
+
+! edges of current MPI node
+real, dimension(2) :: redge, zedge
+
+interface init_part3d_comm
+  module procedure init_part3d_comm
+end interface
+
+interface end_part3d_comm
+  module procedure end_part3d_comm
+end interface
+
+interface set_part3d_comm
+  module procedure set_part3d_comm
+end interface
+
+interface move_part3d_comm
+  module procedure move_part3d_comm
+end interface
+
+public :: init_part3d_comm, end_part3d_comm, set_part3d_comm, move_part3d_comm
 
 contains
 
-subroutine pmove_part3d(x,p,q,pp,ud,npp,dr,dz,sbufr,sbufl,rbufr,rbufl,ihole,pbuff,&
- xdim,npmax,nbmax,tag1,tag2,id,info,s)
+subroutine set_part3d_comm( part_dim, npmax )
 
-   implicit none
+  implicit none
 
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
-   real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr,pbuff
-   integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: dr, dz
-   integer(kind=LG), intent(in) :: npmax, nbmax
-   integer(kind=LG), dimension(:), intent(inout) :: ihole
-   integer, intent(in) :: xdim
-   class(parallel_pipe), pointer, intent(in) :: pp
-   class(ufield), intent(in) :: ud
-   integer, intent(in) :: tag1, tag2
-   integer, intent(inout) :: id
-   integer, dimension(:), intent(inout) :: info
-! local data
-   character(len=20), save :: sname = "pmove_part3d"
-   real, dimension(4) :: edges
-   integer, dimension(2) :: noff
-   integer, dimension(2) :: jsr, jsl, jss
-   integer :: n1, n2, kstrt, nvpy, nvpz
-   integer :: lgrp, mreal, mint, lworld
-   integer, parameter :: iy = 1, iz = 3
-   integer :: ierr, ic, js, ks, i, n, nvp, iter
-   integer :: nps, npt, kl, kr, j, j1, j2, nter, mter
-   integer :: nbsize
-   integer :: itermax
-   integer, dimension(10) :: istatus
-   integer, dimension(4) :: ibflg, iwork, msid
-   integer, dimension(2) :: kb
-   real :: an, xt
-   logical :: has_spin = .false.
+  integer, intent(in) :: part_dim
+  integer(kind=LG), intent(in) :: npmax
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call start_tprof( 'move 3D particles' )
+  real :: buf_ratio = 0.01 
 
-   if ( present(s) ) has_spin = .true.
+  dim_max  = max( part_dim, dim_max )
+  buf_size = max( int(npmax * buf_ratio), buf_size )
 
-   ierr = 0
-   n1 = ud%get_nd(1); n2 = ud%get_nd(2)
-   noff = ud%get_noff()
-   if (noff(1) == 0) then
-      edges(1) = 0.0
-      edges(2) = edges(1) + ud%get_ndp(1) * dr
-   else
-      edges(1) = noff(1) * dr
-      edges(2) = edges(1) + ud%get_ndp(1) * dr
-   end if
-   edges(3) = noff(2)*dz
-   edges(4) = edges(3) + ud%get_ndp(2)*dz
-   kstrt = pp%getkstrt()
-   nvpy = pp%getlnvp()
-   nvpz = pp%getnstage()
-   mreal = pp%getmreal()
-   mint = pp%getmint()
-   lworld = pp%getlworld()
-   lgrp = pp%getlgrp()
+end subroutine set_part3d_comm
 
-   ks = (kstrt - 1)/nvpy
-   js = kstrt - nvpy*ks - 2
-   ks = ks - 1
-   nbsize = xdim*nbmax
-   do j = 1, 9
-      info(j) = 0
-   end do
-!buffer outgoing particles, first in y then in z direction
-   ic = iz
-   nvp = nvpy*nvpz
-   an = float(n2)
-   n = 2
-   kl = kstrt - nvpy
-   if (kl >= 1) then
-      call MPI_IRECV(rbufl,nbsize,mreal,kl-1,tag1,lworld,msid(1),ierr)
-      call MPI_WAIT(msid(1),istatus,ierr)
-      call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-      jsl(2) = nps/xdim
-      jss(2) = npp + jsl(2)
-      if (jss(2) <= npmax) then
-         do j = 1, jsl(2)
-            ! do i = 1, xdim
-            !    part(i,j+npp) = rbufl(i,j)
-            ! end do
-            x(1,j+npp) = rbufl(1,j)
-            x(2,j+npp) = rbufl(2,j)
-            x(3,j+npp) = rbufl(3,j)
-            p(1,j+npp) = rbufl(4,j)
-            p(2,j+npp) = rbufl(5,j)
-            p(3,j+npp) = rbufl(6,j)
-            q(j+npp)   = rbufl(7,j)
-         end do
-         if ( has_spin ) then
-            do j = 1, jsl(2)
-            s(1,j+npp) = rbufl(8,j)
-            s(2,j+npp) = rbufl(9,j)
-            s(3,j+npp) = rbufl(10,j)
-         end do
-         endif
-         npp = jss(2)
-      else
-         write (erstr,*) 'particle overflow', jss(2)
-         call write_dbg(cls_name, sname, cls_level, erstr)
-         info(1) = jss(2)
-         return
-      end if
-   end if
+subroutine init_part3d_comm( pp_, gp_ )
 
-   iter = 2
-   nter = 0
-   mter = 0
-   jsl(1) = 0
-   jsr(1) = 0
-   jss(2) = 0
-   do j = 1, npp
-      ! xt = part(ic,j)
-      xt = x(3,j)
-! particles going backward, not going to happen
-      if (xt < edges(2*n-1)) then
-         jss(2) = 1
-         write (erstr,*) 'Error: particles move to the previous stage'
-         call write_dbg(cls_name, sname, cls_level, erstr)
-         exit
-! particles going forward
-      else if (xt >= edges(2*n)) then
-         if (jsr(1) < nbmax) then
-            jsr(1) = jsr(1) + 1
-            ! do i = 1, xdim
-            !    pbuff(i,jsr(1)) = part(i,j)
-            ! end do
-            pbuff(1,jsr(1)) = x(1,j)
-            pbuff(2,jsr(1)) = x(2,j)
-            pbuff(3,jsr(1)) = x(3,j)
-            pbuff(4,jsr(1)) = p(1,j)
-            pbuff(5,jsr(1)) = p(2,j)
-            pbuff(6,jsr(1)) = p(3,j)
-            pbuff(7,jsr(1)) = q(j)
-            if (has_spin) then
-               pbuff(8,jsr(1))  = s(1,j)
-               pbuff(9,jsr(1))  = s(2,j)
-               pbuff(10,jsr(1)) = s(3,j)
-            endif
-            ihole(jsr(1)) = j
-         else
-            jss(2) = 1
-            exit
-         end if
-      end if
-   end do
-   jss(1) = jsl(1) + jsr(1)
-! check for full buffer condition
-   nps = 0
-   nps = max0(nps,jss(2))
-   if (nps > 0) then
-      info(1) = nps
-      write (erstr,*) 'particle buffer full'
-      call write_err(cls_name//sname//erstr)
-      return
-   end if
-! copy particle buffers
-   iter = iter + 2
-   mter = mter + 1
-   kr = kstrt + nvpy
-   if (kr <= nvp) then
-! send particles
-      call MPI_ISEND(pbuff,xdim*jsr(1),mreal,kr-1,tag2,lworld,id,ierr)
-   end if
-! fill the holes
-   npt = npp
-   do j = 1, jsr(1)
-      j1 = ihole((jsr(1)-j+1))
-      if (j1 < npt) then
-         ! do i = 1, xdim
-         !    part(i,j1) = part(i,npt)
-         ! end do
-         x(1,j1) = x(1,npt)
-         x(2,j1) = x(2,npt)
-         x(3,j1) = x(3,npt)
-         p(1,j1) = p(1,npt)
-         p(2,j1) = p(2,npt)
-         p(3,j1) = p(3,npt)
-         q(j1)   = q(npt)
-         if (has_spin) then
-            s(1,j1) = s(1,npt)
-            s(2,j1) = s(2,npt)
-            s(3,j1) = s(3,npt)
-         endif
-         npt = npt - 1
-      else
-         npt = npt - 1
-      end if
-   end do
-   npp = npt
-   itermax = 20000
-! buffer outgoing particles, first in y then in z direction
-   n = 1
-   ic = iy
-   nvp = nvpy
-   an = float(n1)
-   iter = 2
-   nter = 0
-   do
-   mter = 0
-   kb(2) = 1 + ks
-   kb(1) = 1 + js
-   jsl(1) = 0
-   jsr(1) = 0
-   jss(2) = 0
-   do j = 1, npp
-      ! xt = part(ic,j)
-      xt = sqrt( x(1,j)*x(1,j) + x(2,j)*x(2,j) )
-! particles going down or backward
-      if (xt < edges(2*n-1)) then
-         if (jsl(1) < nbmax) then
-            jsl(1) = jsl(1) + 1
-            ! do i = 1, xdim
-            !    sbufl(i,jsl(1)) = part(i,j)
-            ! end do
-            sbufl(1,jsl(1)) = x(1,j)
-            sbufl(2,jsl(1)) = x(2,j)
-            sbufl(3,jsl(1)) = x(3,j)
-            sbufl(4,jsl(1)) = p(1,j)
-            sbufl(5,jsl(1)) = p(2,j)
-            sbufl(6,jsl(1)) = p(3,j)
-            sbufl(7,jsl(1)) = q(j)
-            if (has_spin) then
-               sbufl(8,jsl(1))  = s(1,j)
-               sbufl(9,jsl(1))  = s(2,j)
-               sbufl(10,jsl(1)) = s(3,j)
-            endif
-            ihole(jsl(1)+jsr(1)) = j
-         else
-            jss(2) = 1
-            exit
-         end if
-! particles going up or forward
-      else if (xt >= edges(2*n)) then
-         if (jsr(1) < nbmax) then
-            jsr(1) = jsr(1) + 1
-            ! do i = 1, xdim
-            !    sbufr(i,jsr(1)) = part(i,j)
-            ! end do
-            sbufr(1,jsr(1)) = x(1,j)
-            sbufr(2,jsr(1)) = x(2,j)
-            sbufr(3,jsr(1)) = x(3,j)
-            sbufr(4,jsr(1)) = p(1,j)
-            sbufr(5,jsr(1)) = p(2,j)
-            sbufr(6,jsr(1)) = p(3,j)
-            sbufr(7,jsr(1)) = q(j)
-            if (has_spin) then
-               sbufr(8,jsr(1))  = s(1,j)
-               sbufr(9,jsr(1))  = s(2,j)
-               sbufr(10,jsr(1)) = s(3,j)
-            endif
-            ihole(jsl(1)+jsr(1)) = j
-         else
-            jss(2) = 1
-            exit
-         end if
-      end if
-   end do
-   jss(1) = jsl(1) + jsr(1)
-! check for full buffer condition
-      nps = 0
-      nps = max0(nps,jss(2))
-      ibflg(3) = nps
-! copy particle buffers
-   do
-   iter = iter + 2
-   mter = mter + 1
-   kb(1) = 1 + js
-   kb(2) = 1 + ks
-! get particles from below and above or back and front
-   kl = kb(n)
-   kb(n) = kl + 1
-   if (kb(n) >= nvp) kb(n) = kb(n) - nvp
-   kr = kb(1) + nvpy*kb(2) + 1
-   kb(n) = kl - 1
-   if (kb(n) < 0) kb(n) = kb(n) + nvp
-   kl = kb(1) + nvpy*kb(2) + 1
-! post receive
-   call MPI_IRECV(rbufl,nbsize,mreal,kl-1,iter-1,lworld,msid(1),ierr)
-   call MPI_IRECV(rbufr,nbsize,mreal,kr-1,iter,lworld,msid(2),ierr)
-! send particles
-   call MPI_ISEND(sbufr,xdim*jsr(1),mreal,kr-1,iter-1,lworld,msid(3),ierr)
-   call MPI_ISEND(sbufl,xdim*jsl(1),mreal,kl-1,iter,lworld,msid(4),ierr)
-! wait for particles to arrive
-   call MPI_WAIT(msid(1),istatus,ierr)
-   call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-   jsl(2) = nps/xdim
-   call MPI_WAIT(msid(2),istatus,ierr)
-   call MPI_GET_COUNT(istatus,mreal,nps,ierr)
-   jsr(2) = nps/xdim
-! check if particles must be passed further
-   nps = 0
-! check if any particles coming from above or front belong here
-   jsl(1) = 0
-   jsr(1) = 0
-   jss(2) = 0
-   do j = 1, jsr(2)
-      ! if (rbufr(ic,j) < edges(2*n-1)) jsl(1) = jsl(1) + 1
-      ! if (rbufr(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
-      xt = sqrt( rbufr(1,j)*rbufr(1,j) + rbufr(2,j)* rbufr(2,j) )
-      if (xt < edges(2*n-1)) jsl(1) = jsl(1) + 1
-      if (xt >= edges(2*n)) jsr(1) = jsr(1) + 1
-   end do
-   if (jsr(1) /= 0) then
-      write (erstr,*) 'Info:',jsr(1),' particles returning above'
-      call write_dbg(cls_name, sname, cls_level, erstr)
-   end if
-! check if any particles coming from below or back belong here
-   do j = 1, jsl(2)
-      ! if (rbufl(ic,j) >= edges(2*n)) jsr(1) = jsr(1) + 1
-      ! if (rbufl(ic,j) < edges(2*n-1)) jss(2) = jss(2) + 1
-      xt = sqrt( rbufl(1,j)*rbufl(1,j) + rbufl(2,j)* rbufl(2,j) )
-      if (xt >= edges(2*n)) jsr(1) = jsr(1) + 1
-      if (xt < edges(2*n-1)) jss(2) = jss(2) + 1
-   end do
-   if (jss(2) /= 0) then
-      write (erstr,*) 'Info:',jss(2),' particles returning below'
-      call write_dbg(cls_name, sname, cls_level, erstr)
-   end if
-   jsl(1) = jsl(1) + jss(2)
-   nps = max0(nps,jsl(1)+jsr(1))
-   ibflg(2) = nps
-! make sure sbufr and sbufl have been sent
-   call MPI_WAIT(msid(3),istatus,ierr)
-   call MPI_WAIT(msid(4),istatus,ierr)
-   if (nps /= 0) then
-! remove particles which do not belong here
-      kb(2) = 1 + ks
-      kb(1) = 1 + js
-! first check particles coming from above or front
-      jsl(1) = 0
-      jsr(1) = 0
-      jss(2) = 0
-      do j = 1, jsr(2)
-         ! xt = rbufr(ic,j)
-         xt = sqrt( rbufr(1,j)*rbufr(1,j) + rbufr(2,j)*rbufr(2,j) )
-! particles going down or back
-         if (xt < edges(2*n-1)) then
-            jsl(1) = jsl(1) + 1
-            do i = 1, xdim
-               sbufl(i,jsl(1)) = rbufr(i,j)
-            end do
-! particles going up or front, should not happen
-         else if (xt >= edges(2*n)) then
-            jsr(1) = jsr(1) + 1
-            do i = 1, xdim
-               sbufr(i,jsr(1)) = rbufr(i,j)
-            end do
-! particles staying here
-         else
-            jss(2) = jss(2) + 1
-            do i = 1, xdim
-               rbufr(i,jss(2)) = rbufr(i,j)
-            end do
-         end if
-      end do
-      jsr(2) = jss(2)
-! next check particles coming from below or back
-      jss(2) = 0
-      do j = 1, jsl(2)
-         ! xt = rbufl(ic,j)
-         xt = sqrt( rbufl(1,j)*rbufl(1,j) + rbufl(2,j)*rbufl(2,j) )
-! particles going up or front
-         if (xt >= edges(2*n)) then
-            if (jsr(1) < nbmax) then
-               jsr(1) = jsr(1) + 1
-               do i = 1, xdim
-                  sbufr(i,jsr(1)) = rbufl(i,j)
-               end do
-            else
-               jss(2) = 2*npmax
-               exit
-            end if
-! particles going down back, should not happen
-         elseif (xt < edges(2*n-1)) then
-            if (jsl(1) < nbmax) then
-               jsl(1) = jsl(1) + 1
-               do i = 1, xdim
-                  sbufl(i,jsl(1)) = rbufl(i,j)
-               end do
-            else
-               jss(2) = 2*npmax
-               exit
-            end if
-! particles staying here
-         else
-            jss(2) = jss(2) + 1
-            do i = 1, xdim
-               rbufl(i,jss(2)) = rbufl(i,j)
-            end do
-         end if
-    end do
-    jsl(2) = jss(2)
-    end if
-! check if move would overflow particle array
-    nps = 0
-    npt = npmax
-    jss(2) = npp + jsl(2) + jsr(2) - jss(1)
-    nps = max0(nps,jss(2))
-    npt = min0(npt,jss(2))
-    ibflg(1) = nps
-    ibflg(4) = -npt
-    iwork = ibflg
-    call MPI_ALLREDUCE(iwork,ibflg,4,mint,MPI_MAX,lgrp,ierr)
-    info(2) = ibflg(1)
-    info(3) = -ibflg(4)
-    ierr = ibflg(1) - npmax
-    if (ierr > 0) then
-       write (erstr,*) 'particle overflow error, ierr = ', ierr
-       info(1) = ierr
-       return
-    end if
-! distribute incoming particles from buffers
-! distribute particles coming from below or back into holes
-      jss(2) = min0(jss(1),jsl(2))
-      do j = 1, jss(2)
-         ! do i = 1, xdim
-         !    part(i,ihole(j)) = rbufl(i,j)
-         ! end do
-         x(1,ihole(j)) = rbufl(1,j)
-         x(2,ihole(j)) = rbufl(2,j)
-         x(3,ihole(j)) = rbufl(3,j)
-         p(1,ihole(j)) = rbufl(4,j)
-         p(2,ihole(j)) = rbufl(5,j)
-         p(3,ihole(j)) = rbufl(6,j)
-         q(ihole(j))   = rbufl(7,j)
-         if (has_spin) then
-            s(1,ihole(j)) = rbufl(8,j)
-            s(2,ihole(j)) = rbufl(9,j)
-            s(3,ihole(j)) = rbufl(10,j)
-         endif
-      end do
-      if (jss(1) > jsl(2)) then
-         jss(2) = min0(jss(1)-jsl(2),jsr(2))
-      else
-         jss(2) = jsl(2) - jss(1)
-      end if
-      do j = 1, jss(2)
-! no more particles coming from below or back
-! distribute particles coming from above or front into holes
-         if (jss(1) > jsl(2)) then
-            ! do i = 1, xdim
-            !    part(i,ihole(j+jsl(2))) = rbufr(i,j)
-            ! end do
-            x(1,ihole(j+jsl(2))) = rbufr(1,j)
-            x(2,ihole(j+jsl(2))) = rbufr(2,j)
-            x(3,ihole(j+jsl(2))) = rbufr(3,j)
-            p(1,ihole(j+jsl(2))) = rbufr(4,j)
-            p(2,ihole(j+jsl(2))) = rbufr(5,j)
-            p(3,ihole(j+jsl(2))) = rbufr(6,j)
-            q(ihole(j+jsl(2)))   = rbufr(7,j)
-            if (has_spin) then
-               s(1,ihole(j+jsl(2))) = rbufr(8,j)
-               s(2,ihole(j+jsl(2))) = rbufr(9,j)
-               s(3,ihole(j+jsl(2))) = rbufr(10,j)
-            endif
-         else
-! no more holes
-! distribute remaining particles from below or back into bottom
-            ! do i = 1, xdim
-            !    part(i,j+npp) = rbufl(i,j+jss(1))
-            ! end do
-            x(1,j+npp) = rbufl(1,j+jss(1))
-            x(2,j+npp) = rbufl(2,j+jss(1))
-            x(3,j+npp) = rbufl(3,j+jss(1))
-            p(1,j+npp) = rbufl(4,j+jss(1))
-            p(2,j+npp) = rbufl(5,j+jss(1))
-            p(3,j+npp) = rbufl(6,j+jss(1))
-            q(j+npp)   = rbufl(7,j+jss(1))
-            if (has_spin) then
-               s(1,j+npp) = rbufl(8,j+jss(1))
-               s(2,j+npp) = rbufl(9,j+jss(1))
-               s(3,j+npp) = rbufl(10,j+jss(1))
-            endif
-         end if
-      end do
-      if (jss(1) <= jsl(2)) then
-         npp = npp + (jsl(2) - jss(1))
-         jss(1) = jsl(2)
-      end if
-      jss(2) = jss(1) - (jsl(2) + jsr(2))
-      if (jss(2) > 0) then
-         jss(1) = (jsl(2) + jsr(2))
-         jsr(2) = jss(2)
-      else
-         jss(1) = jss(1) - jsl(2)
-         jsr(2) = -jss(2)
-      end if
-      do j = 1, jsr(2)
-! holes left over
-! fill up remaining holes in particle array with particles from bottom
-         if (jss(2) > 0) then
-            j1 = npp - j + 1
-            j2 = jss(1) + jss(2) - j + 1
-            if (j1 > ihole(j2)) then
-! move particle only if it is below current hole
-               ! do i = 1, xdim
-               !    part(i,ihole(j2)) = part(i,j1)
-               ! end do
-               x(1,ihole(j2)) = x(1,j1)
-               x(2,ihole(j2)) = x(2,j1)
-               x(3,ihole(j2)) = x(3,j1)
-               p(1,ihole(j2)) = p(1,j1)
-               p(2,ihole(j2)) = p(2,j1)
-               p(3,ihole(j2)) = p(3,j1)
-               q(ihole(j2))   = q(j1)
-               if (has_spin) then
-                  s(1,ihole(j2)) = s(1,j1)
-                  s(2,ihole(j2)) = s(2,j1)
-                  s(3,ihole(j2)) = s(3,j1)
-               endif
-            end if
-         else
-! no more holes
-! distribute remaining particles from above or front into bottom
-            ! do i = 1, xdim
-            !    part(i,j+npp) = rbufr(i,j+jss(1))
-            ! end do
-            x(1,j+npp) = rbufr(1,j+jss(1))
-            x(2,j+npp) = rbufr(2,j+jss(1))
-            x(3,j+npp) = rbufr(3,j+jss(1))
-            p(1,j+npp) = rbufr(4,j+jss(1))
-            p(2,j+npp) = rbufr(5,j+jss(1))
-            p(3,j+npp) = rbufr(6,j+jss(1))
-            q(j+npp)   = rbufr(7,j+jss(1))
-            if (has_spin) then
-               s(1,j+npp) = rbufr(8,j+jss(1))
-               s(2,j+npp) = rbufr(9,j+jss(1))
-               s(3,j+npp) = rbufr(10,j+jss(1))
-            endif
-         end if
-      end do
-      if (jss(2) > 0) then
-         npp = npp - jsr(2)
-      else
-         npp = npp + jsr(2)
-      end if
-      jss(1) = 0
-! check if any particles have to be passed further
-      info(5+n) = max0(info(5+n),mter)
-      if (ibflg(2) <= 0) exit
-      write (erstr,*) 'Info: particles being passed further = ', ibflg(2)
-      call write_dbg(cls_name, sname, cls_level, erstr)
-      if (ibflg(3) > 0) ibflg(3) = 1
-      if (iter >= itermax) then
-         ierr = -((iter-2)/2)
-         write (erstr,*) 'Iteration overflow, iter = ', ierr
-         call write_dbg(cls_name, sname, cls_level, erstr)
-         info(1) = ierr
-         if (nter > 0) then
-            write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
-            call write_dbg(cls_name, sname, cls_level, erstr)
-         end if
-         call write_dbg(cls_name, sname, cls_level, 'ends')
-         return
-      end if
-   end do
-! check if buffer overflowed and more particles remain to be checked
-      if (ibflg(3) <= 0) exit
-      nter = nter + 1
-      info(3+n) = nter
-      write (erstr,*) "new loop, nter=", nter
-      call write_dbg(cls_name, sname, cls_level, erstr)
-  end do
-! information
-   if (nter > 0) then
-      write (erstr,*) 'Info: ', nter, ' buffer overflows, nbmax=', nbmax
-      call write_dbg(cls_name, sname, cls_level, erstr)
-   end if
+  implicit none
 
-   call stop_tprof( 'move 3D particles' )
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-   return
-end subroutine pmove_part3d
+  class( parallel_pipe ), intent(in), pointer :: pp_
+  class( grid ), intent(in), pointer :: gp_
+
+  integer :: nvp, nst
+  integer, dimension(2) :: noff, ndp
+  real :: dr, dz
+
+  pp => pp_
+  gp => gp_
+
+  allocate( send_buf( dim_max, buf_size, 2 ) )
+  allocate( recv_buf( dim_max, buf_size, 2 ) )
+  allocate( ihole( buf_size ) )
+
+  nvp = pp%getlnvp()
+  nst = pp%getnstage()
+
+  ! set neighbor processors' id
+  pid( p_self ) = pp%getidproc()
+  pid( p_iwd )  = pid( p_self ) - 1
+  pid( p_owd )  = pid( p_self ) + 1
+  pid( p_bwd )  = pid( p_self ) - nvp
+  pid( p_fwd )  = pid( p_self ) + nvp
+
+  ! check if the neighbors are physical boundaries
+  phys_bnd = get_phys_bnd( pid(p_self), nvp, nst )
+
+  ! set edges of MPI node
+  noff = gp%get_noff()
+  ndp  = gp%get_ndp()
+  dr   = gp%get_dr()
+  dz   = gp%get_dxi()
+  
+  if ( phys_bnd(p_iwd) ) then
+    redge(p_lower) = 0.0
+  else
+    redge(p_lower) = noff(1) * dr
+  endif
+  redge(p_upper) = redge(p_lower) + ndp(1) * dr
+  zedge(p_lower) = noff(2) * dz
+  zedge(p_upper) = zedge(p_lower) + ndp(2) * dz
+
+end subroutine init_part3d_comm
+
+subroutine end_part3d_comm()
+
+  implicit none
+
+  if ( associated( send_buf ) ) deallocate( send_buf )
+  if ( associated( recv_buf ) ) deallocate( recv_buf )
+  if ( associated( ihole ) ) deallocate( ihole )
+
+end subroutine end_part3d_comm
+
+subroutine move_part3d_comm( part, rtag, stag, id )
+
+  implicit none
+
+  class( part3d ), intent(inout) :: part
+  integer, intent(in) :: rtag, stag
+  integer, intent(inout) :: id
+
+  integer :: bsize, rsize, ssize, ierr, part_dim, iter
+  integer :: mreal, mint, loc_grp, world
+  integer, dimension(MPI_STATUS_SIZE) :: istat
+  integer, dimension(2) :: sid, rid
+  integer, dimension(4) :: scnt_max
+  logical :: has_spin
+
+  world    = pp%getlworld()
+  loc_grp  = pp%getlgrp()
+  mreal    = pp%getmreal()
+  mint     = pp%getmint()
+  has_spin = part%has_spin
+  part_dim = part%part_dim
+  bsize    = buf_size * dim_max
+
+  call start_tprof( 'move 3D particles' )
+
+  ! receive particles from backward node (pipeline communication)
+  if ( .not. phys_bnd(p_bwd) ) then
+
+    call mpi_recv( recv_buf(:,:,p_lower), bsize, mreal, pid(p_bwd), &
+      rtag, world, istat, ierr )
+
+    call mpi_get_count( istat, mreal, rsize, ierr )
+    recv_cnt(p_bwd) = rsize / part_dim
+
+    call unpack_part( part, redge, zedge, &
+      recv_buf(:,:,p_lower), recv_cnt(p_bwd), p_bwd, &
+      part%pbuff, send_cnt(p_fwd), p_fwd )
+
+  endif
+  recv_cnt(p_bwd) = 0
+  ! print *, "okay here 1, pid = ", pid(p_self)
+
+  ! send particles to forward node (pipeline communication)
+  ! print *, 'phys_bnd(p_fwd) = ', phys_bnd(p_fwd), ', pid = ', pid(p_self)
+  if ( .not. phys_bnd(p_fwd) ) then
+
+    call pack_part( part, redge, zedge, part%pbuff, ihole, send_cnt(p_fwd), p_fwd )
+    ssize = send_cnt(p_fwd) * part_dim
+
+    call mpi_isend( part%pbuff, ssize, mreal, pid(p_fwd), &
+      stag, world, id, ierr )
+
+  else
+    id = MPI_REQUEST_NULL
+  endif
+  send_cnt(p_fwd) = 0
+  ! print *, "okay here 2, pid = ", pid(p_self)
+
+  ! iteration of moving particles in r direction
+  iter = 0
+  do
+
+    if ( iter == iter_max ) then
+      call write_err( 'Iteration overflow' )
+    endif
+
+    iter = iter + 1
+
+    ! receive from inward and unpack particles
+    if ( .not. phys_bnd(p_iwd) ) then
+      call mpi_irecv( recv_buf(:,:,p_lower), bsize, mreal, pid(p_iwd), &
+        iter, world, rid(1), ierr )
+    else
+      rid(1) = MPI_REQUEST_NULL
+    endif
+    ! print *, "okay here 3, pid = ", pid(p_self)
+
+    ! receive from outward and unpack particles
+    if ( .not. phys_bnd(p_owd) ) then
+      call mpi_irecv( recv_buf(:,:,p_upper), bsize, mreal, pid(p_owd), &
+        iter, world, rid(2), ierr )
+    else
+      rid(2) = MPI_REQUEST_NULL
+    endif
+    ! print *, "okay here 4, pid = ", pid(p_self)
+
+    ! pack particles to inward/outward send buffers
+    call pack_part( part, redge, zedge, send_buf(:,:,p_lower), ihole, &
+      send_cnt(p_iwd), p_iwd )
+    call pack_part( part, redge, zedge, send_buf(:,:,p_upper), ihole, &
+      send_cnt(p_owd), p_owd )
+    ! print *, "okay here 5, pid = ", pid(p_self)
+
+    ! send inward
+    if ( .not. phys_bnd(p_iwd) ) then
+
+      ssize = send_cnt(p_iwd) * part_dim
+      call mpi_isend( send_buf(:,:,p_lower), ssize, mreal, pid(p_iwd), &
+        iter, world, sid(1), ierr )
+      
+    else
+      sid(1) = MPI_REQUEST_NULL
+    endif
+    send_cnt(p_iwd) = 0
+    ! print *, "okay here 6, pid = ", pid(p_self)
+    
+    ! send outward
+    if ( .not. phys_bnd(p_owd) ) then
+
+      ssize = send_cnt(p_owd) * part_dim
+      call mpi_isend( send_buf(:,:,p_upper), ssize, mreal, pid(p_owd), &
+        iter, world, sid(2), ierr )
+
+    else
+      sid(2) = MPI_REQUEST_NULL
+    endif
+    send_cnt(p_owd) = 0
+    ! print *, "okay here 7, pid = ", pid(p_self)
+
+    ! wait receiving finish
+    call mpi_wait( rid(1), istat, ierr )
+    call mpi_get_count( istat, mreal, rsize, ierr )
+    recv_cnt(p_iwd) = rsize / part_dim
+
+    call mpi_wait( rid(2), istat, ierr )
+    call mpi_get_count( istat, mreal, rsize, ierr )
+    recv_cnt(p_owd) = rsize / part_dim
+    ! print *, "okay here 8, pid = ", pid(p_self)
+
+    ! wait sending finsh
+    call mpi_wait( sid(1), istat, ierr )
+    call mpi_wait( sid(2), istat, ierr )
+    ! print *, "okay here 9, pid = ", pid(p_self)
+
+    ! unpack particles in inward receive buffer
+    if ( .not. phys_bnd(p_iwd) ) then
+      call unpack_part( part, redge, zedge, &
+        recv_buf(:,:,p_lower), recv_cnt(p_iwd), p_iwd, &
+        send_buf(:,:,p_upper), send_cnt(p_owd), p_owd )
+    endif
+
+    ! unpack particles in outward receive buffer
+    if ( .not. phys_bnd(p_owd) ) then
+      call unpack_part( part, redge, zedge, &
+        recv_buf(:,:,p_upper), recv_cnt(p_owd), p_owd, &
+        send_buf(:,:,p_lower), send_cnt(p_iwd), p_iwd )
+    endif
+    ! print *, "okay here 10, pid = ", pid(p_self)
+
+    ! check backflow
+    ! if ( send_cnt(p_bwd) /= 0 ) then
+    !   call write_err( 'Particle moves back to previous stage!' )
+    ! endif
+
+    ! wait buffers have been sent
+    ! call mpi_wait( sid(1), istat, ierr )
+    ! call mpi_wait( sid(2), istat, ierr )
+
+    ! check if need move particles further
+    call mpi_allreduce( send_cnt, scnt_max, 4, mint, MPI_MAX, loc_grp, ierr )
+    if ( scnt_max(p_iwd) == 0 .and. scnt_max(p_owd) == 0 ) then
+      exit
+    endif
+
+  enddo
+
+  call stop_tprof( 'move 3D particles' )
+
+end subroutine move_part3d_comm
+
+! -----------------------------------------------------------------------------
+! Copy the particles in the receive buffers belonging to this node to the
+! particle array and those not belong to this node to other send buffers.
+! This routine only moves particles inside current stage.
+! -----------------------------------------------------------------------------
+subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
+
+  implicit none
+
+  class(part3d), intent(inout) :: part
+  real, intent(in), dimension(2) :: redge, zedge
+  real, intent(in), dimension(:,:) :: rbuf
+  real, intent(inout), dimension(:,:) :: sbuf
+  integer, intent(inout) :: scnt, rcnt
+  integer, intent(in) :: src, des
+
+  integer :: i, npp, part_dim, stay_cnt
+  real, dimension(3) :: x
+  logical :: has_spin
+
+  npp      = part%npp
+  part_dim = part%part_dim
+  has_spin = part%has_spin
+
+  if ( npp + rcnt > part%npmax ) then
+    call write_err( 'Particle overflow' )
+    ! TODO: resize part3d memory
+  endif
+
+  stay_cnt = 0
+
+  do i = 1, rcnt
+
+    x = rbuf( 1:3, i )
+
+    ! check if particle belongs to here
+    if ( goto_here( x, redge, zedge ) ) then
+
+      part%x( 1:3, i+npp ) = rbuf( 1:3, i )
+      part%p( 1:3, i+npp ) = rbuf( 4:6, i )
+      part%q( i+npp )      = rbuf(   7, i )
+      if ( has_spin ) then
+        part%s( 1:3, i+npp ) = rbuf( 8:10, i )
+      endif
+
+      rcnt = rcnt - 1
+      stay_cnt = stay_cnt + 1
+
+    ! check if particle goes to the destination neighbor node
+    elseif ( goto_dir( x, redge, zedge, des ) ) then
+
+      scnt = scnt + 1
+      rcnt = rcnt - 1
+
+      sbuf( 1:part_dim, scnt ) = rbuf( 1:part_dim, i )
+
+    ! particle goes back to where it comes from, should not happen
+    elseif ( goto_dir( x, redge, zedge, src ) ) then
+      call write_err( 'There is returning particle in local particle &
+        &communication! ' )
+    endif
+
+  enddo
+
+  ! check if all the particles in the receive buffer have been unpacked
+  if ( rcnt /= 0 ) then
+    call write_err( 'There are unpacked particles!' )
+  endif
+
+  part%npp = npp + stay_cnt
+
+end subroutine unpack_part
+
+subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
+
+  implicit none
+
+  class(part3d), intent(inout) :: part
+  real, intent(in), dimension(2) :: redge, zedge
+  real, intent(inout), dimension(:,:) :: sbuf
+  integer(kind=LG), intent(inout), dimension(:) :: ihole
+  integer, intent(inout) :: scnt
+  integer, intent(in) :: des
+
+  integer :: i, npp, go_cnt, part_dim, buf_size
+  real, dimension(3) :: x
+  logical :: has_spin
+
+  npp = part%npp
+  part_dim = part%part_dim
+  has_spin = part%has_spin
+  buf_size = size( sbuf, 2 )
+
+  go_cnt = 0
+
+  do i = 1, npp
+
+    x = part%x(:,i)
+
+    if ( goto_dir( x, redge, zedge, des ) ) then
+
+      if ( scnt >= buf_size ) then
+        call write_err( '3D particle MPI buffer overflow!' )
+      endif
+
+      scnt = scnt + 1
+      go_cnt = go_cnt + 1
+      ihole(scnt) = i
+
+      sbuf( 1:3, scnt ) = part%x(1:3,i)
+      sbuf( 4:6, scnt ) = part%p(1:3,i)
+      sbuf(   7, scnt ) = part%q(i)
+      if ( has_spin ) then
+        sbuf( 8:10, scnt ) = part%s(1:3,i)
+      endif
+
+    endif
+  enddo
+
+  ! fill the holes inversely
+  do i = go_cnt, 1, -1
+
+    part%x( 1:3, ihole(i) ) = part%x( 1:3, npp )
+    part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
+    part%q( ihole(i) )      = part%q(npp)
+    if ( has_spin ) then
+      part%s( 1:3, ihole(i) ) = part%s( 1:3, npp )
+    endif
+    
+    npp = npp - 1
+
+  enddo
+
+  part%npp = npp
+
+end subroutine pack_part
+
+! ! -----------------------------------------------------------------------------
+! ! Copy the particles in the receive buffers belonging to this node to the
+! ! particle array and those not belong to this node to other send buffers.
+! ! This routine only moves particles inside current stage.
+! ! -----------------------------------------------------------------------------
+! subroutine unpack_part_loc( part )
+
+!   implicit none
+
+!   class(part3d), intent(inout) :: part
+
+!   integer :: i, j, npp, part_dim, stay_cnt, src, des, tmp
+!   real, dimension(3) :: x
+!   logical :: has_spin
+
+!   npp      = part%npp
+!   part_dim = part%part_dim
+!   has_spin = part%has_spin
+
+!   src = p_iwd
+!   des = p_owd
+
+!   ! the first loop unpacks particles from inward receive buffer
+!   ! the second loop unpacks particles from outward receive buffer
+!   do j = 1, 2
+
+!     if ( npp + recv_cnt(src) > part%npmax ) then
+!       call write_err( 'Particle overflow' )
+!       ! TODO: resize part3d memory
+!     endif
+
+!     stay_cnt = 0
+
+!     do i = 1, recv_cnt( src )
+
+!       x = recv_buf( 1:3, i, src )
+
+!       ! check if particle belongs to here
+!       if ( goto_here( x, redge, zedge ) ) then
+
+!         part%x( 1:3, i+npp ) = recv_buf( 1:3, i, src )
+!         part%p( 1:3, i+npp ) = recv_buf( 4:6, i, src )
+!         part%q( i+npp )      = recv_buf(   7, i, src )
+!         if ( has_spin ) then
+!           part%s( 1:3, i+npp ) = recv_buf( 8:10, i, src )
+!         endif
+
+!         recv_cnt(src) = recv_cnt(src) - 1
+!         stay_cnt = stay_cnt + 1
+
+!       ! check if particle goes to the neighbor node
+!       elseif ( goto_dir( x, redge, zedge, des ) ) then
+
+!         send_cnt( des ) = send_cnt( des ) + 1
+!         recv_cnt( src ) = recv_cnt( src ) - 1
+
+!         send_buf( 1:part_dim, send_cnt( des ), des ) = &
+!         recv_buf( 1:part_dim, i, src )
+
+!       ! particle goes back to where it comes from, should not happen
+!       else
+!         call write_err( 'There is returning particle in local particle &
+!           &communication! ' )
+!       endif
+
+!     enddo
+
+!     ! swap source and destination buffer
+!     tmp = src; src = des; des = tmp
+
+!     npp = npp + stay_cnt
+!   enddo
+
+!   part%npp = npp
+
+! end subroutine unpack_part_loc
+
+! ! -----------------------------------------------------------------------------
+! ! Copy the particles in the receive buffers belonging to this node to the
+! ! particle array and those not belong to this node to the send buffer of the
+! ! next stage.
+! ! -----------------------------------------------------------------------------
+! subroutine unpack_part_pipe( part )
+
+!   implicit none
+
+!   class(part3d), intent(inout) :: part
+
+!   integer :: i, j, npp, part_dim, stay_cnt
+!   real, dimension(3) :: x
+!   logical :: has_spin
+
+!   npp      = part%npp
+!   part_dim = part%part_dim
+!   has_spin = part%has_spin
+
+!   if ( npp + recv_cnt(p_bwd) > part%npmax ) then
+!     call write_err( 'Particle overflow' )
+!     ! TODO: resize part3d memory
+!   endif
+
+!   stay_cnt = 0
+
+!   ! unpack particle from the receive buffer of the previous stage
+!   do i = 1, recv_cnt(p_bwd)
+
+!     x = recv_buf( 1:3, i, p_bwd )
+
+!     ! check if particle belongs to here
+!     if ( goto_here( x, redge, zedge ) ) then
+
+!       part%x( 1:3, i+npp ) = recv_buf( 1:3, i, p_bwd )
+!       part%p( 1:3, i+npp ) = recv_buf( 4:6, i, p_bwd )
+!       part%q( i+npp )      = recv_buf(   7, i, p_bwd )
+!       if ( has_spin ) then
+!         part%s( 1:3, i+npp ) = recv_buf( 8:10, i, p_bwd )
+!       endif
+
+!       recv_cnt(p_bwd) = recv_cnt(p_bwd) - 1
+!       stay_cnt = stay_cnt + 1
+
+!     ! check if particle goes to next stage
+!     elseif ( goto_dir( x, redge, zedge, p_fwd ) ) then
+
+!           send_cnt(p_fwd) = this%send_cnt(p_fwd) + 1
+!           recv_cnt(p_bwd) = this%recv_cnt(p_bwd) - 1
+
+!           part%pbuff( 1:part_dim, this%send_cnt(p_fwd) ) = &
+!           recv_buf( 1:part_dim, i, p_bwd )
+
+!     else
+!       call write_err( 'There is returning particle in pipeline particle &
+!           &communication! ' )
+!     endif
+
+!   enddo
+
+!   part%npp = npp + stay_cnt
+
+! end subroutine unpack_part_pipe
+
+! subroutine pack_part_loc( part )
+
+!   implicit none
+
+!   class(part3d), intent(inout) :: part
+
+!   integer :: i, j, npp, mv_cnt, part_dim, des
+!   real, dimension(3) :: x
+!   logical :: has_spin
+
+!   npp = part%npp
+!   part_dim = part%part_dim
+!   has_spin = part%has_spin
+
+!   ! packs particle to inward send buffer
+!   mv_cnt = 0
+!   do i = 1, npp
+
+!     x = part%x(:,i)
+
+!     if ( goto_dir( x, redge, zedge, p_iwd ) ) then
+
+!       if ( send_cnt(p_iwd) >= buf_size ) then
+!         call write_err( '3D particle MPI buffer overflow!' )
+!         ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
+!         ! call this%resize_buf()
+!       endif
+
+!       send_cnt(p_iwd) = send_cnt(p_iwd) + 1
+!       mv_cnt = mv_cnt + 1
+!       ihole(mv_cnt) = i
+
+!       send_buf( 1:3, send_cnt(p_iwd), p_iwd ) = part%x(1:3,i)
+!       send_buf( 4:6, send_cnt(p_iwd), p_iwd ) = part%p(1:3,i)
+!       send_buf(   7, send_cnt(p_iwd), p_iwd ) = part%q(i)
+!       if ( has_spin ) then
+!         send_buf( 8:10, send_cnt(p_iwd), p_iwd ) = part%s(1:3,i)
+!       endif
+
+!     endif
+!   enddo
+
+!   ! fill the holes inversely
+!   do i = mv_cnt, 1, -1
+
+!     part%x( 1:3, ihole(i) ) = part%x( 1:3, npp )
+!     part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
+!     part%q( ihole(i) )      = part%q(npp)
+!     if ( has_spin ) then
+!       part%s( 1:3, ihole(i) ) = part%s( 1:3, npp )
+!     endif
+    
+!     npp = npp - 1
+!   enddo
+
+!   ! packs particle to outward send buffer
+!   mv_cnt = 0
+!   do i = 1, npp
+
+!     x = part%x(:,i)
+
+!     if ( goto_dir( x, redge, zedge, p_owd ) ) then
+
+!       if ( send_cnt(p_owd) >= buf_size ) then
+!         call write_err( '3D particle MPI buffer overflow!' )
+!         ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
+!         ! call this%resize_buf()
+!       endif
+
+!       send_cnt(p_owd) = send_cnt(p_owd) + 1
+!       mv_cnt = mv_cnt + 1
+!       ihole(mv_cnt) = i
+
+!       send_buf( 1:3, send_cnt(p_owd), p_owd ) = part%x(1:3,i)
+!       send_buf( 4:6, send_cnt(p_owd), p_owd ) = part%p(1:3,i)
+!       send_buf(   7, send_cnt(p_owd), p_owd ) = part%q(i)
+!       if ( has_spin ) then
+!         send_buf( 8:10, send_cnt(p_owd), p_owd ) = part%s(1:3,i)
+!       endif
+
+!     endif
+!   enddo
+
+!   ! fill the holes inversely
+!   do i = mv_cnt, 1, -1
+
+!     part%x( 1:3, ihole(i) ) = part%x( 1:3, npp )
+!     part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
+!     part%q( ihole(i) )      = part%q(npp)
+!     if ( has_spin ) then
+!       part%s( 1:3, ihole(i) ) = part%s( 1:3, npp )
+!     endif
+    
+!     npp = npp - 1
+!   enddo
+
+!   part%npp = npp
+
+! end subroutine pack_part_loc
+
+! ! continue from here
+! subroutine pack_part_pipe( this, part, des )
+
+!   implicit none
+
+!   class(part3d_comm), intent(inout) :: this
+!   class(part3d), intent(inout) :: part
+!   integer, intent(in), dimension(:) :: des
+
+!   integer :: i, j, npp, send_cnt, num_des, part_dim
+!   real, dimension(2) :: zedge, redge
+!   real, dimension(3) :: x
+!   logical :: has_spin
+
+!   npp = part%npp
+!   part_dim = part%part_dim
+!   has_spin = part%has_spin
+!   num_des = size(des)
+!   redge = this%redge
+!   zedge = this%zedge
+
+!   send_cnt = 0
+
+!   ! pack particle position, momentum, charge and spin
+!   do i = 1, npp
+
+!     x = part%x(:,i)
+
+!     do j = 1, num_des
+
+!       if ( goto_dir( x, redge, zedge, des(j) ) ) then
+
+!         if ( this%send_cnt( des(j) ) >= this%buf_size ) then
+!           call write_err( '3D particle MPI buffer overflow!' )
+!           ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
+!           ! call this%resize_buf()
+!         endif
+
+!         this%send_cnt( des(j) ) = this%send_cnt( des(j) ) + 1
+!         send_cnt = send_cnt + 1
+!         this%ihole(send_cnt) = i
+
+!         this%send_buf( 1:3, this%send_cnt( des(j) ), des(j) ) = part%x(1:3,i)
+!         this%send_buf( 4:6, this%send_cnt( des(j) ), des(j) ) = part%p(1:3,i)
+!         this%send_buf(   7, this%send_cnt( des(j) ), des(j) ) = part%q(i)
+!         if ( has_spin ) then
+!           this%send_buf( 8:10, this%send_cnt( des(j) ), des(j) ) = part%s(1:3,i)
+!         endif
+!         exit
+
+!       endif
+
+!     enddo
+!   enddo
+
+!   ! fill the holes inversely
+!   do i = send_cnt, 1, -1
+
+!     part%x( 1:3, this%ihole(i) ) = part%x( 1:3, npp )
+!     part%p( 1:3, this%ihole(i) ) = part%p( 1:3, npp )
+!     part%q( this%ihole(i) )      = part%q(npp)
+!     if ( has_spin ) then
+!       part%s( 1:3, this%ihole(i) ) = part%s( 1:3, npp )
+!     endif
+    
+!     npp = npp - 1
+
+!   enddo
+
+!   part%npp = npp
+
+! end subroutine pack_part_pipe
+
+subroutine resize_buf( ratio )
+
+  implicit none
+
+  real, intent(in), optional :: ratio
+
+  real :: r = 2.0
+  real, dimension(:,:,:), allocatable :: buf_tmp
+  integer :: i, j
+
+  if ( present(ratio) ) r = ratio
+
+  allocate( buf_tmp( dim_max, buf_size, 4 ) )
+  buf_size = int( buf_size * r )
+
+  ! resize receive buffer
+  do j = 1, 4
+    do i = 1, recv_cnt(j)
+      buf_tmp(:,i,j) = recv_buf(:,i,j)
+    enddo
+  enddo
+  deallocate( recv_buf )
+  allocate( recv_buf( dim_max, buf_size, 4 ) )
+  do j = 1, 4
+    do i = 1, recv_cnt(j)
+      recv_buf(:,i,j) = buf_tmp(:,i,j)
+    enddo
+  enddo
+
+  ! resize send buffer
+  do j = 1, 4
+    do i = 1, send_cnt(j)
+      buf_tmp(:,i,j) = send_buf(:,i,j)
+    enddo
+  enddo
+  deallocate( send_buf )
+  allocate( send_buf( dim_max, buf_size, 4 ) )
+  do j = 1, 4
+    do i = 1, recv_cnt(j)
+      send_buf(:,i,j) = buf_tmp(:,i,j)
+    enddo
+  enddo
+
+  ! resize index of holes
+  deallocate( ihole )
+  allocate( ihole( buf_size ) )
+
+  deallocate( buf_tmp )
+
+end subroutine resize_buf
+
+function get_phys_bnd( proc_id, nvp, nst ) result( res )
+
+  implicit none
+
+  integer, intent(in) :: proc_id, nvp, nst
+  logical, dimension(4) :: res
+
+  integer :: loc_id, st_id
+
+  res = .false.
+
+  loc_id = mod( proc_id, nvp )
+  st_id = int( proc_id / nvp )
+
+  if ( loc_id == 0 )     res( p_iwd ) = .true.
+  if ( loc_id == nvp-1 ) res( p_owd ) = .true.
+  if ( st_id == 0 )      res( p_bwd ) = .true.
+  if ( st_id == nst-1 )  res( p_fwd ) = .true.
+
+  ! print *, "pid = ", proc_id, ", phys_bnd = ", res
+  ! print *, "pid = ", proc_id, ", nst = ", nst, ", st_id = ", st_id
+
+end function get_phys_bnd
+
+function goto_here( x, redge, zedge )
+
+  implicit none
+
+  real, intent(in), dimension(3) :: x
+  real, intent(in), dimension(2) :: redge, zedge
+  logical :: goto_here
+
+  real :: z, r
+
+  goto_here = .false.
+
+  z  = x(3)
+  r  = sqrt( x(1)*x(1) + x(2)*x(2) )
+  
+  goto_here = z > zedge(p_lower) .and. z <= zedge(p_upper) .and. &
+              r > redge(p_lower) .and. r <= redge(p_upper)
+
+end function goto_here
+
+function goto_dir( x, redge, zedge, dir )
+
+  implicit none
+
+  real, intent(in), dimension(3) :: x
+  real, intent(in), dimension(2) :: redge, zedge
+  integer, intent(in) :: dir
+  logical :: goto_dir
+
+  real :: pos
+  
+  goto_dir = .false.
+
+  select case ( dir )
+  case ( p_fwd )
+    pos = x(3)
+    goto_dir = pos >  zedge(p_upper)
+  case ( p_bwd )
+    pos = x(3)
+    goto_dir = pos <= zedge(p_lower)
+  case ( p_iwd )
+    pos = sqrt( x(1)*x(1) + x(2)*x(2) )
+    goto_dir = pos <= redge(p_lower)
+  case ( p_owd )
+    pos = sqrt( x(1)*x(1) + x(2)*x(2) )
+    goto_dir = pos >  redge(p_upper)
+  end select
+
+end function goto_dir
 
 end module part3d_comm

@@ -10,7 +10,6 @@ use field_class
 use ufield_class
 use fdist3d_class
 use hdf5io_class
-use part3d_comm
 use mpi
 use interpolation
 
@@ -63,7 +62,6 @@ type part3d
    procedure :: update_bound => update_bound_part3d
    procedure, private :: push_spin => push_spin_part3d
 
-   procedure :: pmv  => pmove
    procedure :: wr   => writehdf5_part3d
    procedure :: wrst => writerst_part3d
    procedure :: rrst => readrst_part3d
@@ -78,8 +76,8 @@ character(len=20), parameter :: cls_name = "part3d"
 integer, parameter :: cls_level = 2
 
 ! buffer data for particle managers
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-integer(kind=LG), dimension(:), allocatable :: ihole
+! real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
+! integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 !
@@ -141,11 +139,11 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
          gp%get_ndp() )
    endif
 
-   if ( .not. allocated(sbufl) ) then
-      allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
-      allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
-      allocate( ihole( nbmax*2 ) )
-   endif
+   ! if ( .not. allocated(sbufl) ) then
+   !    allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
+   !    allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
+   !    allocate( ihole( nbmax*2 ) )
+   ! endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_part3d
@@ -814,43 +812,43 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
 
 end subroutine interp_emf
 !
-subroutine pmove(this,fd,rtag,stag,sid)
+! subroutine pmove(this,fd,rtag,stag,sid)
 
-   implicit none
+!    implicit none
 
-   class(part3d), intent(inout) :: this
-   class(field), intent(in) :: fd
-   integer, intent(in) :: rtag, stag
-   integer, intent(inout) :: sid
-! local data
-   character(len=18), save :: sname = 'pmove:'
-   class(ufield), pointer :: ud
-   integer, dimension(9) :: info
-
-
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   ud => fd%get_rf_re(0)
-
-   if ( this%has_spin ) then
-      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info, this%s)
-   else
-      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
-   endif
+!    class(part3d), intent(inout) :: this
+!    class(field), intent(in) :: fd
+!    integer, intent(in) :: rtag, stag
+!    integer, intent(inout) :: sid
+! ! local data
+!    character(len=18), save :: sname = 'pmove:'
+!    class(ufield), pointer :: ud
+!    integer, dimension(9) :: info
 
 
-   if (info(1) /= 0) then
-      call write_err(cls_name//sname//'pmove_part3d error')
-   endif
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   if (this%pp%getstageid() == this%pp%getnstage() - 1) sid = MPI_REQUEST_NULL
+!    ud => fd%get_rf_re(0)
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    if ( this%has_spin ) then
+!       call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
+!       &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info, this%s)
+!    else
+!       call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
+!       &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
+!    endif
 
-end subroutine pmove
-!
+
+!    if (info(1) /= 0) then
+!       call write_err(cls_name//sname//'pmove_part3d error')
+!    endif
+
+!    if (this%pp%getstageid() == this%pp%getnstage() - 1) sid = MPI_REQUEST_NULL
+
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
+
+! end subroutine pmove
+
 function getnpp(this)
 
    implicit none

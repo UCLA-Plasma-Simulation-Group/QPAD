@@ -14,6 +14,7 @@ use field_b_class
 use part3d_class
 use hdf5io_class
 use mpi
+use part3d_comm
 
 implicit none
 
@@ -26,7 +27,7 @@ type beam3d
    private
 
    class(parallel_pipe), pointer, public :: pp => null()
-   class(part3d), pointer :: pd => null()
+   class(part3d), pointer :: part => null()
    class(field_rho), allocatable :: q
    class(fdist3d), pointer :: pf => null()
    logical :: evol
@@ -80,11 +81,12 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
    this%pf => pf
    this%push_type = push_type
 
-   allocate(this%pd,this%q)
+   allocate(this%part,this%q)
    this%evol = pf%getevol()
    call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
-   call this%pd%new(pp,gd,pf,qbm,dt,has_spin,amm)
-   call this%pd%pmv(this%q,1,1,id)
+   call this%part%new(pp,gd,pf,qbm,dt,has_spin,amm)
+   ! call this%part%pmv(this%q,1,1,id)
+   call move_part3d_comm( this%part, 1, 1, id )
    call MPI_WAIT(id,istat,ierr)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -98,7 +100,7 @@ subroutine end_beam3d(this)
    character(len=32), save :: sname = 'end_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%del()
+   call this%part%del()
    call this%q%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -127,7 +129,7 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
       call this%pf%dp(this%q)
       call this%q%copy_gc_f2()
    else
-      call this%pd%qdeposit(this%q)
+      call this%part%qdeposit(this%q)
       call this%q%acopy_gc_f2()
       call this%q%copy_gc_f2()
    endif
@@ -176,13 +178,14 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
 
    select case ( this%push_type )
    case ( p_push_reduced )
-      call this%pd%push_reduced( ef, bf )
+      call this%part%push_reduced( ef, bf )
    case ( p_push_boris )
-      call this%pd%push_boris( ef, bf )
+      call this%part%push_boris( ef, bf )
    end select
 
-   call this%pd%update_bound()
-   call this%pd%pmv(ef,rtag,stag,sid)
+   call this%part%update_bound()
+   ! call this%part%pmv(ef,rtag,stag,sid)
+   call move_part3d_comm( this%part, rtag, stag, sid )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -200,7 +203,7 @@ subroutine writehdf5_beam3d(this,file,dspl,rtag,stag,id)
    character(len=32), save :: sname = 'writehdf5_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%wr(file,dspl,rtag,stag,id)
+   call this%part%wr(file,dspl,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_beam3d
@@ -213,7 +216,7 @@ subroutine writerst_beam3d(this,file)
 ! local data
    character(len=32), save :: sname = 'writerst_beam3d'
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%wrst(file)
+   call this%part%wrst(file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writerst_beam3d
@@ -242,7 +245,7 @@ subroutine readrst_beam3d(this,file)
    character(len=32), save :: sname = 'readrst_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%rrst(file)
+   call this%part%rrst(file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine readrst_beam3d
