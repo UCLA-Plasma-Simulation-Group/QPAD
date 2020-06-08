@@ -198,18 +198,23 @@ subroutine run_simulation( this )
   spe  => this%species%spe
 
 
-  ! deposit beams and do diagnostics to see the initial distribution
-  call q_beam%as(0.0)
-  call q_spe%as(0.0)
-  ! pipeline data transfer for beams
-  do k = 1, this%nbeams
-    this%tag_bq(k) = ntag()
-    call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
-  enddo
-  do k = 1, this%nbeams
-    call beam(k)%qdp( this%tag_bq(k) )
-  enddo
-  call this%diag%run( 0, this%dt )
+  ! deposit beams and do diagnostics to see the initial distribution if it is
+  ! a fresh run
+  if ( this%start3d == 1 ) then
+
+    call q_beam%as(0.0)
+    call q_spe%as(0.0)
+    ! pipeline data transfer for beams
+    do k = 1, this%nbeams
+      this%tag_bq(k) = ntag()
+      call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
+    enddo
+    do k = 1, this%nbeams
+      call beam(k)%qdp( this%tag_bq(k) )
+    enddo
+    call this%diag%run( 0, this%dt )
+
+  endif
 
   do i = this%start3d, this%nstep3d
 
