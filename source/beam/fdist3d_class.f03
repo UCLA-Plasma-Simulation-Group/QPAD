@@ -1022,8 +1022,8 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp,s)
    integer(hid_t), dimension(p_p_dim) :: pdset_id
    integer(hid_t), dimension(p_s_dim) :: sdset_id
    integer(hid_t) :: qdset_id, fspace_id, mspace_id
-   real, dimension(:,:), pointer :: xbuf, pbuf, sbuf
-   real, dimension(:), pointer :: qbuf
+   real, dimension(:,:), pointer :: xbuf => null(), pbuf => null(), sbuf => null()
+   real, dimension(:), pointer :: qbuf => null()
    logical :: has_spin = .false.
    integer, parameter :: real_kind_8 = kind(1.0d0)
 
