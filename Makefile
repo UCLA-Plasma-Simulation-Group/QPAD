@@ -8,11 +8,13 @@ SHELL = /bin/bash
 
 .PHONY: all
 all:
-	@cd source && make depend && make
+# 	@cd source && make depend && make
+	@cd source && make
 
 .PHONY: module
 module:
-	@cd source && make depend && make module
+# 	@cd source && make depend && make module
+	@cd source && make module
 
 .PHONY: TEST_%
 TEST_%:
@@ -22,11 +24,11 @@ TEST_%:
 clean:
 	@cd source && make clean
 
-.PHONY: cleanall
-cleanall:
-	@cd source && make clean
-	@echo "[CLEAN] Removing module dependency file" 
-	@cd source && rm -rf .depend
+# .PHONY: cleanall
+# cleanall:
+# 	@cd source && make clean
+# 	@echo "[CLEAN] Removing module dependency file" 
+# 	@cd source && rm -rf .depend
 
 .PHONY: help
 help:
@@ -41,5 +43,4 @@ help:
 	@echo "TEST_*.e    - generate test executable corresponding to the test source file in test directory."
 	@echo "              'make module' must be conducted before."
 	@echo "clean       - remove build directory."
-	@echo "cleanall    - remove build directory and dependencies file."
 	@echo "help        - show this help list"
