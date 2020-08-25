@@ -17,12 +17,12 @@ configdir ?= ../config
 configfile = $(configdir)/make.$(sys)
 include $(configfile)
 
-AUTO_MAKE_DEPEND ?= TRUE
-MAKEDEPEND = ../tools/gendepends -t obj-dep
-depfile = .depend
-ifeq ($(AUTO_MAKE_DEPEND),TRUE)
-	-include $(depfile)
-endif
+# AUTO_MAKE_DEPEND ?= FALSE
+# MAKEDEPEND = ../tools/gendepends -t obj-dep
+# depfile = .depend
+# ifeq ($(AUTO_MAKE_DEPEND),TRUE)
+# 	-include $(depfile)
+# endif
 
 # ------------------------------------------------------------------------------
 # QuickPIC source files
@@ -30,21 +30,20 @@ endif
 # arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
 src = dtimer.c param.f03 sysutil.f03 parallel_class.f03 debug_tool.f03
-src += interpolation.f03 random.f03
 src += parallel_pipe_class.f03
+src += hdf5io_class.f03
+src += interpolation.f03 random.f03
 src += grid_class.f03
 src += input_class.f03
-src += sim_fields_class.f03 sim_beams_class.f03 sim_species_class.f03
-src += diagnostics_class.f03
-src += hdf5io_class.f03
-src += simulation_class.f03
 # fields code
 include fields/Makefile
 # species code
 include species/Makefile
 # beam code
 include beam/Makefile
-
+src += sim_fields_class.f03 sim_beams_class.f03 sim_species_class.f03
+src += diagnostics_class.f03
+src += simulation_class.f03
 main_src = main.f03
 # ------------------------------------------------------------------------------
 
@@ -58,7 +57,7 @@ DATESTAMP := $$(date +%s)
 
 # Targets and rules
 .DEFAULT_GOAL := all
-.PHONY: all module clean depend
+.PHONY: all module clean
 
 $(quickpic) : $(objs) $(main_obj)
 	@echo "[LINK] $(@F)"
@@ -110,8 +109,8 @@ clean :
 	@echo "[CLEAN] Removing build directory"
 	@rm -rf $(builddir)
 
-depend : $(depfile)
+# depend : $(depfile)
 
-$(depfile) : $(main_src)
-	@echo "Automatically generating module dependencies."
-	@$(PYTHON) $(MAKEDEPEND) $(main_src) > $(depfile)
+# $(depfile) : $(main_src)
+# 	@echo "Automatically generating module dependencies."
+# 	@$(PYTHON) $(MAKEDEPEND) $(main_src) > $(depfile)
