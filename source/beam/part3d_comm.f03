@@ -157,13 +157,11 @@ subroutine move_part3d_comm( part, rtag, stag, id )
   integer, dimension(MPI_STATUS_SIZE) :: istat
   integer, dimension(2) :: sid, rid
   integer, dimension(4) :: scnt_max
-  logical :: has_spin
 
   world    = pp%getlworld()
   loc_grp  = pp%getlgrp()
   mreal    = pp%getmreal()
   mint     = pp%getmint()
-  has_spin = part%has_spin
   part_dim = part%part_dim
   bsize    = buf_size * dim_max
 
@@ -184,10 +182,8 @@ subroutine move_part3d_comm( part, rtag, stag, id )
 
   endif
   recv_cnt(p_bwd) = 0
-  ! print *, "okay here 1, pid = ", pid(p_self)
 
   ! send particles to forward node (pipeline communication)
-  ! print *, 'phys_bnd(p_fwd) = ', phys_bnd(p_fwd), ', pid = ', pid(p_self)
   if ( .not. phys_bnd(p_fwd) ) then
 
     call pack_part( part, redge, zedge, part%pbuff, ihole, send_cnt(p_fwd), p_fwd )
@@ -200,7 +196,6 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     id = MPI_REQUEST_NULL
   endif
   send_cnt(p_fwd) = 0
-  ! print *, "okay here 2, pid = ", pid(p_self)
 
   ! iteration of moving particles in r direction
   iter = 0
@@ -219,7 +214,6 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     else
       rid(1) = MPI_REQUEST_NULL
     endif
-    ! print *, "okay here 3, pid = ", pid(p_self)
 
     ! receive from outward and unpack particles
     if ( .not. phys_bnd(p_owd) ) then
@@ -228,14 +222,12 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     else
       rid(2) = MPI_REQUEST_NULL
     endif
-    ! print *, "okay here 4, pid = ", pid(p_self)
 
     ! pack particles to inward/outward send buffers
     call pack_part( part, redge, zedge, send_buf(:,:,p_lower), ihole, &
       send_cnt(p_iwd), p_iwd )
     call pack_part( part, redge, zedge, send_buf(:,:,p_upper), ihole, &
       send_cnt(p_owd), p_owd )
-    ! print *, "okay here 5, pid = ", pid(p_self)
 
     ! send inward
     if ( .not. phys_bnd(p_iwd) ) then
@@ -248,7 +240,6 @@ subroutine move_part3d_comm( part, rtag, stag, id )
       sid(1) = MPI_REQUEST_NULL
     endif
     send_cnt(p_iwd) = 0
-    ! print *, "okay here 6, pid = ", pid(p_self)
     
     ! send outward
     if ( .not. phys_bnd(p_owd) ) then
@@ -261,7 +252,6 @@ subroutine move_part3d_comm( part, rtag, stag, id )
       sid(2) = MPI_REQUEST_NULL
     endif
     send_cnt(p_owd) = 0
-    ! print *, "okay here 7, pid = ", pid(p_self)
 
     ! wait receiving finish
     call mpi_wait( rid(1), istat, ierr )
@@ -271,12 +261,10 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     call mpi_wait( rid(2), istat, ierr )
     call mpi_get_count( istat, mreal, rsize, ierr )
     recv_cnt(p_owd) = rsize / part_dim
-    ! print *, "okay here 8, pid = ", pid(p_self)
 
     ! wait sending finsh
     call mpi_wait( sid(1), istat, ierr )
     call mpi_wait( sid(2), istat, ierr )
-    ! print *, "okay here 9, pid = ", pid(p_self)
 
     ! unpack particles in inward receive buffer
     if ( .not. phys_bnd(p_iwd) ) then
@@ -291,16 +279,6 @@ subroutine move_part3d_comm( part, rtag, stag, id )
         recv_buf(:,:,p_upper), recv_cnt(p_owd), p_owd, &
         send_buf(:,:,p_lower), send_cnt(p_iwd), p_iwd )
     endif
-    ! print *, "okay here 10, pid = ", pid(p_self)
-
-    ! check backflow
-    ! if ( send_cnt(p_bwd) /= 0 ) then
-    !   call write_err( 'Particle moves back to previous stage!' )
-    ! endif
-
-    ! wait buffers have been sent
-    ! call mpi_wait( sid(1), istat, ierr )
-    ! call mpi_wait( sid(2), istat, ierr )
 
     ! check if need move particles further
     call mpi_allreduce( send_cnt, scnt_max, 4, mint, MPI_MAX, loc_grp, ierr )
@@ -352,15 +330,16 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
     ! check if particle belongs to here
     if ( goto_here( x, redge, zedge ) ) then
 
-      part%x( 1:3, i+npp ) = rbuf( 1:3, i )
-      part%p( 1:3, i+npp ) = rbuf( 4:6, i )
-      part%q( i+npp )      = rbuf(   7, i )
+      stay_cnt = stay_cnt + 1
+
+      part%x( 1:3, npp + stay_cnt ) = rbuf( 1:3, i )
+      part%p( 1:3, npp + stay_cnt ) = rbuf( 4:6, i )
+      part%q( npp + stay_cnt )      = rbuf(   7, i )
       if ( has_spin ) then
-        part%s( 1:3, i+npp ) = rbuf( 8:10, i )
+        part%s( 1:3, npp + stay_cnt ) = rbuf( 8:10, i )
       endif
 
       rcnt = rcnt - 1
-      stay_cnt = stay_cnt + 1
 
     ! check if particle goes to the destination neighbor node
     elseif ( goto_dir( x, redge, zedge, des ) ) then
@@ -372,8 +351,10 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
 
     ! particle goes back to where it comes from, should not happen
     elseif ( goto_dir( x, redge, zedge, src ) ) then
+
       call write_err( 'There is returning particle in local particle &
         &communication! ' )
+
     endif
 
   enddo
@@ -421,7 +402,7 @@ subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
 
       scnt = scnt + 1
       go_cnt = go_cnt + 1
-      ihole(scnt) = i
+      ihole(go_cnt) = i
 
       sbuf( 1:3, scnt ) = part%x(1:3,i)
       sbuf( 4:6, scnt ) = part%p(1:3,i)
@@ -451,321 +432,8 @@ subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
 
 end subroutine pack_part
 
-! ! -----------------------------------------------------------------------------
-! ! Copy the particles in the receive buffers belonging to this node to the
-! ! particle array and those not belong to this node to other send buffers.
-! ! This routine only moves particles inside current stage.
-! ! -----------------------------------------------------------------------------
-! subroutine unpack_part_loc( part )
-
-!   implicit none
-
-!   class(part3d), intent(inout) :: part
-
-!   integer :: i, j, npp, part_dim, stay_cnt, src, des, tmp
-!   real, dimension(3) :: x
-!   logical :: has_spin
-
-!   npp      = part%npp
-!   part_dim = part%part_dim
-!   has_spin = part%has_spin
-
-!   src = p_iwd
-!   des = p_owd
-
-!   ! the first loop unpacks particles from inward receive buffer
-!   ! the second loop unpacks particles from outward receive buffer
-!   do j = 1, 2
-
-!     if ( npp + recv_cnt(src) > part%npmax ) then
-!       call write_err( 'Particle overflow' )
-!       ! TODO: resize part3d memory
-!     endif
-
-!     stay_cnt = 0
-
-!     do i = 1, recv_cnt( src )
-
-!       x = recv_buf( 1:3, i, src )
-
-!       ! check if particle belongs to here
-!       if ( goto_here( x, redge, zedge ) ) then
-
-!         part%x( 1:3, i+npp ) = recv_buf( 1:3, i, src )
-!         part%p( 1:3, i+npp ) = recv_buf( 4:6, i, src )
-!         part%q( i+npp )      = recv_buf(   7, i, src )
-!         if ( has_spin ) then
-!           part%s( 1:3, i+npp ) = recv_buf( 8:10, i, src )
-!         endif
-
-!         recv_cnt(src) = recv_cnt(src) - 1
-!         stay_cnt = stay_cnt + 1
-
-!       ! check if particle goes to the neighbor node
-!       elseif ( goto_dir( x, redge, zedge, des ) ) then
-
-!         send_cnt( des ) = send_cnt( des ) + 1
-!         recv_cnt( src ) = recv_cnt( src ) - 1
-
-!         send_buf( 1:part_dim, send_cnt( des ), des ) = &
-!         recv_buf( 1:part_dim, i, src )
-
-!       ! particle goes back to where it comes from, should not happen
-!       else
-!         call write_err( 'There is returning particle in local particle &
-!           &communication! ' )
-!       endif
-
-!     enddo
-
-!     ! swap source and destination buffer
-!     tmp = src; src = des; des = tmp
-
-!     npp = npp + stay_cnt
-!   enddo
-
-!   part%npp = npp
-
-! end subroutine unpack_part_loc
-
-! ! -----------------------------------------------------------------------------
-! ! Copy the particles in the receive buffers belonging to this node to the
-! ! particle array and those not belong to this node to the send buffer of the
-! ! next stage.
-! ! -----------------------------------------------------------------------------
-! subroutine unpack_part_pipe( part )
-
-!   implicit none
-
-!   class(part3d), intent(inout) :: part
-
-!   integer :: i, j, npp, part_dim, stay_cnt
-!   real, dimension(3) :: x
-!   logical :: has_spin
-
-!   npp      = part%npp
-!   part_dim = part%part_dim
-!   has_spin = part%has_spin
-
-!   if ( npp + recv_cnt(p_bwd) > part%npmax ) then
-!     call write_err( 'Particle overflow' )
-!     ! TODO: resize part3d memory
-!   endif
-
-!   stay_cnt = 0
-
-!   ! unpack particle from the receive buffer of the previous stage
-!   do i = 1, recv_cnt(p_bwd)
-
-!     x = recv_buf( 1:3, i, p_bwd )
-
-!     ! check if particle belongs to here
-!     if ( goto_here( x, redge, zedge ) ) then
-
-!       part%x( 1:3, i+npp ) = recv_buf( 1:3, i, p_bwd )
-!       part%p( 1:3, i+npp ) = recv_buf( 4:6, i, p_bwd )
-!       part%q( i+npp )      = recv_buf(   7, i, p_bwd )
-!       if ( has_spin ) then
-!         part%s( 1:3, i+npp ) = recv_buf( 8:10, i, p_bwd )
-!       endif
-
-!       recv_cnt(p_bwd) = recv_cnt(p_bwd) - 1
-!       stay_cnt = stay_cnt + 1
-
-!     ! check if particle goes to next stage
-!     elseif ( goto_dir( x, redge, zedge, p_fwd ) ) then
-
-!           send_cnt(p_fwd) = this%send_cnt(p_fwd) + 1
-!           recv_cnt(p_bwd) = this%recv_cnt(p_bwd) - 1
-
-!           part%pbuff( 1:part_dim, this%send_cnt(p_fwd) ) = &
-!           recv_buf( 1:part_dim, i, p_bwd )
-
-!     else
-!       call write_err( 'There is returning particle in pipeline particle &
-!           &communication! ' )
-!     endif
-
-!   enddo
-
-!   part%npp = npp + stay_cnt
-
-! end subroutine unpack_part_pipe
-
-! subroutine pack_part_loc( part )
-
-!   implicit none
-
-!   class(part3d), intent(inout) :: part
-
-!   integer :: i, j, npp, mv_cnt, part_dim, des
-!   real, dimension(3) :: x
-!   logical :: has_spin
-
-!   npp = part%npp
-!   part_dim = part%part_dim
-!   has_spin = part%has_spin
-
-!   ! packs particle to inward send buffer
-!   mv_cnt = 0
-!   do i = 1, npp
-
-!     x = part%x(:,i)
-
-!     if ( goto_dir( x, redge, zedge, p_iwd ) ) then
-
-!       if ( send_cnt(p_iwd) >= buf_size ) then
-!         call write_err( '3D particle MPI buffer overflow!' )
-!         ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
-!         ! call this%resize_buf()
-!       endif
-
-!       send_cnt(p_iwd) = send_cnt(p_iwd) + 1
-!       mv_cnt = mv_cnt + 1
-!       ihole(mv_cnt) = i
-
-!       send_buf( 1:3, send_cnt(p_iwd), p_iwd ) = part%x(1:3,i)
-!       send_buf( 4:6, send_cnt(p_iwd), p_iwd ) = part%p(1:3,i)
-!       send_buf(   7, send_cnt(p_iwd), p_iwd ) = part%q(i)
-!       if ( has_spin ) then
-!         send_buf( 8:10, send_cnt(p_iwd), p_iwd ) = part%s(1:3,i)
-!       endif
-
-!     endif
-!   enddo
-
-!   ! fill the holes inversely
-!   do i = mv_cnt, 1, -1
-
-!     part%x( 1:3, ihole(i) ) = part%x( 1:3, npp )
-!     part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
-!     part%q( ihole(i) )      = part%q(npp)
-!     if ( has_spin ) then
-!       part%s( 1:3, ihole(i) ) = part%s( 1:3, npp )
-!     endif
-    
-!     npp = npp - 1
-!   enddo
-
-!   ! packs particle to outward send buffer
-!   mv_cnt = 0
-!   do i = 1, npp
-
-!     x = part%x(:,i)
-
-!     if ( goto_dir( x, redge, zedge, p_owd ) ) then
-
-!       if ( send_cnt(p_owd) >= buf_size ) then
-!         call write_err( '3D particle MPI buffer overflow!' )
-!         ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
-!         ! call this%resize_buf()
-!       endif
-
-!       send_cnt(p_owd) = send_cnt(p_owd) + 1
-!       mv_cnt = mv_cnt + 1
-!       ihole(mv_cnt) = i
-
-!       send_buf( 1:3, send_cnt(p_owd), p_owd ) = part%x(1:3,i)
-!       send_buf( 4:6, send_cnt(p_owd), p_owd ) = part%p(1:3,i)
-!       send_buf(   7, send_cnt(p_owd), p_owd ) = part%q(i)
-!       if ( has_spin ) then
-!         send_buf( 8:10, send_cnt(p_owd), p_owd ) = part%s(1:3,i)
-!       endif
-
-!     endif
-!   enddo
-
-!   ! fill the holes inversely
-!   do i = mv_cnt, 1, -1
-
-!     part%x( 1:3, ihole(i) ) = part%x( 1:3, npp )
-!     part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
-!     part%q( ihole(i) )      = part%q(npp)
-!     if ( has_spin ) then
-!       part%s( 1:3, ihole(i) ) = part%s( 1:3, npp )
-!     endif
-    
-!     npp = npp - 1
-!   enddo
-
-!   part%npp = npp
-
-! end subroutine pack_part_loc
-
-! ! continue from here
-! subroutine pack_part_pipe( this, part, des )
-
-!   implicit none
-
-!   class(part3d_comm), intent(inout) :: this
-!   class(part3d), intent(inout) :: part
-!   integer, intent(in), dimension(:) :: des
-
-!   integer :: i, j, npp, send_cnt, num_des, part_dim
-!   real, dimension(2) :: zedge, redge
-!   real, dimension(3) :: x
-!   logical :: has_spin
-
-!   npp = part%npp
-!   part_dim = part%part_dim
-!   has_spin = part%has_spin
-!   num_des = size(des)
-!   redge = this%redge
-!   zedge = this%zedge
-
-!   send_cnt = 0
-
-!   ! pack particle position, momentum, charge and spin
-!   do i = 1, npp
-
-!     x = part%x(:,i)
-
-!     do j = 1, num_des
-
-!       if ( goto_dir( x, redge, zedge, des(j) ) ) then
-
-!         if ( this%send_cnt( des(j) ) >= this%buf_size ) then
-!           call write_err( '3D particle MPI buffer overflow!' )
-!           ! call write_wrn( 'Resizing 3D particle MPI buffer...' )
-!           ! call this%resize_buf()
-!         endif
-
-!         this%send_cnt( des(j) ) = this%send_cnt( des(j) ) + 1
-!         send_cnt = send_cnt + 1
-!         this%ihole(send_cnt) = i
-
-!         this%send_buf( 1:3, this%send_cnt( des(j) ), des(j) ) = part%x(1:3,i)
-!         this%send_buf( 4:6, this%send_cnt( des(j) ), des(j) ) = part%p(1:3,i)
-!         this%send_buf(   7, this%send_cnt( des(j) ), des(j) ) = part%q(i)
-!         if ( has_spin ) then
-!           this%send_buf( 8:10, this%send_cnt( des(j) ), des(j) ) = part%s(1:3,i)
-!         endif
-!         exit
-
-!       endif
-
-!     enddo
-!   enddo
-
-!   ! fill the holes inversely
-!   do i = send_cnt, 1, -1
-
-!     part%x( 1:3, this%ihole(i) ) = part%x( 1:3, npp )
-!     part%p( 1:3, this%ihole(i) ) = part%p( 1:3, npp )
-!     part%q( this%ihole(i) )      = part%q(npp)
-!     if ( has_spin ) then
-!       part%s( 1:3, this%ihole(i) ) = part%s( 1:3, npp )
-!     endif
-    
-!     npp = npp - 1
-
-!   enddo
-
-!   part%npp = npp
-
-! end subroutine pack_part_pipe
-
 subroutine resize_buf( ratio )
+! this subroutine is currently not in use.
 
   implicit none
 
@@ -834,9 +502,6 @@ function get_phys_bnd( proc_id, nvp, nst ) result( res )
   if ( loc_id == nvp-1 ) res( p_owd ) = .true.
   if ( st_id == 0 )      res( p_bwd ) = .true.
   if ( st_id == nst-1 )  res( p_fwd ) = .true.
-
-  ! print *, "pid = ", proc_id, ", phys_bnd = ", res
-  ! print *, "pid = ", proc_id, ", nst = ", nst, ", st_id = ", st_id
 
 end function get_phys_bnd
 
