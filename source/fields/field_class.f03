@@ -325,8 +325,8 @@ subroutine pipe_gc_send( this, tag, sid )
   integer, intent(inout) :: sid
 
   integer :: i, j, k, m
-  integer :: idproc, idproc_des, stageid, lnvp, comm
-  integer :: n1p, count, dtype, ierr
+  integer :: idproc, idproc_des, stageid, nstage, lnvp, comm
+  integer :: n1p, nzp, count, dtype, ierr
   integer, dimension(2) :: gc1, gc2
   real, dimension(:,:,:,:), allocatable, save :: buf
   character(len=20), save :: sname = "pipe_gc_send"
@@ -336,9 +336,11 @@ subroutine pipe_gc_send( this, tag, sid )
 
   lnvp       = this%pp%getlnvp()
   stageid    = this%pp%getstageid()
+  nstage     = this%pp%getnstage()
   idproc     = this%pp%getidproc()
-  idproc_des = idproc - lnvp
+  idproc_des = idproc + lnvp
   n1p        = size(this%rf_re(0)%f1, 2)
+  nzp        = this%gp%get_ndp(2)
   comm       = this%pp%getlworld()
   dtype      = this%pp%getmreal()
 
@@ -347,7 +349,7 @@ subroutine pipe_gc_send( this, tag, sid )
 
   if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
 
-  if ( stageid == 0 ) then
+  if ( stageid == nstage-1 ) then
     sid = MPI_REQUEST_NULL
     call stop_tprof( 'pipeline' )
     call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -362,7 +364,7 @@ subroutine pipe_gc_send( this, tag, sid )
   do k = 1, gc2(p_upper)
     do j = 1, n1p
       do i = 1, this%dim
-        buf(i,j,k,0) = this%rf_re(0)%f2(i, j-gc1(p_lower), k)
+        buf(i,j,k,0) = this%rf_re(0)%f2(i, j-gc1(p_lower), nzp+k)
       enddo
     enddo
   enddo
@@ -373,8 +375,8 @@ subroutine pipe_gc_send( this, tag, sid )
       do k = 1, gc2(p_upper)
         do j = 1, n1p
           do i = 1, this%dim
-            buf(i,j,k,2*m-1) = this%rf_re(m)%f2(i, j-gc1(p_lower), k)
-            buf(i,j,k,2*m  ) = this%rf_im(m)%f2(i, j-gc1(p_lower), k)
+            buf(i,j,k,2*m-1) = this%rf_re(m)%f2(i, j-gc1(p_lower), nzp+k)
+            buf(i,j,k,2*m  ) = this%rf_im(m)%f2(i, j-gc1(p_lower), nzp+k)
           enddo
         enddo
       enddo
@@ -400,8 +402,8 @@ subroutine pipe_gc_recv( this, tag )
   ! integer, intent(inout) :: rid
 
   integer :: i, j, k, m
-  integer :: idproc, idproc_src, stageid, nstage, lnvp, comm
-  integer :: n1p, nzp, count, dtype, ierr
+  integer :: idproc, idproc_src, stageid, lnvp, comm
+  integer :: n1p, count, dtype, ierr
   integer, dimension(2) :: gc1, gc2
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:,:), allocatable, save :: buf
@@ -412,11 +414,9 @@ subroutine pipe_gc_recv( this, tag )
 
   lnvp       = this%pp%getlnvp()
   stageid    = this%pp%getstageid()
-  nstage     = this%pp%getnstage()
   idproc     = this%pp%getidproc()
-  idproc_src = idproc + lnvp
+  idproc_src = idproc - lnvp
   n1p        = size(this%rf_re(0)%f1, 2)
-  nzp        = this%gp%get_ndp(2)
   comm       = this%pp%getlworld()
   dtype      = this%pp%getmreal()
 
@@ -425,7 +425,7 @@ subroutine pipe_gc_recv( this, tag )
 
   if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
 
-  if ( stageid == nstage-1 ) then
+  if ( stageid == 0 ) then
     call stop_tprof( 'pipeline' )
     call write_dbg( cls_name, sname, cls_level, 'ends' )
     return
@@ -444,7 +444,8 @@ subroutine pipe_gc_recv( this, tag )
   do k = 1, gc2(p_upper)
     do j = 1, n1p
       do i = 1, this%dim
-        this%rf_re(0)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,0)
+        this%rf_re(0)%f2(i, j-gc1(p_lower), k) = &
+          this%rf_re(0)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,0)
       enddo
     enddo
   enddo
@@ -455,8 +456,10 @@ subroutine pipe_gc_recv( this, tag )
       do k = 1, gc2(p_upper)
         do j = 1, n1p
           do i = 1, this%dim
-            this%rf_re(m)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,2*m-1)
-            this%rf_im(m)%f2(i, j-gc1(p_lower), nzp+k) = buf(i,j,k,2*m  )
+            this%rf_re(m)%f2(i, j-gc1(p_lower), k) = &
+              this%rf_re(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m-1)
+            this%rf_im(m)%f2(i, j-gc1(p_lower), k) = &
+              this%rf_im(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m  )
           enddo
         enddo
       enddo

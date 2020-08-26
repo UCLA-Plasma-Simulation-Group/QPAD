@@ -811,43 +811,6 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
    enddo
 
 end subroutine interp_emf
-!
-! subroutine pmove(this,fd,rtag,stag,sid)
-
-!    implicit none
-
-!    class(part3d), intent(inout) :: this
-!    class(field), intent(in) :: fd
-!    integer, intent(in) :: rtag, stag
-!    integer, intent(inout) :: sid
-! ! local data
-!    character(len=18), save :: sname = 'pmove:'
-!    class(ufield), pointer :: ud
-!    integer, dimension(9) :: info
-
-
-!    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-!    ud => fd%get_rf_re(0)
-
-!    if ( this%has_spin ) then
-!       call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-!       &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info, this%s)
-!    else
-!       call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-!       &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
-!    endif
-
-
-!    if (info(1) /= 0) then
-!       call write_err(cls_name//sname//'pmove_part3d error')
-!    endif
-
-!    if (this%pp%getstageid() == this%pp%getnstage() - 1) sid = MPI_REQUEST_NULL
-
-!    call write_dbg(cls_name, sname, cls_level, 'ends')
-
-! end subroutine pmove
 
 function getnpp(this)
 

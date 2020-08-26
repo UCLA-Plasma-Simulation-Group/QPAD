@@ -243,24 +243,8 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
   lsize = this%ndp
   noff = this%noff
 
-  if ( nstage == 1 ) then
-    call pwfield_pipe( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, &
-      rtag, stag, id, ierr )
-  else
-    if ( stageid == 0 ) then
-      lsize(2) = lsize(2) + 1
-      start_pos = 1
-    elseif ( stageid == nstage-1 ) then
-      lsize(2) = lsize(2) - 1
-      noff(2) = noff(2) + 1
-      start_pos = 2
-    else
-      noff(2) = noff(2) + 1
-      start_pos = 2
-    endif
-    call pwfield_pipe( this%pp, file, this%f2(dim,1:,start_pos:), gsize, lsize, noff, &
-      rtag, stag, id, ierr )
-  endif
+  call pwfield_pipe( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, &
+    rtag, stag, id, ierr )
 
   call stop_tprof( 'write hdf5' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
