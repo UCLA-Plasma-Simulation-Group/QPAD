@@ -82,9 +82,13 @@ subroutine read_input_json(this)
       if(found) then
          ! read the file
          call this%load_file(filename = './qpinput.json')
-         call this%input%check_for_errors(stat,error_msg)
+         ! call this%input%check_for_errors(stat,error_msg)
+         ! if (.not. stat) then
+         !    call write_err( error_msg )
+         ! end if
+         call this%input%check_for_errors(stat)
          if (.not. stat) then
-            call write_err( error_msg )
+            call write_err( 'read input file error!' )
          end if
       else
           call write_err( 'cannot find the input file' )

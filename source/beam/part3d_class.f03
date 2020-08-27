@@ -10,7 +10,6 @@ use field_class
 use ufield_class
 use fdist3d_class
 use hdf5io_class
-use part3d_comm
 use mpi
 use interpolation
 
@@ -22,7 +21,7 @@ public :: part3d
 
 type part3d
 
-   private
+   ! private
 
 ! qbm = particle charge/mass ratio
 ! dt = time interval between successive calculations
@@ -63,7 +62,6 @@ type part3d
    procedure :: update_bound => update_bound_part3d
    procedure, private :: push_spin => push_spin_part3d
 
-   procedure :: pmv  => pmove
    procedure :: wr   => writehdf5_part3d
    procedure :: wrst => writerst_part3d
    procedure :: rrst => readrst_part3d
@@ -78,8 +76,8 @@ character(len=20), parameter :: cls_name = "part3d"
 integer, parameter :: cls_level = 2
 
 ! buffer data for particle managers
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-integer(kind=LG), dimension(:), allocatable :: ihole
+! real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
+! integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 !
@@ -141,11 +139,11 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
          gp%get_ndp() )
    endif
 
-   if ( .not. allocated(sbufl) ) then
-      allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
-      allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
-      allocate( ihole( nbmax*2 ) )
-   endif
+   ! if ( .not. allocated(sbufl) ) then
+   !    allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
+   !    allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
+   !    allocate( ihole( nbmax*2 ) )
+   ! endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_part3d
@@ -469,8 +467,9 @@ subroutine push_reduced_part3d( this, ef, bf )
    type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
    
    integer :: i, np, max_mode
-   real :: qtmh, dt_gam
+   real :: qtmh, dt_gam, igam
    real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old
+   real, dimension(2, p_cache_size) :: wp
    real, dimension(p_cache_size) :: gam
    integer(kind=LG) :: ptrcur, pp
    character(len=32), save :: sname = "push_reduced_part3d"
@@ -518,15 +517,15 @@ subroutine push_reduced_part3d( this, ef, bf )
          bp(2,i) = bp(2,i) * qtmh
          bp(3,i) = bp(3,i) * qtmh
          ! calculate transverse force
-         ep(1,i) = ep(1,i) - bp(2,i)
-         ep(2,i) = ep(2,i) + bp(1,i)
+         wp(1,i) = ep(1,i) - bp(2,i)
+         wp(2,i) = ep(2,i) + bp(1,i)
       enddo
 
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + ep(1,i)
-         this%p(2,pp) = this%p(2,pp) + ep(2,i)
+         this%p(1,pp) = this%p(1,pp) + wp(1,i)
+         this%p(2,pp) = this%p(2,pp) + wp(2,i)
          this%p(3,pp) = this%p(3,pp) + ep(3,i)
          gam(i) = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
          pp = pp + 1
@@ -535,14 +534,20 @@ subroutine push_reduced_part3d( this, ef, bf )
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + ep(1,i)
-         this%p(2,pp) = this%p(2,pp) + ep(2,i)
+         this%p(1,pp) = this%p(1,pp) + wp(1,i)
+         this%p(2,pp) = this%p(2,pp) + wp(2,i)
          this%p(3,pp) = this%p(3,pp) + ep(3,i)
          pp = pp + 1
       enddo
 
       ! push spin
       if ( this%has_spin ) then
+         do i = 1, np
+            igam = 1.0 / gam(i)
+            bp(1,i) = bp(1,i) * igam
+            bp(2,i) = bp(2,i) * igam
+            bp(3,i) = bp(3,i) * igam
+         enddo
          call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
       endif
 
@@ -806,44 +811,7 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
    enddo
 
 end subroutine interp_emf
-!
-subroutine pmove(this,fd,rtag,stag,sid)
 
-   implicit none
-
-   class(part3d), intent(inout) :: this
-   class(field), intent(in) :: fd
-   integer, intent(in) :: rtag, stag
-   integer, intent(inout) :: sid
-! local data
-   character(len=18), save :: sname = 'pmove:'
-   class(ufield), pointer :: ud
-   integer, dimension(9) :: info
-
-
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   ud => fd%get_rf_re(0)
-
-   if ( this%has_spin ) then
-      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info, this%s)
-   else
-      call pmove_part3d(this%x, this%p, this%q, this%pp,ud,this%npp,this%dr,this%dz,sbufr,sbufl,&
-      &rbufr,rbufl,ihole,this%pbuff,this%part_dim,this%npmax,this%nbmax,rtag,stag,sid,info)
-   endif
-
-
-   if (info(1) /= 0) then
-      call write_err(cls_name//sname//'pmove_part3d error')
-   endif
-
-   if (this%pp%getstageid() == this%pp%getnstage() - 1) sid = MPI_REQUEST_NULL
-
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-
-end subroutine pmove
-!
 function getnpp(this)
 
    implicit none

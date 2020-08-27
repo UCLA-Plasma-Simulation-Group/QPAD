@@ -10,6 +10,7 @@ use field_src_class
 use hdf5io_class
 use param
 use sysutil
+use part3d_comm
 
 implicit none
 
@@ -49,7 +50,7 @@ subroutine init_sim_beams( this, input )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_beams'
-  integer :: i, n
+  integer :: i, n, part_dim
   ! real, dimension(3,100) :: arg
   ! logical :: quiet
   real :: qm, qbm, dt, amm = 0.0
@@ -93,6 +94,7 @@ subroutine init_sim_beams( this, input )
 
   allocate( this%beam(n), this%pf(n) )
 
+  ! initialize beam profile for each beam
   do i = 1, n
 
     call input%get( 'beam('//num2str(i)//').profile', npf )
@@ -113,6 +115,20 @@ subroutine init_sim_beams( this, input )
     case default
       call write_err( 'Invalid beam profile!' )
     end select
+
+  enddo
+
+  ! initialize beam particle manager
+  do i = 1, n
+    part_dim = p_x_dim + p_p_dim + 1
+    call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
+    if ( has_spin ) part_dim = part_dim + p_s_dim
+    call set_part3d_comm( part_dim, this%pf(i)%p%getnpmax() )
+  enddo
+  call init_part3d_comm( this%pp, this%gp )
+
+  ! initialize beams
+  do i = 1, n
 
     call input%get( 'beam('//num2str(i)//').q', qm )
     call input%get( 'beam('//num2str(i)//').m', qbm )

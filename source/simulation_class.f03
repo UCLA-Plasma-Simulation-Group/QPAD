@@ -198,18 +198,23 @@ subroutine run_simulation( this )
   spe  => this%species%spe
 
 
-  ! deposit beams and do diagnostics to see the initial distribution
-  call q_beam%as(0.0)
-  call q_spe%as(0.0)
-  ! pipeline data transfer for beams
-  do k = 1, this%nbeams
-    this%tag_bq(k) = ntag()
-    call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
-  enddo
-  do k = 1, this%nbeams
-    call beam(k)%qdp( this%tag_bq(k) )
-  enddo
-  call this%diag%run( 0, this%dt )
+  ! deposit beams and do diagnostics to see the initial distribution if it is
+  ! a fresh run
+  if ( this%start3d == 1 ) then
+
+    call q_beam%as(0.0)
+    call q_spe%as(0.0)
+    ! pipeline data transfer for beams
+    do k = 1, this%nbeams
+      this%tag_bq(k) = ntag()
+      call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
+    enddo
+    do k = 1, this%nbeams
+      call beam(k)%qdp( this%tag_bq(k) )
+    enddo
+    call this%diag%run( 0, this%dt )
+
+  endif
 
   do i = this%start3d, this%nstep3d
 
@@ -244,16 +249,16 @@ subroutine run_simulation( this )
     e_spe = 0.0
     psi   = 0.0
 
-    do j = 1, this%nstep2d
+    do j = 1, this%nstep2d + 1
 
       ! finish the beam qdeposit
-      if ( j == this%nstep2d ) then
+      if ( j == this%nstep2d + 1 ) then
         do k = 1, this%nbeams
           call beam(k)%qdp( this%tag_bq(k) )
         enddo
       endif
 
-      call q_beam%copy_slice( j+1, p_copy_2to1 )
+      call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
       q_spe = 0.0
@@ -261,12 +266,12 @@ subroutine run_simulation( this )
         call spe(k)%qdp( q_spe )
       enddo
 
-      call q_spe%copy_slice( j+1, p_copy_1to2 )
+      call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
       do k = 1, this%nspecies
         call spe(k)%extpsi( psi )
       enddo
-      ! call e%solve( psi, j+1 )
+      ! call e%solve( psi, j )
       call b_spe%solve( cu )
 
       do l = 1, this%iter
@@ -286,9 +291,9 @@ subroutine run_simulation( this )
         call b_spe%solve( cu )
         if ( l == this%iter ) then
           do k = 1, this%nspecies
-            call spe(k)%cbq(j+1)
+            call spe(k)%cbq(j)
           enddo
-          call cu%copy_slice( j+1, p_copy_1to2 )
+          call cu%copy_slice( j, p_copy_1to2 )
         endif
 
       enddo ! iteration
@@ -302,7 +307,7 @@ subroutine run_simulation( this )
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
         if ( this%diag%has_vpotz ) call vpot%solve_vpotz( cu )
         if ( this%diag%has_vpott ) call vpot%solve_vpott( cu )
-        call vpot%copy_slice( j+1, p_copy_1to2 )
+        call vpot%copy_slice( j, p_copy_1to2 )
       endif
 
       call dot_f1( this%dxi, dcu )
@@ -310,11 +315,11 @@ subroutine run_simulation( this )
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
       enddo
-      call e%copy_slice( j+1, p_copy_1to2 )
-      call b%copy_slice( j+1, p_copy_1to2 )
-      call psi%copy_slice( j+1, p_copy_1to2 )
-      call b_spe%copy_slice( j+1, p_copy_1to2 )
-      call e_spe%copy_slice( j+1, p_copy_1to2 )
+      call e%copy_slice( j, p_copy_1to2 )
+      call b%copy_slice( j, p_copy_1to2 )
+      call psi%copy_slice( j, p_copy_1to2 )
+      call b_spe%copy_slice( j, p_copy_1to2 )
+      call e_spe%copy_slice( j, p_copy_1to2 )
 
     enddo ! 2d loop
 
