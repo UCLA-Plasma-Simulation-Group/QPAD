@@ -649,9 +649,10 @@ subroutine update_bound_part3d( this )
    character(len=32), save :: sname = "update_bound_part3d"
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call start_tprof( 'push 3D particles' )
 
    if ( this%npp == 0 ) return
+
+   call start_tprof( 'push 3D particles' )
 
    do while ( i < this%npp )
 
