@@ -112,7 +112,7 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    this%npmax = npmax
 
    this%edge(1) = gp%get_nd(1) * this%dr
-   this%edge(2) = (gp%get_nd(2) - 1) * this%dz
+   this%edge(2) = gp%get_nd(2) * this%dz
 
    ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
    nbmax = int(0.01*this%npmax)
@@ -139,11 +139,6 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
          gp%get_ndp() )
    endif
 
-   ! if ( .not. allocated(sbufl) ) then
-   !    allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
-   !    allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
-   !    allocate( ihole( nbmax*2 ) )
-   ! endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_part3d
@@ -221,8 +216,8 @@ subroutine qdeposit_part3d( this, q )
 
       pp = ptrcur
       do i = 1, np
-         nn = int( pos_r(i) )
-         mm = int( pos_z(i) )
+         nn = floor( pos_r(i) )
+         mm = floor( pos_z(i) )
 
          ! in-cell position
          pos_r(i) = pos_r(i) - real(nn)
@@ -644,7 +639,7 @@ subroutine update_bound_part3d( this )
 
    class(part3d), intent(inout) :: this
    ! local
-   integer(kind=LG) :: i = 1
+   integer(kind=LG) :: i
    real :: pos_r, pos_z
    character(len=32), save :: sname = "update_bound_part3d"
 
@@ -654,25 +649,15 @@ subroutine update_bound_part3d( this )
 
    call start_tprof( 'push 3D particles' )
 
+   i = 1
+
    do while ( i < this%npp )
 
       pos_r = sqrt( this%x(1,i)**2 + this%x(2,i)**2 )
       pos_z = this%x(3,i)
 
-      ! check if particle goes out of r-edge
-      if ( pos_r > this%edge(1) ) then
-         this%x(:,i) = this%x(:, this%npp)
-         this%p(:,i) = this%p(:, this%npp)
-         this%q(i)   = this%q(this%npp)
-         if ( this%has_spin ) then
-            this%s(:,i) = this%s(:, this%npp)
-         endif
-         this%npp = this%npp - 1
-         cycle
-      endif
-
-      ! check if particle goes out of z-edge
-      if ( pos_z > this%edge(2) ) then
+      ! check if particle goes out of the physical edge
+      if ( pos_r >= this%edge(1) .or. pos_z >= this%edge(2) ) then
          this%x(:,i) = this%x(:, this%npp)
          this%p(:,i) = this%p(:, this%npp)
          this%q(i)   = this%q(this%npp)
@@ -690,7 +675,7 @@ subroutine update_bound_part3d( this )
    pos_r = sqrt( this%x(1,this%npp)**2 + this%x(2,this%npp)**2 )
    pos_z = this%x(3,this%npp)
 
-   if ( pos_r > this%edge(1) .or. pos_z > this%edge(2) ) then
+   if ( pos_r >= this%edge(1) .or. pos_z >= this%edge(2) ) then
       this%npp = this%npp - 1
    endif
 

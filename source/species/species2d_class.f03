@@ -27,7 +27,8 @@ type species2d
 
    class(part2d), pointer :: pd => null()
    class(field_rho), allocatable :: q, qn
-   class(field_jay), allocatable :: cu, amu, dcu
+   class(field_jay), allocatable :: cu, amu
+   class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
    class(parallel_pipe), pointer :: pp => null()
 

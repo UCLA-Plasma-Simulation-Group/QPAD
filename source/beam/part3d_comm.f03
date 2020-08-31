@@ -520,8 +520,8 @@ function goto_here( x, redge, zedge )
   z  = x(3)
   r  = sqrt( x(1)*x(1) + x(2)*x(2) )
   
-  goto_here = z > zedge(p_lower) .and. z <= zedge(p_upper) .and. &
-              r > redge(p_lower) .and. r <= redge(p_upper)
+  goto_here = z >= zedge(p_lower) .and. z < zedge(p_upper) .and. &
+              r >= redge(p_lower) .and. r < redge(p_upper)
 
 end function goto_here
 
@@ -541,16 +541,16 @@ function goto_dir( x, redge, zedge, dir )
   select case ( dir )
   case ( p_fwd )
     pos = x(3)
-    goto_dir = pos >  zedge(p_upper)
+    goto_dir = pos >= zedge(p_upper)
   case ( p_bwd )
     pos = x(3)
-    goto_dir = pos <= zedge(p_lower)
+    goto_dir = pos < zedge(p_lower)
   case ( p_iwd )
     pos = sqrt( x(1)*x(1) + x(2)*x(2) )
-    goto_dir = pos <= redge(p_lower)
+    goto_dir = pos < redge(p_lower)
   case ( p_owd )
     pos = sqrt( x(1)*x(1) + x(2)*x(2) )
-    goto_dir = pos >  redge(p_upper)
+    goto_dir = pos >= redge(p_upper)
   end select
 
 end function goto_dir
