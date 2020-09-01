@@ -75,10 +75,6 @@ save
 character(len=20), parameter :: cls_name = "part3d"
 integer, parameter :: cls_level = 2
 
-! buffer data for particle managers
-! real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-! integer(kind=LG), dimension(:), allocatable :: ihole
-
 contains
 !
 subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
