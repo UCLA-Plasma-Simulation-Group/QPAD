@@ -76,7 +76,7 @@ character(len=20), parameter :: cls_name = "part3d"
 integer, parameter :: cls_level = 2
 
 contains
-!
+
 subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
 
    implicit none
@@ -90,7 +90,7 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    real, intent(in) :: amm
 ! local data
    character(len=18), save :: sname = 'init_part3d'
-   integer :: prof, npmax, nbmax
+   integer :: npmax, nbmax
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -114,7 +114,6 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    nbmax = int(0.01*this%npmax)
    this%nbmax = nbmax
    this%npp = 0
-   prof = pf%getnpf()
    this%z0 = pf%getz0()
 
    allocate( this%x( p_x_dim, npmax ) )

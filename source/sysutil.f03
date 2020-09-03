@@ -387,8 +387,9 @@ subroutine write_tprof()
     write ( fid, '(A25, A15, A10, 4A15)' ) &
       "EVENT", "AVG TIME (s)", "(%)", "MAX TIME (s)", "MIN TIME (s)", "STD ERR (s)", "BALANCE (%)"
     write ( fid, * ) repeat( '-', 120 )
-    allocate( buf( nproc, num_event ) )
   endif
+
+  allocate( buf( nproc, num_event ) )
 
   do i = 1, num_event
     call MPI_GATHER( t_event(i), 1, MPI_DOUBLE_PRECISION, &

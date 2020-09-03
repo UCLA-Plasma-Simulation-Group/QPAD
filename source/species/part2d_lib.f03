@@ -21,109 +21,111 @@ private :: cls_name, cls_level, erstr
 
 contains
 !
-subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
+! subroutine part2d_qdeposit(part,npp,dr,q_re,q_im,num_modes)
 
-   implicit none
+!    implicit none
 
-   real, dimension(:,:), pointer, intent(in) :: part
-   integer(kind=LG), intent(in) :: npp
-   real, intent(in) :: dr
-   class(ufield), dimension(:), pointer, intent(in) :: q_re, q_im
-   integer, intent(in) :: num_modes
-! local data
-   character(len=20), save :: sname = "part2d_qdeposit"
-   integer :: i, nn, noff, n1p, j
-   integer(kind=LG) :: ii
-   real, dimension(:,:), pointer :: q0, qr, qi
-   real :: r0, r, qc, lq, rq, rcr, rci
-   complex(kind=DB) :: rc, rc0
+!    real, dimension(:,:), pointer, intent(in) :: part
+!    integer(kind=LG), intent(in) :: npp
+!    real, intent(in) :: dr
+!    class(ufield), dimension(:), pointer, intent(in) :: q_re, q_im
+!    integer, intent(in) :: num_modes
+! ! local data
+!    character(len=20), save :: sname = "part2d_qdeposit"
+!    integer :: i, nn, noff, n1p, j
+!    integer(kind=LG) :: ii
+!    real, dimension(:,:), pointer :: q0, qr, qi
+!    real :: r0, r, qc, lq, rq, rcr, rci
+!    complex(kind=DB) :: rc, rc0
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call start_tprof( 'deposit 2D particles' )
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
+!    call start_tprof( 'deposit 2D particles' )
 
-   noff = q_re(0)%get_noff(1)
-   n1p = q_re(0)%get_ndp(1)
-   q0 => q_re(0)%get_f1()
-   qr => null(); qi => null()
+!    noff = q_re(0)%get_noff(1)
+!    n1p = q_re(0)%get_ndp(1)
+!    q0 => q_re(0)%get_f1()
+!    qr => null(); qi => null()
 
-   do ii = 1, npp
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
-      qc = part(8,ii)
-      rc0 = cmplx( part(1,ii), -part(2,ii), kind=DB) / r0
-      r = r0/dr + 1.0
-      nn = r
-      rq = qc * (r - real(nn))
-      lq = qc - rq
-      nn = nn - noff
-      q0(1,nn)   = q0(1,nn)   + lq
-      q0(1,nn+1) = q0(1,nn+1) + rq
-      rc = rc0
-      do i = 1, num_modes
-         rcr = real(rc)
-         rci = aimag(rc)
-         qr => q_re(i)%get_f1()
-         qi => q_im(i)%get_f1()
-         qr(1,nn)   = qr(1,nn)   + lq * rcr
-         qr(1,nn+1) = qr(1,nn+1) + rq * rcr
-         qi(1,nn)   = qi(1,nn)   + lq * rci
-         qi(1,nn+1) = qi(1,nn+1) + rq * rci
-         rc = rc * rc0
-      enddo
-   enddo
+!    do ii = 1, npp
+!       r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
+!       qc = part(8,ii)
+!       rc0 = cmplx( part(1,ii), -part(2,ii), kind=DB) / r0
+!       r = r0/dr + 1.0
+!       nn = r
+!       rq = qc * (r - real(nn))
+!       lq = qc - rq
+!       nn = nn - noff
+!       q0(1,nn)   = q0(1,nn)   + lq
+!       q0(1,nn+1) = q0(1,nn+1) + rq
+!       rc = rc0
+!       do i = 1, num_modes
+!          rcr = real(rc)
+!          rci = aimag(rc)
+!          qr => q_re(i)%get_f1()
+!          qi => q_im(i)%get_f1()
+!          qr(1,nn)   = qr(1,nn)   + lq * rcr
+!          qr(1,nn+1) = qr(1,nn+1) + rq * rcr
+!          qi(1,nn)   = qi(1,nn)   + lq * rci
+!          qi(1,nn+1) = qi(1,nn+1) + rq * rci
+!          rc = rc * rc0
+!       enddo
+!    enddo
 
-   if (noff == 0) then
+!    if (noff == 0) then
 
-      q0(1,0) = 0.0 ! guard cell is useless on axis
-      q0(1,1) = 8.0 * q0(1,1)
-      do j = 2, n1p+1
-         r = j + noff - 1
-         q0(1,j) = q0(1,j) / r
-      enddo
+!       q0(1,0) = 0.0 ! guard cell is useless on axis
+!       q0(1,1) = 8.0 * q0(1,1)
+!       do j = 2, n1p+1
+!          r = j + noff - 1
+!          q0(1,j) = q0(1,j) / r
+!       enddo
 
-      do i = 1, num_modes
-         qr => q_re(i)%get_f1()
-         qi => q_im(i)%get_f1()
-         qr(1,0) = 0.0
-         qi(1,0) = 0.0
-         qr(1,1) = 0.0
-         qi(1,1) = 0.0
-         do j = 2, n1p+1
-            r = j + noff - 1
-            qr(1,j) = qr(1,j) / r
-            qi(1,j) = qi(1,j) / r
-         enddo
-      enddo
+!       do i = 1, num_modes
+!          qr => q_re(i)%get_f1()
+!          qi => q_im(i)%get_f1()
+!          qr(1,0) = 0.0
+!          qi(1,0) = 0.0
+!          qr(1,1) = 0.0
+!          qi(1,1) = 0.0
+!          do j = 2, n1p+1
+!             r = j + noff - 1
+!             qr(1,j) = qr(1,j) / r
+!             qi(1,j) = qi(1,j) / r
+!          enddo
+!       enddo
 
-   else
+!    else
 
-      do j = 0, n1p+1
-         r = j + noff -1
-         q0(1,j) = q0(1,j) / r
-      enddo
+!       do j = 0, n1p+1
+!          r = j + noff -1
+!          q0(1,j) = q0(1,j) / r
+!       enddo
 
-      do i = 1, num_modes
-         qr => q_re(i)%get_f1()
-         qi => q_im(i)%get_f1()
-         do j = 0, n1p+1
-            r = j + noff -1
-            qr(1,j) = qr(1,j) / r
-            qi(1,j) = qi(1,j) / r
-         enddo
-      enddo
+!       do i = 1, num_modes
+!          qr => q_re(i)%get_f1()
+!          qi => q_im(i)%get_f1()
+!          do j = 0, n1p+1
+!             r = j + noff -1
+!             qr(1,j) = qr(1,j) / r
+!             qi(1,j) = qi(1,j) / r
+!          enddo
+!       enddo
 
-   endif
+!    endif
 
-   call stop_tprof( 'deposit 2D particles' )
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    call stop_tprof( 'deposit 2D particles' )
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine part2d_qdeposit
+! end subroutine part2d_qdeposit
 !
-subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
+subroutine part2d_amjdeposit(x,p,gamma,q,psi,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 &cu_re,cu_im,dcu_re,dcu_im,amu_re,amu_im,num_modes)
 
    implicit none
 
-   real, dimension(:,:), pointer, intent(in) :: part
+   ! real, dimension(:,:), pointer, intent(in) :: part
+   real, dimension(:,:), pointer, intent(in) :: x, p
+   real, dimension(:), pointer, intent(in) :: gamma, q, psi
    integer(kind=LG), intent(in) :: npp
    real, intent(in) :: dr, dt, qbm
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
@@ -161,12 +163,18 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
    qtmh = 0.5*qbm*dt
    dti = 1.0/dt
    do ii = 1, npp
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
-      pcos = part(1,ii) / r0
-      psin = part(2,ii) / r0
-      p6 = part(6,ii)
-      p7 = part(7,ii)
-      qc = part(8,ii)
+      ! r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
+      ! pcos = part(1,ii) / r0
+      ! psin = part(2,ii) / r0
+      ! p6 = part(6,ii)
+      ! p7 = part(7,ii)
+      ! qc = part(8,ii)
+      r0 = sqrt( x(1,ii)**2 + x(2,ii)**2 )
+      pcos = x(1,ii) / r0
+      psin = x(2,ii) / r0
+      p6 = gamma(ii)
+      p7 = psi(ii)
+      qc = q(ii)
       rc0 = cmplx( pcos, psin, kind=DB )
       r = r0/dr + 1.0
       nn = r
@@ -203,8 +211,10 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       ddx = (-1.0)*qtmh2*dx(1) + qtmh*ox(2)
       ddy = (-1.0)*qtmh2*dx(2) - qtmh*ox(1)
 ! half acceleration
-      vx = part(3,ii) * pcos + part(4,ii) * psin
-      vy = part(4,ii) * pcos - part(3,ii) * psin
+      ! vx = part(3,ii) * pcos + part(4,ii) * psin
+      ! vy = part(4,ii) * pcos - part(3,ii) * psin
+      vx = p(1,ii) * pcos + p(2,ii) * psin
+      vy = p(2,ii) * pcos - p(1,ii) * psin
       acx = vx + ddx
       acy = vy + ddy
 ! find inverse gamma
@@ -228,7 +238,8 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
       ox(2) = 0.5*(v2 + vy)
       ox(3) = 0.5*(1.0+ox(1)*ox(1)+ox(2)*ox(2))*ip7-0.5*p7
 
-      part(6,ii) = p7 + ox(3)
+      ! part(6,ii) = p7 + ox(3)
+      gamma(ii) = p7 + ox(3)
       vx = (v1 - vx)*dti
       vy = (v2 - vy)*dti
       dx(3) = qbm*(dx(3)+(dx(1)*ox(1)+dx(2)*ox(2))*ip7)
@@ -447,12 +458,14 @@ subroutine part2d_amjdeposit(part,npp,dr,dt,qbm,ef_re,ef_im,bf_re,bf_im,&
 
 end subroutine part2d_amjdeposit
 !
-subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
+subroutine part2d_push(x,p,gamma,q,psi,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
 &bf_re,bf_im,num_modes)
 
    implicit none
 
-   real, dimension(:,:), pointer, intent(inout) :: part
+   ! real, dimension(:,:), pointer, intent(inout) :: part
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, psi, q
    integer(kind=LG), intent(inout) :: npp
    real, intent(in) :: dr, dt, qbm
    class(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, &
@@ -469,7 +482,7 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    real, dimension(3) :: dx, dxx, ox, oxx, om
    real :: acx, acy, acz, omt, anorm
    real :: rot1, rot2, rot3, rot4, rot5, rot6, rot7, rot8, rot9
-   real :: dtc1, x, y, pcos, psin
+   real :: dtc1, pos_x, pos_y, pcos, psin
    complex(kind=DB) :: rc, rc0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -488,13 +501,19 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
    ii = 1
    do
       if (ii > npp) exit
-      r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
-      ! th = part(2,ii)
-      pcos = part(1,ii) / r0
-      psin = part(2,ii) / r0
-      p6 = part(6,ii)
-      p7 = part(7,ii)
-      qc = part(8,ii)
+      ! r0 = sqrt( part(1,ii)**2 + part(2,ii)**2 )
+      ! ! th = part(2,ii)
+      ! pcos = part(1,ii) / r0
+      ! psin = part(2,ii) / r0
+      ! p6 = part(6,ii)
+      ! p7 = part(7,ii)
+      ! qc = part(8,ii)
+      r0 = sqrt( x(1,ii)**2 + x(2,ii)**2 )
+      pcos = x(1,ii) / r0
+      psin = x(2,ii) / r0
+      p6 = gamma(ii)
+      p7 = psi(ii)
+      qc = q(ii)
       rc0 = cmplx(pcos, psin, kind=DB)
       r = r0/dr + 1.0
       nn = r
@@ -539,9 +558,9 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
 ! calculate half impulse
       dx(1:3) = qtmh2*dx(1:3)
 ! half acceleration
-      acx = part(3,ii) + dx(1)
-      acy = part(4,ii) + dx(2)
-      acz = part(5,ii) + dx(3)
+      acx = p(1,ii) + dx(1)
+      acy = p(2,ii) + dx(2)
+      acz = p(3,ii) + dx(3)
 
       om(1:3) = qtmh1*ox(1:3)
       omt = om(1)*om(1) + om(2)*om(2) + om(3)*om(3)
@@ -567,9 +586,9 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
       dtc1 = dt/(sqrt(1+dx(1)*dx(1)+dx(2)*dx(2)+dx(3)*dx(3))-dx(3))
 
       ! new position
-      x = part(1,ii) + dx(1) * dtc1
-      y = part(2,ii) + dx(2) * dtc1
-      rn = sqrt(x**2 + y**2)
+      pos_x = x(1,ii) + dx(1) * dtc1
+      pos_y = x(2,ii) + dx(2) * dtc1
+      rn = sqrt(pos_x**2 + pos_y**2)
 
       if (rn >= edge) then
          if (ii == npp) then
@@ -577,17 +596,22 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
             exit
          else
             do i = 1, xdim
-               part(i,ii) = part(i,npp)
+               ! part(i,ii) = part(i,npp)
+               x(:,ii)   = x(:,npp)
+               p(:,ii)   = p(:,npp)
+               gamma(ii) = gamma(npp)
+               q(ii)     = q(npp)
+               psi(ii)   = psi(npp)
             end do
             npp = npp - 1
             cycle
          end if
       else
-         part(1,ii) = x
-         part(2,ii) = y
-         part(3,ii) = dx(1)
-         part(4,ii) = dx(2)
-         part(5,ii) = dx(3)
+         x(1,ii) = pos_x
+         x(2,ii) = pos_y
+         p(1,ii) = dx(1)
+         p(2,ii) = dx(2)
+         p(3,ii) = dx(3)
          ii = ii + 1
       end if
    end do
@@ -597,11 +621,13 @@ subroutine part2d_push(part,npp,dr,xdim,dt,qbm,ef_re,ef_im,&
 
 end subroutine part2d_push
 !
-subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
+subroutine part2d_pmove(x,p,gamma,q,psi,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
 
    implicit none
 
-   real, dimension(:,:), pointer, intent(inout) :: part
+   ! real, dimension(:,:), pointer, intent(inout) :: part
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
    real, dimension(:,:), intent(inout) :: sbufl,sbufr,rbufl,rbufr
    integer(kind=LG), intent(inout) :: npp
    real, intent(in) :: dr
@@ -662,14 +688,21 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
       jsr(1) = 0
       jss(2) = 0
       do j = 1, npp
-         xt = sqrt( part(1,j)**2 + part(2,j)**2 )
+         ! xt = sqrt( part(1,j)**2 + part(2,j)**2 )
+         xt = sqrt( x(1,j)**2 + x(2,j)**2 )
 ! particles going down
          if (xt < edgel) then
             if (jsl(1) < nbmax) then
                jsl(1) = jsl(1) + 1
-               do i = 1, xdim
-                  sbufl(i,jsl(1)) = part(i,j)
-               end do
+               ! do i = 1, xdim
+               !    sbufl(i,jsl(1)) = part(i,j)
+               ! end do
+               sbufl(1:2,jsl(1)) = x(:,j)
+               sbufl(3:5,jsl(1)) = p(:,j)
+               sbufl(6,jsl(1)) = gamma(j)
+               sbufl(7,jsl(1)) = psi(j)
+               sbufl(8,jsl(1)) = q(j)
+
                ihole(jsl(1)+jsr(1)) = j
             else
                jss(2) = 1
@@ -679,9 +712,15 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
          else if (xt >= edger) then
             if (jsr(1) < nbmax) then
                jsr(1) = jsr(1) + 1
-               do i = 1, xdim
-                  sbufr(i,jsr(1)) = part(i,j)
-               end do
+               ! do i = 1, xdim
+               !    sbufr(i,jsr(1)) = part(i,j)
+               ! end do
+               sbufr(1:2,jsr(1)) = x(:,j)
+               sbufr(3:5,jsr(1)) = p(:,j)
+               sbufr(6,jsr(1)) = gamma(j)
+               sbufr(7,jsr(1)) = psi(j)
+               sbufr(8,jsr(1)) = q(j)
+
                ihole(jsl(1)+jsr(1)) = j
             else
                jss(2) = 1
@@ -831,9 +870,14 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
 ! distribute particles coming from below into holes
          jss(2) = min0(jss(1),jsl(2))
          do j = 1, jss(2)
-            do i = 1, xdim
-               part(i,ihole(j)) = rbufl(i,j)
-            end do
+            ! do i = 1, xdim
+            !    part(i,ihole(j)) = rbufl(i,j)
+            ! end do
+            x(:,ihole(j))   = rbufl(1:2,j)
+            p(:,ihole(j))   = rbufl(3:5,j)
+            gamma(ihole(j)) = rbufl(6,j)
+            psi(ihole(j))   = rbufl(7,j)
+            q(ihole(j))     = rbufl(8,j)
          end do
          if (jss(1) > jsl(2)) then
             jss(2) = min0(jss(1)-jsl(2),jsr(2))
@@ -844,15 +888,25 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
 ! no more particles coming from below or back
 ! distribute particles coming from above or front into holes
             if (jss(1) > jsl(2)) then
-               do i = 1, xdim
-                  part(i,ihole(j+jsl(2))) = rbufr(i,j)
-               end do
+               ! do i = 1, xdim
+               !    part(i,ihole(j+jsl(2))) = rbufr(i,j)
+               ! end do
+               x(:,ihole(j+jsl(2)))   = rbufr(1:2,j)
+               p(:,ihole(j+jsl(2)))   = rbufr(3:5,j)
+               gamma(ihole(j+jsl(2))) = rbufr(6,j)
+               psi(ihole(j+jsl(2)))   = rbufr(7,j)
+               q(ihole(j+jsl(2)))     = rbufr(8,j)
             else
 ! no more holes
 ! distribute remaining particles from below or back into bottom
-               do i = 1, xdim
-                  part(i,j+npp) = rbufl(i,j+jss(1))
-               end do
+               ! do i = 1, xdim
+                  ! part(i,j+npp) = rbufl(i,j+jss(1))
+               ! end do
+               x(:,j+npp)   = rbufl(1:2,j+jss(1))
+               p(:,j+npp)   = rbufl(3:5,j+jss(1))
+               gamma(j+npp) = rbufl(6,j+jss(1))
+               psi(j+npp)   = rbufl(7,j+jss(1))
+               q(j+npp)     = rbufl(8,j+jss(1))
             end if
             end do
             if (jss(1) <= jsl(2)) then
@@ -875,16 +929,26 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
                j2 = jss(1) + jss(2) - j + 1
                if (j1 > ihole(j2)) then
 ! move particle only if it is below current hole
-                  do i = 1, xdim
-                     part(i,ihole(j2)) = part(i,j1)
-                  end do
+                  ! do i = 1, xdim
+                     ! part(i,ihole(j2)) = part(i,j1)
+                  ! end do
+                  x(:,ihole(j2))   = x(:,j1)
+                  p(:,ihole(j2))   = p(:,j1)
+                  gamma(ihole(j2)) = gamma(j1)
+                  psi(ihole(j2))   = psi(j1)
+                  q(ihole(j2))     = q(j1)
                end if
             else
 ! no more holes
 ! distribute remaining particles from above or front into bottom
-               do i = 1, xdim
-                  part(i,j+npp) = rbufr(i,j+jss(1))
-               end do
+               ! do i = 1, xdim
+               !    part(i,j+npp) = rbufr(i,j+jss(1))
+               ! end do
+               x(:,j+npp)   = rbufr(1:2,j+jss(1))
+               p(:,j+npp)   = rbufr(3:5,j+jss(1))
+               gamma(j+npp) = rbufr(6,j+jss(1))
+               psi(j+npp)   = rbufr(7,j+jss(1))
+               q(j+npp)     = rbufr(8,j+jss(1))
             end if
          end do
          if (jss(2) > 0) then
@@ -927,11 +991,13 @@ subroutine part2d_pmove(part,pp,npp,dr,xdim,npmax,nbmax,ud,sbufl,sbufr,rbufl,rbu
    return
 end subroutine part2d_pmove
 !
-subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
+subroutine part2d_extractpsi(x,p,gamma,q,psi,npp,dr,qbm,psi_re,psi_im,num_modes)
 
    implicit none
 
-   real, dimension(:,:), pointer, intent(inout) :: part
+   ! real, dimension(:,:), pointer, intent(inout) :: part
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
    integer(kind=LG), intent(in) :: npp
    integer, intent(in) :: num_modes
    real, intent(in) :: dr,qbm
@@ -953,11 +1019,15 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
    psir => null(); psii => null()
 
    do ii = 1, npp
-      r0 = sqrt(part(1,ii)**2+part(2,ii)**2)
-      ! th = part(2,ii)
-      vx = part(3,ii)
-      vy = part(4,ii)
-      rc0 = cmplx(part(1,ii),part(2,ii),kind=DB) / r0
+      ! r0 = sqrt(part(1,ii)**2+part(2,ii)**2)
+      ! ! th = part(2,ii)
+      ! vx = part(3,ii)
+      ! vy = part(4,ii)
+      ! rc0 = cmplx(part(1,ii),part(2,ii),kind=DB) / r0
+      r0 = sqrt(x(1,ii)**2+x(2,ii)**2)
+      vx = p(1,ii)
+      vy = p(2,ii)
+      rc0 = cmplx(x(1,ii),x(2,ii),kind=DB) / r0
       r = r0/dr + 1.0
       nn = r
       dd = r - real(nn)
@@ -976,8 +1046,10 @@ subroutine part2d_extractpsi(part,npp,dr,qbm,psi_re,psi_im,num_modes)
          rc = rc*rc0
       end do
       dx = - dx*qbm
-      part(7,ii) = 1.0 + dx
-      part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5*(1.0+dx)
+      ! part(7,ii) = 1.0 + dx
+      ! part(6,ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5*(1.0+dx)
+      psi(ii) = 1.0 + dx
+      gamma(ii) = (vx**2+vy**2+1.0)/(2.0*(1.0+dx))+0.5*(1.0+dx)
    end do
 
    call stop_tprof( 'extract psi' )

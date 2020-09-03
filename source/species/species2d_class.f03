@@ -102,11 +102,11 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
       call this%dcu%new(pp,gd,num_modes,part_shape)
       call this%amu%new(pp,gd,num_modes,part_shape)
    endif
-   call this%pd%new(pp,pf,this%q,qbm,dt,xdim,s)
+   call this%pd%new(pp,gd,pf,qbm,dt,s)
 
    this%qn = 0.0
    this%cu = 0.0
-   call this%pd%qdp(this%qn)
+   call this%pd%qdeposit(this%qn)
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
@@ -143,9 +143,9 @@ subroutine renew_species2d(this,s)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call this%pd%renew(this%pf,this%qn,s)
+   call this%pd%renew(this%pf,s)
    this%qn = 0.0
-   call this%pd%qdp(this%qn)
+   call this%pd%qdeposit(this%qn)
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
@@ -172,7 +172,7 @@ subroutine qdp_species2d(this,q)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%q = 0.0
-   call this%pd%qdp(this%q)
+   call this%pd%qdeposit(this%q)
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
@@ -202,7 +202,7 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   call this%pd%amjdp(ef,bf,this%cu,this%amu,this%dcu)
+   call this%pd%amjdeposit(ef,bf,this%cu,this%amu,this%dcu)
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -252,7 +252,7 @@ subroutine extpsi_species2d(this,psi)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call start_tprof( 'extract psi' )
 
-   call this%pd%extpsi(psi)
+   call this%pd%extract_psi(psi)
 
    call stop_tprof( 'extract psi' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -270,7 +270,7 @@ subroutine psend_species2d(this, tag, id)
    character(len=18), save :: sname = 'pipesend_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%psend(tag,id)
+   call this%pd%pipesend(tag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine psend_species2d
@@ -285,7 +285,7 @@ subroutine precv_species2d(this, tag)
    character(len=18), save :: sname = 'precv_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%precv(tag)
+   call this%pd%piperecv(tag)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine precv_species2d

@@ -355,7 +355,6 @@ subroutine run_simulation( this )
   enddo ! 3d loop
 
   call stop_tprof( 'total simulation time' )
-  call write_tprof()
 
   call write_tprof()
 
