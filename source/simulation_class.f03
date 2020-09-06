@@ -268,9 +268,9 @@ subroutine run_simulation( this )
 
       call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
-      do k = 1, this%nspecies
-        call spe(k)%extpsi( psi )
-      enddo
+      ! do k = 1, this%nspecies
+      !   call spe(k)%extpsi( psi )
+      ! enddo
       ! call e%solve( psi, j )
       call b_spe%solve( cu )
 

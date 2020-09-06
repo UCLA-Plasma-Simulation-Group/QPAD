@@ -334,33 +334,24 @@ subroutine push_boris_part3d( this, ef, bf )
       endif
 
       ! interpolate fields to particles
-      call interp_emf( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, &
+      call interp_emf_part3d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, &
          this%dr, this%dz, bp, ep, np, ptrcur )
 
       ! store old momenta for spin push
       if ( this%has_spin ) then
          pp = ptrcur
          do i = 1, np
-            p_old(1,i) = this%p(1,pp)
-            p_old(2,i) = this%p(2,pp)
-            p_old(3,i) = this%p(3,pp)
+            p_old(:,i) = this%p(:,pp)
             pp = pp + 1
          enddo
       endif
 
-      do i = 1, np
-         ep(1,i) = ep(1,i) * qtmh
-         ep(2,i) = ep(2,i) * qtmh
-         ep(3,i) = ep(3,i) * qtmh
-      enddo
-
       pp = ptrcur
       do i = 1, np
+         ep(:,i) = ep(:,i) * qtmh
 
          ! first half of electric field acc.
-         utmp(1,i) = this%p(1,pp) + ep(1,i)
-         utmp(2,i) = this%p(2,pp) + ep(2,i)
-         utmp(3,i) = this%p(3,pp) + ep(3,i)
+         utmp(:,i) = this%p(:,pp) + ep(:,i)
 
          ! time-centered momenta and gamma
          u2 = utmp(1,i)*utmp(1,i) + utmp(2,i)*utmp(2,i) + utmp(3,i)*utmp(3,i)
@@ -370,9 +361,7 @@ subroutine push_boris_part3d( this, ef, bf )
 
       do i = 1, np
          gam_qtmh = qtmh / gam(i)
-         bp(1,i) = bp(1,i) * gam_qtmh
-         bp(2,i) = bp(2,i) * gam_qtmh
-         bp(3,i) = bp(3,i) * gam_qtmh
+         bp(:,i) = bp(:,i) * gam_qtmh
       enddo
 
       ! push spin
@@ -382,49 +371,29 @@ subroutine push_boris_part3d( this, ef, bf )
 
       pp = ptrcur
       do i = 1, np
-         this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i)
-         this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i)
-         this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i)
-         pp = pp + 1
-      enddo
-
-      pp = ptrcur
-      do i = 1, np
-         this%p(1,pp) = this%p(1,pp) - utmp(3,i) * bp(2,i)
-         this%p(2,pp) = this%p(2,pp) - utmp(1,i) * bp(3,i)
-         this%p(3,pp) = this%p(3,pp) - utmp(2,i) * bp(1,i)
+         this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
+         this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
+         this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
          pp = pp + 1
       enddo
 
       do i = 1, np
          ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
-         bp(1,i) = bp(1,i) * ostq
-         bp(2,i) = bp(2,i) * ostq
-         bp(3,i) = bp(3,i) * ostq
+         bp(:,i) = bp(:,i) * ostq
       enddo
 
       pp = ptrcur
       do i = 1, np
-         utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i)
-         utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i)
-         utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i)
-         pp = pp + 1
-      enddo
-
-      pp = ptrcur
-      do i = 1, np
-         utmp(1,i) = utmp(1,i) - this%p(3,pp) * bp(2,i)
-         utmp(2,i) = utmp(2,i) - this%p(1,pp) * bp(3,i)
-         utmp(3,i) = utmp(3,i) - this%p(2,pp) * bp(1,i)
+         utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+         utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+         utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
          pp = pp + 1
       enddo
 
       ! second half of electric field acc.
       pp = ptrcur
       do i = 1, np
-         this%p(1,pp) = utmp(1,i) + ep(1,i)
-         this%p(2,pp) = utmp(2,i) + ep(2,i)
-         this%p(3,pp) = utmp(3,i) + ep(3,i)
+         this%p(:,pp) = utmp(:,i) + ep(:,i)
          pp = pp + 1
       enddo
 
@@ -458,8 +427,7 @@ subroutine push_reduced_part3d( this, ef, bf )
    
    integer :: i, np, max_mode
    real :: qtmh, dt_gam, igam
-   real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old
-   real, dimension(2, p_cache_size) :: wp
+   real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old, wp
    real, dimension(p_cache_size) :: gam
    integer(kind=LG) :: ptrcur, pp
    character(len=32), save :: sname = "push_reduced_part3d"
@@ -485,38 +453,31 @@ subroutine push_reduced_part3d( this, ef, bf )
       endif
 
       ! interpolate fields to particles
-      call interp_emf( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      call interp_emf_part3d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
          this%dz, bp, ep, np, ptrcur )
 
       ! store old momenta for spin push
       if ( this%has_spin ) then
          pp = ptrcur
          do i = 1, np
-            p_old(1,i) = this%p(1,pp)
-            p_old(2,i) = this%p(2,pp)
-            p_old(3,i) = this%p(3,pp)
+            p_old(:,i) = this%p(:,pp)
             pp = pp + 1
          enddo
       endif
 
       do i = 1, np
-         ep(1,i) = ep(1,i) * qtmh
-         ep(2,i) = ep(2,i) * qtmh
-         ep(3,i) = ep(3,i) * qtmh
-         bp(1,i) = bp(1,i) * qtmh
-         bp(2,i) = bp(2,i) * qtmh
-         bp(3,i) = bp(3,i) * qtmh
+         ep(:,i) = ep(:,i) * qtmh
+         bp(:,i) = bp(:,i) * qtmh
          ! calculate transverse force
          wp(1,i) = ep(1,i) - bp(2,i)
          wp(2,i) = ep(2,i) + bp(1,i)
+         wp(3,i) = ep(3,i)
       enddo
 
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + wp(1,i)
-         this%p(2,pp) = this%p(2,pp) + wp(2,i)
-         this%p(3,pp) = this%p(3,pp) + ep(3,i)
+         this%p(:,pp) = this%p(:,pp) + wp(:,i)
          gam(i) = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
          pp = pp + 1
       enddo
@@ -524,9 +485,7 @@ subroutine push_reduced_part3d( this, ef, bf )
       pp = ptrcur
       do i = 1, np
          ! half advance momenta
-         this%p(1,pp) = this%p(1,pp) + wp(1,i)
-         this%p(2,pp) = this%p(2,pp) + wp(2,i)
-         this%p(3,pp) = this%p(3,pp) + ep(3,i)
+         this%p(:,pp) = this%p(:,pp) + wp(:,i)
          pp = pp + 1
       enddo
 
@@ -534,9 +493,7 @@ subroutine push_reduced_part3d( this, ef, bf )
       if ( this%has_spin ) then
          do i = 1, np
             igam = 1.0 / gam(i)
-            bp(1,i) = bp(1,i) * igam
-            bp(2,i) = bp(2,i) * igam
-            bp(3,i) = bp(3,i) * igam
+            bp(:,i) = bp(:,i) * igam
          enddo
          call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
       endif
@@ -584,16 +541,12 @@ subroutine push_spin_part3d( this, ep, bp, p_old, gam, ptrcur, np )
    do i = 1, np
 
       ! calculate the time-centered velocity
-      vtemp(1,i) = 0.5 * ( p_old(1,i) + this%p(1,pp) ) / gam(i)
-      vtemp(2,i) = 0.5 * ( p_old(2,i) + this%p(2,pp) ) / gam(i)
-      vtemp(3,i) = 0.5 * ( p_old(3,i) + this%p(3,pp) ) / gam(i)
+      vtemp(:,i) = 0.5 * ( p_old(:,i) + this%p(:,pp) ) / gam(i)
 
       ! Now calculate the precession frequency Omega
       ! calculate contribution from B
       coef = a + 1.0 / gam(i)
-      omega(1,i) = coef * bp(1,i) * gam(i)
-      omega(2,i) = coef * bp(2,i) * gam(i)
-      omega(3,i) = coef * bp(3,i) * gam(i)
+      omega(:,i) = coef * bp(:,i) * gam(i)
 
       ! calculate (v cross E) contribution
       coef = -1.0 * ( a + 1.0 / ( 1.0 + gam(i) ) )
@@ -607,9 +560,7 @@ subroutine push_spin_part3d( this, ep, bp, p_old, gam, ptrcur, np )
       ! therefore the factor 2 is canceled.
       vdotb = vtemp(1,i) * bp(1,i) + vtemp(2,i) * bp(2,i) + vtemp(3,i) * bp(3,i)
       coef = -1.0 * ( a * gam(i)**2 / ( 1.0 + gam(i) ) * vdotb )
-      omega(1,i) = omega(1,i) + coef * vtemp(1,i)
-      omega(2,i) = omega(2,i) + coef * vtemp(2,i)
-      omega(3,i) = omega(3,i) + coef * vtemp(3,i)
+      omega(:,i) = omega(:,i) + coef * vtemp(:,i)
 
       ! calculate s_prime
       stemp(1,i) = this%s(1,pp) + ( this%s(2,pp) * omega(3,i) - this%s(3,pp) * omega(2,i) )
@@ -679,20 +630,19 @@ subroutine update_bound_part3d( this )
 
 end subroutine update_bound_part3d
 
-subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep, np, ptrcur )
+subroutine interp_emf_part3d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, dz, bp, ep, np, ptrcur )
 
    implicit none
 
    type(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im, bf_re, bf_im
-   integer, intent(in) :: num_modes, np
+   integer, intent(in) :: max_mode, np
    real, intent(in) :: dr, dz
    real, dimension(:,:), intent(in) :: x
    real, dimension(:,:), intent(inout) :: bp, ep
    integer(kind=LG), intent(in) :: ptrcur
 
    real, dimension(:,:,:), pointer :: e0, b0, er, ei, br, bi
-   integer :: noff1, noff2, n1p, n2p, n1, n2
-   integer :: i, j, k, nn, mm, mode
+   integer :: noff1, noff2, i, j, k, nn, mm, mode
    integer(kind=LG) :: pp
    real :: pos_r, pos_z, idr, idz, wt, ph_r, ph_i, cc, ss
    real, dimension(0:1) :: wtr, wtz
@@ -702,11 +652,7 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
    idz = 1.0 / dz
 
    noff1 = ef_re(0)%get_noff(1)
-   n1p   = ef_re(0)%get_ndp(1)
-   n1    = ef_re(0)%get_nd(1)
    noff2 = ef_re(0)%get_noff(2)
-   n2p   = ef_re(0)%get_ndp(2)
-   n2    = ef_re(0)%get_nd(2)
 
    e0 => ef_re(0)%get_f2()
    b0 => bf_re(0)%get_f2()
@@ -743,17 +689,13 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
       do k = 0, 1
       do j = 0, 1
          wt = wtr(j) * wtz(k)
-         ep(1,i) = ep(1,i) + e0(1,nn+j,mm+k) * wt
-         ep(2,i) = ep(2,i) + e0(2,nn+j,mm+k) * wt
-         ep(3,i) = ep(3,i) + e0(3,nn+j,mm+k) * wt
-         bp(1,i) = bp(1,i) + b0(1,nn+j,mm+k) * wt
-         bp(2,i) = bp(2,i) + b0(2,nn+j,mm+k) * wt
-         bp(3,i) = bp(3,i) + b0(3,nn+j,mm+k) * wt
+         ep(:,i) = ep(:,i) + e0(:,nn+j,mm+k) * wt
+         bp(:,i) = bp(:,i) + b0(:,nn+j,mm+k) * wt
       enddo
       enddo
 
       ! interpolate m>0 modes
-      do mode = 1, num_modes
+      do mode = 1, max_mode
          phase = phase * phase0
          ph_r = 2.0 * real(phase)
          ph_i = 2.0 * aimag(phase)
@@ -766,12 +708,8 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
          do k = 0, 1
          do j = 0, 1
             wt = wtr(j) * wtz(k)
-            ep(1,i) = ep(1,i) + ( er(1,nn+j,mm+k)*ph_r - ei(1,nn+j,mm+k)*ph_i ) * wt
-            ep(2,i) = ep(2,i) + ( er(2,nn+j,mm+k)*ph_r - ei(2,nn+j,mm+k)*ph_i ) * wt
-            ep(3,i) = ep(3,i) + ( er(3,nn+j,mm+k)*ph_r - ei(3,nn+j,mm+k)*ph_i ) * wt
-            bp(1,i) = bp(1,i) + ( br(1,nn+j,mm+k)*ph_r - bi(1,nn+j,mm+k)*ph_i ) * wt
-            bp(2,i) = bp(2,i) + ( br(2,nn+j,mm+k)*ph_r - bi(2,nn+j,mm+k)*ph_i ) * wt
-            bp(3,i) = bp(3,i) + ( br(3,nn+j,mm+k)*ph_r - bi(3,nn+j,mm+k)*ph_i ) * wt
+            ep(:,i) = ep(:,i) + ( er(:,nn+j,mm+k) * ph_r - ei(:,nn+j,mm+k) * ph_i ) * wt
+            bp(:,i) = bp(:,i) + ( br(:,nn+j,mm+k) * ph_r - bi(:,nn+j,mm+k) * ph_i ) * wt
          enddo
          enddo
       enddo
@@ -791,7 +729,7 @@ subroutine interp_emf( ef_re, ef_im, bf_re, bf_im, num_modes, x, dr, dz, bp, ep,
       pp = pp + 1
    enddo
 
-end subroutine interp_emf
+end subroutine interp_emf_part3d
 
 function getnpp(this)
 
@@ -803,7 +741,7 @@ function getnpp(this)
    getnpp = this%npp
 
 end function getnpp
-!
+
 subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
 
    implicit none
@@ -827,7 +765,7 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_part3d
-!
+
 subroutine writerst_part3d(this,file)
 
    implicit none
@@ -847,7 +785,7 @@ subroutine writerst_part3d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writerst_part3d
-!
+
 subroutine readrst_part3d(this,file)
 
    implicit none
@@ -867,5 +805,5 @@ subroutine readrst_part3d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine readrst_part3d
-!
+
 end module part3d_class

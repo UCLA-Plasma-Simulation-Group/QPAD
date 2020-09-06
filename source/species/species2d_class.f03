@@ -40,7 +40,7 @@ type species2d
    generic :: qdp => qdp_species2d
    generic :: amjdp => amjdp_species2d
    generic :: push => push_species2d
-   generic :: extpsi => extpsi_species2d
+   ! generic :: extpsi => extpsi_species2d
    generic :: psend => psend_species2d
    generic :: precv => precv_species2d
    generic :: wr => writehdf5_species2d
@@ -51,7 +51,7 @@ type species2d
    procedure, private :: qdp_species2d
    procedure, private :: amjdp_species2d
    procedure, private :: push_species2d
-   procedure, private :: extpsi_species2d
+   ! procedure, private :: extpsi_species2d
    procedure, private :: psend_species2d
    procedure, private :: precv_species2d, writehdf5_species2d
    procedure, private :: cbq_species2d, writeq_species2d
@@ -234,30 +234,31 @@ subroutine push_species2d(this,ef,bf)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    call this%pd%push(ef,bf)
+   call this%pd%update_bound()
    call this%pd%pmv(this%q)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_species2d
 !
-subroutine extpsi_species2d(this,psi)
+! subroutine extpsi_species2d(this,psi)
 
-   implicit none
+!    implicit none
 
-   class(species2d), intent(inout) :: this
-   class(field_psi), intent(in) :: psi
-! local data
-   character(len=18), save :: sname = 'extpsi_species2d'
+!    class(species2d), intent(inout) :: this
+!    class(field_psi), intent(in) :: psi
+! ! local data
+!    character(len=18), save :: sname = 'extpsi_species2d'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call start_tprof( 'extract psi' )
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
+!    call start_tprof( 'extract psi' )
 
-   call this%pd%extract_psi(psi)
+!    call this%pd%extract_psi(psi)
 
-   call stop_tprof( 'extract psi' )
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    call stop_tprof( 'extract psi' )
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine extpsi_species2d
+! end subroutine extpsi_species2d
 !
 subroutine psend_species2d(this, tag, id)
 
