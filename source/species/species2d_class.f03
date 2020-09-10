@@ -13,6 +13,7 @@ use field_b_class
 use field_src_class
 use field_class
 use part2d_class
+use part2d_comm
 use hdf5io_class
 
 implicit none
@@ -25,7 +26,7 @@ type species2d
 
    private
 
-   class(part2d), pointer :: pd => null()
+   class(part2d), pointer :: part => null()
    class(field_rho), allocatable :: q, qn
    class(field_jay), allocatable :: cu, amu
    class(field_djdxi), allocatable :: dcu
@@ -34,27 +35,18 @@ type species2d
 
    contains
 
-   generic :: new => init_species2d
-   generic :: renew => renew_species2d
-   generic :: del => end_species2d
-   generic :: qdp => qdp_species2d
-   generic :: amjdp => amjdp_species2d
-   generic :: push => push_species2d
-   ! generic :: extpsi => extpsi_species2d
-   generic :: psend => psend_species2d
-   generic :: precv => precv_species2d
-   generic :: wr => writehdf5_species2d
-   generic :: wrq => writeq_species2d
-   generic :: cbq => cbq_species2d
-   procedure, private :: init_species2d, renew_species2d
-   procedure, private :: end_species2d
-   procedure, private :: qdp_species2d
-   procedure, private :: amjdp_species2d
-   procedure, private :: push_species2d
-   ! procedure, private :: extpsi_species2d
-   procedure, private :: psend_species2d
-   procedure, private :: precv_species2d, writehdf5_species2d
-   procedure, private :: cbq_species2d, writeq_species2d
+   procedure :: new   => init_species2d
+   procedure :: renew => renew_species2d
+   procedure :: del   => end_species2d
+   procedure :: qdp   => qdp_species2d
+   procedure :: amjdp => amjdp_species2d
+   procedure :: push  => push_species2d
+   procedure :: psend => psend_species2d
+   procedure :: precv => precv_species2d
+   procedure :: wr    => writehdf5_species2d
+   procedure :: wrq   => writeq_species2d
+   procedure :: cbq   => cbq_species2d
+   ! procedure :: extpsi => extpsi_species2d
 
 end type
 
@@ -87,7 +79,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    this%pp => pp
    dt = gd%get_dxi()
 
-   allocate(this%pd,this%q,this%qn,this%cu,this%amu,this%dcu)
+   allocate(this%part,this%q,this%qn,this%cu,this%amu,this%dcu)
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
       call this%q%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
@@ -102,11 +94,11 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
       call this%dcu%new(pp,gd,num_modes,part_shape)
       call this%amu%new(pp,gd,num_modes,part_shape)
    endif
-   call this%pd%new(pp,gd,pf,qbm,dt,s)
+   call this%part%new(pp,gd,pf,qbm,dt,s)
 
    this%qn = 0.0
    this%cu = 0.0
-   call this%pd%qdeposit(this%qn)
+   call this%part%qdeposit(this%qn)
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
@@ -127,7 +119,7 @@ subroutine end_species2d(this)
    character(len=18), save :: sname = 'end_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%del()
+   call this%part%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_species2d
@@ -143,9 +135,9 @@ subroutine renew_species2d(this,s)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call this%pd%renew(this%pf,s)
+   call this%part%renew(this%pf,s)
    this%qn = 0.0
-   call this%pd%qdeposit(this%qn)
+   call this%part%qdeposit(this%qn)
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
@@ -172,7 +164,7 @@ subroutine qdp_species2d(this,q)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%q = 0.0
-   call this%pd%qdeposit(this%q)
+   call this%part%qdeposit(this%q)
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
@@ -202,7 +194,7 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   call this%pd%amjdeposit(ef,bf,this%cu,this%amu,this%dcu)
+   call this%part%amjdeposit(ef,bf,this%cu,this%amu,this%dcu)
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -233,9 +225,10 @@ subroutine push_species2d(this,ef,bf)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call this%pd%push(ef,bf)
-   call this%pd%update_bound()
-   call this%pd%pmv(this%q)
+   call this%part%push(ef,bf)
+   call this%part%update_bound()
+   ! call this%part%pmv(this%q)
+   call move_part2d_comm( this%part )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -253,7 +246,7 @@ end subroutine push_species2d
 !    call write_dbg(cls_name, sname, cls_level, 'starts')
 !    call start_tprof( 'extract psi' )
 
-!    call this%pd%extract_psi(psi)
+!    call this%part%extract_psi(psi)
 
 !    call stop_tprof( 'extract psi' )
 !    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -271,7 +264,7 @@ subroutine psend_species2d(this, tag, id)
    character(len=18), save :: sname = 'pipesend_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%pipesend(tag,id)
+   call this%part%pipesend(tag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine psend_species2d
@@ -286,7 +279,7 @@ subroutine precv_species2d(this, tag)
    character(len=18), save :: sname = 'precv_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%pd%piperecv(tag)
+   call this%part%piperecv(tag)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine precv_species2d
@@ -302,7 +295,7 @@ subroutine writehdf5_species2d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call this%pd%wr(file)
+   call this%part%wr(file)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

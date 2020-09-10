@@ -7,6 +7,7 @@ use fdist2d_class
 use input_class
 use param
 use sysutil
+use part2d_comm
 
 implicit none
 
@@ -51,7 +52,7 @@ subroutine init_sim_species( this, input, s )
   ! real, dimension(3,100) :: arg
   ! logical :: quiet
   real :: qm, qbm
-  integer :: ps, sm_type, sm_ord, max_mode, npf
+  integer :: ps, sm_type, sm_ord, max_mode, npf, part_dim
   ! type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
 
@@ -104,11 +105,22 @@ subroutine init_sim_species( this, input, s )
        call write_err( 'Invalid beam profile!' )
     end select
 
+  enddo
+
+  ! initialize species particle manager
+  part_dim = 8
+  do i = 1, n
+    call set_part2d_comm( part_dim, npmax = this%pf(i)%p%getnpmax() )
+  enddo
+  call init_part2d_comm( this%pp, this%gp )
+
+  do i = 1, n
+
     call input%get('species('//num2str(i)//').q',qm)
     call input%get('species('//num2str(i)//').m',qbm)
     qbm = qm/qbm
     call this%spe(i)%new( this%pp, this%gp, this%pf(i)%p, ps, max_mode,&
-      qbm, 8, s, sm_type, sm_ord )
+      qbm, part_dim, s, sm_type, sm_ord )
 
   enddo
 
@@ -132,6 +144,8 @@ subroutine end_sim_species( this )
   do i = 1, n
     call this%spe(i)%del()
   enddo
+
+  call end_part2d_comm()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

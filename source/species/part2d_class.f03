@@ -66,7 +66,7 @@ type part2d
    procedure :: piperecv     => piperecv_part2d
 
    ! TODO: particle manager to be rewritten
-   procedure :: pmv => pmove
+   ! procedure :: pmv => pmove
 
    procedure :: wr => writehdf5_part2d
 
@@ -433,7 +433,6 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
 
       ! deposit m = 0 mode
       do j = 0, 1
-        ! ISSUE OF INDEX OF WT?
         w = wt(j,i) * real(phase)
         cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
         dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
@@ -816,31 +815,31 @@ subroutine update_bound_part2d( this )
 
 end subroutine update_bound_part2d
 
-subroutine pmove(this,fd)
+! subroutine pmove(this,fd)
 
-   implicit none
+!    implicit none
 
-   class(part2d), intent(inout) :: this
-   class(field), intent(in) :: fd
-! local data
-   character(len=18), save :: sname = 'pmove'
-   class(ufield), pointer :: ud
+!    class(part2d), intent(inout) :: this
+!    class(field), intent(in) :: fd
+! ! local data
+!    character(len=18), save :: sname = 'pmove'
+!    class(ufield), pointer :: ud
 
-   integer :: stat
+!    integer :: stat
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   ud => fd%get_rf_re(0)
-   ! call part2d_pmove(this%part,this%pp,this%npp,this%dr,this%xdim,this%npmax,&
-   ! &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
+!    ud => fd%get_rf_re(0)
+!    ! call part2d_pmove(this%part,this%pp,this%npp,this%dr,this%xdim,this%npmax,&
+!    ! &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
 
-   call part2d_pmove(this%x, this%p, this%gamma, this%q, this%psi,&
-   &this%pp,this%npp,this%dr,this%part_dim,this%npmax,&
-   &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
+!    call part2d_pmove(this%x, this%p, this%gamma, this%q, this%psi,&
+!    &this%pp,this%npp,this%dr,this%part_dim,this%npmax,&
+!    &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine pmove
+! end subroutine pmove
 
 ! subroutine extract_psi_part2d(this,psi)
 
