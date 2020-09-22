@@ -10,7 +10,6 @@ use field_class
 use ufield_class
 use fdist2d_class
 use hdf5io_class
-use part2d_lib
 use mpi
 use interpolation
 use debug_tool
