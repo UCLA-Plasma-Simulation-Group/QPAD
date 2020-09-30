@@ -1,5 +1,7 @@
 module debug_tool
 
+use, intrinsic :: ieee_arithmetic
+
 implicit none
 
 public
@@ -9,6 +11,11 @@ interface write_data
   module procedure write_data2d
   module procedure write_array
 end interface write_data
+
+interface check_array
+  module procedure check_array_rank1
+  module procedure check_array_rank2
+end interface check_array
 
 public :: write_data
 
@@ -87,5 +94,56 @@ subroutine write_data2d( f, fname, dim )
   close( unit )
 
 end subroutine write_data2d
+
+subroutine check_array_rank1( array, th, stat )
+
+  implicit none
+
+  real, intent(in), dimension(:) :: array
+  real, intent(in) :: th
+  integer, intent(out) :: stat
+
+  integer :: length, i
+  real :: infinity = 1.0d100
+
+  length = size( array )
+
+  stat = 0
+  do i = 1, length
+    if ( ieee_is_nan( array(i) ) .or. abs( array(i) ) > th ) then
+      stat = -1
+      print *, 'invalid value at index ', i
+      return
+    endif
+  enddo
+
+end subroutine check_array_rank1
+
+subroutine check_array_rank2( array, th, stat )
+
+  implicit none
+
+  real, intent(in), dimension(:,:) :: array
+  real, intent(in) :: th
+  integer, intent(out) :: stat
+
+  integer :: n1, n2, i, j
+  real :: infinity = 1.0d100
+
+  n1 = size( array, 1 )
+  n2 = size( array, 2 )
+
+  stat = 0
+  do j = 1, n2
+    do i = 1, n1
+      if ( ieee_is_nan( array(i,j) ) .or. abs( array(i,j) ) > th ) then
+        stat = -1
+        print *, 'invalid value at index ', i, j
+        return
+      endif
+    enddo
+  enddo
+
+end subroutine check_array_rank2
 
 end module debug_tool

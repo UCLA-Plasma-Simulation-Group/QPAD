@@ -803,13 +803,14 @@ subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
 
 end subroutine wfield_2d_pipe
 !
-subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
+subroutine pwpart_2d(pp,file,x,p,q,npp,dspl,delta,ierr)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(in) :: part
+ real, dimension(:,:), intent(in) :: x, p
+ real, dimension(:), intent(in) :: q
  real, dimension(2), intent(in) :: delta
  integer, intent(in) :: npp,dspl
  integer, intent(inout) :: ierr
@@ -902,7 +903,7 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
        call h5sclose_f(aspace_id, ierr)
 
        do i = 1, 2
-          buff(1:tnpp) = part(i,1:(1+(tnpp-1)*dspl):dspl)*delta(i)
+          buff(1:tnpp) = x(i,1:(1+(tnpp-1)*dspl):dspl)*delta(i)
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'x'//char(iachar('0')+i), treal,&
@@ -922,7 +923,7 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
        enddo
 
        do i = 1, 3
-          buff(1:tnpp) = part((i+2),1:(1+(tnpp-1)*dspl):dspl)
+          buff(1:tnpp) = p(i,1:(1+(tnpp-1)*dspl):dspl)
           ldim(1) = tp
           call h5screate_simple_f(1, ldim, dspace_id, ierr)
           call h5dcreate_f(rootID, 'p'//char(iachar('0')+i), treal,&
@@ -941,7 +942,7 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
           call h5dclose_f(dset_id, ierr)
        enddo
 
-       buff(1:tnpp) = part((i+2),1:(1+(tnpp-1)*dspl):dspl)
+       buff(1:tnpp) = q(1:(1+(tnpp-1)*dspl):dspl)
        ldim(1) = tp
        call h5screate_simple_f(1, ldim, dspace_id, ierr)
        call h5dcreate_f(rootID, 'q', treal,&
@@ -973,14 +974,15 @@ subroutine pwpart_2d(pp,file,part,npp,dspl,delta,ierr)
  endif
 
 end subroutine pwpart_2d
-!
-subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
+
+subroutine pwpart_2d_r(pp,file,x,p,q,npp,dspl,ierr)
 
  implicit none
 
  class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
- real, dimension(:,:), intent(in) :: part
+ real, dimension(:,:), intent(in) :: x, p
+ real, dimension(:), intent(in) :: q
  integer(kind=LG), intent(in) :: npp
  integer, intent(in) :: dspl
  integer, intent(inout) :: ierr
@@ -1073,7 +1075,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
        call h5sclose_f(aspace_id, ierr)
 
        do i = 1, 2
-          buff(1:tnpp) = part(i,1:((tnpp-1)*dspl+1):dspl)
+          buff(1:tnpp) = x(i,1:((tnpp-1)*dspl+1):dspl)
 
           ! if (i == 1) then
           !    buff(1:tnpp) = part(1,1:((tnpp-1)*dspl+1):dspl)*&
@@ -1101,7 +1103,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
        enddo
 
        do i = 1, 3
-          buff(1:tnpp) = part(i+2,1:((tnpp-1)*dspl+1):dspl)
+          buff(1:tnpp) = p(i,1:((tnpp-1)*dspl+1):dspl)
 
           ! if (i == 1) then
           !    buff(1:tnpp) = part(3,1:((tnpp-1)*dspl+1):dspl)*&
@@ -1134,7 +1136,7 @@ subroutine pwpart_2d_r(pp,file,part,npp,dspl,ierr)
           call h5dclose_f(dset_id, ierr)
        enddo
 
-       buff(1:tnpp) = part(8,1:(1+(tnpp-1)*dspl):dspl)
+       buff(1:tnpp) = q(1:(1+(tnpp-1)*dspl):dspl)
        ldim(1) = tp
        call h5screate_simple_f(1, ldim, dspace_id, ierr)
        call h5dcreate_f(rootID, 'q', treal,&

@@ -3,6 +3,7 @@
 module fdist2d_class
 
 use parallel_pipe_class
+use grid_class
 use ufield_class
 use input_class
 use param
@@ -16,9 +17,11 @@ private
 public :: fdist2d, fdist2d_wrap, fdist2d_000, fdist2d_012
 
 type, abstract :: fdist2d
+
    private
    class(parallel_pipe), pointer :: pp => null()
-!
+   class(grid), pointer :: gp => null()
+
 ! ndprof = profile type
    integer :: npf, npmax
    real :: dex
@@ -35,19 +38,20 @@ type, abstract :: fdist2d
 end type fdist2d
 
 abstract interface
-!
-subroutine ab_dist2d(this,part2d,npp,ud,s)
+
+subroutine ab_dist2d( this, x, p, gamma, q, psi, npp, s )
    import fdist2d
    import ufield
    import LG
    implicit none
    class(fdist2d), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: part2d
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
+   ! class(ufield), intent(in), pointer :: ud
    real, intent(in) :: s
 end subroutine ab_dist2d
-!
+
 subroutine ab_init_fdist2d(this,input,i)
    import fdist2d
    import input_json
@@ -56,13 +60,13 @@ subroutine ab_init_fdist2d(this,input,i)
    type(input_json), intent(inout), pointer :: input
    integer, intent(in) :: i
 end subroutine ab_init_fdist2d
-!
+
 end interface
 
 type fdist2d_wrap
    class(fdist2d), allocatable :: p
 end type fdist2d_wrap
-!
+
 type, extends(fdist2d) :: fdist2d_000
 ! Transeversely uniform profile with uniform or piecewise longitudinal profile
    private
@@ -77,7 +81,7 @@ type, extends(fdist2d) :: fdist2d_000
    procedure, private :: dist2d => dist2d_000
 
 end type fdist2d_000
-!
+
 type, extends(fdist2d) :: fdist2d_012
 ! hollow channel with f(r) profile
    private
@@ -94,14 +98,13 @@ type, extends(fdist2d) :: fdist2d_012
    procedure, private :: dist2d => dist2d_012
 
 end type fdist2d_012
-!
 
 character(len=20), parameter :: cls_name = "fdist2d"
 integer, parameter :: cls_level = 2
 character(len=128) :: erstr
 
 contains
-!
+
 function getnpf(this)
 
    implicit none
@@ -112,7 +115,7 @@ function getnpf(this)
    getnpf = this%npf
 
 end function getnpf
-!
+
 function getnpmax(this)
 
    implicit none
@@ -123,7 +126,7 @@ function getnpmax(this)
    getnpmax = this%npmax
 
 end function getnpmax
-!
+
 function getdex(this)
 
    implicit none
@@ -134,7 +137,7 @@ function getdex(this)
    getdex = this%dex
 
 end function getdex
-!
+
 subroutine end_fdist2d(this)
 
    implicit none
@@ -147,7 +150,7 @@ subroutine end_fdist2d(this)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_fdist2d
-!
+
 subroutine init_fdist2d_000(this,input,i)
 
    implicit none
@@ -156,7 +159,7 @@ subroutine init_fdist2d_000(this,input,i)
    type(input_json), intent(inout), pointer :: input
    integer, intent(in) :: i
 
-! local data
+   ! local data
    integer :: npf,ppc1,ppc2,n1,nmode
    integer(kind=LG) :: npmax
    real :: qm, den, lr, ur
@@ -165,6 +168,7 @@ subroutine init_fdist2d_000(this,input,i)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => input%pp
+   this%gp => input%gp
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
@@ -193,17 +197,16 @@ subroutine init_fdist2d_000(this,input,i)
    this%npmax = npmax
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine init_fdist2d_000
-!
-subroutine dist2d_000(this,part2d,npp,ud,s)
+
+subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    implicit none
    class(fdist2d_000), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: part2d
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
    real, intent(in) :: s
-! local data
+   ! local data
    character(len=18), save :: sname = 'dist2d_000'
-   real, dimension(:,:), pointer :: pt => null()
    integer(kind=LG) :: nps, i
    integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
    real :: qm, den_temp
@@ -212,7 +215,10 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
+   n1    = this%gp%get_nd(1)
+   n1p   = this%gp%get_ndp(1)
+   noff1 = this%gp%get_noff(1)
+   
    ppc1 = this%ppc1; ppc2 = this%ppc2
    t0 = 2.0*pi/ppc2
    dr = this%dex
@@ -240,20 +246,19 @@ subroutine dist2d_000(this,part2d,npp,ud,s)
    end if
    qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
    nps = 1
-   pt => part2d
 ! initialize the particle positions
    do i=1, n1p
       do i1 = 0, ppc1-1
          r1 = (i1 + 0.5)/ppc1 + i - 1 + noff1
          do i2=0, ppc2-1
-            pt(1,nps) = r1*dr*cos(i2*t0)
-            pt(2,nps) = r1*dr*sin(i2*t0)
-            pt(3,nps) = 0.0
-            pt(4,nps) = 0.0
-            pt(5,nps) = 0.0
-            pt(6,nps) = 1.0
-            pt(7,nps) = 1.0
-            pt(8,nps) = qm*r1
+            x(1,nps) = r1*dr*cos(i2*t0)
+            x(2,nps) = r1*dr*sin(i2*t0)
+            p(1,nps) = 0.0
+            p(2,nps) = 0.0
+            p(3,nps) = 0.0
+            gamma(nps) = 1.0
+            psi(nps) = 1.0
+            q(nps) = qm*r1
             nps = nps + 1
          enddo
       enddo
@@ -280,6 +285,7 @@ subroutine init_fdist2d_012(this,input,i)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    this%pp => input%pp
+   this%gp => input%gp
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
@@ -313,16 +319,15 @@ subroutine init_fdist2d_012(this,input,i)
 
 end subroutine init_fdist2d_012
 !
-subroutine dist2d_012(this,part2d,npp,ud,s)
+subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
    implicit none
    class(fdist2d_012), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: part2d
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
    integer(kind=LG), intent(inout) :: npp
-   class(ufield), intent(in), pointer :: ud
    real, intent(in) :: s
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
-   real, dimension(:,:), pointer :: pt => null()
    integer(kind=LG) :: nps, i
    integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
    real :: qm, den_temp
@@ -331,7 +336,10 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   n1 = ud%get_nd(1); n1p = ud%get_ndp(1); noff1 = ud%get_noff(1)
+   n1    = this%gp%get_nd(1)
+   n1p   = this%gp%get_ndp(1)
+   noff1 = this%gp%get_noff(1)
+
    ppc1 = this%ppc1; ppc2 = this%ppc2
    t0 = 2.0*pi/ppc2
    dr = this%dex
@@ -364,7 +372,6 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
    end if
    qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
    nps = 1
-   pt => part2d
    prof_l = size(this%fr)
    if (prof_l /= size(this%r)) then
       write (erstr,*) 'The piecewise_radial_density and r array have different sizes!'
@@ -393,14 +400,14 @@ subroutine dist2d_012(this,part2d,npp,ud,s)
             end if
          end do
          do i2=0, ppc2-1
-            pt(1,nps) = r1*cos(i2*t0)
-            pt(2,nps) = r1*sin(i2*t0)
-            pt(3,nps) = 0.0
-            pt(4,nps) = 0.0
-            pt(5,nps) = 0.0
-            pt(6,nps) = 1.0
-            pt(7,nps) = 1.0
-            pt(8,nps) = qm*den_temp*rr
+            x(1,nps) = r1*cos(i2*t0)
+            x(2,nps) = r1*sin(i2*t0)
+            p(1,nps) = 0.0
+            p(2,nps) = 0.0
+            p(3,nps) = 0.0
+            gamma(nps) = 1.0
+            psi(nps) = 1.0
+            q(nps) = qm*den_temp*rr
             nps = nps + 1
          enddo
       enddo

@@ -176,8 +176,7 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     call mpi_get_count( istat, mreal, rsize, ierr )
     recv_cnt(p_bwd) = rsize / part_dim
 
-    call unpack_part( part, redge, zedge, &
-      recv_buf(:,:,p_lower), recv_cnt(p_bwd), p_bwd, &
+    call unpack_particles( part, zedge, recv_buf(:,:,p_lower), recv_cnt(p_bwd), p_bwd, &
       part%pbuff, send_cnt(p_fwd), p_fwd )
 
   endif
@@ -186,7 +185,7 @@ subroutine move_part3d_comm( part, rtag, stag, id )
   ! send particles to forward node (pipeline communication)
   if ( .not. phys_bnd(p_fwd) ) then
 
-    call pack_part( part, redge, zedge, part%pbuff, ihole, send_cnt(p_fwd), p_fwd )
+    call pack_particles( part, zedge, part%pbuff, ihole, send_cnt(p_fwd), p_fwd )
     ssize = send_cnt(p_fwd) * part_dim
 
     call mpi_isend( part%pbuff, ssize, mreal, pid(p_fwd), &
@@ -224,9 +223,9 @@ subroutine move_part3d_comm( part, rtag, stag, id )
     endif
 
     ! pack particles to inward/outward send buffers
-    call pack_part( part, redge, zedge, send_buf(:,:,p_lower), ihole, &
+    call pack_particles( part, redge, send_buf(:,:,p_lower), ihole, &
       send_cnt(p_iwd), p_iwd )
-    call pack_part( part, redge, zedge, send_buf(:,:,p_upper), ihole, &
+    call pack_particles( part, redge, send_buf(:,:,p_upper), ihole, &
       send_cnt(p_owd), p_owd )
 
     ! send inward
@@ -268,15 +267,13 @@ subroutine move_part3d_comm( part, rtag, stag, id )
 
     ! unpack particles in inward receive buffer
     if ( .not. phys_bnd(p_iwd) ) then
-      call unpack_part( part, redge, zedge, &
-        recv_buf(:,:,p_lower), recv_cnt(p_iwd), p_iwd, &
+      call unpack_particles( part, redge, recv_buf(:,:,p_lower), recv_cnt(p_iwd), p_iwd, &
         send_buf(:,:,p_upper), send_cnt(p_owd), p_owd )
     endif
 
     ! unpack particles in outward receive buffer
     if ( .not. phys_bnd(p_owd) ) then
-      call unpack_part( part, redge, zedge, &
-        recv_buf(:,:,p_upper), recv_cnt(p_owd), p_owd, &
+      call unpack_particles( part, redge, recv_buf(:,:,p_upper), recv_cnt(p_owd), p_owd, &
         send_buf(:,:,p_lower), send_cnt(p_iwd), p_iwd )
     endif
 
@@ -297,12 +294,12 @@ end subroutine move_part3d_comm
 ! particle array and those not belong to this node to other send buffers.
 ! This routine only moves particles inside current stage.
 ! -----------------------------------------------------------------------------
-subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
+subroutine unpack_particles( part, edge, rbuf, rcnt, src, sbuf, scnt, des )
 
   implicit none
 
   class(part3d), intent(inout) :: part
-  real, intent(in), dimension(2) :: redge, zedge
+  real, intent(in), dimension(2) :: edge
   real, intent(in), dimension(:,:) :: rbuf
   real, intent(inout), dimension(:,:) :: sbuf
   integer, intent(inout) :: scnt, rcnt
@@ -328,7 +325,7 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
     x = rbuf( 1:3, i )
 
     ! check if particle belongs to here
-    if ( goto_here( x, redge, zedge ) ) then
+    if ( goto_here( x, edge, src ) ) then
 
       stay_cnt = stay_cnt + 1
 
@@ -342,7 +339,7 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
       rcnt = rcnt - 1
 
     ! check if particle goes to the destination neighbor node
-    elseif ( goto_dir( x, redge, zedge, des ) ) then
+    elseif ( goto_des( x, edge, des ) ) then
 
       scnt = scnt + 1
       rcnt = rcnt - 1
@@ -350,7 +347,7 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
       sbuf( 1:part_dim, scnt ) = rbuf( 1:part_dim, i )
 
     ! particle goes back to where it comes from, should not happen
-    elseif ( goto_dir( x, redge, zedge, src ) ) then
+    elseif ( goto_des( x, edge, src ) ) then
 
       call write_err( 'There is returning particle in local particle &
         &communication! ' )
@@ -366,14 +363,14 @@ subroutine unpack_part( part, redge, zedge, rbuf, rcnt, src, sbuf, scnt, des )
 
   part%npp = npp + stay_cnt
 
-end subroutine unpack_part
+end subroutine unpack_particles
 
-subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
+subroutine pack_particles( part, edge, sbuf, ihole, scnt, des )
 
   implicit none
 
   class(part3d), intent(inout) :: part
-  real, intent(in), dimension(2) :: redge, zedge
+  real, intent(in), dimension(2) :: edge
   real, intent(inout), dimension(:,:) :: sbuf
   integer(kind=LG), intent(inout), dimension(:) :: ihole
   integer, intent(inout) :: scnt
@@ -394,7 +391,7 @@ subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
 
     x = part%x(:,i)
 
-    if ( goto_dir( x, redge, zedge, des ) ) then
+    if ( goto_des( x, edge, des ) ) then
 
       if ( scnt >= buf_size ) then
         call write_err( '3D particle MPI buffer overflow!' )
@@ -430,7 +427,7 @@ subroutine pack_part( part, redge, zedge, sbuf, ihole, scnt, des )
 
   part%npp = npp
 
-end subroutine pack_part
+end subroutine pack_particles
 
 subroutine resize_buf( ratio )
 ! this subroutine is currently not in use.
@@ -505,54 +502,58 @@ function get_phys_bnd( proc_id, nvp, nst ) result( res )
 
 end function get_phys_bnd
 
-function goto_here( x, redge, zedge )
+function goto_here( x, edge, src )
 
   implicit none
 
   real, intent(in), dimension(3) :: x
-  real, intent(in), dimension(2) :: redge, zedge
+  real, intent(in), dimension(2) :: edge
+  integer, intent(in) :: src
   logical :: goto_here
 
-  real :: z, r
+  real :: pos
 
   goto_here = .false.
 
-  z  = x(3)
-  r  = sqrt( x(1)*x(1) + x(2)*x(2) )
-  
-  goto_here = z > zedge(p_lower) .and. z <= zedge(p_upper) .and. &
-              r > redge(p_lower) .and. r <= redge(p_upper)
+  select case ( src )
+  case ( p_fwd, p_bwd )
+    pos = x(3)
+    goto_here = pos >= edge(p_lower) .and. pos < edge(p_upper)
+  case ( p_iwd, p_owd )
+    pos = sqrt( x(1)*x(1) + x(2)*x(2) )
+    goto_here = pos >= edge(p_lower) .and. pos < edge(p_upper)
+  end select
 
 end function goto_here
 
-function goto_dir( x, redge, zedge, dir )
+function goto_des( x, edge, des )
 
   implicit none
 
   real, intent(in), dimension(3) :: x
-  real, intent(in), dimension(2) :: redge, zedge
-  integer, intent(in) :: dir
-  logical :: goto_dir
+  real, intent(in), dimension(2) :: edge
+  integer, intent(in) :: des
+  logical :: goto_des
 
   real :: pos
   
-  goto_dir = .false.
+  goto_des = .false.
 
-  select case ( dir )
+  select case ( des )
   case ( p_fwd )
     pos = x(3)
-    goto_dir = pos >  zedge(p_upper)
+    goto_des = pos >= edge(p_upper)
   case ( p_bwd )
     pos = x(3)
-    goto_dir = pos <= zedge(p_lower)
+    goto_des = pos < edge(p_lower)
   case ( p_iwd )
     pos = sqrt( x(1)*x(1) + x(2)*x(2) )
-    goto_dir = pos <= redge(p_lower)
+    goto_des = pos < edge(p_lower)
   case ( p_owd )
     pos = sqrt( x(1)*x(1) + x(2)*x(2) )
-    goto_dir = pos >  redge(p_upper)
+    goto_des = pos >= edge(p_upper)
   end select
 
-end function goto_dir
+end function goto_des
 
 end module part3d_comm

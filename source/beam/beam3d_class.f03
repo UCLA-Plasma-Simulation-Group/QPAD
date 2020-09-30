@@ -34,20 +34,16 @@ type beam3d
    integer :: push_type
    contains
 
-   generic :: new  => init_beam3d
-   generic :: del  => end_beam3d
-   generic :: push => push_beam3d
+   procedure :: new  => init_beam3d
+   procedure :: del  => end_beam3d
+   procedure :: push => push_beam3d
+   procedure :: wr   => writehdf5_beam3d
+   procedure :: wrq  => writeq_beam3d
+   procedure :: wrst => writerst_beam3d
+   procedure :: rrst => readrst_beam3d
+
    generic :: qdp  => qdeposit_beam3d, qdeposit_beam3d_finish
-   generic :: wr   => writehdf5_beam3d
-   generic :: wrq  => writeq_beam3d
-   generic :: wrst => writerst_beam3d
-   generic :: rrst => readrst_beam3d
-   procedure, private :: init_beam3d
-   procedure, private :: end_beam3d
-   procedure, private :: push_beam3d
-   procedure, private :: qdeposit_beam3d, qdeposit_beam3d_finish, writehdf5_beam3d
-   procedure, private :: writerst_beam3d, readrst_beam3d
-   procedure, private :: writeq_beam3d
+   procedure, private :: qdeposit_beam3d, qdeposit_beam3d_finish
 end type
 
 save

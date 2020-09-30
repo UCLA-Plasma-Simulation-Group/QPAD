@@ -187,6 +187,8 @@ subroutine end_sim_beams( this )
     call this%beam(i)%del()
   enddo
 
+  call end_part3d_comm()
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_sim_beams
