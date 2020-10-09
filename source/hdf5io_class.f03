@@ -1,6 +1,6 @@
 module hdf5io_class
 
-use parallel_pipe_class
+use parallel_module
 use sysutil
 use param
 use HDF5
@@ -331,11 +331,10 @@ subroutine wrattr_dataset( this, dset_id, unit, name )
 end subroutine wrattr_dataset
 !
 
-subroutine pwfield_3d(pp,file,fd,gs,ls,noff,ierr)
+subroutine pwfield_3d(file,fd,gs,ls,noff,ierr)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:,:), intent(in) :: fd
  integer, dimension(3), intent(in) :: gs, ls
@@ -367,7 +366,7 @@ subroutine pwfield_3d(pp,file,fd,gs,ls,noff,ierr)
  call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)
  call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
  info = MPI_INFO_NULL
- call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+ call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
  call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
 
  call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,ierr,&
@@ -404,11 +403,10 @@ subroutine pwfield_3d(pp,file,fd,gs,ls,noff,ierr)
 
 end subroutine pwfield_3d
 !
-subroutine pwfield_2d( pp, file, fd, gs, ls, noff, ierr )
+subroutine pwfield_2d( file, fd, gs, ls, noff, ierr )
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: fd
  integer, dimension(2), intent(in) :: gs, ls
@@ -439,7 +437,7 @@ subroutine pwfield_2d( pp, file, fd, gs, ls, noff, ierr )
  call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)
  call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
  info = MPI_INFO_NULL
- call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+ call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
  call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
 
  call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,ierr,&
@@ -477,12 +475,10 @@ subroutine pwfield_2d( pp, file, fd, gs, ls, noff, ierr )
 
 end subroutine pwfield_2d
 !
-subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
-&stag,id,ierr)
+subroutine pwfield_3d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:,:), intent(in) :: fd
  integer, dimension(3), intent(in) :: gs, ls
@@ -514,14 +510,13 @@ subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  gsize = gs
  lsize = ls
  lnoff = noff
- nvyp = pp%getlnvp()
- ori = pp%getkstrt() - nvyp - 1
- des = pp%getkstrt() + nvyp - 1
+ nvyp = num_procs_loc()
+ ori = id_proc() - nvyp
+ des = id_proc() + nvyp
  dims = 1
 
  if (ori >= 0) then
-    call MPI_IRECV(message,1,pp%getmint(),ori,rtag,pp%getlworld(),&
-    &mid,ierr)
+    call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),mid,ierr)
     call MPI_WAIT(mid,istat,ierr)
  endif
 
@@ -531,7 +526,7 @@ subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)
  call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
  info = MPI_INFO_NULL
- call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+ call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
  call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
 
  if (ori >= 0) then
@@ -581,21 +576,18 @@ subroutine pwfield_3d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  call h5fclose_f(file_id, ierr)
  call h5close_f(ierr)
 
- if (des < pp%getnvp()) then
-    call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
-    &id,ierr)
+ if ( des < num_procs() ) then
+    call MPI_ISEND(message,1,p_dtype_int,des,stag,comm_world(),id,ierr)
  else
     id = MPI_REQUEST_NULL
  endif
 
 end subroutine pwfield_3d_pipe
 ! !
-subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
-  stag, id, ierr )
+subroutine pwfield_2d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
 
   implicit none
 
-  class(parallel_pipe), intent(in), pointer :: pp
   class(hdf5file), intent(in) :: file
   real, dimension(:,:), intent(in) :: fd
   integer, dimension(2), intent(in) :: gs, ls
@@ -627,13 +619,13 @@ subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
   gsize = gs
   lsize = ls
   lnoff = noff
-  nvyp = pp%getlnvp()
-  ori = pp%getkstrt() - nvyp - 1
-  des = pp%getkstrt() + nvyp - 1
+  nvyp = num_procs_loc()
+  ori = id_proc() - nvyp
+  des = id_proc() + nvyp
   dims = 1
 
   if (ori >= 0) then
-    call MPI_IRECV(message,1,pp%getmint(),ori,rtag,pp%getlworld(),&
+    call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),&
     &mid,ierr)
     call MPI_WAIT(mid,istat,ierr)
   endif
@@ -644,7 +636,7 @@ subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
   call h5pcreate_f(H5P_DATASET_CREATE_F, dcplID, ierr)
   call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
   info = MPI_INFO_NULL
-  call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+  call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
   call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
 
   if (ori >= 0) then
@@ -692,21 +684,18 @@ subroutine pwfield_2d_pipe( pp, file, fd, gs, ls, noff, rtag, &
   call h5fclose_f(file_id, ierr)
   call h5close_f(ierr)
 
-  if (des < pp%getnvp()) then
-    call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
-    &id,ierr)
+  if (des < num_procs()) then
+    call MPI_ISEND(message,1,p_dtype_int,des,stag,comm_world(),id,ierr)
   else
     id = MPI_REQUEST_NULL
   endif
 
 end subroutine pwfield_2d_pipe
 !
-subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
-&stag,id,ierr)
+subroutine wfield_2d_pipe(file,fd,gs,ls,noff,rtag,stag,id,ierr)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: fd
  integer, dimension(2), intent(in) :: gs, ls
@@ -738,14 +727,13 @@ subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  gsize = gs
  lsize = ls
  lnoff = noff
- nvyp = pp%getlnvp()
- ori = pp%getkstrt() - nvyp - 1
- des = pp%getkstrt() + nvyp - 1
+ nvyp = num_procs_loc()
+ ori = id_proc() - nvyp
+ des = id_proc() + nvyp
  dims = 1
 
  if (ori >= 0) then
-    call MPI_IRECV(message,1,pp%getmint(),ori,rtag,pp%getlworld(),&
-    &mid,ierr)
+    call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),mid,ierr)
     call MPI_WAIT(mid,istat,ierr)
  endif
 
@@ -772,16 +760,14 @@ subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  call h5screate_simple_f(2, lsize, memspaceID, ierr)
  call h5gopen_f(file_id, '/', rootID, ierr)
  if (ori < 0) then
-    call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id,&
-    &ierr)
+    call h5dcreate_f(rootID, file%dataname, treal, dspace_id, dset_id, ierr)
     call wrattr_dataset(file,dset_id)
  endif
 
  start(1) = 0
  start(2) = lnoff(2)
 
- call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
- &ierr)
+ call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize, ierr)
 
  call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
  &lsize, ierr, memspaceID, dspace_id)
@@ -794,20 +780,18 @@ subroutine wfield_2d_pipe(pp,file,fd,gs,ls,noff,rtag,&
  call h5fclose_f(file_id, ierr)
  call h5close_f(ierr)
 
- if (des < pp%getnvp()) then
-    call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
-    &id,ierr)
+ if (des < num_procs()) then
+    call MPI_ISEND(message,1,p_dtype_int,des,stag,comm_world(),id,ierr)
  else
     id = MPI_REQUEST_NULL
  endif
 
 end subroutine wfield_2d_pipe
 !
-subroutine pwpart_2d(pp,file,x,p,q,npp,dspl,delta,ierr)
+subroutine pwpart_2d(file,x,p,q,npp,dspl,delta,ierr)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: x, p
  real, dimension(:), intent(in) :: q
@@ -840,13 +824,13 @@ subroutine pwpart_2d(pp,file,x,p,q,npp,dspl,delta,ierr)
 
  tnpp = int(npp/dspl)
  tp = 0
- call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,pp%getlgrp(),ierr)
+ call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,comm_loc(),ierr)
 
  if (tp == 0) then
     call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)
     call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
     info = MPI_INFO_NULL
-    call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+    call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
     call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr,&
     &access_prp=flplID)
@@ -870,7 +854,7 @@ subroutine pwpart_2d(pp,file,x,p,q,npp,dspl,delta,ierr)
     else
        color = MPI_UNDEFINED
     endif
-    call MPI_COMM_SPLIT(pp%getlgrp(), color, 0, pgrp, ierr )
+    call MPI_COMM_SPLIT(comm_loc(), color, 0, pgrp, ierr )
 
     if (tnpp > 0) then
        call MPI_COMM_RANK(pgrp, pid, ierr)
@@ -975,11 +959,10 @@ subroutine pwpart_2d(pp,file,x,p,q,npp,dspl,delta,ierr)
 
 end subroutine pwpart_2d
 
-subroutine pwpart_2d_r(pp,file,x,p,q,npp,dspl,ierr)
+subroutine pwpart_2d_r(file,x,p,q,npp,dspl,ierr)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: x, p
  real, dimension(:), intent(in) :: q
@@ -1012,13 +995,13 @@ subroutine pwpart_2d_r(pp,file,x,p,q,npp,dspl,ierr)
 
  tnpp = int(npp/dspl)
  tp = 0
- call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,pp%getlgrp(),ierr)
+ call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,comm_loc(),ierr)
 
  if (tp == 0) then
     call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)
     call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
     info = MPI_INFO_NULL
-    call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+    call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
     call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr,&
     &access_prp=flplID)
@@ -1042,7 +1025,7 @@ subroutine pwpart_2d_r(pp,file,x,p,q,npp,dspl,ierr)
     else
        color = MPI_UNDEFINED
     endif
-    call MPI_COMM_SPLIT(pp%getlgrp(), color, 0, pgrp, ierr )
+    call MPI_COMM_SPLIT(comm_loc(), color, 0, pgrp, ierr )
 
     if (tnpp > 0) then
        call MPI_COMM_RANK(pgrp, pid, ierr)
@@ -1169,12 +1152,10 @@ subroutine pwpart_2d_r(pp,file,x,p,q,npp,dspl,ierr)
 
 end subroutine pwpart_2d_r
 !
-subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
-&id,ierr,s)
+subroutine pwpart_3d_pipe(file,x,p,q,npp,dspl,z0,rtag,stag,id,ierr,s)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: x, p
  real, dimension(:,:), intent(in), optional :: s
@@ -1212,23 +1193,23 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
  call h5open_f(ierr)
  treal = detect_precision()
  tnpp = int(npp/dspl)
- nvyp = pp%getlnvp()
- ori = pp%getkstrt() - nvyp - 1
- des = pp%getkstrt() + nvyp - 1
+ nvyp = num_procs_loc()
+ ori = id_proc() - nvyp
+ des = id_proc() + nvyp
 
  if (ori >= 0) then
-    call MPI_IRECV(message,1,pp%getmint(),ori,rtag,pp%getlworld(),&
+    call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),&
     &mid,ierr)
     call MPI_WAIT(mid,istat,ierr)
  endif
 
- call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,pp%getlgrp(),ierr)
+ call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,comm_loc(),ierr)
  if (tp == 0) then
     if (ori < 0) then
        call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)
        call h5pcreate_f(H5P_DATASET_XFER_F, xferID, ierr)
        info = MPI_INFO_NULL
-       call h5pset_fapl_mpio_f(flplID, pp%getlgrp(), info, ierr)
+       call h5pset_fapl_mpio_f(flplID, comm_loc(), info, ierr)
        call h5pset_dxpl_mpio_f(xferID, H5FD_MPIO_COLLECTIVE_F, ierr)
        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr,&
        &access_prp=flplID)
@@ -1245,8 +1226,8 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
        call h5gclose_f(rootID, ierr)
        call h5fclose_f(file_id, ierr)
     endif
-    if (des < pp%getnvp()) then
-       call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
+    if (des < num_procs()) then
+       call MPI_ISEND(message,1,p_dtype_int,des,stag,comm_world(),&
        &id,ierr)
     else
        id = MPI_REQUEST_NULL
@@ -1259,7 +1240,7 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
     else
        color = MPI_UNDEFINED
     endif
-    call MPI_COMM_SPLIT(pp%getlgrp(), color, 0, pgrp, ierr )
+    call MPI_COMM_SPLIT(comm_loc(), color, 0, pgrp, ierr )
 
     if (tnpp > 0) then
        call MPI_COMM_RANK(pgrp, pid, ierr)
@@ -1518,8 +1499,8 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
     endif
  endif
 
- if (des < pp%getnvp()) then
-    call MPI_ISEND(message,1,pp%getmint(),des,stag,pp%getlworld(),&
+ if (des < num_procs()) then
+    call MPI_ISEND(message,1,p_dtype_int,des,stag,comm_world(),&
     &id,ierr)
  else
     id = MPI_REQUEST_NULL
@@ -1533,11 +1514,10 @@ subroutine pwpart_3d_pipe(pp,file,x,p,q,npp,dspl,z0,rtag,stag,&
 
 end subroutine pwpart_3d_pipe
 ! !
-subroutine wpart(pp,file,x,p,q,npp,dspl,ierr,s)
+subroutine wpart(file,x,p,q,npp,dspl,ierr,s)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: x, p
  real, dimension(:,:), intent(in), optional :: s
@@ -1661,11 +1641,10 @@ subroutine wpart(pp,file,x,p,q,npp,dspl,ierr,s)
 
 end subroutine wpart
 !
-subroutine rpart(pp,file,x,p,q,npp,ierr,s)
+subroutine rpart(file,x,p,q,npp,ierr,s)
 
  implicit none
 
- class(parallel_pipe), intent(in), pointer :: pp
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(inout) :: x, p
  real, dimension(:,:), intent(inout), optional :: s

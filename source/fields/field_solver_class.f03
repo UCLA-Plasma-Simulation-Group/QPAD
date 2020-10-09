@@ -1,8 +1,7 @@
 module field_solver_class
 
-use grid_class
-use parallel_pipe_class
-
+use options_class
+use parallel_module
 use mpi
 use param
 use sysutil
@@ -53,13 +52,12 @@ contains
 ! Class field_solver implementation
 ! =====================================================================
 
-subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype )
+subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
-  class( parallel_pipe ), intent(in) :: pp
-  class( grid ), intent(in) :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: kind, stype, mode, bnd
   real, intent(in) :: dr
 
@@ -74,11 +72,11 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype )
   this%bnd   = bnd
 
   ! setup HYPRE grid
-  comm = pp%getlgrp()
+  comm = comm_loc()
 
-  call this%set_struct_grid( pp, gp )
+  call this%set_struct_grid( opts )
   call this%set_struct_stencil()
-  call this%set_struct_matrix( pp, gp, dr )
+  call this%set_struct_matrix( opts, dr )
 
   call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
   call HYPRE_StructVectorInitialize( this%b, ierr )
@@ -86,7 +84,7 @@ subroutine init_field_solver( this, pp, gp, mode, dr, kind, bnd, stype )
   call HYPRE_StructVectorCreate( comm, this%grid, this%x, ierr )
   call HYPRE_StructVectorInitialize( this%x, ierr )
 
-  call this%set_struct_solver( pp )
+  call this%set_struct_solver()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -117,19 +115,18 @@ subroutine end_field_solver( this )
 
 end subroutine end_field_solver
 
-subroutine set_struct_solver( this, pp )
+subroutine set_struct_solver( this )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
-  class( parallel_pipe ), intent(in) :: pp
 
   integer :: ierr, comm
   character(len=32), save :: sname = "set_struct_solver"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  comm = pp%getlgrp()
+  comm = comm_loc()
 
   ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
   call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
@@ -192,22 +189,21 @@ subroutine solve_equation( this, src_sol )
 
 end subroutine solve_equation
 
-subroutine set_struct_grid( this, pp, gp )
+subroutine set_struct_grid( this, opts )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
-  class( parallel_pipe ), intent(in) :: pp
-  class( grid ), intent(in) :: gp
+  type( options ), intent(in) :: opts
 
   integer :: comm, ierr
   character(len=32), save :: sname = "set_struct_grid"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  comm = pp%getlgrp()
-  this%ilower = gp%get_noff(1) + 1
-  this%iupper = gp%get_noff(1) + gp%get_ndp(1)
+  comm = comm_loc()
+  this%ilower = opts%get_noff(1) + 1
+  this%iupper = opts%get_noff(1) + opts%get_ndp(1)
 
   call HYPRE_StructGridCreate( comm, 1, this%grid, ierr )
   call HYPRE_StructGridSetExtents( this%grid, this%ilower, this%iupper, ierr )
@@ -251,13 +247,12 @@ subroutine set_struct_stencil( this )
 
 end subroutine set_struct_stencil
 
-subroutine set_struct_matrix( this, pp, gp, dr )
+subroutine set_struct_matrix( this, opts, dr )
 
   implicit none
 
   class( field_solver ), intent(inout) :: this
-  class( parallel_pipe ), intent(in) :: pp
-  class( grid ), intent(in) :: gp
+  type( options ), intent(in) :: opts
   real, intent(in) :: dr
 
   integer :: i, ierr, local_vol, nr, noff, m
@@ -267,10 +262,10 @@ subroutine set_struct_matrix( this, pp, gp, dr )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  comm = pp%getlgrp()
-  lidproc = pp%getlidproc()
-  lnvp = pp%getlnvp()
-  noff = gp%get_noff(1)
+  comm    = comm_loc()
+  lidproc = id_proc_loc()
+  lnvp    = num_procs_loc()
+  noff    = opts%get_noff(1)
 
   dr2 = dr*dr
   m = this%mode

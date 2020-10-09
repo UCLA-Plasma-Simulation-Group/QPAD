@@ -1,7 +1,7 @@
 module sim_fields_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_psi_class
 use field_e_class
 use field_b_class
@@ -20,9 +20,6 @@ public :: sim_fields
 type sim_fields
 
   ! private
-
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
 
   type( field_psi ), pointer :: psi => null()
   type( field_vpot ), pointer :: vpot => null() ! just for diagnostic
@@ -46,20 +43,18 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine init_sim_fields( this, input )
+subroutine init_sim_fields( this, input, opts )
 
   implicit none
 
   class( sim_fields ), intent(inout) :: this
-  type( input_json ), pointer, intent(inout) :: input
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
 
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=:), allocatable :: str
   integer :: entity, max_mode, ps, bnd, sm_type, sm_ord
-
-  this%gp => input%gp
-  this%pp => input%pp
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -105,21 +100,21 @@ subroutine init_sim_fields( this, input )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
-  call this%psi%new(    this%pp, this%gp, max_mode, ps, bnd )
-  call this%q_spe%new(  this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
-  call this%q_beam%new( this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
-  call this%cu%new(     this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
-  call this%dcu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
-  call this%acu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
-  call this%amu%new(    this%pp, this%gp, max_mode, ps, sm_type, sm_ord )
+  call this%psi%new(    opts, max_mode, ps, bnd )
+  call this%q_spe%new(  opts, max_mode, ps, sm_type, sm_ord )
+  call this%q_beam%new( opts, max_mode, ps, sm_type, sm_ord )
+  call this%cu%new(     opts, max_mode, ps, sm_type, sm_ord )
+  call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord )
   entity = p_entity_plasma
-  call this%e_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity )
-  call this%b_spe%new(  this%pp, this%gp, max_mode, ps, bnd, entity )
-  call this%e%new(      this%pp, this%gp, max_mode, ps, bnd, entity )
-  call this%b%new(      this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%e_spe%new(  opts, max_mode, ps, bnd, entity )
+  call this%b_spe%new(  opts, max_mode, ps, bnd, entity )
+  call this%e%new(      opts, max_mode, ps, bnd, entity )
+  call this%b%new(      opts, max_mode, ps, bnd, entity )
   entity = p_entity_beam
-  call this%e_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity )
-  call this%b_beam%new( this%pp, this%gp, max_mode, ps, bnd, entity )
+  call this%e_beam%new( opts, max_mode, ps, bnd, entity )
+  call this%b_beam%new( opts, max_mode, ps, bnd, entity )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

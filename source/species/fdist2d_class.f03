@@ -1,9 +1,7 @@
-! fdist2d class for QPAD
-
 module fdist2d_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use input_class
 use param
@@ -19,12 +17,12 @@ public :: fdist2d, fdist2d_wrap, fdist2d_000, fdist2d_012
 type, abstract :: fdist2d
 
    private
-   class(parallel_pipe), pointer :: pp => null()
-   class(grid), pointer :: gp => null()
 
-! ndprof = profile type
+   ! ndprof = profile type
    integer :: npf, npmax
    real :: dex
+
+   integer :: noff, nr, nrp
 
    contains
    generic :: new => init_fdist2d
@@ -52,12 +50,14 @@ subroutine ab_dist2d( this, x, p, gamma, q, psi, npp, s )
    real, intent(in) :: s
 end subroutine ab_dist2d
 
-subroutine ab_init_fdist2d(this,input,i)
+subroutine ab_init_fdist2d(this,input,opts,i)
    import fdist2d
    import input_json
+   import options
    implicit none
    class(fdist2d), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
+   type(options), intent(in) :: opts
    integer, intent(in) :: i
 end subroutine ab_init_fdist2d
 
@@ -151,12 +151,13 @@ subroutine end_fdist2d(this)
 
 end subroutine end_fdist2d
 
-subroutine init_fdist2d_000(this,input,i)
+subroutine init_fdist2d_000(this,input,opts,i)
 
    implicit none
 
    class(fdist2d_000), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
+   type(options), intent(in) :: opts
    integer, intent(in) :: i
 
    ! local data
@@ -167,8 +168,11 @@ subroutine init_fdist2d_000(this,input,i)
    character(len=18), save :: sname = 'init_fdist2d_000'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%pp => input%pp
-   this%gp => input%gp
+
+   this%noff = opts%get_noff(1)
+   this%nr   = opts%get_nd(1)
+   this%nrp  = opts%get_ndp(1)
+
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
@@ -208,22 +212,22 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    ! local data
    character(len=18), save :: sname = 'dist2d_000'
    integer(kind=LG) :: nps, i
-   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
+   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff
    real :: qm, den_temp
    integer :: prof_l
    real :: r1, t0, dr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   n1    = this%gp%get_nd(1)
-   n1p   = this%gp%get_ndp(1)
-   noff1 = this%gp%get_noff(1)
+   nr   = this%nr
+   nrp  = this%nrp
+   noff = this%noff
    
    ppc1 = this%ppc1; ppc2 = this%ppc2
    t0 = 2.0*pi/ppc2
    dr = this%dex
    den_temp = 1.0
-   if (noff1+n1p == n1 .and. n1p > 2) n1p = n1p - 2
+   if (noff+nrp == nr .and. nrp > 2) nrp = nrp - 2
    if (trim(this%long_prof) == 'piecewise') then
       prof_l = size(this%fs)
       if (s<this%s(1) .or. s>this%s(prof_l)) then
@@ -247,9 +251,9 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
    nps = 1
 ! initialize the particle positions
-   do i=1, n1p
+   do i=1, nrp
       do i1 = 0, ppc1-1
-         r1 = (i1 + 0.5)/ppc1 + i - 1 + noff1
+         r1 = (i1 + 0.5)/ppc1 + i - 1 + noff
          do i2=0, ppc2-1
             x(1,nps) = r1*dr*cos(i2*t0)
             x(2,nps) = r1*dr*sin(i2*t0)
@@ -269,12 +273,13 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine dist2d_000
 !
-subroutine init_fdist2d_012(this,input,i)
+subroutine init_fdist2d_012(this,input,opts,i)
 
    implicit none
 
    class(fdist2d_012), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
+   type(options), intent(in) :: opts
    integer, intent(in) :: i
 ! local data
    integer :: npf,ppc1,ppc2,n1,nmode
@@ -284,8 +289,11 @@ subroutine init_fdist2d_012(this,input,i)
    character(len=18), save :: sname = 'init_fdist2d_012:'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%pp => input%pp
-   this%gp => input%gp
+
+   this%noff = opts%get_noff(1)
+   this%nr   = opts%get_nd(1)
+   this%nrp  = opts%get_ndp(1)
+
    write (sn,'(I3.3)') i
    s1 = 'species('//trim(sn)//')'
    call input%get('simulation.grid(1)',n1)
@@ -329,16 +337,16 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
    integer(kind=LG) :: nps, i
-   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
+   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff
    real :: qm, den_temp
    integer :: prof_l, ii
    real :: r1, t0, dr, rr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   n1    = this%gp%get_nd(1)
-   n1p   = this%gp%get_ndp(1)
-   noff1 = this%gp%get_noff(1)
+   nr   = this%nr
+   nrp  = this%nrp
+   noff = this%noff
 
    ppc1 = this%ppc1; ppc2 = this%ppc2
    t0 = 2.0*pi/ppc2
@@ -380,9 +388,9 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
    end if
 
 ! initialize the particle positions
-   do i=1, n1p
+   do i=1, nrp
       do i1 = 0, ppc1-1
-         rr = (i1 + 0.5)/ppc1 + i - 1 + noff1
+         rr = (i1 + 0.5)/ppc1 + i - 1 + noff
          r1 = rr*dr
          if (r1<this%r(1) .or. r1>this%r(prof_l)) then
             cycle

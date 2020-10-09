@@ -1,8 +1,6 @@
 module input_class
 
-use parallel_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
 use mpi
 use json_module
 use sysutil
@@ -15,9 +13,6 @@ public :: input_json
 
 type input_json
 
-   class(parallel), pointer :: p => null()
-   class(parallel_pipe), pointer :: pp => null()
-   class(grid), pointer :: gp => null()
    type(json_file), private, pointer :: input => null()
 
    contains
@@ -48,9 +43,6 @@ end type
 
 character(len=10), save :: cls_name = 'input'
 integer, parameter :: cls_level = 1
-type(grid), save, target  :: gp
-type(parallel), save, target :: p
-type(parallel_pipe), save, target :: pp
 
 contains
 !
@@ -66,18 +58,11 @@ subroutine read_input_json(this)
    integer :: length, num_stages, verbose, nr, nz, ierr
    real :: dr, dxi, min, max
 
-   call p%new()
-
-   this%p => p
-
-   call init_stdout( p%getidproc() )
-   call init_errors( eunit=2, idproc=p%getidproc(), monitor=5 )
-
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
    call this%initialize(comment_char='!')
 
-   if (p%getidproc() == 0) then
+   if ( id_proc() == 0 ) then
       inquire(FILE='./qpinput.json', EXIST=found)
       if(found) then
          ! read the file
@@ -97,39 +82,21 @@ subroutine read_input_json(this)
       length = len(ff)
    end if
 
-   call MPI_BCAST(length, 1, this%p%getmint(), 0, this%p%getlworld(), ierr)
+   call mpi_bcast(length, 1, p_dtype_int, 0, comm_world(), ierr)
 
    if (.not. allocated(ff)) allocate(character(len=length) :: ff)
 
-   call MPI_BCAST(ff, length, this%p%getmchar(), 0, this%p%getlworld(), ierr)
+   call mpi_bcast(ff, length, p_dtype_char, 0, comm_world(), ierr)
 
    call this%load_from_string(ff)
 
+   ! initialize timing
    call this%get('simulation.if_timing', if_timing)
    call init_tprof( if_timing )
 
+   ! change the output level of debug information
    call this%get('simulation.verbose', verbose)
    call set_monitor( verbose )
-
-   call this%get('simulation.nodes(2)',num_stages)
-
-   call pp%new(nst=num_stages)
-
-   this%pp => pp
-
-   call this%get('simulation.grid(1)',nr)
-   call this%get('simulation.grid(2)',nz)
-
-   call this%get( 'simulation.box.r(1)', min )
-   call this%get( 'simulation.box.r(2)', max )
-   dr = ( max - min ) / nr
-   call this%get( 'simulation.box.z(1)', min )
-   call this%get( 'simulation.box.z(2)', max )
-   dxi = ( max - min ) / nz
-
-   call gp%new( pp, nr, nz, dr, dxi )
-
-   this%gp => gp
 
    call write_dbg( cls_name, sname, cls_level, ff )
    call write_dbg( cls_name, sname, cls_level, 'ends' )

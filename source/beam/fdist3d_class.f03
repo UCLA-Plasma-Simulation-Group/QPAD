@@ -1,9 +1,7 @@
-! fdist3d class for QPAD
-
 ! *TODO* fdist3d class should be higher than part3d class
 module fdist3d_class
 
-use parallel_pipe_class
+use parallel_module
 use field_class
 use ufield_class
 use input_class
@@ -25,9 +23,7 @@ type, abstract :: fdist3d
 
    private
 
-   class(parallel_pipe), pointer, public :: p => null()
-!
-! ndprof = profile type
+   ! ndprof = profile type
    integer :: npf, npmax
    logical :: evol = .true.
    real :: dx, dz
@@ -68,7 +64,7 @@ subroutine ab_init_fdist3d(this,input,i)
    import input_json
    implicit none
    class(fdist3d), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
    integer, intent(in) :: i
 end subroutine ab_init_fdist3d
 !
@@ -249,7 +245,7 @@ subroutine init_fdist3d_000(this,input,i)
    implicit none
 
    class(fdist3d_000), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
    integer, intent(in) :: i
 ! local data
    integer :: npf,npx,npy,npz,npmax
@@ -263,8 +259,6 @@ subroutine init_fdist3d_000(this,input,i)
    character(len=18), save :: sname = 'init_fdist3d_000:'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   this%p => input%pp
 
    write (sn,'(I3.3)') i
    s1 = 'beam('//trim(sn)//')'
@@ -470,7 +464,7 @@ subroutine init_fdist3d_001(this,input,i)
    implicit none
 
    class(fdist3d_001), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
    integer, intent(in) :: i
 ! local data
    integer :: npf,npr,npth,npz,npmax
@@ -484,8 +478,6 @@ subroutine init_fdist3d_001(this,input,i)
    character(len=18), save :: sname = 'init_fdist3d_001:'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   this%p => input%pp
 
    write (sn,'(I3.3)') i
    s1 = 'beam('//trim(sn)//')'
@@ -686,7 +678,7 @@ subroutine init_fdist3d_002(this,input,i)
    implicit none
 
    class(fdist3d_002), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
    integer, intent(in) :: i
 ! local data
    integer :: npf,npx,npy,npz,npmax
@@ -700,8 +692,6 @@ subroutine init_fdist3d_002(this,input,i)
    character(len=18), save :: sname = 'init_fdist3d_002:'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   this%p => input%pp
 
    write (sn,'(I3.3)') i
    s1 = 'beam('//trim(sn)//')'
@@ -944,7 +934,7 @@ subroutine init_fdist3d_100(this,input,i)
    implicit none
 
    class(fdist3d_100), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
+   type(input_json), intent(inout) :: input
    integer, intent(in) :: i
 
    ! local data
@@ -954,8 +944,6 @@ subroutine init_fdist3d_100(this,input,i)
    character(len=32), save :: sname = 'init_fdist3d_100:'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   this%p => input%pp
 
    s1 = 'beam('//num2str(i)//')'
 

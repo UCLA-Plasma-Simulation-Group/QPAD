@@ -1,8 +1,7 @@
 module simulation_class
 
-use parallel_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use sim_fields_class
 use sim_beams_class
 use sim_species_class
@@ -35,10 +34,6 @@ type simulation
 
   ! private
 
-  type( input_json ), pointer :: input => null()
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
-
   type( sim_fields ) :: fields
   type( sim_species ) :: species
   type( sim_beams ) :: beams
@@ -56,12 +51,9 @@ type simulation
 
   contains
 
-  generic :: new => init_simulation
-  generic :: del => end_simulation
-  generic :: run => run_simulation
-
-  procedure, private :: init_simulation, end_simulation
-  procedure, private :: run_simulation
+  procedure :: new => init_simulation
+  procedure :: del => end_simulation
+  procedure :: run => run_simulation
 
 end type simulation
 
@@ -70,52 +62,49 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine init_simulation(this)
+subroutine init_simulation(this, input, opts)
 
   implicit none
 
   class(simulation), intent(inout) :: this
+  type(input_json), intent(inout) :: input
+  type(options), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'init_simulation'
 
   real :: n0, dt, time
   logical :: read_rst
 
-  allocate( this%input )
-  call this%input%new()
-  this%pp => this%input%pp
-  this%gp => this%input%gp
-
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%dr  = this%gp%get_dr()
-  this%dxi = this%gp%get_dxi()
-  this%nstep2d = this%gp%get_ndp(2)
+  this%dr  = opts%get_dr()
+  this%dxi = opts%get_dxi()
+  this%nstep2d = opts%get_ndp(2)
 
-  call this%input%get( 'simulation.n0', n0 )
-  call this%input%get( 'simulation.time', time )
-  call this%input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.n0', n0 )
+  call input%get( 'simulation.time', time )
+  call input%get( 'simulation.dt', dt )
   this%nstep3d = time/dt
   this%dt = dt
 
-  call this%input%get( 'simulation.read_restart', read_rst )
+  call input%get( 'simulation.read_restart', read_rst )
   if (read_rst) then
-    call this%input%get( 'simulation.restart_timestep', this%start3d )
+    call input%get( 'simulation.restart_timestep', this%start3d )
     this%start3d = this%start3d + 1
   else
     this%start3d = 1
   endif
 
-  call this%input%get( 'simulation.iter', this%iter )
-  call this%input%get( 'simulation.nbeams', this%nbeams )
-  call this%input%get( 'simulation.nspecies', this%nspecies )
-  call this%input%get( 'simulation.max_mode', this%max_mode )
+  call input%get( 'simulation.iter', this%iter )
+  call input%get( 'simulation.nbeams', this%nbeams )
+  call input%get( 'simulation.nspecies', this%nspecies )
+  call input%get( 'simulation.max_mode', this%max_mode )
 
-  call this%fields%new( this%input )
-  call this%beams%new( this%input )
-  call this%species%new( this%input, (this%start3d-1)*dt )
+  call this%fields%new( input, opts )
+  call this%beams%new( input, opts )
+  call this%species%new( input, opts, (this%start3d-1)*dt )
 
-  call this%diag%new( this%pp, this%input, this%fields, this%beams, this%species )
+  call this%diag%new( input, opts, this%fields, this%beams, this%species )
 
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
@@ -138,6 +127,7 @@ subroutine end_simulation(this)
   class( simulation ), intent(inout) :: this
 
   ! local data
+  integer :: ierr
   character(len=18), save :: sname = 'end_simulation'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -146,12 +136,10 @@ subroutine end_simulation(this)
   call this%beams%del()
   call this%species%del()
   call this%diag%del()
-  call this%gp%del()
-  call this%pp%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-  ! call MPI_FINALIZE(ierr)
+  call mpi_finalize(ierr)
 
 end subroutine end_simulation
 
@@ -196,7 +184,6 @@ subroutine run_simulation( this )
 
   beam => this%beams%beam
   spe  => this%species%spe
-
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run

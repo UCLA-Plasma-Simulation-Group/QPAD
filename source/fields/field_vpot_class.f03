@@ -1,7 +1,7 @@
 module field_vpot_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use field_b_class
 use field_psi_class
@@ -48,13 +48,12 @@ end type field_vpot
 
 contains
 
-subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
+subroutine init_field_vpot( this, opts, num_modes, part_shape, boundary )
 
   implicit none
 
   class( field_vpot ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: num_modes, part_shape, boundary
 
   integer, dimension(2,2) :: gc_num
@@ -64,8 +63,8 @@ subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = gp%get_ndp(1)
-  dr = gp%get_dr()
+  nrp = opts%get_ndp(1)
+  dr  = opts%get_dr()
 
   select case ( part_shape )
 
@@ -86,18 +85,18 @@ subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, num_modes, gc_num, entity=p_entity_plasma )
+  call this%field%new( opts, dim, num_modes, gc_num, entity=p_entity_plasma )
 
   ! initialize solver
   allocate( this%solver_vpotz( 0:num_modes ) )
   allocate( this%solver_vpotp( 0:num_modes ) )
   allocate( this%solver_vpotm( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver_vpotz(i)%new( pp, gp, i, dr, kind=p_fk_vpotz, &
+    call this%solver_vpotz(i)%new( opts, i, dr, kind=p_fk_vpotz, &
       bnd=boundary, stype=p_hypre_cycred )
-    call this%solver_vpotp(i)%new( pp, gp, i, dr, kind=p_fk_vpotp, &
+    call this%solver_vpotp(i)%new( opts, i, dr, kind=p_fk_vpotp, &
       bnd=boundary, stype=p_hypre_cycred )
-    call this%solver_vpotm(i)%new( pp, gp, i, dr, kind=p_fk_vpotm, &
+    call this%solver_vpotm(i)%new( opts, i, dr, kind=p_fk_vpotm, &
       bnd=boundary, stype=p_hypre_cycred )
   enddo
   allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
@@ -291,7 +290,7 @@ subroutine get_solution_vpott( this, mode )
   call start_tprof( 'solve vpott' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
-  idproc = this%rf_re(mode)%pp%getlidproc()
+  idproc = id_proc_loc()
 
   if ( mode == 0 ) then
 

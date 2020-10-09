@@ -4,6 +4,7 @@ use ufield_class
 use param
 use sysutil
 use mpi
+use parallel_module
 
 implicit none
 
@@ -160,8 +161,8 @@ subroutine smooth_f1_qcons( this, uf )
   pf     => uf%get_f1()
   nsm    = this%order
   dim    = uf%get_dim()
-  idproc = uf%pp%getlidproc()
-  nvp    = uf%get_nvp(1)
+  idproc = id_proc()
+  nvp    = num_procs_loc()
   nrp    = uf%get_ndp(1)
   noff   = uf%get_noff(1)
 

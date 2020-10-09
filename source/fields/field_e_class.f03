@@ -1,7 +1,7 @@
 module field_e_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use field_b_class
 use field_psi_class
@@ -47,13 +47,12 @@ end type field_e
 
 contains
 
-subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity )
+subroutine init_field_e( this, opts, num_modes, part_shape, boundary, entity )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: num_modes, part_shape, entity, boundary
 
   integer, dimension(2,2) :: gc_num
@@ -63,8 +62,8 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = gp%get_ndp(1)
-  dr = gp%get_dr()
+  nrp = opts%get_ndp(1)
+  dr  = opts%get_dr()
 
   select case ( part_shape )
 
@@ -85,14 +84,14 @@ subroutine init_field_e( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, num_modes, gc_num, entity )
+  call this%field%new( opts, dim, num_modes, gc_num, entity )
 
   ! initialize solver
   select case ( entity )
   case ( p_entity_plasma )
     allocate( this%solver_ez( 0:num_modes ) )
     do i = 0, num_modes
-      call this%solver_ez(i)%new( pp, gp, i, dr, kind=p_fk_ez, &
+      call this%solver_ez(i)%new( opts, i, dr, kind=p_fk_ez, &
         bnd=boundary, stype=p_hypre_cycred )
     enddo
     allocate( this%buf_re(nrp), this%buf_im(nrp) )
@@ -154,8 +153,8 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
   noff   = jay_re%get_noff(1)
-  nvp    = jay_re%pp%getlnvp()
-  idproc = jay_re%pp%getlidproc()
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
   dr     = this%dr
   dr2    = dr*dr
 
@@ -193,7 +192,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
     !   div = div + this%buf_re(nrp) * real(nrp+noff-1)
     endif
 
-    call MPI_REDUCE( div, this%buf_re(1), 1, this%pp%getmreal(), MPI_SUM, 0, this%pp%getlgrp(), ierr )
+    call MPI_REDUCE( div, this%buf_re(1), 1, p_dtype_real, MPI_SUM, 0, comm_loc(), ierr )
     if ( idproc == 0 ) this%buf_re(1) = -8.0 * this%buf_re(1)
 
   elseif ( mode > 0 .and. present( jay_im ) ) then
@@ -427,8 +426,8 @@ subroutine solve_field_et( this, b, psi )
   psi_im => psi%get_rf_im()
 
   noff   = this%rf_re(0)%get_noff(1)
-  nvp    = this%rf_re(0)%pp%getlnvp()
-  idproc = this%rf_re(0)%pp%getlidproc()
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
 
   ! m=0 mode
   ub_re   => b_re(0)%get_f1()

@@ -1,12 +1,10 @@
-! beam3d class for QPAD
-
 module beam3d_class
 
-use parallel_pipe_class
+use parallel_module
 use param
 use sysutil
 use fdist3d_class
-use grid_class
+use options_class
 use field_src_class
 use field_class
 use field_e_class
@@ -26,7 +24,6 @@ type beam3d
 
    private
 
-   class(parallel_pipe), pointer, public :: pp => null()
    class(part3d), pointer :: part => null()
    class(field_rho), allocatable :: q
    class(fdist3d), pointer :: pf => null()
@@ -53,14 +50,13 @@ integer, parameter :: cls_level = 2
 
 contains
 !
-subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
+subroutine init_beam3d( this, opts, max_mode, part_shape, pf, qbm, dt, &
    push_type, smooth_type, smooth_order, has_spin, amm )
 
    implicit none
 
    class(beam3d), intent(inout) :: this
-   class(grid), intent(in), pointer :: gd
-   class(parallel_pipe), intent(in), pointer :: pp
+   type(options), intent(in) :: opts
    class(fdist3d), intent(inout), target :: pf
    real, intent(in) :: qbm, dt
    integer, intent(in) :: push_type, part_shape, max_mode
@@ -73,14 +69,13 @@ subroutine init_beam3d( this, pp, gd, max_mode, part_shape, pf, qbm, dt, &
    integer, dimension(10) :: istat
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%pp => pp
    this%pf => pf
    this%push_type = push_type
 
    allocate(this%part,this%q)
    this%evol = pf%getevol()
-   call this%q%new(pp,gd,max_mode,part_shape,smooth_type,smooth_order)
-   call this%part%new(pp,gd,pf,qbm,dt,has_spin,amm)
+   call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+   call this%part%new(opts,pf,qbm,dt,has_spin,amm)
    ! call this%part%pmv(this%q,1,1,id)
    call move_part3d_comm( this%part, 1, 1, id )
    call MPI_WAIT(id,istat,ierr)

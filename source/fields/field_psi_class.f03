@@ -1,7 +1,7 @@
 module field_psi_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use field_solver_class
 use field_src_class
@@ -38,13 +38,12 @@ end type field_psi
 
 contains
 
-subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary )
+subroutine init_field_psi( this, opts, num_modes, part_shape, boundary )
 
   implicit none
 
   class( field_psi ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: num_modes, part_shape, boundary
 
   integer, dimension(2,2) :: gc_num
@@ -54,8 +53,8 @@ subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = gp%get_ndp(1)
-  dr = gp%get_dr()
+  nrp = opts%get_ndp(1)
+  dr  = opts%get_dr()
 
   select case ( part_shape )
 
@@ -76,12 +75,12 @@ subroutine init_field_psi( this, pp, gp, num_modes, part_shape, boundary )
 
   dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, num_modes, gc_num, entity=p_entity_plasma )
+  call this%field%new( opts, dim, num_modes, gc_num, entity=p_entity_plasma )
 
   ! initialize solver
   allocate( this%solver( 0:num_modes ) )
   do i = 0, num_modes
-    call this%solver(i)%new( pp, gp, i, dr, &
+    call this%solver(i)%new( opts, i, dr, &
       kind=p_fk_psi, bnd=boundary, stype=p_hypre_cycred )
   enddo
 
@@ -178,7 +177,7 @@ subroutine get_solution( this, mode )
   call start_tprof( 'solve psi' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
-  idproc = this%rf_re(mode)%pp%getlidproc()
+  idproc = id_proc_loc()
 
   f1_re => this%rf_re(mode)%get_f1()
   do i = 1, nrp

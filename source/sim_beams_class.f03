@@ -1,8 +1,8 @@
 module sim_beams_class
 
 use beam3d_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use fdist3d_class
 use input_class
 use field_class
@@ -22,8 +22,6 @@ type sim_beams
 
   ! private
 
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
   type( beam3d ), dimension(:), pointer :: beam => null()
   type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
 
@@ -41,12 +39,13 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine init_sim_beams( this, input )
+subroutine init_sim_beams( this, input, opts )
 
   implicit none
 
   class( sim_beams ), intent(inout) :: this
-  type( input_json ), pointer, intent(inout) :: input
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
 
   ! local data
   character(len=18), save :: sname = 'init_sim_beams'
@@ -58,9 +57,6 @@ subroutine init_sim_beams( this, input )
   integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf, push_type
   type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
-
-  this%gp => input%gp
-  this%pp => input%pp
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -125,7 +121,7 @@ subroutine init_sim_beams( this, input )
     if ( has_spin ) part_dim = part_dim + p_s_dim
     call set_part3d_comm( part_dim, this%pf(i)%p%getnpmax() )
   enddo
-  call init_part3d_comm( this%pp, this%gp )
+  call init_part3d_comm( opts )
 
   ! initialize beams
   do i = 1, n
@@ -150,21 +146,21 @@ subroutine init_sim_beams( this, input )
       call input%get( 'beam('//num2str(i)//').anom_mag_moment', amm )
     endif
 
-    call this%beam(i)%new( this%pp, this%gp, max_mode, ps, this%pf(i)%p, &
+    call this%beam(i)%new( opts, max_mode, ps, this%pf(i)%p, &
       qbm, dt, push_type, sm_type, sm_ord, has_spin, amm )
 
     if ( read_rst ) then
       call input%get( 'simulation.restart_timestep', rst_timestep )
       call file_rst%new(&
         filename = './RST/Beam'//num2str(i,2)//'/',&
-        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(this%pp%getidproc(),6),&
+        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6),&
         n = rst_timestep)
       call this%beam(i)%rrst(file_rst)
     endif
 
   enddo
 
-  call MPI_BARRIER( this%pp%getlworld(), ierr )
+  call MPI_BARRIER( comm_world(), ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

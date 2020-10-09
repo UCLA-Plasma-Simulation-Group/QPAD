@@ -1,11 +1,9 @@
-! part2d class for QPAD
-
 module part2d_class
 
 use param
 use sysutil
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use ufield_class
 use fdist2d_class
@@ -21,8 +19,6 @@ private
 public :: part2d
 
 type part2d
-
-   class(parallel_pipe), pointer :: pp => null()
 
    ! qbm = particle charge/mass ratio
    ! dt = time interval between successive calculations
@@ -82,13 +78,12 @@ integer(kind=LG), dimension(:), allocatable :: ihole
 
 contains
 
-subroutine init_part2d( this, pp, gp, pf, qbm, dt, s )
+subroutine init_part2d( this, opts, pf, qbm, dt, s )
 
    implicit none
 
    class(part2d), intent(inout) :: this
-   class(parallel_pipe), intent(in), pointer :: pp
-   class(grid), intent(in), pointer :: gp
+   type(options), intent(in) :: opts
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
 
@@ -98,7 +93,6 @@ subroutine init_part2d( this, pp, gp, pf, qbm, dt, s )
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-   this%pp  => pp
    this%qbm = qbm
    this%dt  = dt
    this%part_dim = 2 + p_p_dim + 3
@@ -110,7 +104,7 @@ subroutine init_part2d( this, pp, gp, pf, qbm, dt, s )
    this%npp   = 0
 
    this%dr   = pf%getdex()
-   this%edge = gp%get_nd(1) * this%dr
+   this%edge = opts%get_nd(1) * this%dr
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
@@ -882,9 +876,9 @@ subroutine pipesend_part2d(this, tag, id)
     allocate( sbuf( this%part_dim, this%npmax ) )
   endif
 
-  des = this%pp%getidproc() + this%pp%getlnvp()
+  des = id_proc() + num_procs_loc()
 
-  if (des >= this%pp%getnvp()) then
+  if ( des >= num_procs() ) then
     id = MPI_REQUEST_NULL
     call write_dbg(cls_name, sname, cls_level, 'ends')
     return
@@ -902,8 +896,8 @@ subroutine pipesend_part2d(this, tag, id)
   enddo
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), this%pp%getmreal(), &
-    des, tag, this%pp%getlworld(), id, ierr)
+  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+    comm_world(), id, ierr)
 
   ! check for errors
   if (ierr /= 0) then
@@ -932,7 +926,7 @@ subroutine piperecv_part2d(this, tag)
     allocate( rbuf( this%part_dim, this%npmax ) )
   endif
 
-  des = this%pp%getidproc() - this%pp%getlnvp()
+  des = id_proc() - num_procs_loc()
 
   if (des < 0) then
     call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -940,10 +934,10 @@ subroutine piperecv_part2d(this, tag)
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), this%pp%getmreal(), &
-    des, tag, this%pp%getlworld(), istat, ierr)
+  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), p_dtype_real, &
+    des, tag, comm_world(), istat, ierr)
 
-  call MPI_GET_COUNT(istat, this%pp%getmreal(), nps, ierr)
+  call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
 
   this%npp = nps/this%part_dim
 
@@ -980,7 +974,7 @@ subroutine writehdf5_part2d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ! call pwpart(this%pp,file,this%part,this%npp,1,ierr)
-   call pwpart(this%pp,file,this%x, this%p, this%q, this%npp,1,ierr)
+   call pwpart(file,this%x, this%p, this%q, this%npp,1,ierr)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

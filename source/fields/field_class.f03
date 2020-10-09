@@ -1,7 +1,7 @@
 module field_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use ufield_smooth_class
 use hdf5io_class
@@ -52,8 +52,6 @@ type :: field
 
   ! private
 
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
   type( ufield_smooth ) :: smooth
@@ -95,14 +93,13 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
+subroutine init_field( this, opts, dim, num_modes, gc_num, &
   entity, smooth_type, smooth_order )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: num_modes, dim
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity, smooth_type, smooth_order
@@ -113,12 +110,10 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%pp        => pp
-  this%gp        => gp
   this%dim       = dim
   this%num_modes = num_modes
-  this%dr        = gp%get_dr()
-  this%dxi       = gp%get_dxi()
+  this%dr        = opts%get_dr()
+  this%dxi       = opts%get_dxi()
 
   if ( present(entity) ) then
     this%entity = entity
@@ -140,9 +135,9 @@ subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
   allocate( this%rf_re(0:num_modes) )
   allocate( this%rf_im(num_modes) )
   do i = 0, this%num_modes
-    call this%rf_re(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
+    call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
     if (i==0) cycle
-    call this%rf_im(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
+    call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -158,8 +153,6 @@ subroutine init_field_cp( this, that )
 
   integer :: i
 
-  this%pp        => that%pp
-  this%gp        => that%gp
   this%dim       = that%get_dim()
   this%num_modes = that%get_num_modes()
   this%dr        = that%get_dr()
@@ -326,7 +319,7 @@ subroutine pipe_gc_send( this, tag, sid )
 
   integer :: i, j, k, m
   integer :: idproc, idproc_des, stageid, nstage, lnvp, comm
-  integer :: n1p, nzp, count, dtype, ierr
+  integer :: n1p, nzp, count, ierr
   integer, dimension(2) :: gc1, gc2
   real, dimension(:,:,:,:), allocatable, save :: buf
   character(len=20), save :: sname = "pipe_gc_send"
@@ -334,15 +327,14 @@ subroutine pipe_gc_send( this, tag, sid )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  nstage     = this%pp%getnstage()
-  idproc     = this%pp%getidproc()
+  lnvp       = num_procs_loc()
+  stageid    = id_stage()
+  nstage     = num_stages()
+  idproc     = id_proc()
   idproc_des = idproc + lnvp
   n1p        = size(this%rf_re(0)%f1, 2)
-  nzp        = this%gp%get_ndp(2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
+  nzp        = this%rf_re(0)%get_ndp(2)
+  comm       = comm_world()
 
   gc1 = this%rf_re(0)%get_gc_num(1)
   gc2 = this%rf_re(0)%get_gc_num(2)
@@ -384,7 +376,7 @@ subroutine pipe_gc_send( this, tag, sid )
   endif
 
   count = size(buf)
-  call MPI_ISEND( buf, count, dtype, idproc_des, tag, comm, sid, ierr )
+  call MPI_ISEND( buf, count, p_dtype_real, idproc_des, tag, comm, sid, ierr )
   ! check for error
   if (ierr /= 0) call write_err('MPI_ISEND failed.')
 
@@ -403,7 +395,7 @@ subroutine pipe_gc_recv( this, tag )
 
   integer :: i, j, k, m
   integer :: idproc, idproc_src, stageid, lnvp, comm
-  integer :: n1p, count, dtype, ierr
+  integer :: n1p, count, ierr
   integer, dimension(2) :: gc1, gc2
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:,:), allocatable, save :: buf
@@ -412,13 +404,12 @@ subroutine pipe_gc_recv( this, tag )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
+  lnvp       = num_procs_loc()
+  stageid    = id_stage()
+  idproc     = id_proc()
   idproc_src = idproc - lnvp
   n1p        = size(this%rf_re(0)%f1, 2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
+  comm       = comm_world()
 
   gc1 = this%rf_re(0)%get_gc_num(1)
   gc2 = this%rf_re(0)%get_gc_num(2)
@@ -436,7 +427,7 @@ subroutine pipe_gc_recv( this, tag )
   endif
 
   count = size(buf)
-  call MPI_RECV( buf, count, dtype, idproc_src, tag, comm, stat, ierr )
+  call MPI_RECV( buf, count, p_dtype_real, idproc_src, tag, comm, stat, ierr )
   ! check for error
   if (ierr /= 0) call write_err('MPI_RECV failed.')
 
@@ -471,79 +462,6 @@ subroutine pipe_gc_recv( this, tag )
 
 end subroutine pipe_gc_recv
 
-! subroutine copy_gc_pipe( this, rtag, stag, rid, sid )
-
-!   implicit none
-
-!   class( field ), intent(inout) :: this
-!   integer, intent(in) :: rtag, stag
-!   integer, intent(inout) :: rid, sid
-
-!   integer :: i, dir
-!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-!   integer :: nrp, nzp, count, dtype, gc_num, m
-!   integer :: ierr
-!   integer, dimension(MPI_STATUS_SIZE) :: stat
-!   real, dimension(:,:,:), allocatable, save :: rbuf, sbuf
-!   character(len=20), save :: sname = "copy_gc_pipe"
-
-!   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-!   nvp = this%gp%nvp(1)
-!   nstage = this%pp%getnstage()
-!   stageid = this%pp%getstageid()
-!   idproc = this%pp%getidproc()
-!   idproc_last = idproc - nvp
-!   idproc_next = idproc + nvp
-!   nrp = this%gp%ndp(1)
-!   nzp = this%gp%ndp(2)
-!   comm = this%pp%getlworld()
-!   dtype = this%pp%getmreal()
-
-!   gc_num = this%rf_re(0)%gc_num(p_upper,2)
-
-!   if ( gc_num > 0 ) then
-
-!     if (this%num_modes == 0) then
-!       m = 1
-!     else
-!       m = 2 * this%num_modes + 1
-!     endif
-!     count = this%dim * nrp * gc_num * m
-
-!     if ( .not. allocated(rbuf) ) then
-!       allocate( rbuf(this%dim, nrp, gc_num, m), sbuf(this%dim, nrp, gc_num, m) )
-!     endif
-
-!     ! receiver
-!     if ( stageid < nstage-1 ) then
-!       call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
-!         count, dtype, idproc_next, rtag, comm, rid, ierr )
-!     else
-!       rid = MPI_REQUEST_NULL
-!     endif
-!     ! sender
-!     if ( stageid > 0 ) then
-!       call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
-!         count, dtype, idproc_last, stag, comm, sid, ierr )
-!     else
-!       sid = MPI_REQUEST_NULL
-!     endif
-
-!   else
-!     call write_err( 'No guard cells for backward copy!' )
-!   endif
-
-!   do i = 0, this%num_modes
-!     call this%rf_re(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
-!     if ( i == 0 ) cycle
-!     call this%rf_im(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
-!   enddo
-
-!   call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-! end subroutine copy_gc_pipe
-
 subroutine pipe_send( this, stag, id, nslice )
 
   implicit none
@@ -555,7 +473,7 @@ subroutine pipe_send( this, stag, id, nslice )
 
   integer :: i, j, k, m, ns
   integer :: idproc, idproc_des, lnvp, comm, stageid, nstage
-  integer :: nzp, n1p, count, dtype, ierr
+  integer :: nzp, n1p, count, ierr
   integer, dimension(2) :: gc
   character(len=20), save :: sname = "pipe_send"
 
@@ -565,15 +483,14 @@ subroutine pipe_send( this, stag, id, nslice )
   ns = 1
   if ( present(nslice) ) ns = nslice
 
-  lnvp       = this%pp%getlnvp()
-  nstage     = this%pp%getnstage()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
+  lnvp       = num_procs_loc()
+  nstage     = num_stages()
+  stageid    = id_stage()
+  idproc     = id_proc()
   idproc_des = idproc + lnvp
-  nzp        = this%gp%get_ndp(2)
+  nzp        = this%rf_re(0)%get_ndp(2)
   n1p        = size(this%rf_re(0)%f1,2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
+  comm       = comm_world()
   gc         = this%rf_re(0)%get_gc_num(1)
 
   if ( stageid == nstage-1 ) then
@@ -611,7 +528,7 @@ subroutine pipe_send( this, stag, id, nslice )
   endif
 
   count = size( this%psend_buf )
-  call MPI_ISEND( this%psend_buf, count, dtype, idproc_des, stag, comm, id, ierr )
+  call MPI_ISEND( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm, id, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -632,7 +549,7 @@ subroutine pipe_recv( this, rtag, nslice )
 
   integer :: i, j, k, m, ns
   integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
-  integer :: count, dtype, ierr
+  integer :: count, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=20), save :: sname = "pipe_precv"
@@ -643,12 +560,11 @@ subroutine pipe_recv( this, rtag, nslice )
   ns = 1
   if ( present(nslice) ) ns = nslice
 
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
+  lnvp       = num_procs_loc()
+  stageid    = id_stage()
+  idproc     = id_proc()
   idproc_src = idproc - lnvp
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
+  comm       = comm_world()
   n1p        = size(this%rf_re(0)%f1,2)
   gc         = this%rf_re(0)%get_gc_num(1)
 
@@ -663,7 +579,7 @@ subroutine pipe_recv( this, rtag, nslice )
   endif
 
   count = size( this%precv_buf )
-  call MPI_RECV( this%precv_buf, count, dtype, idproc_src, rtag, comm, stat, ierr )
+  call MPI_RECV( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm, stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )

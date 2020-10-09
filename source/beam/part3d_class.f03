@@ -1,11 +1,9 @@
-! part3d class for QPAD
-
 module part3d_class
 
 use param
 use sysutil
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use ufield_class
 use fdist3d_class
@@ -26,7 +24,6 @@ type part3d
 ! qbm = particle charge/mass ratio
 ! dt = time interval between successive calculations
 
-   class(parallel_pipe), pointer, public :: pp => null()
    real :: qbm, dt, dr, dz
    real :: z0
    ! nbmax = size of buffer for passing particles between processors
@@ -77,13 +74,12 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
+subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
 
    implicit none
 
    class(part3d), intent(inout) :: this
-   class(parallel_pipe), intent(in), pointer :: pp
-   class(grid), intent(in), pointer :: gp
+   type(options), intent(in) :: opts
    class(fdist3d), intent(inout) :: pf
    real, intent(in) :: qbm, dt
    logical, intent(in) :: has_spin
@@ -97,7 +93,6 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    this%has_spin = has_spin
    this%anom_mag_moment = amm
 
-   this%pp => pp
    this%qbm = qbm
    this%dt = dt
    this%part_dim = p_x_dim + p_p_dim + 1
@@ -107,8 +102,8 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    this%dz = pf%getdz()
    this%npmax = npmax
 
-   this%edge(1) = gp%get_nd(1) * this%dr
-   this%edge(2) = gp%get_nd(2) * this%dz
+   this%edge(1) = opts%get_nd(1) * this%dr
+   this%edge(2) = opts%get_nd(2) * this%dz
 
    ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
    nbmax = int(0.01*this%npmax)
@@ -127,11 +122,11 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
 
    ! initialize particle coordinates according to profile
    if ( this%has_spin ) then
-      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
-         gp%get_ndp(), this%s )
+      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
+         opts%get_ndp(), this%s )
    else
-      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
-         gp%get_ndp() )
+      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
+         opts%get_ndp() )
    endif
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -756,10 +751,10 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
       &this%z0,rtag,stag,id,ierr, this%s)
    else
-      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
       &this%z0,rtag,stag,id,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -778,9 +773,9 @@ subroutine writerst_part3d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr, this%s)
+      call wpart(file,this%x, this%p, this%q,this%npp,1,ierr, this%s)
    else
-      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr)
+      call wpart(file,this%x, this%p, this%q,this%npp,1,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -798,9 +793,9 @@ subroutine readrst_part3d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr, this%s)
+      call rpart(file,this%x, this%p, this%q,this%npp,ierr, this%s)
    else
-      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr)
+      call rpart(file,this%x, this%p, this%q,this%npp,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

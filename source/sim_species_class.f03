@@ -1,8 +1,8 @@
 module sim_species_class
 
 use species2d_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use fdist2d_class
 use input_class
 use param
@@ -19,8 +19,6 @@ type sim_species
 
   ! private
 
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
   type( species2d ), dimension(:), pointer :: spe => null()
   type( fdist2d_wrap ), dimension(:), pointer :: pf => null()
 
@@ -38,12 +36,13 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine init_sim_species( this, input, s )
+subroutine init_sim_species( this, input, opts, s )
 
   implicit none
 
   class( sim_species ), intent(inout) :: this
-  type( input_json ), pointer, intent(inout) :: input
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   real, intent(in) :: s
 
   ! local data
@@ -55,10 +54,6 @@ subroutine init_sim_species( this, input, s )
   integer :: ps, sm_type, sm_ord, max_mode, npf, part_dim
   ! type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
-
-  this%gp => input%gp
-  this%pp => input%pp
-  ! pqb => qb
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -96,10 +91,10 @@ subroutine init_sim_species( this, input, s )
     select case ( npf )
     case (0)
        allocate( fdist2d_000 :: this%pf(i)%p )
-       call this%pf(i)%p%new( input, i )
+       call this%pf(i)%p%new( input, opts, i )
     case (12)
        allocate( fdist2d_012 :: this%pf(i)%p )
-       call this%pf(i)%p%new( input, i )
+       call this%pf(i)%p%new( input, opts, i )
     ! Add new distributions right above this line
     case default
        call write_err( 'Invalid beam profile!' )
@@ -112,14 +107,14 @@ subroutine init_sim_species( this, input, s )
   do i = 1, n
     call set_part2d_comm( part_dim, npmax = this%pf(i)%p%getnpmax() )
   enddo
-  call init_part2d_comm( this%pp, this%gp )
+  call init_part2d_comm( opts )
 
   do i = 1, n
 
     call input%get('species('//num2str(i)//').q',qm)
     call input%get('species('//num2str(i)//').m',qbm)
     qbm = qm/qbm
-    call this%spe(i)%new( this%pp, this%gp, this%pf(i)%p, ps, max_mode,&
+    call this%spe(i)%new( opts, this%pf(i)%p, ps, max_mode,&
       qbm, part_dim, s, sm_type, sm_ord )
 
   enddo

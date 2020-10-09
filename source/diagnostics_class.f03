@@ -1,7 +1,7 @@
 module diagnostics_class
 
-use parallel_class
-use parallel_pipe_class
+use parallel_module
+use options_class
 use hdf5io_class
 use sim_fields_class
 use sim_beams_class
@@ -44,7 +44,6 @@ type sim_diag
 
   ! private
 
-  class( parallel_pipe ), pointer :: pp => null()
   class( diag_node ), pointer :: head => null()
   class( diag_node ), pointer :: diag => null()
   integer :: num_diag = 0
@@ -141,13 +140,13 @@ subroutine set_sim_time( this, tstep, time )
 
 end subroutine set_sim_time
 
-subroutine init_sim_diag( this, pp, input, fields, beams, species )
+subroutine init_sim_diag( this, input, opts, fields, beams, species )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( input_json ), intent(inout) :: input
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   class( sim_fields ), intent(inout), target :: fields
   class( sim_beams ), intent(in), target :: beams
   class( sim_species ), intent(in), target :: species
@@ -167,7 +166,6 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%pp => pp
   this%num_diag = 0
 
   call input%get( 'simulation.max_mode', max_mode )
@@ -410,7 +408,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 3
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -423,7 +421,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 1
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -436,7 +434,7 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 2
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -470,14 +468,14 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
         obj      = beams%beam(i), &
         df       = ndump, &
         filename = './RST/Beam'//num2str(i,2)//'/', &
-        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(pp%getidproc(),6), &
+        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6), &
         ty       = 'restart' )
     enddo
   endif
 
   call this%set_ndump_gcd()
 
-  call MPI_BARRIER( pp%getlworld(), ierr )
+  call MPI_BARRIER( comm_world(), ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

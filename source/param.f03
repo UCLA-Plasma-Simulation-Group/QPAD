@@ -10,6 +10,11 @@ public
 integer, parameter :: p_cache_size = 1024
 
 ! ================================================================
+! simulation module
+! ================================================================
+integer, parameter :: p_sim_standard = 0, p_sim_popas = 1
+
+! ================================================================
 ! geometry related
 ! ================================================================
 integer, parameter :: p_cylindrical = 0, p_cartesian = 1
@@ -110,5 +115,10 @@ integer, parameter :: p_smooth_none        = 0, &
 integer, parameter :: p_tdiag_grid = 0, &
                       p_tdiag_raw  = 1, &
                       p_tdiag_rst  = 2
+
+! ================================================================
+! others
+! ================================================================
+integer, parameter :: MAX_LEN_LABEL = 32
 
 end module param
