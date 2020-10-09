@@ -1,7 +1,7 @@
 module options_class
 
 use parallel_module
-use sysutil
+use sysutil_module
 use param
 use input_class
 

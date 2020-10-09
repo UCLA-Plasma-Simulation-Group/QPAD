@@ -4,7 +4,7 @@ use parallel_module
 use options_class
 use hdf5io_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 
 implicit none

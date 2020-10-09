@@ -2,7 +2,7 @@ module species2d_class
 
 use parallel_module
 use param
-use sysutil
+use sysutil_module
 use options_class
 use fdist2d_class
 use field_psi_class

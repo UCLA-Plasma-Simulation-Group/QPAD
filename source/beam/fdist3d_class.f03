@@ -7,7 +7,7 @@ use ufield_class
 use input_class
 use fdist3d_lib
 use param
-use sysutil
+use sysutil_module
 use hdf5
 use hdf5io_class
 use iso_c_binding

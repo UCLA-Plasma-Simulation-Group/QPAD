@@ -6,7 +6,7 @@ use options_class
 use fdist2d_class
 use input_class
 use param
-use sysutil
+use sysutil_module
 use part2d_comm
 
 implicit none

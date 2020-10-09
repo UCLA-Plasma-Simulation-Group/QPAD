@@ -1,4 +1,4 @@
-module sysutil
+module sysutil_module
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
@@ -414,4 +414,4 @@ subroutine write_tprof()
 
 end subroutine write_tprof
 
-end module sysutil
+end module sysutil_module

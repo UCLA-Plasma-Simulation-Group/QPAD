@@ -1,7 +1,7 @@
 module hdf5io_class
 
 use parallel_module
-use sysutil
+use sysutil_module
 use param
 use HDF5
 use mpi

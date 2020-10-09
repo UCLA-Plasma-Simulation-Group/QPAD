@@ -1,6 +1,6 @@
 program quickpic_quasi3d
 
-use sysutil
+use sysutil_module
 use parallel_module
 use options_class
 use input_class

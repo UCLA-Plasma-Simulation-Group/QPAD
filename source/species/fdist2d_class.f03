@@ -5,7 +5,7 @@ use options_class
 use ufield_class
 use input_class
 use param
-use sysutil
+use sysutil_module
 
 
 implicit none

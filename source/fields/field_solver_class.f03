@@ -4,7 +4,7 @@ use options_class
 use parallel_module
 use mpi
 use param
-use sysutil
+use sysutil_module
 use debug_tool
 
 implicit none

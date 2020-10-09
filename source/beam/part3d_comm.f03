@@ -1,6 +1,6 @@
 module part3d_comm
 
-use sysutil
+use sysutil_module
 use param
 use mpi
 use parallel_module

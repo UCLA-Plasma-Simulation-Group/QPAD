@@ -2,7 +2,7 @@ module beam3d_class
 
 use parallel_module
 use param
-use sysutil
+use sysutil_module
 use fdist3d_class
 use options_class
 use field_src_class

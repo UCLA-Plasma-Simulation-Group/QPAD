@@ -3,7 +3,7 @@ module input_class
 use parallel_module
 use mpi
 use json_module
-use sysutil
+use sysutil_module
 
 implicit none
 

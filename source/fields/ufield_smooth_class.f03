@@ -2,7 +2,7 @@ module ufield_smooth_class
 
 use ufield_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 use parallel_module
 

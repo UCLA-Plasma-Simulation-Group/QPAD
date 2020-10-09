@@ -1,7 +1,7 @@
 module part3d_class
 
 use param
-use sysutil
+use sysutil_module
 use parallel_module
 use options_class
 use field_class
