@@ -57,12 +57,13 @@ type :: field
   type( ufield_smooth ) :: smooth
 
   real :: dr, dxi
-  integer :: num_modes, dim
+  integer :: max_mode, dim
   integer :: entity
   real, dimension(:,:,:,:), allocatable :: psend_buf, precv_buf
 
   contains
 
+  procedure :: alloc => alloc_field
   generic :: new => init_field, init_field_cp
   procedure :: del => end_field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
@@ -70,7 +71,7 @@ type :: field
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   procedure :: smooth_f1
   procedure :: copy_slice
-  procedure :: get_dr, get_dxi, get_num_modes, get_dim
+  procedure :: get_dr, get_dxi, get_max_mode, get_dim
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: pipe_send, pipe_recv
@@ -93,14 +94,25 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, opts, dim, num_modes, gc_num, &
+subroutine alloc_field( this, max_mode )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: max_mode
+
+  ! placeholder, do nothing
+
+end subroutine alloc_field
+
+subroutine init_field( this, opts, dim, max_mode, gc_num, &
   entity, smooth_type, smooth_order )
 
   implicit none
 
   class( field ), intent(inout) :: this
   type( options ), intent(in) :: opts
-  integer, intent(in) :: num_modes, dim
+  integer, intent(in) :: max_mode, dim
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity, smooth_type, smooth_order
 
@@ -111,7 +123,7 @@ subroutine init_field( this, opts, dim, num_modes, gc_num, &
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%dim       = dim
-  this%num_modes = num_modes
+  this%max_mode = max_mode
   this%dr        = opts%get_dr()
   this%dxi       = opts%get_dxi()
 
@@ -132,9 +144,9 @@ subroutine init_field( this, opts, dim, num_modes, gc_num, &
     call this%smooth%new( p_smooth_none, 0 )
   endif
 
-  allocate( this%rf_re(0:num_modes) )
-  allocate( this%rf_im(num_modes) )
-  do i = 0, this%num_modes
+  allocate( this%rf_re(0:max_mode) )
+  allocate( this%rf_im(max_mode) )
+  do i = 0, this%max_mode
     call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
     if (i==0) cycle
     call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
@@ -154,14 +166,14 @@ subroutine init_field_cp( this, that )
   integer :: i
 
   this%dim       = that%get_dim()
-  this%num_modes = that%get_num_modes()
+  this%max_mode = that%get_max_mode()
   this%dr        = that%get_dr()
   this%dxi       = that%get_dxi()
   this%entity    = that%entity
 
-  allocate( this%rf_re(0:this%num_modes) )
-  allocate( this%rf_im(this%num_modes) )
-  do i = 0, this%num_modes
+  allocate( this%rf_re(0:this%max_mode) )
+  allocate( this%rf_im(this%max_mode) )
+  do i = 0, this%max_mode
     call this%rf_re(i)%new( that%get_rf_re(i) )
     if (i==0) cycle
     call this%rf_im(i)%new( that%get_rf_im(i) )
@@ -181,7 +193,7 @@ subroutine end_field( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%rf_re(0)%del()
-  do i = 1, this%num_modes
+  do i = 1, this%max_mode
     call this%rf_re(i)%del()
     call this%rf_im(i)%del()
   enddo
@@ -206,7 +218,7 @@ subroutine copy_slice( this, idx, dir )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'copy slices' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_slice( idx, dir )
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_slice( idx, dir )
@@ -228,7 +240,7 @@ subroutine copy_gc_f1( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_gc_f1()
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_gc_f1()
@@ -249,7 +261,7 @@ subroutine copy_gc_f2( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_gc_f2()
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_gc_f2()
@@ -278,7 +290,7 @@ subroutine acopy_gc_f1( this, dir, ncell )
     nc = 1
   endif
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%acopy_gc_f1( dir, nc )
     if ( i == 0 ) cycle
     call this%rf_im(i)%acopy_gc_f1( dir, nc )
@@ -299,7 +311,7 @@ subroutine acopy_gc_f2( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%acopy_gc_f2()
     if ( i == 0 ) cycle
     call this%rf_im(i)%acopy_gc_f2()
@@ -349,7 +361,7 @@ subroutine pipe_gc_send( this, tag, sid )
   endif
 
   if ( .not. allocated(buf) ) then
-    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
+    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%max_mode) )
   endif
 
   ! pack m=0 mode
@@ -362,8 +374,8 @@ subroutine pipe_gc_send( this, tag, sid )
   enddo
 
   ! pack m>0 modes
-  if (this%num_modes > 0) then
-    do m = 1, this%num_modes
+  if (this%max_mode > 0) then
+    do m = 1, this%max_mode
       do k = 1, gc2(p_upper)
         do j = 1, n1p
           do i = 1, this%dim
@@ -423,7 +435,7 @@ subroutine pipe_gc_recv( this, tag )
   endif
 
   if ( .not. allocated(buf) ) then
-    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
+    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%max_mode) )
   endif
 
   count = size(buf)
@@ -442,8 +454,8 @@ subroutine pipe_gc_recv( this, tag )
   enddo
 
   ! unpack m>0 modes
-  if (this%num_modes > 0) then
-    do m = 1, this%num_modes
+  if (this%max_mode > 0) then
+    do m = 1, this%max_mode
       do k = 1, gc2(p_upper)
         do j = 1, n1p
           do i = 1, this%dim
@@ -501,7 +513,7 @@ subroutine pipe_send( this, stag, id, nslice )
   endif
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
+    allocate( this%psend_buf( this%dim, n1p, ns, 0:2*this%max_mode ) )
   endif
 
   ! copy m=0 mode
@@ -514,8 +526,8 @@ subroutine pipe_send( this, stag, id, nslice )
   enddo
 
   ! copy m>0 mode
-  if ( this%num_modes > 0 ) then
-    do m = 1, this%num_modes
+  if ( this%max_mode > 0 ) then
+    do m = 1, this%max_mode
       do k = 1, ns
         do j = 1, n1p
           do i = 1, this%dim
@@ -528,7 +540,7 @@ subroutine pipe_send( this, stag, id, nslice )
   endif
 
   count = size( this%psend_buf )
-  call MPI_ISEND( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm, id, ierr )
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm, id, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -575,11 +587,11 @@ subroutine pipe_recv( this, rtag, nslice )
   endif
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
+    allocate( this%precv_buf( this%dim, n1p, ns, 0:2*this%max_mode ) )
   endif
 
   count = size( this%precv_buf )
-  call MPI_RECV( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm, stat, ierr )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm, stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )
@@ -595,8 +607,8 @@ subroutine pipe_recv( this, rtag, nslice )
   enddo
 
   ! copy m>0 mode
-  if ( this%num_modes > 0 ) then
-    do m = 1, this%num_modes
+  if ( this%max_mode > 0 ) then
+    do m = 1, this%max_mode
       do k = 1, ns
         do j = 1, n1p
           do i = 1, this%dim
@@ -626,7 +638,7 @@ subroutine write_hdf5_single( this, files, dim )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%rf_re(i)%write_hdf5( files(1), dim )
@@ -656,7 +668,7 @@ subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%rf_re(i)%write_hdf5( files(1), dim, rtag, stag, id )
@@ -686,7 +698,7 @@ subroutine smooth_f1( this )
 
   if ( .not. this%smooth%if_smooth() ) return
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%smooth%smooth_f1( this%rf_re(i) )
@@ -726,16 +738,16 @@ function get_dxi( this )
 
 end function get_dxi
 
-function get_num_modes( this )
+function get_max_mode( this )
 
   implicit none
 
   class( field ), intent(in) :: this
-  integer :: get_num_modes
+  integer :: get_max_mode
 
-  get_num_modes = this%num_modes
+  get_max_mode = this%max_mode
 
-end function get_num_modes
+end function get_max_mode
 
 function get_dim( this )
 
@@ -807,7 +819,7 @@ subroutine assign_f1( this, that )
 
   type is (real)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       this%rf_re(i) = that
       if (i == 0) cycle
       this%rf_im(i) = that
@@ -815,7 +827,7 @@ subroutine assign_f1( this, that )
 
   class is (field)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       this%rf_re(i) = that%rf_re(i)
       if (i == 0) cycle
       this%rf_im(i) = that%rf_im(i)
@@ -842,7 +854,7 @@ subroutine assign_f2( this, that )
 
   type is (real)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%rf_re(i)%as( that )
       if (i == 0) cycle
       call this%rf_im(i)%as( that )
@@ -850,7 +862,7 @@ subroutine assign_f2( this, that )
 
   class is (field)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%rf_re(i)%as( that%get_rf_re(i) )
       if (i == 0) cycle
       call this%rf_im(i)%as( that%get_rf_im(i) )
@@ -878,7 +890,7 @@ subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
@@ -900,7 +912,7 @@ subroutine add_f1_unitary_dim( a1, a2, dim1, dim2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
@@ -921,7 +933,7 @@ subroutine add_f1_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -942,7 +954,7 @@ subroutine add_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), ua2_im(i) )
@@ -964,7 +976,7 @@ subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
@@ -986,7 +998,7 @@ subroutine sub_f1_unitary_dim( a1, a2, dim1, dim2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
@@ -1007,7 +1019,7 @@ subroutine sub_f1_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1028,7 +1040,7 @@ subroutine sub_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), ua2_im(i) )
@@ -1049,7 +1061,7 @@ subroutine dot_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a2%num_modes
+  do i = 0, a2%max_mode
     call dot_f1( a1, ua2_re(i) )
     if (i==0) cycle
     call dot_f1( a1, ua2_im(i) )
@@ -1071,7 +1083,7 @@ subroutine dot_f1_unitary_dim( a1, a2, dim )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a2%num_modes
+  do i = 0, a2%max_mode
     call dot_f1( a1, ua2_re(i), dim )
     if (i==0) cycle
     call dot_f1( a1, ua2_im(i), dim )
@@ -1092,7 +1104,7 @@ subroutine add_f2_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1113,7 +1125,7 @@ subroutine add_f2_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f2( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call add_f2( a1%rf_im(i), ua2_im(i) )
@@ -1134,7 +1146,7 @@ subroutine sub_f2_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1155,7 +1167,7 @@ subroutine sub_f2_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f2( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call sub_f2( a1%rf_im(i), ua2_im(i) )

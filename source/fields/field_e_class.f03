@@ -35,6 +35,7 @@ type, extends( field ) :: field_e
   generic :: new => init_field_e
 
   procedure :: init_field_e
+  procedure :: alloc => alloc_field_e
   procedure :: del => end_field_e
   procedure, private :: set_source_ez
   procedure, private :: get_solution_ez
@@ -47,13 +48,26 @@ end type field_e
 
 contains
 
-subroutine init_field_e( this, opts, num_modes, part_shape, boundary, entity )
+subroutine alloc_field_e( this, max_mode )
+
+  implicit none
+
+  class( field_e ), intent(inout) :: this
+  integer, intent(in) :: max_mode
+
+  if ( .not. associated( this%solver_ez ) ) then
+    allocate( field_solver :: this%solver_ez(0:max_mode) )
+  endif
+
+end subroutine alloc_field_e
+
+subroutine init_field_e( this, opts, max_mode, part_shape, boundary, entity )
 
   implicit none
 
   class( field_e ), intent(inout) :: this
   type( options ), intent(in) :: opts
-  integer, intent(in) :: num_modes, part_shape, entity, boundary
+  integer, intent(in) :: max_mode, part_shape, entity, boundary
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -84,13 +98,12 @@ subroutine init_field_e( this, opts, num_modes, part_shape, boundary, entity )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( opts, dim, num_modes, gc_num, entity )
+  call this%field%new( opts, dim, max_mode, gc_num, entity )
 
   ! initialize solver
   select case ( entity )
   case ( p_entity_plasma )
-    allocate( this%solver_ez( 0:num_modes ) )
-    do i = 0, num_modes
+    do i = 0, max_mode
       call this%solver_ez(i)%new( opts, i, dr, kind=p_fk_ez, &
         bnd=boundary, stype=p_hypre_cycred )
     enddo
@@ -117,7 +130,7 @@ subroutine end_field_e( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( this%entity == p_entity_plasma ) then
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%solver_ez(i)%del()
     enddo
     deallocate( this%solver_ez )
@@ -298,7 +311,7 @@ subroutine solve_field_ez( this, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_ez( i, jay_re(i) )
@@ -350,7 +363,7 @@ subroutine solve_field_ez_fast( this, psi, idx )
   idxih = 0.5 / this%dxi
   idxi = 1.0 / this%dxi
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     e_f1_re => e_re(i)%get_f1()
     e_f2_re => e_re(i)%get_f2()
@@ -447,7 +460,7 @@ subroutine solve_field_et( this, b, psi )
   endif
 
   ! m>0 mode
-  do mode = 1, this%num_modes
+  do mode = 1, this%max_mode
 
     ub_re   => b_re(mode)%get_f1()
     ub_im   => b_im(mode)%get_f1()
@@ -520,7 +533,7 @@ subroutine solve_field_et_beam( this, b )
   b_im => b%get_rf_im()
   nrp = this%rf_re(0)%get_ndp(1)
 
-  do mode = 0, this%num_modes
+  do mode = 0, this%max_mode
 
     ub_re => b_re(mode)%get_f1()
     ue_re => this%rf_re(mode)%get_f1()

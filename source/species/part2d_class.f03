@@ -183,7 +183,7 @@ subroutine qdeposit_part2d( this, q )
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
 
-  max_mode = q%get_num_modes()
+  max_mode = q%get_max_mode()
 
   noff = q_re(0)%get_noff(1)
   nrp  = q_re(0)%get_ndp(1)
@@ -327,7 +327,7 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
 
   idt = 1.0 / this%dt
   qtmh = 0.5 * this%qbm * this%dt
-  max_mode = ef%get_num_modes()
+  max_mode = ef%get_max_mode()
 
   noff = cu_re(0)%get_noff(1)
   nrp  = cu_re(0)%get_ndp(1)
@@ -676,7 +676,7 @@ subroutine push_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
   qtmh = this%qbm * this%dt * 0.5
-  max_mode = ef%get_num_modes()
+  max_mode = ef%get_max_mode()
 
   ef_re => ef%get_rf_re()
   ef_im => ef%get_rf_im()
@@ -848,10 +848,10 @@ end subroutine update_bound_part2d
 
 !    psi_re => psi%get_rf_re()
 !    psi_im => psi%get_rf_im()
-!    ! call part2d_extractpsi(this%part,this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_num_modes())
+!    ! call part2d_extractpsi(this%part,this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
    
 !    call part2d_extractpsi(this%x, this%p, this%gamma, this%q, this%psi,&
-!     this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_num_modes())
+!     this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
 
 !    call write_dbg(cls_name, sname, cls_level, 'ends')
 

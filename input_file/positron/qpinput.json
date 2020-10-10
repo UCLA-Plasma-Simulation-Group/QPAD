@@ -21,8 +21,9 @@
     "iter" : 2,
     "smooth_type" : "none",
     "smooth_order" : 0,
-    "verbose" : 5,
-    "if_timing" : true
+    "verbose" : 0,
+    "if_timing" : true,
+    "algorithm" : "standard"
 },
 "beam" :
 [

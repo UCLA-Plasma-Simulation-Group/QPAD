@@ -32,6 +32,7 @@ type species2d
 
    contains
 
+   procedure :: alloc => alloc_species2d
    procedure :: new   => init_species2d
    procedure :: renew => renew_species2d
    procedure :: del   => end_species2d
@@ -53,7 +54,19 @@ character(len=10) :: cls_name = 'species2d'
 integer, parameter :: cls_level = 2
 
 contains
-!
+
+subroutine alloc_species2d( this )
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+
+   if ( .not. associated( this%part ) ) then
+      allocate( part2d :: this%part )
+   endif
+
+end subroutine alloc_species2d
+
 subroutine init_species2d(this,opts,pf,part_shape,&
 &num_modes,qbm,xdim,s,smooth_type,smooth_order)
 
@@ -74,7 +87,7 @@ subroutine init_species2d(this,opts,pf,part_shape,&
    this%pf => pf
    dt = opts%get_dxi()
 
-   allocate(this%part,this%q,this%qn,this%cu,this%amu,this%dcu)
+   allocate(this%q,this%qn,this%cu,this%amu,this%dcu)
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
       call this%q%new(opts,num_modes,part_shape,smooth_type,smooth_order)

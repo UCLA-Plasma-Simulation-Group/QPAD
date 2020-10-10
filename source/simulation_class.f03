@@ -34,10 +34,11 @@ type simulation
 
   ! private
 
-  type( sim_fields ) :: fields
-  type( sim_species ) :: species
-  type( sim_beams ) :: beams
-  type( sim_diag ) :: diag
+  class( sim_fields ),  pointer :: fields  => null()
+  class( sim_species ), pointer :: species => null()
+  class( sim_beams ),   pointer :: beams   => null()
+  class( sim_diag ),    pointer :: diag    => null()
+
   real :: dr, dxi, dt
   integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, tstep
   integer :: ndump, max_mode
@@ -51,9 +52,10 @@ type simulation
 
   contains
 
-  procedure :: new => init_simulation
-  procedure :: del => end_simulation
-  procedure :: run => run_simulation
+  procedure :: alloc => alloc_simulation
+  procedure :: new   => init_simulation
+  procedure :: del   => end_simulation
+  procedure :: run   => run_simulation
 
 end type simulation
 
@@ -61,6 +63,31 @@ character(len=18), save :: cls_name = 'simulation'
 integer, save :: cls_level = 1
 
 contains
+
+subroutine alloc_simulation( this, input )
+
+  implicit none
+
+  class( simulation ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  ! local data
+  character(len=18), save :: sname = 'alloc_simulation'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  if ( .not. associated( this%fields ) )  allocate( sim_fields :: this%fields )
+  if ( .not. associated( this%species ) ) allocate( sim_species :: this%species )
+  if ( .not. associated( this%beams ) )   allocate( sim_beams :: this%beams )
+  if ( .not. associated( this%diag ) )    allocate( sim_diag :: this%diag )
+
+  call this%fields%alloc( input )
+  call this%species%alloc( input )
+  call this%beams%alloc( input )
+  call this%diag%alloc( input )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine alloc_simulation
 
 subroutine init_simulation(this, input, opts)
 
@@ -316,26 +343,26 @@ subroutine run_simulation( this )
     enddo
 
     ! pipeline for fields
-    call MPI_WAIT( this%id_field(1), istat, ierr )
+    call mpi_wait( this%id_field(1), istat, ierr )
     call cu%pipe_send( this%tag_field(1), this%id_field(1) )
-    call MPI_WAIT( this%id_field(2), istat, ierr )
+    call mpi_wait( this%id_field(2), istat, ierr )
     call b%pipe_send( this%tag_field(2), this%id_field(2) )
-    call MPI_WAIT( this%id_field(3), istat, ierr )
+    call mpi_wait( this%id_field(3), istat, ierr )
     call e%pipe_send( this%tag_field(3), this%id_field(3) )
-    call MPI_WAIT( this%id_field(4), istat, ierr )
+    call mpi_wait( this%id_field(4), istat, ierr )
     call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
 
     ! pipeline for beams
     do k = 1, this%nbeams
       this%tag_beam(k) = ntag()
-      call MPI_WAIT( this%id_beam(k), istat, ierr )
+      call mpi_wait( this%id_beam(k), istat, ierr )
       call beam(k)%push( e, b, this%tag_beam(k), this%tag_beam(k), this%id_beam(k) )
     enddo
 
     call this%diag%run( this%tstep, this%dt )
 
     do k = 1, this%nspecies
-      call MPI_WAIT( this%id_spe(k), istat, ierr )
+      call mpi_wait( this%id_spe(k), istat, ierr )
       call spe(k)%renew( i*this%dt )
     enddo
 

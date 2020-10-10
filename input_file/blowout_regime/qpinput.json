@@ -22,7 +22,8 @@
     "smooth_type" : "none",
     "smooth_order" : 0,
     "verbose" : 5,
-    "if_timing" : true
+    "if_timing" : true,
+    "algorithm" : "standard"
 },
 "beam" :
 [

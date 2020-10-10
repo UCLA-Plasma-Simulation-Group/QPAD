@@ -22,15 +22,16 @@ type sim_beams
 
   ! private
 
-  type( beam3d ), dimension(:), pointer :: beam => null()
+  class( beam3d ), dimension(:), pointer :: beam => null()
   type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
+
+  integer :: num_beams
 
   contains
 
-  generic :: new => init_sim_beams
-  generic :: del => end_sim_beams
-
-  procedure, private :: init_sim_beams, end_sim_beams
+  procedure :: alloc => alloc_sim_beams
+  procedure :: new   => init_sim_beams
+  procedure :: del   => end_sim_beams
 
 end type sim_beams
 
@@ -38,6 +39,32 @@ character(len=18), save :: cls_name = 'sim_beams'
 integer, save :: cls_level = 2
 
 contains
+
+subroutine alloc_sim_beams( this, input )
+
+  implicit none
+
+  class( sim_beams ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  ! local data
+  integer :: i
+  character(len=18), save :: sname = 'alloc_sim_beams'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call input%get( 'simulation.nbeams', this%num_beams )
+
+  if ( .not. associated( this%beam ) ) then
+    allocate( beam3d :: this%beam( this%num_beams ) )
+  endif
+
+  do i = 1, this%num_beams
+    call this%beam(i)%alloc()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine alloc_sim_beams
 
 subroutine init_sim_beams( this, input, opts )
 
@@ -49,9 +76,7 @@ subroutine init_sim_beams( this, input, opts )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_beams'
-  integer :: i, n, part_dim
-  ! real, dimension(3,100) :: arg
-  ! logical :: quiet
+  integer :: i, part_dim
   real :: qm, qbm, dt, amm = 0.0
   logical :: read_rst, has_spin
   integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf, push_type
@@ -62,7 +87,7 @@ subroutine init_sim_beams( this, input, opts )
 
   call input%get( 'simulation.dt', dt )
   call input%get( 'simulation.read_restart', read_rst )
-  call input%get( 'simulation.nbeams', n )
+  ! call input%get( 'simulation.nbeams', n )
   call input%get( 'simulation.max_mode', max_mode )
 
   ! read interpolation type
@@ -88,10 +113,11 @@ subroutine init_sim_beams( this, input, opts )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
-  allocate( this%beam(n), this%pf(n) )
+  ! allocate( this%beam(n), this%pf(n) )
+  allocate( this%pf( this%num_beams ) )
 
   ! initialize beam profile for each beam
-  do i = 1, n
+  do i = 1, this%num_beams
 
     call input%get( 'beam('//num2str(i)//').profile', npf )
     select case ( npf )
@@ -115,7 +141,7 @@ subroutine init_sim_beams( this, input, opts )
   enddo
 
   ! initialize beam particle manager
-  do i = 1, n
+  do i = 1, this%num_beams
     part_dim = p_x_dim + p_p_dim + 1
     call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
     if ( has_spin ) part_dim = part_dim + p_s_dim
@@ -124,7 +150,7 @@ subroutine init_sim_beams( this, input, opts )
   call init_part3d_comm( opts )
 
   ! initialize beams
-  do i = 1, n
+  do i = 1, this%num_beams
 
     call input%get( 'beam('//num2str(i)//').q', qm )
     call input%get( 'beam('//num2str(i)//').m', qbm )

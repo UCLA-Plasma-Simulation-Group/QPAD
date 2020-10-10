@@ -12,7 +12,9 @@ integer, parameter :: p_cache_size = 1024
 ! ================================================================
 ! simulation module
 ! ================================================================
-integer, parameter :: p_sim_standard = 0, p_sim_popas = 1
+integer, parameter :: p_sim_standard = 0, &
+                      p_sim_popas = 1, &
+                      p_sim_tmplt = 99
 
 ! ================================================================
 ! geometry related

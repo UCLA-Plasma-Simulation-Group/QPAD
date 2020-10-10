@@ -57,7 +57,7 @@ type part3d
    procedure :: push_boris   => push_boris_part3d
    procedure :: push_reduced => push_reduced_part3d
    procedure :: update_bound => update_bound_part3d
-   procedure, private :: push_spin => push_spin_part3d
+   procedure :: push_spin    => push_spin_part3d
 
    procedure :: wr   => writehdf5_part3d
    procedure :: wrst => writerst_part3d
@@ -178,7 +178,7 @@ subroutine qdeposit_part3d( this, q )
    q_re => q%get_rf_re()
    q_im => q%get_rf_im()
 
-   max_mode = q%get_num_modes()
+   max_mode = q%get_max_mode()
 
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
@@ -312,7 +312,7 @@ subroutine push_boris_part3d( this, ef, bf )
    call start_tprof( 'push 3D particles' )
 
    qtmh = 0.5 * this%qbm * this%dt
-   max_mode = ef%get_num_modes()
+   max_mode = ef%get_max_mode()
 
    ef_re => ef%get_rf_re()
    ef_im => ef%get_rf_im()
@@ -431,7 +431,7 @@ subroutine push_reduced_part3d( this, ef, bf )
    call start_tprof( 'push 3D particles' )
 
    qtmh = this%qbm * this%dt * 0.5
-   max_mode = ef%get_num_modes()
+   max_mode = ef%get_max_mode()
 
    ef_re => ef%get_rf_re()
    ef_im => ef%get_rf_im()

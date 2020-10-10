@@ -5,6 +5,7 @@ use parallel_module
 use options_class
 use input_class
 use simulation_class
+use simulation_tmplt_class
 
 implicit none
 
@@ -34,6 +35,7 @@ call opts%new( input_file )
 
 sim => create_simulation( opts )
 
+call sim%alloc( input_file )
 call sim%new( input_file, opts )
 call sim%run()
 call sim%del()
@@ -53,8 +55,8 @@ function create_simulation(opts) result(sim)
   select case ( opts%algorithm )
   case ( p_sim_standard )
     allocate( simulation :: sim )
-  ! case ( p_sim_template )
-  !   allocate( simulation_tmplt :: sim )
+  case ( p_sim_tmplt )
+    allocate( simulation_tmplt :: sim )
   case default
     allocate( simulation :: sim )
   end select

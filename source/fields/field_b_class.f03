@@ -26,7 +26,6 @@ type, extends( field ) :: field_b
 
   class( field_solver ), dimension(:), pointer :: solver_bz      => null()
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
-  class( field_solver ), dimension(:), pointer :: solver_bt_iter => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
 
@@ -41,6 +40,7 @@ type, extends( field ) :: field_b
 
   procedure :: init_field_b
   procedure :: del => end_field_b
+  procedure :: alloc => alloc_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
   procedure, private :: set_source_bt_iter
@@ -55,13 +55,38 @@ end type field_b
 
 contains
 
-subroutine init_field_b( this, opts, num_modes, part_shape, boundary, entity )
+subroutine alloc_field_b( this, max_mode )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  integer, intent(in) :: max_mode
+
+  if ( .not. associated( this%solver_bz ) ) then
+    allocate( field_solver :: this%solver_bz(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bt ) ) then
+    allocate( field_solver :: this%solver_bt(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bplus ) ) then
+    allocate( field_solver :: this%solver_bplus(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bminus ) ) then
+    allocate( field_solver :: this%solver_bminus(0:max_mode) )
+  endif
+
+end subroutine alloc_field_b
+
+subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
   type( options ), intent(in) :: opts
-  integer, intent(in) :: num_modes, part_shape, entity, boundary
+  integer, intent(in) :: max_mode, part_shape, entity, boundary
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -92,17 +117,14 @@ subroutine init_field_b( this, opts, num_modes, part_shape, boundary, entity )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( opts, dim, num_modes, gc_num, entity )
+  call this%field%new( opts, dim, max_mode, gc_num, entity )
 
   ! initialize solver
   select case ( entity )
 
   case ( p_entity_plasma )
 
-    allocate( this%solver_bz( 0:num_modes ) )
-    allocate( this%solver_bplus( 0:num_modes ) )
-    allocate( this%solver_bminus( 0:num_modes ) )
-    do i = 0, num_modes
+    do i = 0, max_mode
       call this%solver_bz(i)%new( opts, i, dr, kind=p_fk_bz, &
         bnd=boundary, stype=p_hypre_cycred )
       call this%solver_bplus(i)%new( opts, i, dr, kind=p_fk_bplus, &
@@ -116,8 +138,7 @@ subroutine init_field_b( this, opts, num_modes, part_shape, boundary, entity )
 
   case ( p_entity_beam )
 
-    allocate( this%solver_bt( 0:num_modes ) )
-    do i = 0, num_modes
+    do i = 0, max_mode
       call this%solver_bt(i)%new( opts, i, dr, kind=p_fk_bt, &
         bnd=boundary, stype=p_hypre_cycred )
     enddo
@@ -148,7 +169,7 @@ subroutine end_field_b( this )
   select case ( this%entity )
 
   case ( p_entity_plasma )
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%solver_bz(i)%del()
       call this%solver_bplus(i)%del()
       call this%solver_bminus(i)%del()
@@ -158,7 +179,7 @@ subroutine end_field_b( this )
     deallocate( this%solver_bminus )
 
   case ( p_entity_beam )
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%solver_bt(i)%del()
     enddo
     deallocate( this%solver_bt )
@@ -743,7 +764,7 @@ subroutine solve_field_bz( this, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bz( i, jay_re(i) )
@@ -781,7 +802,7 @@ subroutine solve_field_bt( this, rho )
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bt( i, rho_re(i) )
@@ -823,7 +844,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )

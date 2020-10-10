@@ -32,11 +32,9 @@ type diag_node
 
   contains
 
-  generic :: new => init_diag_node
-  generic :: del => end_diag_node
+  procedure :: new => init_diag_node
+  procedure :: del => end_diag_node
   procedure :: set_sim_time
-
-  procedure, private :: init_diag_node, end_diag_node
 
 end type diag_node
 
@@ -53,15 +51,19 @@ type sim_diag
 
   contains
 
-  generic :: new => init_sim_diag
-  generic :: del => end_sim_diag
-  generic :: run => run_sim_diag
+  procedure :: alloc => alloc_sim_diag
+  procedure :: new => init_sim_diag
+  procedure :: del => end_sim_diag
+  procedure :: run => run_sim_diag
   generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst
 
-  procedure, private :: init_sim_diag, end_sim_diag, run_sim_diag
   procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst
   procedure, private :: to_next, to_head, to_tail, is_tail
   procedure, private :: set_ndump_gcd
+  procedure, private :: init_diag_beams
+  procedure, private :: init_diag_species
+  procedure, private :: init_diag_fields
+  procedure, private :: init_diag_rst
 
 end type sim_diag
 
@@ -140,45 +142,39 @@ subroutine set_sim_time( this, tstep, time )
 
 end subroutine set_sim_time
 
-subroutine init_sim_diag( this, input, opts, fields, beams, species )
+subroutine alloc_sim_diag( this, input )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
-  type( options ), intent(in) :: opts
-  class( sim_fields ), intent(inout), target :: fields
+
+  ! placeholder, do nothing currently
+
+end subroutine alloc_sim_diag
+
+subroutine init_diag_beams( this, input, beams )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
   class( sim_beams ), intent(in), target :: beams
-  class( sim_species ), intent(in), target :: species
 
   ! local data
-  integer :: nbeams, nspecies, max_mode, ndump, psample, dim
-  integer :: i, j, k, m, n, ierr
+  integer :: nbeams, max_mode, ndump, psample
+  integer :: i, j, k, m, n
   real :: rmin, rmax, zmin, zmax, dt
-  logical :: rst
-  character(len=32) :: sn1, sn2, sn3, sn4
   character(len=:), allocatable :: ss
-  class(*), pointer :: obj => null()
-
-  integer, save :: cls_level = 2
-  character(len=32), save :: cls_name = 'sim_diag'
-  character(len=32), save :: sname = 'init_sim_diag'
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  this%num_diag = 0
 
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.nbeams', nbeams )
-  call input%get( 'simulation.nspecies', nspecies )
 
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
   call input%get( 'simulation.box.z(1)', zmin )
   call input%get( 'simulation.box.z(2)', zmax )
   call input%get( 'simulation.dt', dt )
-
-  call input%get( 'simulation.dump_restart', rst )
 
   ! add beam diagnostics
   do i = 1, nbeams
@@ -230,6 +226,29 @@ subroutine init_sim_diag( this, input, opts, fields, beams, species )
     enddo ! end of j
   enddo ! end of i
 
+end subroutine init_diag_beams
+
+subroutine init_diag_species( this, input, species )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  class( sim_species ), intent(in), target :: species
+  ! local data
+  integer :: nspecies, max_mode, ndump, psample
+  integer :: i, j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=:), allocatable :: ss
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.nspecies', nspecies )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
+
   ! add species diagnostics
   do i = 1, nspecies
     call input%info( 'species('//num2str(i)//').diag', n_children=m )
@@ -278,7 +297,31 @@ subroutine init_sim_diag( this, input, opts, fields, beams, species )
     enddo ! end of j
   enddo ! end of i
 
-  ! add field diagnostics
+end subroutine init_diag_species
+
+subroutine init_diag_fields( this, input, opts, fields )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_fields ), intent(inout), target :: fields
+  ! local data
+  integer :: max_mode, ndump, dim
+  integer :: j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=32) :: sn1, sn2, sn3, sn4
+  character(len=:), allocatable :: ss
+  class(*), pointer :: obj => null()
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
+
   call input%info( 'field.diag', n_children=m )
   do j = 1, m
     call input%get( 'field.diag'//'('//num2str(j)//').ndump', ndump )
@@ -461,21 +504,77 @@ subroutine init_sim_diag( this, input, opts, fields, beams, species )
     endif
   enddo ! end of j
 
+end subroutine init_diag_fields
+
+subroutine init_diag_rst( this, input, beams )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  class( sim_beams ), intent(in), target :: beams
+
+  integer :: i, ndump, nbeams
+
+  call input%get( 'simulation.ndump_restart', ndump )
+  do i = 1, nbeams
+     call this%add_diag( &
+      obj      = beams%beam(i), &
+      df       = ndump, &
+      filename = './RST/Beam'//num2str(i,2)//'/', &
+      dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6), &
+      ty       = 'restart' )
+  enddo
+
+end subroutine init_diag_rst
+
+subroutine init_sim_diag( this, input, opts, fields, beams, species )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_fields ), intent(inout), target :: fields
+  class( sim_beams ), intent(in), target :: beams
+  class( sim_species ), intent(in), target :: species
+
+  ! local data
+  integer :: nbeams, nspecies, max_mode, ndump, psample, dim
+  integer :: i, j, k, m, n, ierr
+  real :: rmin, rmax, zmin, zmax, dt
+  logical :: rst
+  character(len=32) :: sn1, sn2, sn3, sn4
+  character(len=:), allocatable :: ss
+  class(*), pointer :: obj => null()
+
+  integer, save :: cls_level = 2
+  character(len=32), save :: cls_name = 'sim_diag'
+  character(len=32), save :: sname = 'init_sim_diag'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%num_diag = 0
+
+  call input%get( 'simulation.dump_restart', rst )
+
+  ! initialize beam diagnostics
+  call this%init_diag_beams( input, beams )
+
+  ! initialize species diagnostics
+  call this%init_diag_species( input, species )
+
+  ! initialize field diagnostics
+  call this%init_diag_fields( input, opts, fields )
+
+  ! initialize restart file diagnostics
   if (rst) then
-    call input%get( 'simulation.ndump_restart', ndump )
-    do i = 1, nbeams
-       call this%add_diag( &
-        obj      = beams%beam(i), &
-        df       = ndump, &
-        filename = './RST/Beam'//num2str(i,2)//'/', &
-        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6), &
-        ty       = 'restart' )
-    enddo
+    call this%init_diag_rst( input, beams )
   endif
 
   call this%set_ndump_gcd()
 
-  call MPI_BARRIER( comm_world(), ierr )
+  call mpi_barrier( comm_world(), ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -535,17 +634,17 @@ subroutine run_sim_diag( this, tstep, dt )
       select type ( obj => this%diag%obj )
       class is ( field )
         rtag = ntag(); stag = rtag
-        call MPI_WAIT( this%diag%id, istat, ierr )
+        call mpi_wait( this%diag%id, istat, ierr )
         call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
       class is ( beam3d )
         select case ( this%diag%ty )
         case ( p_tdiag_raw )
           rtag = ntag(); stag = rtag
-          call MPI_WAIT( this%diag%id, istat, ierr )
+          call mpi_wait( this%diag%id, istat, ierr )
           call obj%wr( this%diag%files(1), this%diag%psample, rtag, stag, this%diag%id )
         case ( p_tdiag_grid )
           rtag = ntag(); stag = rtag
-          call MPI_WAIT( this%diag%id, istat, ierr )
+          call mpi_wait( this%diag%id, istat, ierr )
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
         case ( p_tdiag_rst )
           call obj%wrst( this%diag%files(1) )

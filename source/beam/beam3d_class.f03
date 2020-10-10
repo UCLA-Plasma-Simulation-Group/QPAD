@@ -22,8 +22,6 @@ public :: beam3d
 
 type beam3d
 
-   private
-
    class(part3d), pointer :: part => null()
    class(field_rho), allocatable :: q
    class(fdist3d), pointer :: pf => null()
@@ -31,13 +29,14 @@ type beam3d
    integer :: push_type
    contains
 
-   procedure :: new  => init_beam3d
-   procedure :: del  => end_beam3d
-   procedure :: push => push_beam3d
-   procedure :: wr   => writehdf5_beam3d
-   procedure :: wrq  => writeq_beam3d
-   procedure :: wrst => writerst_beam3d
-   procedure :: rrst => readrst_beam3d
+   procedure :: alloc => alloc_beam3d
+   procedure :: new   => init_beam3d
+   procedure :: del   => end_beam3d
+   procedure :: push  => push_beam3d
+   procedure :: wr    => writehdf5_beam3d
+   procedure :: wrq   => writeq_beam3d
+   procedure :: wrst  => writerst_beam3d
+   procedure :: rrst  => readrst_beam3d
 
    generic :: qdp  => qdeposit_beam3d, qdeposit_beam3d_finish
    procedure, private :: qdeposit_beam3d, qdeposit_beam3d_finish
@@ -49,7 +48,25 @@ character(len=10) :: cls_name = 'beam3d'
 integer, parameter :: cls_level = 2
 
 contains
-!
+
+subroutine alloc_beam3d( this )
+
+   implicit none
+
+   class(beam3d), intent(inout) :: this
+   ! local data
+   character(len=32), save :: sname = 'alloc_beam3d'
+
+   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+   if ( .not. associated( this%part ) ) then
+      allocate( part3d :: this%part )
+   endif
+
+   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine alloc_beam3d
+
 subroutine init_beam3d( this, opts, max_mode, part_shape, pf, qbm, dt, &
    push_type, smooth_type, smooth_order, has_spin, amm )
 
@@ -72,7 +89,7 @@ subroutine init_beam3d( this, opts, max_mode, part_shape, pf, qbm, dt, &
    this%pf => pf
    this%push_type = push_type
 
-   allocate(this%part,this%q)
+   allocate(this%q)
    this%evol = pf%getevol()
    call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
    call this%part%new(opts,pf,qbm,dt,has_spin,amm)
@@ -158,7 +175,7 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
    integer, intent(in) :: rtag, stag
    integer, intent(inout) :: sid
 ! local data
-   character(len=32), save :: sname = 'partpush'
+   character(len=32), save :: sname = 'push_beam3d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -220,7 +237,7 @@ subroutine writeq_beam3d(this,file,rtag,stag,id)
    integer, intent(in) :: rtag, stag
    integer, intent(inout) :: id
 ! local data
-   character(len=32), save :: sname = 'writeq_beam3d:'
+   character(len=32), save :: sname = 'writeq_beam3d'
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%q%write_hdf5(file,1,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')

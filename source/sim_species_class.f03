@@ -19,15 +19,16 @@ type sim_species
 
   ! private
 
-  type( species2d ), dimension(:), pointer :: spe => null()
+  class( species2d ), dimension(:), pointer :: spe => null()
   type( fdist2d_wrap ), dimension(:), pointer :: pf => null()
+
+  integer :: num_species
 
   contains
 
-  generic :: new => init_sim_species
-  generic :: del => end_sim_species
-
-  procedure, private :: init_sim_species, end_sim_species
+  procedure :: alloc => alloc_sim_species
+  procedure :: new   => init_sim_species
+  procedure :: del   => end_sim_species
 
 end type sim_species
 
@@ -35,6 +36,25 @@ character(len=18), save :: cls_name = 'sim_species'
 integer, save :: cls_level = 2
 
 contains
+
+subroutine alloc_sim_species( this, input )
+
+  implicit none
+
+  class( sim_species ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+
+  integer :: i
+
+  call input%get( 'simulation.nspecies', this%num_species )
+
+  if ( .not. associated( this%spe ) ) allocate( species2d :: this%spe( this%num_species ) )
+
+  do i = 1, this%num_species
+    call this%spe(i)%alloc()
+  enddo
+
+end subroutine alloc_sim_species
 
 subroutine init_sim_species( this, input, opts, s )
 
@@ -47,17 +67,13 @@ subroutine init_sim_species( this, input, opts, s )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_species'
-  integer :: i, n
-  ! real, dimension(3,100) :: arg
-  ! logical :: quiet
   real :: qm, qbm
-  integer :: ps, sm_type, sm_ord, max_mode, npf, part_dim
-  ! type(hdf5file) :: file_rst
+  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call input%get( 'simulation.nspecies', n )
+  ! call input%get( 'simulation.nspecies', n )
   call input%get( 'simulation.max_mode', max_mode )
 
   ! read interpolation type
@@ -83,9 +99,9 @@ subroutine init_sim_species( this, input, opts, s )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
-  allocate( this%spe(n), this%pf(n) )
+  allocate( this%pf( this%num_species ) )
 
-  do i = 1, n
+  do i = 1, this%num_species
 
     call input%get( 'species('//num2str(i)//').profile', npf )
     select case ( npf )
@@ -104,12 +120,12 @@ subroutine init_sim_species( this, input, opts, s )
 
   ! initialize species particle manager
   part_dim = 8
-  do i = 1, n
+  do i = 1, this%num_species
     call set_part2d_comm( part_dim, npmax = this%pf(i)%p%getnpmax() )
   enddo
   call init_part2d_comm( opts )
 
-  do i = 1, n
+  do i = 1, this%num_species
 
     call input%get('species('//num2str(i)//').q',qm)
     call input%get('species('//num2str(i)//').m',qbm)
