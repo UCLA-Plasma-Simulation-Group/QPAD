@@ -59,6 +59,9 @@ subroutine init_options( this, input_file )
   case ("standard")
     this%algorithm = p_sim_standard
 
+  case ("popas")
+    this%algorithm = p_sim_popas
+
   case ("template")
     this%algorithm = p_sim_tmplt
 

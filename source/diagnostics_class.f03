@@ -18,7 +18,7 @@ implicit none
 
 private
 
-public :: sim_diag
+public :: sim_diag, diag_node
 
 type diag_node
 
@@ -27,7 +27,7 @@ type diag_node
   class( diag_node ), pointer :: next => null()
   type( hdf5file ), dimension(:), allocatable :: files
   class(*), pointer :: obj => null()
-  integer :: num_files=1, dim = 0, df=0, psample=0, ty=p_tdiag_grid
+  integer :: num_files=1, dim = 0, df=0, psample=0, ty=p_tdiag_grid, fid
   integer :: tag = -1, id = MPI_REQUEST_NULL
 
   contains
@@ -55,11 +55,11 @@ type sim_diag
   procedure :: new => init_sim_diag
   procedure :: del => end_sim_diag
   procedure :: run => run_sim_diag
+  procedure :: set_ndump_gcd
+  procedure :: to_next, to_head, to_tail, is_tail
   generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst
 
   procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst
-  procedure, private :: to_next, to_head, to_tail, is_tail
-  procedure, private :: set_ndump_gcd
   procedure, private :: init_diag_beams
   procedure, private :: init_diag_species
   procedure, private :: init_diag_fields
@@ -535,18 +535,13 @@ subroutine init_sim_diag( this, input, opts, fields, beams, species )
   class( sim_diag ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
   type( options ), intent(in) :: opts
-  class( sim_fields ), intent(inout), target :: fields
-  class( sim_beams ), intent(in), target :: beams
-  class( sim_species ), intent(in), target :: species
+  class( sim_fields ), intent(inout) :: fields
+  class( sim_beams ), intent(in) :: beams
+  class( sim_species ), intent(in) :: species
 
   ! local data
-  integer :: nbeams, nspecies, max_mode, ndump, psample, dim
-  integer :: i, j, k, m, n, ierr
-  real :: rmin, rmax, zmin, zmax, dt
+  integer :: ierr
   logical :: rst
-  character(len=32) :: sn1, sn2, sn3, sn4
-  character(len=:), allocatable :: ss
-  class(*), pointer :: obj => null()
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag'

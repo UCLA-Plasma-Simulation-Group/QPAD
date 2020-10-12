@@ -6,6 +6,7 @@ use options_class
 use input_class
 use simulation_class
 use simulation_tmplt_class
+use simulation_popas_class
 
 implicit none
 
@@ -55,6 +56,8 @@ function create_simulation(opts) result(sim)
   select case ( opts%algorithm )
   case ( p_sim_standard )
     allocate( simulation :: sim )
+  case ( p_sim_popas )
+    allocate( simulation_popas :: sim )
   case ( p_sim_tmplt )
     allocate( simulation_tmplt :: sim )
   case default

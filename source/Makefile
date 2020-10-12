@@ -45,6 +45,7 @@ src += diagnostics_class.f03
 src += simulation_class.f03
 # template project code
 include proj_template/Makefile
+include proj_popas/Makefile
 main_src = main.f03
 # ------------------------------------------------------------------------------
 

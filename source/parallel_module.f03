@@ -9,7 +9,7 @@ private
 
 public :: init_parallel, end_parallel, init_pipeline
 public :: num_procs, id_proc, comm_world
-public :: num_procs_loc, id_proc_loc, id_stage, num_stages, comm_loc
+public :: num_procs_loc, id_proc_loc, id_stage, num_stages, comm_loc, root_loc
 public :: ntag
 
 interface init_parallel
@@ -43,6 +43,10 @@ end interface num_procs_loc
 interface id_proc_loc
   module procedure id_proc_loc
 end interface id_proc_loc
+
+interface root_loc
+  module procedure root_loc
+end interface root_loc
 
 interface id_stage
   module procedure id_stage
@@ -141,6 +145,16 @@ function id_proc_loc()
   id_proc_loc = id_proc_loc_
 
 end function id_proc_loc
+
+function root_loc()
+
+  implicit none
+
+  integer :: root_loc
+
+  root_loc = num_procs_loc_ * id_stage_
+
+end function root_loc
 
 function id_stage()
 
