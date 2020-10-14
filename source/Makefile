@@ -4,7 +4,7 @@ sys ?= gnu_openmpi
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
 # main binary name
-quickpic = $(builddir)/qpad.e
+qpad = $(builddir)/qpad.e
 # build directory
 builddir ?= build
 # binary directory
@@ -46,24 +46,23 @@ src += simulation_class.f03
 # template project code
 include proj_template/Makefile
 include proj_popas/Makefile
-main_src = main.f03
+src += main.f03
 # ------------------------------------------------------------------------------
 
 # Parse source files to generate object files
 objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
 objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
-main_obj := $(builddir)/main.o
 
 # Generate date stamp
 DATESTAMP := $$(date +%s)
 
 # Targets and rules
-.DEFAULT_GOAL := all
-.PHONY: all module clean
+.DEFAULT_GOAL := $(qpad)
+.PHONY: clean
 
-$(quickpic) : $(objs) $(main_obj)
+$(qpad) : $(builddir) $(objs)
 	@echo "[LINK] $(@F)"
-	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -o $(@F) $(^F) $(LDF)
+	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -I./$(builddir) -o $(notdir $(qpad)) $(notdir $(objs)) $(LDF)
 	@chmod a+x $@
 	@echo "Copying binary to bin directory"
 	@if [ ! -d $(bindir) ];then \
@@ -74,18 +73,18 @@ $(quickpic) : $(objs) $(main_obj)
 	@ln -f -s qpad-$(DATESTAMP).e $(bindir)/qpad.e
 	@echo "Done!"
 
-$(objs) : $(builddir) $(configfile)
-
-$(main_obj) : $(builddir) $(configfile)
+$(objs) : $(builddir) | $(configfile)
 
 $(builddir) :
 	@echo "Creating $@ directory"
 	@mkdir -p $@
+	@mkdir -p $@/preprocessed
 
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
-	@cp $< $(builddir)
+	@$(FPP) $(FPPF) -I. -I./$(builddir) $< > $(builddir)/$(<F)
 	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F)
+	@cd $(builddir) && mv $(<F) ./preprocessed
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
@@ -93,19 +92,15 @@ $(builddir)/%.o : %.c
 
 TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
-	@cp $< $(builddir)
+	@$(FPP) $(FPPF) -I. -I$(builddir) $< > $(builddir)/$(<F)
 	@cd $(builddir) && $(FC) -I. $(FC_OPTS) $(<F) $(notdir $(objs)) $(LDF) -o $@
+	@cd $(builddir) && mv $(<F) ./preprocessed
 	@cd $(builddir) && chmod a+x $@
 	@if [ ! -d $(bindir) ];then \
 		mkdir $(bindir); \
 	fi
 	@cp $(builddir)/$@ $(bindir)/$@
 	@echo "Done!"
-
-all : $(quickpic)
-
-module : $(objs)
-	@echo "Only compile modules, no executable is generated."
 
 clean :
 	@echo "[CLEAN] Removing build directory"

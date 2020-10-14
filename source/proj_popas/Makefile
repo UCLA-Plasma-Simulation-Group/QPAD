@@ -1,4 +1,8 @@
 # This is meant to be included by the parent Makefile
+ifndef DISABLE_POPAS
+	
+FPPF += -DENABLE_POPAS
+
 src += part3d_popas_class.f03
 src += beam3d_popas_class.f03
 src += sim_beams_popas_class.f03
@@ -16,5 +20,7 @@ all:
 
 clean:
 	make -C .. clean
+
+endif
 
 endif

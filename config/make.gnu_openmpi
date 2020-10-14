@@ -7,13 +7,12 @@ FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 # -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
 # -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
-
 # C compiler configuration
-CC = gcc-6
+CC = gcc
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-# FPP = gcc -C -E -x assembler-with-cpp
+FPP = gcc -C -E -cpp
 
 # Python 2.x configuration. Used for automatically generate compile rules
 PYTHON = python 

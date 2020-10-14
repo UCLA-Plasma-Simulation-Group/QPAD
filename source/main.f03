@@ -5,8 +5,14 @@ use parallel_module
 use options_class
 use input_class
 use simulation_class
+
+#ifdef ENABLE_TEMPLATE
 use simulation_tmplt_class
+#endif
+
+#ifdef ENABLE_POPAS
 use simulation_popas_class
+#endif
 
 implicit none
 
@@ -57,13 +63,32 @@ function create_simulation(opts) result(sim)
   case ( p_sim_standard )
     allocate( simulation :: sim )
   case ( p_sim_popas )
-    allocate( simulation_popas :: sim )
+#ifdef ENABLE_POPAS
+      allocate( simulation_popas :: sim )
+#else
+      call error_and_die( '[ERROR] The requested module (POPAS) is not compiled.' )
+#endif
   case ( p_sim_tmplt )
-    allocate( simulation_tmplt :: sim )
+#ifdef ENABLE_TEMPLATE
+      allocate( simulation_tmplt :: sim )
+#else
+      call error_and_die( '[ERROR] The requested module (TEMPLATE) is not compiled.' )
+#endif
   case default
-    allocate( simulation :: sim )
+    call error_and_die( '[ERROR] Invalid simulation mode, only "standard" and &
+      &"popas" are currently supported.' )
   end select
 
 end function create_simulation
+
+subroutine error_and_die( msg )
+
+  implicit none
+  character(len=*), intent(in) :: msg
+
+  call write_stdout( msg )
+  stop
+
+end subroutine error_and_die
 
 end program quickpic_quasi3d
