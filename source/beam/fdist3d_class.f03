@@ -313,7 +313,7 @@ subroutine init_fdist3d_000(this,input,i)
    this%npz = npz
    this%npmax = npmax
    qm = qm/abs(qm)*np*(2*pi)**1.5*sigx*sigy*sigz
-   qm = qm/dr/dz/dr
+   qm = qm/dr/dz/dr/(2.0*pi)
    qm = qm/npx
    qm = qm/npy
    qm = qm/npz
