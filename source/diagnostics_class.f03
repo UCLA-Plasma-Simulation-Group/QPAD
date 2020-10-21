@@ -451,6 +451,7 @@ subroutine init_diag_fields( this, input, opts, fields )
           dim = 3
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
+            call fields%vpot%alloc( max_mode )
             call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
@@ -464,6 +465,7 @@ subroutine init_diag_fields( this, input, opts, fields )
           dim = 1
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
+            call fields%vpot%alloc( max_mode )
             call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
@@ -477,6 +479,7 @@ subroutine init_diag_fields( this, input, opts, fields )
           dim = 2
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
+            call fields%vpot%alloc( max_mode )
             call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif

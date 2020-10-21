@@ -36,7 +36,7 @@ type, extends( field ) :: field_vpot
   generic :: new => init_field_vpot
 
   procedure :: init_field_vpot
-  procedure :: alloc_field_vpot
+  procedure :: alloc => alloc_field_vpot
   procedure :: del => end_field_vpot
   procedure, private :: set_source_vpotz
   procedure, private :: get_solution_vpotz
