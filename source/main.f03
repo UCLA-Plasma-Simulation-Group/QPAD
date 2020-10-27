@@ -6,14 +6,6 @@ use options_class
 use input_class
 use simulation_class
 
-#ifdef ENABLE_TEMPLATE
-use simulation_tmplt_class
-#endif
-
-#ifdef ENABLE_POPAS
-use simulation_popas_class
-#endif
-
 implicit none
 
 type(options) :: opts
@@ -52,6 +44,14 @@ contains
 function create_simulation(opts) result(sim)
 
   use param
+
+#ifdef ENABLE_TEMPLATE
+  use simulation_tmplt_class
+#endif
+
+#ifdef ENABLE_POPAS
+  use simulation_popas_class
+#endif
 
   implicit none
 
