@@ -520,8 +520,9 @@ subroutine init_diag_rst( this, input, beams )
   integer :: i, ndump, nbeams
 
   call input%get( 'simulation.ndump_restart', ndump )
+  call input%get( 'simulation.nbeams', nbeams )
   do i = 1, nbeams
-     call this%add_diag( &
+    call this%add_diag( &
       obj      = beams%beam(i), &
       df       = ndump, &
       filename = './RST/Beam'//num2str(i,2)//'/', &
