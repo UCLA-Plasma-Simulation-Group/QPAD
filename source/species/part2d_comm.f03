@@ -73,7 +73,7 @@ subroutine set_part2d_comm( part_dim, npmax )
   integer, intent(in) :: part_dim
   integer, intent(in) :: npmax
 
-  real :: buf_ratio = 0.01 
+  real :: buf_ratio = 0.1 
 
   dim_max  = max( part_dim, dim_max )
   buf_size = max( int(npmax * buf_ratio), buf_size )
