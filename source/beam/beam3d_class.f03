@@ -27,19 +27,19 @@ type beam3d
    class(fdist3d), pointer :: pf => null()
    logical :: evol
    integer :: push_type
+   
    contains
 
    procedure :: alloc => alloc_beam3d
    procedure :: new   => init_beam3d
    procedure :: del   => end_beam3d
    procedure :: push  => push_beam3d
+   procedure :: qdp   => qdeposit_beam3d
    procedure :: wr    => writehdf5_beam3d
    procedure :: wrq   => writeq_beam3d
    procedure :: wrst  => writerst_beam3d
    procedure :: rrst  => readrst_beam3d
 
-   generic :: qdp  => qdeposit_beam3d, qdeposit_beam3d_finish
-   procedure, private :: qdeposit_beam3d, qdeposit_beam3d_finish
 end type
 
 save
@@ -131,39 +131,40 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    call this%q%as(0.0)
-   call MPI_WAIT(sid, istat, ierr)
 
    if (.not. this%evol) then
       call this%pf%dp(this%q)
       call this%q%copy_gc_f2()
    else
+      if ( id_stage() > 0 ) call this%q%pipe_gc_recv(tag)
+      call MPI_WAIT(sid, istat, ierr)
       call this%part%qdeposit(this%q)
       call this%q%acopy_gc_f2()
       call this%q%copy_gc_f2()
+      call this%q%pipe_gc_send(tag, sid)
    endif
 
    call add_f2( this%q, q )
-   call this%q%pipe_gc_send(tag, sid)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine qdeposit_beam3d
 
-subroutine qdeposit_beam3d_finish(this,tag)
-! finish deposit the charge density
+! subroutine qdeposit_beam3d_finish(this,tag)
+! ! finish deposit the charge density
 
-   implicit none
+!    implicit none
 
-   class(beam3d), intent(inout) :: this
-   integer, intent(in) :: tag
-! local data
-   character(len=32), save :: sname = 'qdeposit_beam3d_finish'
+!    class(beam3d), intent(inout) :: this
+!    integer, intent(in) :: tag
+! ! local data
+!    character(len=32), save :: sname = 'qdeposit_beam3d_finish'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call this%q%pipe_gc_recv(tag)
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    call write_dbg(cls_name, sname, cls_level, 'starts')
+!    call this%q%pipe_gc_recv(tag)
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine qdeposit_beam3d_finish
+! end subroutine qdeposit_beam3d_finish
 
 subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
 

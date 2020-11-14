@@ -223,9 +223,9 @@ subroutine run_simulation( this )
       this%tag_bq(k) = ntag()
       call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
     enddo
-    do k = 1, this%nbeams
-      call beam(k)%qdp( this%tag_bq(k) )
-    enddo
+    ! do k = 1, this%nbeams
+    !   call beam(k)%qdp( this%tag_bq(k) )
+    ! enddo
     call this%diag%run( 0, this%dt )
 
   endif
@@ -266,11 +266,11 @@ subroutine run_simulation( this )
     do j = 1, this%nstep2d + 1
 
       ! finish the beam qdeposit
-      if ( j == this%nstep2d + 1 ) then
-        do k = 1, this%nbeams
-          call beam(k)%qdp( this%tag_bq(k) )
-        enddo
-      endif
+      ! if ( j == this%nstep2d + 1 ) then
+      !   do k = 1, this%nbeams
+      !     call beam(k)%qdp( this%tag_bq(k) )
+      !   enddo
+      ! endif
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
