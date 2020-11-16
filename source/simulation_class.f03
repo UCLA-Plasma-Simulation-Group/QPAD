@@ -101,6 +101,8 @@ subroutine init_simulation(this, input, opts)
 
   real :: n0, dt, time
   logical :: read_rst
+  integer :: rnd_seed, num_seeds
+  integer, dimension(:), allocatable :: seed
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -126,6 +128,7 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nbeams', this%nbeams )
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.max_mode', this%max_mode )
+  call input%get( 'simulation.random_seed', rnd_seed )
 
   call this%fields%new( input, opts )
   call this%beams%new( input, opts )
@@ -142,6 +145,19 @@ subroutine init_simulation(this, input, opts)
   this%id_spe(:)   = MPI_REQUEST_NULL
   this%id_beam(:)  = MPI_REQUEST_NULL
   this%id_bq(:)    = MPI_REQUEST_NULL
+
+  ! initialize pseudo-random number sequence
+  if ( rnd_seed == 0 ) then
+    ! OS generated seed
+    call random_seed()
+  else
+    ! user specified seeds
+    call random_seed( size=num_seeds )
+    allocate( seed(num_seeds) )
+    seed = rnd_seed
+    call random_seed( put=seed )
+    deallocate( seed )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -223,9 +239,9 @@ subroutine run_simulation( this )
       this%tag_bq(k) = ntag()
       call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
     enddo
-    do k = 1, this%nbeams
-      call beam(k)%qdp( this%tag_bq(k) )
-    enddo
+    ! do k = 1, this%nbeams
+    !   call beam(k)%qdp( this%tag_bq(k) )
+    ! enddo
     call this%diag%run( 0, this%dt )
 
   endif
@@ -250,27 +266,18 @@ subroutine run_simulation( this )
       call spe(k)%precv( this%tag_spe(k) )
     enddo
 
-    ! pipeline data transfer for fields
-    this%tag_field(1) = ntag(); call cu%pipe_recv( this%tag_field(1) )
-    this%tag_field(2) = ntag(); call b%pipe_recv( this%tag_field(2) )
-    this%tag_field(3) = ntag(); call e%pipe_recv( this%tag_field(3) )
-    this%tag_field(4) = ntag(); call psi%pipe_recv( this%tag_field(4), nslice=2 )
+    ! pipeline data transfer for current and species B-field
+    this%tag_field(1) = ntag()
+    call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
+    this%tag_field(4) = ntag()
+    call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
 
-    call cu%copy_slice( 1, p_copy_2to1 )
     b     = 0.0
     e     = 0.0
-    b_spe = 0.0
     e_spe = 0.0
     psi   = 0.0
 
-    do j = 1, this%nstep2d + 1
-
-      ! finish the beam qdeposit
-      if ( j == this%nstep2d + 1 ) then
-        do k = 1, this%nbeams
-          call beam(k)%qdp( this%tag_bq(k) )
-        enddo
-      endif
+    do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
@@ -282,16 +289,12 @@ subroutine run_simulation( this )
 
       call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
-      ! do k = 1, this%nspecies
-      !   call spe(k)%extpsi( psi )
-      ! enddo
-      ! call e%solve( psi, j )
       call b_spe%solve( cu )
 
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
-        call e%solve( cu ) !!!
+        call e%solve( cu )
         call e%solve( b, psi )
         cu = 0.0
         acu = 0.0
@@ -326,6 +329,15 @@ subroutine run_simulation( this )
 
       call dot_f1( this%dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )
+
+      ! send the last slice of current and species B-field to the next stage
+      if ( j == this%nstep2d ) then
+        call mpi_wait( this%id_field(1), istat, ierr )
+        call cu%pipe_send( this%tag_field(1), this%id_field(1), 'forward' )
+        call mpi_wait( this%id_field(4), istat, ierr )
+        call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
+      endif
+
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
       enddo
@@ -335,6 +347,17 @@ subroutine run_simulation( this )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
 
+      ! send the first slice of E and B field back to the last stage for 3D 
+      ! particle push
+      if ( j == 1 ) then
+        call mpi_wait( this%id_field(2), istat, ierr )
+        this%tag_field(2) = ntag()
+        call b%pipe_send( this%tag_field(2), this%id_field(2), 'backward', 'inner' )
+        call mpi_wait( this%id_field(3), istat, ierr )
+        this%tag_field(3) = ntag()
+        call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
+      endif
+
     enddo ! 2d loop
 
     ! pipeline for species
@@ -342,15 +365,9 @@ subroutine run_simulation( this )
       call spe(k)%psend( this%tag_spe(k), this%id_spe(k) )
     enddo
 
-    ! pipeline for fields
-    call mpi_wait( this%id_field(1), istat, ierr )
-    call cu%pipe_send( this%tag_field(1), this%id_field(1) )
-    call mpi_wait( this%id_field(2), istat, ierr )
-    call b%pipe_send( this%tag_field(2), this%id_field(2) )
-    call mpi_wait( this%id_field(3), istat, ierr )
-    call e%pipe_send( this%tag_field(3), this%id_field(3) )
-    call mpi_wait( this%id_field(4), istat, ierr )
-    call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
+    ! pipeline for E and B fields
+    call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )
+    call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
 
     ! pipeline for beams
     do k = 1, this%nbeams

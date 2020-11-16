@@ -98,7 +98,7 @@ integer, parameter :: p_hypre_cycred = 1, &
 integer, parameter :: p_copy_1to2 = 1, p_copy_2to1 = -1
 
 ! ================================================================
-! parameters for copy guard cells
+! parameters for data communication
 ! ================================================================
 integer, parameter :: p_mpi_forward  = 1, &
                       p_mpi_backward = -1, &

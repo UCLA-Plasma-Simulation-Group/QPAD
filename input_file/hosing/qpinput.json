@@ -23,6 +23,7 @@
     "smooth_order" : 0,
     "verbose" : 0,
     "if_timing" : false,
+    "random_seed" : 0,
     "algorithm" : "standard"
 },
 
