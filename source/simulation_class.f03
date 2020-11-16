@@ -255,8 +255,10 @@ subroutine run_simulation( this )
     ! this%tag_field(2) = ntag(); call b%pipe_recv( this%tag_field(2) )
     ! this%tag_field(3) = ntag(); call e%pipe_recv( this%tag_field(3) )
     ! this%tag_field(4) = ntag(); call psi%pipe_recv( this%tag_field(4), nslice=2 )
+    this%tag_field(1) = ntag()
+    call cu%pipe_recv( this%tag_field(1), p_mpi_forward, p_cell_inner )
 
-    call cu%copy_slice( 1, p_copy_2to1 )
+    ! call cu%copy_slice( 1, p_copy_2to1 )
     b     = 0.0
     e     = 0.0
     b_spe = 0.0
@@ -291,7 +293,7 @@ subroutine run_simulation( this )
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
-        call e%solve( cu ) !!!
+        call e%solve( cu )
         call e%solve( b, psi )
         cu = 0.0
         acu = 0.0
@@ -344,18 +346,21 @@ subroutine run_simulation( this )
         ! call e%pipe_send( this%tag_field(3), this%id_field(3), p_mpi_backward )
         ! call mpi_wait( this%id_field(4), istat, ierr )
         ! call psi%pipe_send( this%tag_field(4), this%id_field(4), p_mpi_backward )
-        call mpi_wait( this%id_field(1), istat, ierr )
-        this%tag_field(1) = ntag()
-        call cu%pipe_send( this%tag_field(1), this%id_field(1), p_mpi_backward )
+
         call mpi_wait( this%id_field(2), istat, ierr )
         this%tag_field(2) = ntag()
-        call b%pipe_send( this%tag_field(2), this%id_field(2), p_mpi_backward )
+        call b%pipe_send( this%tag_field(2), this%id_field(2), p_mpi_backward, p_cell_inner )
         call mpi_wait( this%id_field(3), istat, ierr )
         this%tag_field(3) = ntag()
-        call e%pipe_send( this%tag_field(3), this%id_field(3), p_mpi_backward )
+        call e%pipe_send( this%tag_field(3), this%id_field(3), p_mpi_backward, p_cell_inner )
         call mpi_wait( this%id_field(4), istat, ierr )
         this%tag_field(4) = ntag()
-        call psi%pipe_send( this%tag_field(4), this%id_field(4), p_mpi_backward )
+        call psi%pipe_send( this%tag_field(4), this%id_field(4), p_mpi_backward, p_cell_inner )
+      endif
+
+      if ( j == this%nstep2d ) then
+        call mpi_wait( this%id_field(1), istat, ierr )
+        call cu%pipe_send( this%tag_field(1), this%id_field(1), p_mpi_forward, p_cell_inner )
       endif
 
     enddo ! 2d loop
@@ -375,10 +380,9 @@ subroutine run_simulation( this )
     ! call mpi_wait( this%id_field(4), istat, ierr )
     ! call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
 
-    call cu%pipe_recv( this%tag_field(1), p_mpi_backward )
-    call b%pipe_recv( this%tag_field(2), p_mpi_backward )
-    call e%pipe_recv( this%tag_field(3), p_mpi_backward )
-    call psi%pipe_recv( this%tag_field(4), p_mpi_backward )
+    call b%pipe_recv( this%tag_field(2), p_mpi_backward, p_cell_guard )
+    call e%pipe_recv( this%tag_field(3), p_mpi_backward, p_cell_guard )
+    call psi%pipe_recv( this%tag_field(4), p_mpi_backward, p_cell_guard )
 
     ! pipeline for beams
     do k = 1, this%nbeams

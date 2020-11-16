@@ -474,12 +474,12 @@ subroutine pipe_gc_recv( this, tag )
 
 end subroutine pipe_gc_recv
 
-subroutine pipe_send( this, stag, id, dir )
+subroutine pipe_send( this, stag, id, dir, pos )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  integer, intent(in) :: stag, dir
+  integer, intent(in) :: stag, dir, pos
   integer, intent(inout) :: id
 
   integer :: i, j, m, idproc_des, idx_send
@@ -503,7 +503,11 @@ subroutine pipe_send( this, stag, id, dir )
       return
     endif
 
-    idx_send = nzp
+    if ( pos == p_cell_inner ) then
+      idx_send = nzp
+    else
+      idx_send = nzp + 1
+    endif
     idproc_des = id_proc() + num_procs_loc()
 
   else
@@ -515,7 +519,11 @@ subroutine pipe_send( this, stag, id, dir )
       return
     endif
 
-    idx_send = 1
+    if ( pos == p_cell_inner ) then
+      idx_send = 1
+    else
+      idx_send = 0
+    endif
     idproc_des = id_proc() - num_procs_loc()
 
   endif
@@ -555,12 +563,12 @@ subroutine pipe_send( this, stag, id, dir )
 
 end subroutine pipe_send
 
-subroutine pipe_recv( this, rtag, dir )
+subroutine pipe_recv( this, rtag, dir, pos )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  integer, intent(in) :: rtag, dir
+  integer, intent(in) :: rtag, dir, pos
 
   integer :: i, j, m, idx_recv, idproc_src, n1p, nzp
   integer :: count, ierr
@@ -583,7 +591,11 @@ subroutine pipe_recv( this, rtag, dir )
       return
     endif
 
-    idx_recv = 0
+    if ( pos == p_cell_inner ) then
+      idx_recv = 1
+    else
+      idx_recv = 0
+    endif
     idproc_src = id_proc() - num_procs_loc()
 
   else
@@ -594,7 +606,11 @@ subroutine pipe_recv( this, rtag, dir )
       return
     endif
 
-    idx_recv = nzp + 1
+    if ( pos == p_cell_inner ) then
+      idx_recv = nzp
+    else
+      idx_recv = nzp + 1
+    endif
     idproc_src = id_proc() + num_procs_loc()
 
   endif
