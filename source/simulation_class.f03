@@ -251,10 +251,10 @@ subroutine run_simulation( this )
     enddo
 
     ! pipeline data transfer for fields
-    this%tag_field(1) = ntag(); call cu%pipe_recv( this%tag_field(1) )
-    this%tag_field(2) = ntag(); call b%pipe_recv( this%tag_field(2) )
-    this%tag_field(3) = ntag(); call e%pipe_recv( this%tag_field(3) )
-    this%tag_field(4) = ntag(); call psi%pipe_recv( this%tag_field(4), nslice=2 )
+    ! this%tag_field(1) = ntag(); call cu%pipe_recv( this%tag_field(1) )
+    ! this%tag_field(2) = ntag(); call b%pipe_recv( this%tag_field(2) )
+    ! this%tag_field(3) = ntag(); call e%pipe_recv( this%tag_field(3) )
+    ! this%tag_field(4) = ntag(); call psi%pipe_recv( this%tag_field(4), nslice=2 )
 
     call cu%copy_slice( 1, p_copy_2to1 )
     b     = 0.0
@@ -263,7 +263,7 @@ subroutine run_simulation( this )
     e_spe = 0.0
     psi   = 0.0
 
-    do j = 1, this%nstep2d + 1
+    do j = 1, this%nstep2d
 
       ! finish the beam qdeposit
       ! if ( j == this%nstep2d + 1 ) then
@@ -335,6 +335,29 @@ subroutine run_simulation( this )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
 
+      if ( j == 1 ) then
+        ! call mpi_wait( this%id_field(1), istat, ierr )
+        ! call cu%pipe_send( this%tag_field(1), this%id_field(1), p_mpi_backward )
+        ! call mpi_wait( this%id_field(2), istat, ierr )
+        ! call b%pipe_send( this%tag_field(2), this%id_field(2), p_mpi_backward )
+        ! call mpi_wait( this%id_field(3), istat, ierr )
+        ! call e%pipe_send( this%tag_field(3), this%id_field(3), p_mpi_backward )
+        ! call mpi_wait( this%id_field(4), istat, ierr )
+        ! call psi%pipe_send( this%tag_field(4), this%id_field(4), p_mpi_backward )
+        call mpi_wait( this%id_field(1), istat, ierr )
+        this%tag_field(1) = ntag()
+        call cu%pipe_send( this%tag_field(1), this%id_field(1), p_mpi_backward )
+        call mpi_wait( this%id_field(2), istat, ierr )
+        this%tag_field(2) = ntag()
+        call b%pipe_send( this%tag_field(2), this%id_field(2), p_mpi_backward )
+        call mpi_wait( this%id_field(3), istat, ierr )
+        this%tag_field(3) = ntag()
+        call e%pipe_send( this%tag_field(3), this%id_field(3), p_mpi_backward )
+        call mpi_wait( this%id_field(4), istat, ierr )
+        this%tag_field(4) = ntag()
+        call psi%pipe_send( this%tag_field(4), this%id_field(4), p_mpi_backward )
+      endif
+
     enddo ! 2d loop
 
     ! pipeline for species
@@ -343,14 +366,19 @@ subroutine run_simulation( this )
     enddo
 
     ! pipeline for fields
-    call mpi_wait( this%id_field(1), istat, ierr )
-    call cu%pipe_send( this%tag_field(1), this%id_field(1) )
-    call mpi_wait( this%id_field(2), istat, ierr )
-    call b%pipe_send( this%tag_field(2), this%id_field(2) )
-    call mpi_wait( this%id_field(3), istat, ierr )
-    call e%pipe_send( this%tag_field(3), this%id_field(3) )
-    call mpi_wait( this%id_field(4), istat, ierr )
-    call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
+    ! call mpi_wait( this%id_field(1), istat, ierr )
+    ! call cu%pipe_send( this%tag_field(1), this%id_field(1) )
+    ! call mpi_wait( this%id_field(2), istat, ierr )
+    ! call b%pipe_send( this%tag_field(2), this%id_field(2) )
+    ! call mpi_wait( this%id_field(3), istat, ierr )
+    ! call e%pipe_send( this%tag_field(3), this%id_field(3) )
+    ! call mpi_wait( this%id_field(4), istat, ierr )
+    ! call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
+
+    call cu%pipe_recv( this%tag_field(1), p_mpi_backward )
+    call b%pipe_recv( this%tag_field(2), p_mpi_backward )
+    call e%pipe_recv( this%tag_field(3), p_mpi_backward )
+    call psi%pipe_recv( this%tag_field(4), p_mpi_backward )
 
     ! pipeline for beams
     do k = 1, this%nbeams

@@ -59,7 +59,7 @@ type :: field
   real :: dr, dxi
   integer :: max_mode, dim
   integer :: entity
-  real, dimension(:,:,:,:), allocatable :: psend_buf, precv_buf
+  real, dimension(:,:,:), allocatable :: psend_buf, precv_buf
 
   contains
 
@@ -474,73 +474,77 @@ subroutine pipe_gc_recv( this, tag )
 
 end subroutine pipe_gc_recv
 
-subroutine pipe_send( this, stag, id, nslice )
+subroutine pipe_send( this, stag, id, dir )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  integer, intent(in) :: stag
+  integer, intent(in) :: stag, dir
   integer, intent(inout) :: id
-  integer, intent(in), optional :: nslice
 
-  integer :: i, j, k, m, ns
-  integer :: idproc, idproc_des, lnvp, comm, stageid, nstage
+  integer :: i, j, m, idproc_des, idx_send
   integer :: nzp, n1p, count, ierr
   integer, dimension(2) :: gc
   character(len=20), save :: sname = "pipe_send"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
+  
+  nzp = this%rf_re(0)%get_ndp(2)
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
 
-  ns = 1
-  if ( present(nslice) ) ns = nslice
+  if ( dir == p_mpi_forward ) then
 
-  lnvp       = num_procs_loc()
-  nstage     = num_stages()
-  stageid    = id_stage()
-  idproc     = id_proc()
-  idproc_des = idproc + lnvp
-  nzp        = this%rf_re(0)%get_ndp(2)
-  n1p        = size(this%rf_re(0)%f1,2)
-  comm       = comm_world()
-  gc         = this%rf_re(0)%get_gc_num(1)
+    if ( id_stage() == num_stages() - 1 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
 
-  if ( stageid == nstage-1 ) then
-    id = MPI_REQUEST_NULL
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
+    idx_send = nzp
+    idproc_des = id_proc() + num_procs_loc()
+
+  else
+
+    if ( id_stage() == 0 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idx_send = 1
+    idproc_des = id_proc() - num_procs_loc()
+
   endif
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, ns, 0:2*this%max_mode ) )
+    allocate( this%psend_buf( this%dim, n1p, 0:2*this%max_mode ) )
   endif
 
-  ! copy m=0 mode
-  do k = 1, ns
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%psend_buf(i,j,k,0) = this%rf_re(0)%f2( i, j-gc(1), nzp+1-ns+k )
-      enddo
+  ! copy m = 0 mode
+  do j = 1, n1p
+    do i = 1, this%dim
+      this%psend_buf(i,j,0) = this%rf_re(0)%f2( i, j-gc(1), idx_send )
     enddo
   enddo
 
-  ! copy m>0 mode
+  ! copy m > 0 mode
   if ( this%max_mode > 0 ) then
     do m = 1, this%max_mode
-      do k = 1, ns
-        do j = 1, n1p
-          do i = 1, this%dim
-            this%psend_buf(i,j,k,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), nzp+1-ns+k )
-            this%psend_buf(i,j,k,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), nzp+1-ns+k )
-          enddo
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%psend_buf(i,j,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), idx_send )
+          this%psend_buf(i,j,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), idx_send )
         enddo
       enddo
     enddo
   endif
 
   count = size( this%psend_buf )
-  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm, id, ierr )
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm_world(), id, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -551,16 +555,14 @@ subroutine pipe_send( this, stag, id, nslice )
 
 end subroutine pipe_send
 
-subroutine pipe_recv( this, rtag, nslice )
+subroutine pipe_recv( this, rtag, dir )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  integer, intent(in) :: rtag
-  integer, intent(in), optional :: nslice
+  integer, intent(in) :: rtag, dir
 
-  integer :: i, j, k, m, ns
-  integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
+  integer :: i, j, m, idx_recv, idproc_src, n1p, nzp
   integer :: count, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -569,52 +571,59 @@ subroutine pipe_recv( this, rtag, nslice )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  ns = 1
-  if ( present(nslice) ) ns = nslice
+  nzp = this%rf_re(0)%get_ndp(2)
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
 
-  lnvp       = num_procs_loc()
-  stageid    = id_stage()
-  idproc     = id_proc()
-  idproc_src = idproc - lnvp
-  comm       = comm_world()
-  n1p        = size(this%rf_re(0)%f1,2)
-  gc         = this%rf_re(0)%get_gc_num(1)
+  if ( dir == p_mpi_forward ) then
+  
+    if ( id_stage() == 0 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
 
-  if ( stageid == 0 ) then
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
+    idx_recv = 0
+    idproc_src = id_proc() - num_procs_loc()
+
+  else
+
+    if ( id_stage() == num_stages() - 1 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idx_recv = nzp + 1
+    idproc_src = id_proc() + num_procs_loc()
+
   endif
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, ns, 0:2*this%max_mode ) )
+    allocate( this%precv_buf( this%dim, n1p, 0:2*this%max_mode ) )
   endif
 
   count = size( this%precv_buf )
-  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm, stat, ierr )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm_world(), stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )
   endif
 
   ! copy m=0 mode
-  do k = 1, ns
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%rf_re(0)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,0)
-      enddo
+  do j = 1, n1p
+    do i = 1, this%dim
+      this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,0)
     enddo
   enddo
 
   ! copy m>0 mode
   if ( this%max_mode > 0 ) then
     do m = 1, this%max_mode
-      do k = 1, ns
-        do j = 1, n1p
-          do i = 1, this%dim
-            this%rf_re(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m-1)
-            this%rf_im(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m)
-          enddo
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m-1)
+          this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m)
         enddo
       enddo
     enddo
