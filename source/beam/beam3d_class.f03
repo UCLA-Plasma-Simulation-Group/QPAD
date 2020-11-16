@@ -136,12 +136,14 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
       call this%pf%dp(this%q)
       call this%q%copy_gc_f2()
    else
-      if ( id_stage() > 0 ) call this%q%pipe_gc_recv(tag)
+      ! if ( id_stage() > 0 ) call this%q%pipe_gc_recv(tag)
+      if ( id_stage() > 0 ) call this%q%pipe_recv( tag, 'forward', 'inner', 'add' )
       call MPI_WAIT(sid, istat, ierr)
       call this%part%qdeposit(this%q)
       call this%q%acopy_gc_f2()
       call this%q%copy_gc_f2()
-      call this%q%pipe_gc_send(tag, sid)
+      ! call this%q%pipe_gc_send(tag, sid)
+      call this%q%pipe_send( tag, sid, 'forward', 'guard' )
    endif
 
    call add_f2( this%q, q )

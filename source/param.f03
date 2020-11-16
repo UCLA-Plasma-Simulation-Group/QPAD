@@ -105,12 +105,6 @@ integer, parameter :: p_mpi_forward  = 1, &
                       p_mpi_bothway  = 0
 
 ! ================================================================
-! parameters for cell types
-! ================================================================
-integer, parameter :: p_cell_guard = 0, &
-                      p_cell_inner = 1
-
-! ================================================================
 ! parameters for smooth
 ! ================================================================
 integer, parameter :: p_smooth_none        = 0, &
