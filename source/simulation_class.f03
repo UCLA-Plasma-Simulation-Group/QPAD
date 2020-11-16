@@ -101,6 +101,8 @@ subroutine init_simulation(this, input, opts)
 
   real :: n0, dt, time
   logical :: read_rst
+  integer :: rnd_seed, num_seeds
+  integer, dimension(:), allocatable :: seed
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -126,6 +128,7 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nbeams', this%nbeams )
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.max_mode', this%max_mode )
+  call input%get( 'simulation.random_seed', rnd_seed )
 
   call this%fields%new( input, opts )
   call this%beams%new( input, opts )
@@ -142,6 +145,19 @@ subroutine init_simulation(this, input, opts)
   this%id_spe(:)   = MPI_REQUEST_NULL
   this%id_beam(:)  = MPI_REQUEST_NULL
   this%id_bq(:)    = MPI_REQUEST_NULL
+
+  ! initialize pseudo-random number sequence
+  if ( rnd_seed == 0 ) then
+    ! OS generated seed
+    call random_seed()
+  else
+    ! user specified seeds
+    call random_seed( size=num_seeds )
+    allocate( seed(num_seeds) )
+    seed = rnd_seed
+    call random_seed( put=seed )
+    deallocate( seed )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -258,7 +274,7 @@ subroutine run_simulation( this )
     this%tag_field(1) = ntag()
     call cu%pipe_recv( this%tag_field(1), p_mpi_forward, p_cell_inner )
 
-    ! call cu%copy_slice( 1, p_copy_2to1 )
+    call cu%copy_slice( 1, p_copy_2to1 )
     b     = 0.0
     e     = 0.0
     b_spe = 0.0

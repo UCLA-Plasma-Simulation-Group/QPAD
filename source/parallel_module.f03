@@ -236,9 +236,6 @@ subroutine init_pipeline( n_stages )
   call mpi_comm_rank( comm_loc_, id_proc_loc_, ierr )
   call mpi_comm_size( comm_loc_, num_procs_loc_, ierr )
 
-  ! initialize pseudo-random number sequence
-  call random_seed()
-
 end subroutine init_pipeline
 
 subroutine init_omp(nth)
