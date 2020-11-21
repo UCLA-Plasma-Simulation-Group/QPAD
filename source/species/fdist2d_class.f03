@@ -16,13 +16,18 @@ public :: fdist2d, fdist2d_wrap, fdist2d_000, fdist2d_012
 
 type, abstract :: fdist2d
 
-   private
+   ! private
 
    ! ndprof = profile type
    integer :: npf, npmax
    real :: dex
 
    integer :: noff, nr, nrp
+
+   integer :: ppc1, ppc2, nmode
+   real :: qm, den
+   character(len=:), allocatable :: long_prof
+   real, dimension(:), allocatable :: s, fs
 
    contains
    generic :: new => init_fdist2d
@@ -31,7 +36,7 @@ type, abstract :: fdist2d
    procedure(ab_init_fdist2d), deferred, private :: init_fdist2d
    procedure, private :: end_fdist2d
    procedure(ab_dist2d), deferred, private :: dist2d
-   procedure :: getnpf, getnpmax, getdex
+   procedure :: getnpf, getnpmax, getdex, get_density
 
 end type fdist2d
 
@@ -71,10 +76,10 @@ type, extends(fdist2d) :: fdist2d_000
 ! Transeversely uniform profile with uniform or piecewise longitudinal profile
    private
 ! xppc, yppc = particle per cell in x and y directions
-   integer :: ppc1, ppc2, nmode
-   real :: qm, den
-   character(len=:), allocatable :: long_prof
-   real, dimension(:), allocatable :: s, fs
+   ! integer :: ppc1, ppc2, nmode
+   ! real :: qm, den
+   ! character(len=:), allocatable :: long_prof
+   ! real, dimension(:), allocatable :: s, fs
 
    contains
    procedure, private :: init_fdist2d => init_fdist2d_000
@@ -86,12 +91,12 @@ type, extends(fdist2d) :: fdist2d_012
 ! hollow channel with f(r) profile
    private
 ! xppc, yppc = particle per cell in x and y directions
-   integer :: ppc1, ppc2, nmode
-   real :: qm, den
+   ! integer :: ppc1, ppc2, nmode
+   ! real :: qm, den
    ! real :: cx, cy
    real, dimension(:), allocatable :: r, fr
-   character(len=:), allocatable :: long_prof
-   real, dimension(:), allocatable :: s, fs
+   ! character(len=:), allocatable :: long_prof
+   ! real, dimension(:), allocatable :: s, fs
 
    contains
    procedure, private :: init_fdist2d => init_fdist2d_012
@@ -137,6 +142,41 @@ function getdex(this)
    getdex = this%dex
 
 end function getdex
+
+function get_density( this, s )
+
+   implicit none
+
+   class(fdist2d), intent(in) :: this
+   real, intent(in) :: s
+
+   real :: get_density
+   integer :: i, prof_len
+
+   get_density = 1.0
+   if ( trim(this%long_prof) == 'piecewise' ) then
+
+      prof_len = size( this%fs )
+      if ( s <= this%s(1) .or. s > this%s(prof_len) ) then
+         call write_err( 'The longitudinal position is out of the bound!' )
+      endif
+
+      do i = 2, prof_len
+
+         if ( this%s(i) < this%s(i-1) ) then
+            call write_err( 's is not monotonically increasing!' )
+         endif
+
+         if ( s <= this%s(i) ) then
+            get_density = this%fs(i-1) + ( this%fs(i) - this%fs(i-1) ) &
+               / ( this%s(i) - this%s(i-1) ) * ( s - this%s(i-1) )
+            exit
+         endif
+
+      enddo
+   endif
+
+end function get_density
 
 subroutine end_fdist2d(this)
 

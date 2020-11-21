@@ -131,7 +131,7 @@ subroutine init_sim_species( this, input, opts, s )
     call input%get('species('//num2str(i)//').m',qbm)
     qbm = qm/qbm
     call this%spe(i)%new( opts, this%pf(i)%p, ps, max_mode,&
-      qbm, part_dim, s, sm_type, sm_ord )
+      qbm, s, sm_type, sm_ord )
 
   enddo
 

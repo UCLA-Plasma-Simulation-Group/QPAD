@@ -119,6 +119,22 @@ integer, parameter :: p_tdiag_grid = 0, &
                       p_tdiag_rst  = 2
 
 ! ================================================================
+! parameters for neutral species
+! ================================================================
+integer, parameter :: p_neut_H  = 1, &
+                      p_neut_He = 2, &
+                      p_neut_Li = 3, &
+                      p_neut_C  = 6, &
+                      p_neut_N  = 7, &
+                      p_neut_O  = 8, &
+                      p_neut_Ar = 18, &
+                      p_neut_K  = 19, &
+                      p_neut_Rb = 37, &
+                      p_neut_Xe = 54, &
+                      p_neut_Cs = 55
+
+
+! ================================================================
 ! others
 ! ================================================================
 integer, parameter :: MAX_LEN_LABEL = 32
