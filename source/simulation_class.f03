@@ -4,7 +4,7 @@ use parallel_module
 use options_class
 use sim_fields_class
 use sim_beams_class
-use sim_species_class
+use sim_plasma_class
 use diagnostics_class
 use field_class
 use field_psi_class
@@ -35,10 +35,10 @@ type simulation
 
   ! private
 
-  class( sim_fields ),  pointer :: fields  => null()
-  class( sim_species ), pointer :: species => null()
-  class( sim_beams ),   pointer :: beams   => null()
-  class( sim_diag ),    pointer :: diag    => null()
+  class( sim_fields ), pointer :: fields => null()
+  class( sim_plasma ), pointer :: plasma => null()
+  class( sim_beams ),  pointer :: beams  => null()
+  class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
   integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, nneutrals, tstep
@@ -78,12 +78,12 @@ subroutine alloc_simulation( this, input )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( .not. associated( this%fields ) )  allocate( sim_fields :: this%fields )
-  if ( .not. associated( this%species ) ) allocate( sim_species :: this%species )
+  if ( .not. associated( this%plasma ) ) allocate( sim_plasma :: this%plasma )
   if ( .not. associated( this%beams ) )   allocate( sim_beams :: this%beams )
   if ( .not. associated( this%diag ) )    allocate( sim_diag :: this%diag )
 
   call this%fields%alloc( input )
-  call this%species%alloc( input )
+  call this%plasma%alloc( input )
   call this%beams%alloc( input )
   call this%diag%alloc( input )
 
@@ -135,9 +135,9 @@ subroutine init_simulation(this, input, opts)
 
   call this%fields%new( input, opts )
   call this%beams%new( input, opts )
-  call this%species%new( input, opts, (this%start3d-1)*dt )
+  call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
-  call this%diag%new( input, opts, this%fields, this%beams, this%species )
+  call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
 
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
@@ -182,7 +182,7 @@ subroutine end_simulation(this)
 
   call this%fields%del()
   call this%beams%del()
-  call this%species%del()
+  call this%plasma%del()
   call this%diag%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -232,8 +232,8 @@ subroutine run_simulation( this )
   acu    => this%fields%acu
 
   beam => this%beams%beam
-  spe  => this%species%spe
-  neut => this%species%neut
+  spe  => this%plasma%spe
+  neut => this%plasma%neut
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run

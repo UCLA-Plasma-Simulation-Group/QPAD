@@ -1,5 +1,4 @@
-! TODO: this module should be renamed
-module sim_species_class
+module sim_plasma_class
 
 use species2d_class
 use neutral_class
@@ -15,9 +14,9 @@ implicit none
 
 private
 
-public :: sim_species
+public :: sim_plasma
 
-type sim_species
+type sim_plasma
 
   class( species2d ), dimension(:), pointer :: spe => null()
   class( neutral ), dimension(:), pointer :: neut => null()
@@ -27,22 +26,22 @@ type sim_species
 
   contains
 
-  procedure :: alloc => alloc_sim_species
-  procedure :: new   => init_sim_species
-  procedure :: del   => end_sim_species
+  procedure :: alloc => alloc_sim_plasma
+  procedure :: new   => init_sim_plasma
+  procedure :: del   => end_sim_plasma
 
-end type sim_species
+end type sim_plasma
 
-character(len=18), save :: cls_name = 'sim_species'
+character(len=18), save :: cls_name = 'sim_plasma'
 integer, save :: cls_level = 2
 
 contains
 
-subroutine alloc_sim_species( this, input )
+subroutine alloc_sim_plasma( this, input )
 
   implicit none
 
-  class( sim_species ), intent(inout) :: this
+  class( sim_plasma ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
 
   integer :: i
@@ -61,19 +60,19 @@ subroutine alloc_sim_species( this, input )
     call this%neut(i)%alloc()
   enddo
 
-end subroutine alloc_sim_species
+end subroutine alloc_sim_plasma
 
-subroutine init_sim_species( this, input, opts, s )
+subroutine init_sim_plasma( this, input, opts, s )
 
   implicit none
 
-  class( sim_species ), intent(inout) :: this
+  class( sim_plasma ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
   type( options ), intent(in) :: opts
   real, intent(in) :: s
 
   ! local data
-  character(len=18), save :: sname = 'init_sim_species'
+  character(len=18), save :: sname = 'init_sim_plasma'
   real :: qm, qbm, omega_p, np
   integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max
   character(len=:), allocatable :: str
@@ -178,16 +177,16 @@ subroutine init_sim_species( this, input, opts, s )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine init_sim_species
+end subroutine init_sim_plasma
 
-subroutine end_sim_species( this )
+subroutine end_sim_plasma( this )
 
   implicit none
 
-  class( sim_species ), intent(inout) :: this
+  class( sim_plasma ), intent(inout) :: this
 
   integer :: i
-  character(len=18), save :: sname = 'end_sim_species'
+  character(len=18), save :: sname = 'end_sim_plasma'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -203,6 +202,6 @@ subroutine end_sim_species( this )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine end_sim_species
+end subroutine end_sim_plasma
 
-end module sim_species_class
+end module sim_plasma_class

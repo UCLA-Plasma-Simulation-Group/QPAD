@@ -8,7 +8,7 @@ use options_class
 use diagnostics_class
 use sim_beams_class
 use sim_beams_popas_class
-use sim_species_class
+use sim_plasma_class
 use sim_fields_class
 use field_class
 use beam3d_class
@@ -85,19 +85,19 @@ subroutine init_diag_popas( this, input, beams )
           case ( 'popas_emittance' )
             call this%add_diag_popas( &
               obj        = beams%beam(i), &
-              df         = ndump, &
+              dump_freq  = ndump, &
+              type_label = 'popas_emittance', &
               pathname   = './Beam'//num2str(i)//'/POPAS/', &
               dataname   = 'emittance', &
-              fid        = 100+i, &
-              popas_type = p_tdiag_popas_emit )
+              fid        = 100+i )
           case ( 'popas_ene_spread' )
             call this%add_diag_popas( &
               obj        = beams%beam(i), &
-              df         = ndump, &
+              dump_freq  = ndump, &
+              type_label = 'popas_ene_spread', &
               pathname   = './Beam'//num2str(i)//'/POPAS/', &
               dataname   = 'ene_spread', &
-              fid        = 200+i, &
-              popas_type = p_tdiag_popas_esprd )
+              fid        = 200+i )
           end select
         enddo ! end of k
       endif
@@ -106,7 +106,7 @@ subroutine init_diag_popas( this, input, beams )
 
 end subroutine init_diag_popas
 
-subroutine init_sim_diag_popas( this, input, opts, fields, beams, species )
+subroutine init_sim_diag_popas( this, input, opts, fields, beams, plasma )
 
   implicit none
 
@@ -115,7 +115,7 @@ subroutine init_sim_diag_popas( this, input, opts, fields, beams, species )
   type( options ), intent(in) :: opts
   class( sim_fields ), intent(inout) :: fields
   class( sim_beams ), intent(in) :: beams
-  class( sim_species ), intent(in) :: species
+  class( sim_plasma ), intent(in) :: plasma
 
   ! local data
   integer :: ierr
@@ -126,7 +126,7 @@ subroutine init_sim_diag_popas( this, input, opts, fields, beams, species )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   ! call initialization procedure of the super-class
-  call this%sim_diag%new( input, opts, fields, beams, species )
+  call this%sim_diag%new( input, opts, fields, beams, plasma )
 
   ! initialize POPAS diagnostics
   select type ( obj => beams )
@@ -167,22 +167,27 @@ subroutine run_sim_diag_popas( this, tstep, dt )
   if ( .not. associated(this%diag) ) return
 
   do
-    if ( mod( tstep, this%diag%df ) == 0 ) then
+    if ( mod( tstep, this%diag%dump_freq ) == 0 ) then
 
       call this%diag%set_sim_time( tstep, tstep*dt )
 
       select type ( obj => this%diag%obj )
       type is ( beam3d_popas )
 
-        select case ( this%diag%ty )
-        case ( p_tdiag_popas_emit )
+        select case ( trim(this%diag%type_label) )
+
+        case ( 'popas_emittance' )
+
           rtag = ntag(); stag = rtag
           call mpi_wait( this%diag%id, istat, ierr )
           call obj%get_emittance( this%diag%fid, tstep, rtag, stag, this%diag%id )
-        case ( p_tdiag_popas_esprd )
+
+        case ( 'popas_ene_spread' )
+
           rtag = ntag(); stag = rtag
           call mpi_wait( this%diag%id, istat, ierr )
           call obj%get_ene_spread( this%diag%fid, tstep, rtag, stag, this%diag%id )
+
         end select
 
       end select
@@ -202,14 +207,15 @@ subroutine run_sim_diag_popas( this, tstep, dt )
 end subroutine run_sim_diag_popas
 
 ! add POPAS data for particles
-subroutine add_diag_popas( this, obj, df, pathname, dataname, fid, popas_type )
+subroutine add_diag_popas( this, obj, dump_freq, type_label, pathname, dataname, &
+  fid )
 
   implicit none
 
   class( sim_diag_popas ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: df, fid, popas_type
-  character(len=*), intent(in) :: pathname, dataname
+  integer, intent(in) :: dump_freq, fid
+  character(len=*), intent(in) :: pathname, dataname, type_label
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag_popas'
@@ -219,16 +225,16 @@ subroutine add_diag_popas( this, obj, df, pathname, dataname, fid, popas_type )
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=1, id=MPI_REQUEST_NULL )
+    call this%head%new( obj, dump_freq, num_files=1, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=1, id=MPI_REQUEST_NULL )
+    call this%diag%new( obj, dump_freq, num_files=1, id=MPI_REQUEST_NULL )
   endif
 
-  this%diag%ty = popas_type
+  this%diag%type_label = trim(type_label)
   this%diag%fid = fid
 
   ! the first processor of the last stage create output files
@@ -236,11 +242,11 @@ subroutine add_diag_popas( this, obj, df, pathname, dataname, fid, popas_type )
     call system( 'mkdir -p '//trim(pathname) )
     open( unit=fid, file=trim(pathname)//trim(dataname)//'.txt', &
       form='formatted', status='replace' )
-    select case ( popas_type )
-    case ( p_tdiag_popas_emit )
+    select case ( trim(type_label) )
+    case ( 'popas_emittance' )
       write (fid,'(A8,8A22)') 'Step #', '<x^2>', '<px^2>', '<x*px>', 'emit_x', &
         '<y^2>', '<py^2>', '<y*py>', 'emit_y'
-    case ( p_tdiag_popas_esprd )
+    case ( 'popas_ene_spread' )
       write (fid, '(A8,A22)') 'Step #', 'Energy_spread'
     end select
     flush( fid )

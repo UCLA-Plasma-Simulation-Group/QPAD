@@ -114,9 +114,9 @@ integer, parameter :: p_smooth_none        = 0, &
 ! ================================================================
 ! parameters for diagnostic type
 ! ================================================================
-integer, parameter :: p_tdiag_grid = 0, &
-                      p_tdiag_raw  = 1, &
-                      p_tdiag_rst  = 2
+! integer, parameter :: p_tdiag_grid = 0, &
+!                       p_tdiag_raw  = 1, &
+!                       p_tdiag_rst  = 2
 
 ! ================================================================
 ! parameters for neutral species
