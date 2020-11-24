@@ -87,6 +87,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax, nbmax
+   logical :: empty = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -107,12 +108,10 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    allocate( this%p( p_p_dim, npmax ) )
    allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
 
+   if ( present( if_empty ) ) empty = if_empty
+
    ! initialize particle coordinates according to specified profile
-   if ( present(if_empty) ) then
-      if ( if_empty ) then
-         call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-      endif
-   else
+   if ( .not. empty ) then
       call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
    endif
 

@@ -1,6 +1,8 @@
+! TODO: this module should be renamed
 module sim_species_class
 
 use species2d_class
+use neutral_class
 use parallel_module
 use options_class
 use fdist2d_class
@@ -17,12 +19,11 @@ public :: sim_species
 
 type sim_species
 
-  ! private
-
   class( species2d ), dimension(:), pointer :: spe => null()
-  type( fdist2d_wrap ), dimension(:), pointer :: pf => null()
+  class( neutral ), dimension(:), pointer :: neut => null()
+  type( fdist2d_wrap ), dimension(:), pointer :: pf_spe => null(), pf_neut => null()
 
-  integer :: num_species
+  integer :: num_species, num_neutrals
 
   contains
 
@@ -47,11 +48,17 @@ subroutine alloc_sim_species( this, input )
   integer :: i
 
   call input%get( 'simulation.nspecies', this%num_species )
+  call input%get( 'simulation.nneutrals', this%num_neutrals )
 
   if ( .not. associated( this%spe ) ) allocate( species2d :: this%spe( this%num_species ) )
+  if ( .not. associated( this%neut ) ) allocate( neutral :: this%neut( this%num_neutrals ) )
 
   do i = 1, this%num_species
     call this%spe(i)%alloc()
+  enddo
+
+  do i = 1, this%num_neutrals
+    call this%neut(i)%alloc()
   enddo
 
 end subroutine alloc_sim_species
@@ -67,14 +74,15 @@ subroutine init_sim_species( this, input, opts, s )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_species'
-  real :: qm, qbm
-  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim
+  real :: qm, qbm, omega_p, np
+  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ! call input%get( 'simulation.nspecies', n )
   call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.n0', np )
+  omega_p = sqrt(np) * 5.641460231180626d4
 
   ! read interpolation type
   call input%get( 'simulation.interpolation', str )
@@ -99,39 +107,72 @@ subroutine init_sim_species( this, input, opts, s )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
-  allocate( this%pf( this%num_species ) )
+  allocate( this%pf_spe( this%num_species ), this%pf_neut( this%num_neutrals ) )
 
   do i = 1, this%num_species
 
     call input%get( 'species('//num2str(i)//').profile', npf )
     select case ( npf )
     case (0)
-       allocate( fdist2d_000 :: this%pf(i)%p )
-       call this%pf(i)%p%new( input, opts, i )
+       allocate( fdist2d_000 :: this%pf_spe(i)%p )
+       call this%pf_spe(i)%p%new( input, opts, i )
     case (12)
-       allocate( fdist2d_012 :: this%pf(i)%p )
-       call this%pf(i)%p%new( input, opts, i )
+       allocate( fdist2d_012 :: this%pf_spe(i)%p )
+       call this%pf_spe(i)%p%new( input, opts, i )
     ! Add new distributions right above this line
     case default
-       call write_err( 'Invalid beam profile!' )
+       call write_err( 'Invalid species profile!' )
     end select
 
   enddo
 
-  ! initialize species particle manager
+  do i = 1, this%num_neutrals
+
+    call input%get( 'neutrals('//num2str(i)//').profile', npf )
+    select case ( npf )
+    case (0)
+       allocate( fdist2d_000 :: this%pf_neut(i)%p )
+       call this%pf_neut(i)%p%new( input, opts, i )
+    case (12)
+       allocate( fdist2d_012 :: this%pf_neut(i)%p )
+       call this%pf_neut(i)%p%new( input, opts, i )
+    ! Add new distributions right above this line
+    case default
+       call write_err( 'Invalid neutral profile!' )
+    end select
+
+  enddo
+
+  ! initialize 2D particle manager
   part_dim = 8
+  ! loop over all the 2D particle profile to get the buffer size
   do i = 1, this%num_species
-    call set_part2d_comm( part_dim, npmax = this%pf(i)%p%getnpmax() )
+    call set_part2d_comm( part_dim, npmax = this%pf_spe(i)%p%getnpmax() )
+  enddo
+  do i = 1, this%num_neutrals
+    call set_part2d_comm( part_dim, npmax = this%pf_neut(i)%p%getnpmax() )
   enddo
   call init_part2d_comm( opts )
 
   do i = 1, this%num_species
 
-    call input%get('species('//num2str(i)//').q',qm)
-    call input%get('species('//num2str(i)//').m',qbm)
-    qbm = qm/qbm
-    call this%spe(i)%new( opts, this%pf(i)%p, ps, max_mode,&
+    call input%get( 'species('//num2str(i)//').q', qm )
+    call input%get( 'species('//num2str(i)//').m', qbm )
+    qbm = qm / qbm
+    call this%spe(i)%new( opts, this%pf_spe(i)%p, ps, max_mode, &
       qbm, s, sm_type, sm_ord )
+
+  enddo
+
+  do i = 1, this%num_neutrals
+
+    call input%get( 'neutrals('//num2str(i)//').q', qm )
+    call input%get( 'neutrals('//num2str(i)//').m', qbm )
+    call input%get( 'neutrals('//num2str(i)//').element', elem )
+    call input%get( 'neutrals('//num2str(i)//').ion_max', ion_max )
+    qbm = qm / qbm
+    call this%neut(i)%new( opts, this%pf_neut(i)%p, max_mode, elem, ion_max, &
+      qbm, omega_p, s, sm_type, sm_ord )
 
   enddo
 
@@ -145,15 +186,17 @@ subroutine end_sim_species( this )
 
   class( sim_species ), intent(inout) :: this
 
-  integer :: i, n
+  integer :: i
   character(len=18), save :: sname = 'end_sim_species'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  n = size( this%spe )
-
-  do i = 1, n
+  do i = 1, this%num_species
     call this%spe(i)%del()
+  enddo
+
+  do i = 1, this%num_neutrals
+    call this%neut(i)%del()
   enddo
 
   call end_part2d_comm()

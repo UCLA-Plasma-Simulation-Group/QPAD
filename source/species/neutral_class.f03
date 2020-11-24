@@ -103,24 +103,38 @@ type neutral
 
   class(fdist2d), pointer :: pf => null()
   class(part2d), pointer :: part => null()
+  class(part2d_buf), pointer :: part_buf => null()
 
   class(field_rho), allocatable :: q
   class(field_jay), allocatable :: cu, amu
   class(field_djdxi), allocatable :: dcu
 
+  ! max ionization level
   integer :: multi_max
+  ! index of neutral gas residue in multi_ion array
+  integer :: idx_neut
+  ! index of total ion in multi_ion array
+  integer ::idx_ion
+
   ! qm is the 8th coordinate for every particle.
   ! If the longitudinal density of the plasma changes,
   ! the qm will change correspondingly
   real :: wp, dt, qm, density
   ! wp is plasma frequency in SI unit
   double precision, dimension(:,:), pointer :: rate_param
-  class(field_rho), dimension(:), allocatable :: multi_ion_c
-  ! rho_i_discrete is the ion charge density for diagnostic 
-  class(field_rho), allocatable :: rho_i_discrete_old_c, rho_i_discrete_c, rho_i_discrete, rho_i_exact_c
+
+  ! in-cell ionization level. There are multi_max + 2 levels, the multi_max+1 level 
+  ! is for the neutral, the first to multi_max levels are for ions, and the last
+  ! level is for the total ion.
+  real, dimension(:,:,:), allocatable :: multi_ion
+  real, dimension(:,:), allocatable :: ion_old
+
+  ! the ion charge density for diagnostic 
+  class(field_rho), allocatable :: rho_ion
 
   contains
 
+  procedure :: alloc  => alloc_neutral
   procedure :: new    => init_neutral
   procedure :: renew  => renew_neutral
   procedure :: update => update_neutral
@@ -132,20 +146,49 @@ type neutral
   procedure :: precv  => precv_neutral
   procedure :: wr     => writehdf5_neutral
   procedure :: wrq    => writeq_neutral
+  procedure :: wr_ion => write_ion_neutral
   procedure :: cbq    => cbq_neutral
   procedure :: get_multi_max
+  procedure :: ion_deposit => ion_deposit_neutral
 
 end type neutral
+
+! This extended type only store the position for neutral deposition
+type, extends( part2d ) :: part2d_buf
+
+   contains
+
+   procedure :: new => init_part2d_buf
+   procedure :: end => end_part2d_buf
+
+end type part2d_buf
 
 save
 
 character(len=10) :: cls_name = 'neutral'
 integer, parameter :: cls_level = 2
 
+integer, parameter :: p_num_theta = 32
+
+! tables of sine and cosine for azimuthal Fourier decomposition
+! real, dimension(:), allocatable, save :: sin_tab, cos_tab
+
 contains
 
-subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density, &
-  s, smth_type, smth_ord )
+subroutine alloc_neutral( this )
+
+   implicit none
+
+   class(neutral), intent(inout) :: this
+
+   if ( .not. associated( this%part ) ) then
+      allocate( part2d :: this%part )
+   endif
+
+end subroutine alloc_neutral
+
+subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
+  smth_type, smth_ord )
 ! element is atomic number. e.g.: For Li, element = 3
 ! max_e is the maximum number of electrons that the programmer allow the atom
 ! to lose due to the ionization. It should be less or equal to element
@@ -156,12 +199,13 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density
   type(options), intent(in) :: opts
   class(fdist2d), intent(inout), target :: pf
   integer, intent(in) :: max_mode, elem, max_e
-  real, intent(in) :: qbm, wp, density, s
+  real, intent(in) :: qbm, wp, s
   integer, intent(in), optional :: smth_type, smth_ord
 
   ! local data
   character(len=18), save :: sname = 'init_neutral'
-  integer :: i
+  integer :: i, nrp
+  real :: pi2_ntheta
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -169,34 +213,28 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density
   this%wp = wp
   this%dt = opts%get_dxi()
 
-  allocate( this%q, this%cu, this%amu, this%dcu )
-  allocate( this%rho_i_discrete_old_c, this%rho_i_discrete_c, this%rho_i_discrete, this%rho_i_exact_c )
+  allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion )
 
   if ( present(smth_type) .and. present(smth_ord) ) then
     call this%q%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
+    call this%rho_ion%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%cu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%dcu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%amu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
   else
     call this%q%new( opts, max_mode, p_ps_linear )
+    call this%rho_ion%new( opts, max_mode, p_ps_linear )
     call this%cu%new( opts, max_mode, p_ps_linear )
     call this%dcu%new( opts, max_mode, p_ps_linear )
     call this%amu%new( opts, max_mode, p_ps_linear )
   endif
 
   call this%part%new( opts, pf, qbm, this%dt, s, if_empty=.true. )
-
-  call this%rho_i_discrete_old_c%new( opts, max_mode, p_ps_linear )
-  call this%rho_i_discrete_c%new( opts, max_mode, p_ps_linear )
-  call this%rho_i_discrete%new( opts, max_mode, p_ps_linear )
-  call this%rho_i_exact_c%new( opts, max_mode, p_ps_linear )
+  call this%part_buf%new( opts, pf, qbm, this%dt, s )
 
   this%q  = 0.0
   this%cu = 0.0
-  this%rho_i_discrete_old_c = 0.0
-  this%rho_i_discrete_c = 0.0
-  this%rho_i_discrete = 0.0
-  this%rho_i_exact_c = 0.0
+  this%rho_ion = 0.0
 
   ! call this%q%ag()
 
@@ -206,6 +244,8 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density
   endif
 
   this%multi_max = max_e
+  this%idx_neut  = this%multi_max + 1
+  this%idx_ion   = this%multi_max + 2
 
   select case ( elem )
     
@@ -281,15 +321,12 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density
 
   end select
 
-  allocate( this%multi_ion_c( this%multi_max + 1 ) )
-
-  do i = 1, this%multi_max + 1
-    call this%multi_ion_c(i)%new( opts, max_mode, p_ps_linear )
-    this%multi_ion_c(i) = 0.0
-  enddo
-
-  ! the first one is the neutral gas
-  this%multi_ion_c(1) = 1.0
+  ! initialize the ionization level array
+  nrp = opts%get_ndp(1)
+  allocate( this%multi_ion( nrp, p_num_theta, this%multi_max + 2 ) )
+  allocate( this%ion_old( nrp, p_num_theta ) )
+  this%multi_ion = 0.0
+  this%multi_ion( :, :, this%idx_neut ) = 1.0
 
   ! normalized longitudinal density
   this%density = this%pf%get_density(0.0)
@@ -297,6 +334,13 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, density
   ! normalized charge (coordinate of the particle array) 
   this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm / &
     ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) )
+
+  ! initialize trigonometric function tables
+  ! pi2_ntheta = 2.0 * pi / real( p_num_theta )
+  ! do i = 1, p_num_theta
+  !   sin_tab(i) = sin( pi2_ntheta * (i-1) )
+  !   cos_tab(i) = cos( pi2_ntheta * (i-1) )
+  ! enddo
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -314,247 +358,240 @@ subroutine update_neutral( this, e, psi )
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  this%rho_i_discrete_old_c = this%rho_i_discrete_c
+  this%ion_old = this%multi_ion( :, :, this%idx_ion )
 
-  call ionize_neutral( this%multi_ion_c, this%rho_i_exact_c, this%rho_i_discrete_c, &
-     this%rate_param, e, this%wp, this%dt, (/ this%pf%ppc1, this%pf%ppc2 /), this%multi_max )
+  call ionize_neutral( this%multi_ion, this%rate_param, e, this%wp, this%dt, &
+    (/ this%pf%ppc1, this%pf%ppc2 /) )
 
-  call add_particles( this%part, this%rho_i_discrete_c, this%rho_i_discrete_old_c, psi, &
-    (/ this%pf%ppc1, this%pf%ppc2 /), this%multi_max, this%qm )
-
-  call half_offset( this%rho_i_discrete_c, this%rho_i_discrete )
-
-  call this%rho_i_discrete%acopy_gc_f1( dir=p_mpi_forward )
-
-  ! account for the longitudinal varying plasma density
-  call dot_f1( this%density, this%rho_i_discrete )
+  ! here multi_ion(:,:,idx_ion) and ion_old should be discrete.
+  call add_particles( this%part, this%part_buf, this%multi_ion, this%ion_old, psi, &
+    (/ this%pf%ppc1, this%pf%ppc2 /), this%qm )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine update_neutral
 
-subroutine ionize_neutral( multi_ion_c, rho_i_exact_c, rho_i_discrete_c, adk_coef, &
-  e, wp, dt, ppc, multi_max )
+subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
 
   implicit none
 
-  class(field_rho), intent(inout), dimension(:), pointer :: multi_ion_c
-  class(field_rho), intent(inout) :: rho_i_exact_c, rho_i_discrete_c
+  real, intent(inout), dimension(:,:,:) :: multi_ion
   double precision, dimension(:,:), intent(in) :: adk_coef
   class(field_e), intent(in) :: e
   real, intent(in) :: wp, dt
   integer, intent(in), dimension(2) :: ppc
-  integer, intent(in) :: multi_max
 
   ! local data
   character(len=18), save :: sname = 'ionize_neutral'
-  real, dimension(:,:), pointer :: multi_ion_re => null(), multi_ion_im => null()
-  real, dimension(:,:), pointer :: rho_i_ext_re => null(), rho_i_ext_im => null()
-  real, dimension(:,:), pointer :: rho_i_disc_re => null(), rho_i_disc_im => null()
   real, dimension(:,:), pointer :: e_re => null(), e_im => null()
-
-  integer :: j, m, nrp, noff, ppc_tot
-  real :: eij, e1, e2, e3, cons, inj, dens_temp
+  integer :: i, j, k, m, nrp, noff, ppc_tot, max_mode, multi_max, idx_neut, idx_ion
+  real :: eij, cons, inj, dens_temp, theta, pi2_ntheta
   real :: w_ion(20)
+  real, dimension(p_num_theta) :: e1, e2, e3
+  complex(kind=DB) :: phase, phase_inc
   logical :: shoot
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-  
-  ! the current algorithm can only model the cylindrically symmetrical case.
-  e_re          => e%rf_re(0)%get_f1()
-  rho_i_ext_re  => rho_i_exact_c%rf_re(0)%get_f1()
-  rho_i_disc_re => rho_i_discrete_c%rf_re(0)%get_f1()
-  multi_ion_re  => multi_ion_c(1)%rf_re(0)%get_f1()
 
-  nrp     = e%rf_re(0)%get_ndp(1)
-  noff    = e%rf_re(0)%get_noff(1)
-  ppc_tot = ppc(1) * ppc(2)
+  nrp        = e%rf_re(0)%get_ndp(1)
+  noff       = e%rf_re(0)%get_noff(1)
+  max_mode   = e%get_max_mode()
+  ppc_tot    = ppc(1) * ppc(2)
+  pi2_ntheta = 2.0 * pi / real( p_num_theta )
+  multi_max  = size( multi_ion, 3 ) - 2
+  idx_neut   = multi_max + 1
+  idx_ion    = multi_max + 2
 
-  do j = 1, nrp
+  do k = 1, p_num_theta
 
-    ! calculate the cell values
-    e1 = 0.5 * ( e_re(1,j) + e_re(1,j+1) )
-    e2 = 0.5 * ( e_re(2,j) + e_re(2,j+1) )
-    e3 = 0.5 * ( e_re(3,j) + e_re(3,j+1) )
+    theta = pi2_ntheta * ( k - 1 )
+    phase_inc = cmplx( cos(theta), sin(theta) )
 
-    ! total electric field in unit of GV/m
-    eij = sqrt( e1 * e1 + e2 * e2 + e3 * e3 ) * wp * 1.708d-12
+    ! calculate the in-cell values of electric fields
+    ! m = 0 mode
+    e_re => e%rf_re(0)%get_f1()
+    phase = cmplx( 1.0, 0.0 )
+    do j = 1, nrp
+      e1(j) = 0.5 * ( e_re(1,j) + e_re(1,j+1) )
+      e2(j) = 0.5 * ( e_re(2,j) + e_re(2,j+1) )
+      e3(j) = 0.5 * ( e_re(3,j) + e_re(3,j+1) )
+    enddo
 
-    if ( eij > 1.0d-6 ) then
+    ! m > 0 mode
+    do m = 1, max_mode
 
-      if ( rho_i_ext_re(1,j) < multi_max ) then
+      e_re => e%rf_re(m)%get_f1()
+      e_im => e%rf_re(m)%get_f1()
+      phase = phase * phase_inc
 
-        shoot = .false.
+      do j = 1, nrp
+        e1(j) = e1(j) + ( e_re(1,j) + e_re(1,j+1) ) * real(phase) - ( e_im(1,j) + e_im(1,j+1) ) * aimag(phase)
+        e2(j) = e2(j) + ( e_re(2,j) + e_re(2,j+1) ) * real(phase) - ( e_im(2,j) + e_im(2,j+1) ) * aimag(phase)
+        e3(j) = e3(j) + ( e_re(3,j) + e_re(3,j+1) ) * real(phase) - ( e_im(3,j) + e_im(3,j+1) ) * aimag(phase)
+      enddo
 
-        ! w = r1 * eij^-r3 * EXP(-r2/eij) * 1/wp
-        w_ion(1:multi_max) = adk_coef(1,1:multi_max) * eij ** (-adk_coef(3,1:multi_max)) * &
-          exp( -adk_coef(2,1:multi_max) / eij ) / wp ! w_ion is in normalized unit now
+    enddo
 
-        ! Use the wrong 2nd order Runge Kutta method in OSIRIS
-        ! TODO: check with Yujian
-        cons = multi_ion_re(1,j) * w_ion(1) * dt * ( 1.0 + 0.5 * w_ion(1) * dt )
+    do j = 1, nrp
 
-        ! overshoot
-        if( cons > multi_ion_re(1,j) ) then
-           shoot = .true.
-           cons = multi_ion_re(1,j)
-        endif
-        ! subtract from 0.
-        multi_ion_re(1,j) = multi_ion_re(1,j) - cons
+      ! total electric field in unit of GV/m
+      eij = sqrt( e1(j)**2 + e2(j)**2 + e3(j)**2 ) * wp * 1.708d-12
 
-        ! For the levels in the middle
-        do m = 2, multi_max
+      if ( eij > 1.0d-6 ) then
 
-          multi_ion_re => multi_ion_c(m)%rf_re(0)%get_f1()
+        if ( multi_ion( j, k, idx_ion ) < real(multi_max) ) then
 
-          ! remember how much charge will be added to m-1. level
-          inj = cons
+          shoot = .false.
 
-          ! overshoot in previous level (we go to time centered densities)
-          ! TODO: is dens_temp correct?
-          if (shoot) then
-            dens_temp = inj * 0.5
-            shoot = .false.
-          else
-            dens_temp = 0.0
+          ! w = r1 * eij^-r3 * EXP(-r2/eij) * 1/wp
+          ! w_ion is in normalized unit now
+          do i = 1, multi_max
+            w_ion(i) = adk_coef(1,i) * eij ** (-adk_coef(3,i)) * exp( -adk_coef(2,i) / eij ) / wp
+          enddo
+
+          ! Use the wrong 2nd order Runge Kutta method in OSIRIS
+          ! TODO: check with Yujian
+          cons = multi_ion(j, k, idx_neut) * w_ion(1) * dt * ( 1.0 + 0.5 * w_ion(1) * dt )
+
+          ! overshoot
+          if( cons > multi_ion(j, k, idx_neut) ) then
+             shoot = .true.
+             cons = multi_ion(j, k, idx_neut)
           endif
+          ! subtract from 0.
+          multi_ion(j, k, idx_neut) = multi_ion(j, k, idx_neut) - cons
 
-          ! ionizing m-1. level (index m) adding to m. level
-          ! 2nd order Runge-Kutta (wrong)
-          cons = ( multi_ion_re(1,j) + dens_temp ) * w_ion(m) * dt * ( 1.0 + 0.5 * w_ion(m) * dt )
+          ! For the levels in the middle
+          do i = 1, multi_max - 1
 
-          ! overshoot in current level (temp might come from previous overshoot)
-          if ( cons > multi_ion_re(1,j) + dens_temp ) then
-            shoot = .true.
-            cons = multi_ion_re(1,j) + dens_temp
-          endif
+            ! remember how much charge will be added to i-th level
+            inj = cons
 
-          ! update density for m-1. level (index m)
-          ! min only due to round off
-          ! Physically, multi_ion_re(1,j) - cons + inj will never exceed 1.0
-          ! min is only used to round off the tiny error introduced by a double number (~10^-16)
-          multi_ion_re(1,j) = min( multi_ion_re(1,j) - cons + inj, 1.0 )
+            ! overshoot in previous level (we go to time centered densities)
+            ! TODO: is dens_temp correct?
+            if (shoot) then
+              dens_temp = inj * 0.5
+              shoot = .false.
+            else
+              dens_temp = 0.0
+            endif
 
-        enddo ! all levels in the middle
+            ! ionizing m-1. level (index m) adding to m. level
+            ! 2nd order Runge-Kutta (wrong)
+            cons = ( multi_ion(j,k,i) + dens_temp ) * w_ion(i+1) * dt * ( 1.0 + 0.5 * w_ion(i+1) * dt )
 
-        ! update the last level
-        multi_ion_re => multi_ion_c(multi_max+1)%rf_re(0)%get_f1()
-        multi_ion_re(1,j) = multi_ion_re(1,j) + cons
+            ! overshoot in current level (temp might come from previous overshoot)
+            if ( cons > multi_ion(j,k,i) + dens_temp ) then
+              shoot = .true.
+              cons = multi_ion(j,k,i) + dens_temp
+            endif
 
-        ! End use Runge Kutta method
+            ! update density for i-th level
+            ! Physically, multi_ion(j,k,i) - cons + inj will never exceed 1.0
+            ! min is only used to round off the tiny error introduced by a double number (~10^-16)
+            multi_ion(j,k,i) = min( multi_ion(j,k,i) - cons + inj, 1.0 )
 
-        ! calculate the total ion charge density by summing over the charge density from all 
-        ! types of ions 
-        rho_i_ext_re(1,j) = 0.0
-        do m = 2, multi_max + 1
-          multi_ion_re => multi_ion_c(m)%rf_re(0)%get_f1()
-          rho_i_ext_re(1,j) = rho_i_ext_re(1,j) + real(m-1) * multi_ion_re(1,j)
-        enddo
+          enddo ! all levels in the middle
 
-        ! We want rho_i_discrete_c that corresponds to release an electron at 'half' step (like OSIRIS and qpic2.0)
-        rho_i_disc_re(1,j) = real(multi_max) / real(ppc_tot) * &
-          int( rho_i_ext_re(1,j) * real(ppc_tot) / real(multi_max) + 0.5 )
+          ! update the last level
+          multi_ion(j, k, multi_max) = multi_ion(j, k, multi_max) + cons
 
-      endif 
+          ! End use Runge Kutta method
 
-    endif ! eij > 1e-6
+          ! calculate the total ion charge density by summing over the charge density from all 
+          ! types of ions 
+          multi_ion(j, k, idx_ion) = 0.0
+          do i = 1, multi_max
+            multi_ion(j, k, idx_ion) = multi_ion(j, k, idx_ion) + real(i) * multi_ion(j,k,i)
+          enddo
 
+          ! We want the total ion level that corresponds to release an electron at 'half' step (like OSIRIS and qpic2.0)
+          ! Now the multi_ion(:,:,idx_ion) is discrete
+          multi_ion(j, k, idx_ion) = real(multi_max) / real(ppc_tot) * &
+            int( multi_ion(j, k, idx_ion) * real(ppc_tot) / real(multi_max) + 0.5 )
+
+        endif 
+
+      endif ! eij > 1e-6
+
+    enddo
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine ionize_neutral
 
-subroutine add_particles( part, rho_i_disc, rho_i_disc_old, psi, ppc, multi_max, qm )
+subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
 
   implicit none
 
   class(part2d), intent(inout) :: part
-  class(field_rho), intent(in) :: rho_i_disc, rho_i_disc_old
-  class(field_psi), intent(in) :: psi
+  class(part2d_buf), intent(inout) :: part_buf
+  real, intent(in), dimension(:,:,:) :: multi_ion
+  real, intent(in), dimension(:,:) :: ion_old
   integer, intent(in), dimension(2) :: ppc
-  integer, intent(in) :: multi_max
+  class(field_psi), intent(in) :: psi
   real, intent(in) :: qm
 
   ! local
   character(len=18), save :: sname = 'add_particles'
-  real, dimension(:,:), pointer :: rho_i_new => null(), rho_i_old => null(), ppsi => null()
-  integer :: nrp, noff, ppc_tot, i, j, k, ppc_add
-  real :: r_k, r, dr, theta
+  integer :: nrp, noff, ppc_tot, i, j, k, pp1, pp2, ppc_add, multi_max, idx_ion
+  real :: r, dr, theta, dtheta
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   dr      = psi%get_dr()
+  dtheta  = 2.0 * pi / real( p_num_theta )
   nrp     = psi%rf_re(0)%get_ndp(1)
   noff    = psi%rf_re(0)%get_noff(1)
   ppc_tot = ppc(1) * ppc(2)
+  multi_max = size( multi_ion, 3 ) - 2
+  idx_ion = multi_max + 2
+  part_buf%npp = 0
 
-  rho_i_new => rho_i_disc%rf_re(0)%get_f1()
-  rho_i_old => rho_i_disc_old%rf_re(0)%get_f1()
-  ppsi      => psi%rf_re(0)%get_f1()
+  do k = 1, p_num_theta
+    do j = 1, nrp
 
-  do j = 1, nrp
+      ! calculate the # of particles to inject based on the difference in ion density between 
+      ! the previous time step and the current time step.
+      ! here multi_ion(:,:,idx_ion) and ion_old should both be discrete.
+      ppc_add = int( ( multi_ion(j, k, idx_ion) - ion_old(j, k) ) / multi_max * real(ppc_tot) + 0.5 )
 
-    ! calculate the # of particles to inject based on the difference in ion density between 
-    ! the previous time step and the current time step. 
-    ppc_add = int( ( rho_i_new(1,j) - rho_i_old(1,j) ) / multi_max * real(ppc_tot) + 0.5 )
+      pp1 = part%npp
+      pp2 = part_buf%npp
+      do i = 1, ppc_add
 
-    do k = 1, ppc_add
+        pp1 = pp1 + 1
+        pp2 = pp2 + 1
 
-      part%npp = part%npp + 1
+        ! randomly generate injection position
+        r     = ( rand() + j + noff - 1 ) * dr
+        theta = ( rand() + k - 1.5 ) * dtheta
 
-      ! r_k is the in-cell position ranging from 0 to 1
-      ! r_k = ( real(k) - 0.5 ) / ppc_add
-      r_k = 0.5
+        part%x(1,pp1)   = r * cos(theta)
+        part%x(2,pp1)   = r * sin(theta)
+        part%p(1,pp1)   = 0.0
+        part%p(2,pp1)   = 0.0
+        part%p(3,pp1)   = 0.0
+        part%gamma(pp1) = 1.0
+        part%q(pp1)     = qm
+        part%psi(pp1)   = 1.0
 
-      i = part%npp
-      r = ( r_k + j + noff - 1 ) * dr
-      theta = rand() * 2.0 * pi
-      part%x(1,i)   = r * cos(theta)
-      part%x(2,i)   = r * sin(theta)
-      part%p(1,i)   = 0.0
-      part%p(2,i)   = 0.0
-      part%p(3,i)   = 0.0
-      part%gamma(i) = 1.0
-      part%q(i)     = qm
-      part%psi(i)   = 1.0
+        ! store the position of ionized particles for ion charge deposition
+        part_buf%x(1,pp2) = part%x(1,pp1)
+        part_buf%x(2,pp2) = part%x(2,pp1)
+        part_buf%q(pp2)   = -part%q(pp1) ! note the sign
+
+      enddo
+      part%npp = part%npp + ppc_add
+      part_buf%npp = part_buf%npp + ppc_add
 
     enddo
-
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_particles
-
-subroutine half_offset( rho_old, rho_new )
-
-  implicit none
-
-  class(field_rho), intent(in) :: rho_old
-  class(field_rho), intent(inout) :: rho_new
-
-  character(len=18), save :: sname = 'half_offset'
-  integer :: nrp, j
-  real, dimension(:,:), pointer :: f1_old => null(), f1_new => null()
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  nrp    = rho_old%rf_re(0)%get_ndp(1)
-  f1_old => rho_old%rf_re(0)%get_f1()
-  f1_new => rho_new%rf_re(0)%get_f1()
-
-  f1_new = 0.0
-
-  ! move the in-cell values onto the nodes (by interpolation)
-  do j = 1, nrp
-    f1_new(1,j)   = f1_new(1,j)   + 0.5 * f1_old(1,j)
-    f1_new(1,j+1) = f1_new(1,j+1) + 0.5 * f1_old(1,j)
-  enddo
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine half_offset
 
 subroutine renew_neutral( this, s )
 
@@ -573,16 +610,10 @@ subroutine renew_neutral( this, s )
 
   this%q = 0.0
   this%cu = 0.0
-  this%rho_i_discrete_old_c = 0.0
-  this%rho_i_discrete_c = 0.0
-  this%rho_i_discrete = 0.0
-  this%rho_i_exact_c = 0.0
+  this%rho_ion = 0.0
 
-  this%multi_ion_c(1) = 1.0
-
-  do i = 2, this%multi_max + 1
-    this%multi_ion_c(i) = 0.0
-  enddo
+  this%multi_ion = 0.0
+  this%multi_ion( :, :, this%idx_neut ) = 1.0
 
   ! TODO: WHY NEED THIS
   if ( id_stage() == 0 ) then
@@ -600,12 +631,12 @@ subroutine renew_neutral( this, s )
 
 end subroutine renew_neutral
 
-subroutine qdeposit_neutral( this, q )
+subroutine qdeposit_neutral( this, q_tot )
 
   implicit none
   
   class(neutral), intent(inout) :: this
-  class(field_rho), intent(inout) :: q
+  class(field_rho), intent(inout) :: q_tot
 ! local data
   character(len=18), save :: sname = 'qdeposit_neutral'
            
@@ -618,12 +649,38 @@ subroutine qdeposit_neutral( this, q )
   call this%q%smooth_f1()
   call this%q%copy_gc_f1()
   
-  call add_f1( this%q, q )
-  call add_f1( this%rho_i_discrete, q )
+  call add_f1( this%q, q_tot )
            
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine qdeposit_neutral
+
+subroutine ion_deposit_neutral( this, q_tot )
+
+  implicit none
+  
+  class(neutral), intent(inout) :: this
+  class(field_rho), intent(inout) :: q_tot
+  ! local data
+  character(len=18), save :: sname = 'ion_deposit_neutral'
+           
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%rho_ion = 0.0
+
+  call this%part_buf%qdeposit( this%rho_ion )
+  call this%rho_ion%acopy_gc_f1( dir=p_mpi_forward )
+  call this%rho_ion%smooth_f1()
+  call this%rho_ion%copy_gc_f1()
+  
+  call add_f1( this%rho_ion, q_tot )
+
+  ! clear up the buffer
+  this%part_buf%npp = 0
+           
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine ion_deposit_neutral
 
 subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
 
@@ -687,61 +744,75 @@ subroutine end_neutral( this )
 
 end subroutine end_neutral
 
-subroutine psend_neutral( this, tag, id, tag_multi_ion_c, id_multi_ion_c )
+subroutine psend_neutral( this, tag_q, id_q, tag_ion, id_ion )
 
   implicit none
 
   class(neutral), intent(inout) :: this
-  integer, intent(in) :: tag
-  integer, intent(in), dimension(:) :: tag_multi_ion_c
-  integer, intent(inout) :: id
-  integer, intent(inout), dimension(:) :: id_multi_ion_c
+  integer, intent(in) :: tag_q, tag_ion
+  integer, intent(inout) :: id_q, id_ion
   ! local data
   character(len=18), save :: sname = 'psend_neutral'
-  integer :: i
+  integer :: i, idproc_des, ierr, count
            
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
 
-  call this%part%pipesend( tag, id )
+  call this%part%pipesend( tag_q, id_q )
 
-  do i = 1, this%multi_max + 1
-    call this%multi_ion_c(i)%pipe_send( tag_multi_ion_c(i), id_multi_ion_c(i), 'forward' )
-  enddo 
+  if ( id_stage() == num_stages() - 1 ) then
+    id_ion = MPI_REQUEST_NULL
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    return
+  endif
 
-  call this%rho_i_discrete_c%pipe_send( tag_multi_ion_c(this%multi_max + 2), &
-    id_multi_ion_c(this%multi_max + 2), 'forward' )
-      
-  call this%rho_i_discrete%pipe_send( tag_multi_ion_c(this%multi_max + 3), &
-    id_multi_ion_c(this%multi_max + 3), 'forward' )
+  idproc_des = id_proc() + num_procs_loc()
+  count = size( this%multi_ion )
 
+  call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag_ion, &
+    comm_world(), id_ion, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_ISEND failed.' )
+  endif
+
+  call stop_tprof( 'pipeline' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine psend_neutral
 
-subroutine precv_neutral( this, tag, tag_multi_ion_c )
+subroutine precv_neutral( this, tag_q, tag_ion )
 
   implicit none
 
   class(neutral), intent(inout) :: this
-  integer, intent(in) :: tag
-  integer, intent(in), dimension(:) :: tag_multi_ion_c
+  integer, intent(in) :: tag_q, tag_ion
   ! local data
   character(len=18), save :: sname = 'precv_neutral'
-  integer :: i
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  integer :: i, idproc_src, ierr, count
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
 
-  call this%part%piperecv( tag )
+  call this%part%piperecv( tag_q )
 
-  do i = 1, this%multi_max + 1
-     call this%multi_ion_c(i)%pipe_recv( tag_multi_ion_c(i), 'forward', 'replace' )
-  end do
+  if ( id_stage() == 0 ) then
+    call stop_tprof( 'pipeline' )
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+    return
+  endif
 
-  call this%rho_i_discrete_c%pipe_recv( tag_multi_ion_c(this%multi_max + 2), &
-    'forward', 'replace' )
+  idproc_src = id_proc() - num_procs_loc()
+  count = size( this%multi_ion)
 
-  call this%rho_i_discrete%pipe_recv( tag_multi_ion_c(this%multi_max + 3), &
-    'forward', 'replace' )
+  call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag_ion, &
+    comm_world(), stat, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_RECV failed.' )
+  endif
            
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -772,7 +843,7 @@ subroutine writeq_neutral( this, files, rtag, stag, id )
   class(hdf5file), intent(in), dimension(:) :: files
   integer, intent(in) :: rtag, stag
   integer, intent(inout) :: id
-! local data
+  ! local data
   character(len=18), save :: sname = 'writeq_neutral'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -782,6 +853,25 @@ subroutine writeq_neutral( this, files, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )  
 
 end subroutine writeq_neutral
+
+subroutine write_ion_neutral( this, files, rtag, stag, id )
+
+  implicit none
+  
+  class(neutral), intent(inout) :: this
+  class(hdf5file), intent(in), dimension(:) :: files
+  integer, intent(in) :: rtag, stag
+  integer, intent(inout) :: id
+  ! local data
+  character(len=18), save :: sname = 'write_ion_neutral'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call this%rho_ion%write_hdf5( files, 1, rtag, stag, id ) 
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )  
+
+end subroutine write_ion_neutral
    
 subroutine cbq_neutral( this, pos )
 
@@ -790,13 +880,16 @@ subroutine cbq_neutral( this, pos )
   class(neutral), intent(inout) :: this
   integer, intent(in) :: pos
   ! local data
-  character(len=18), save :: sname = 'cpq_neutral'
+  character(len=18), save :: sname = 'cbq_neutral'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call add_f1( this%cu, this%q, (/3/), (/1/) )
   call this%q%smooth_f1()
   call this%q%copy_slice( pos, p_copy_1to2 )
+
+  call this%rho_ion%smooth_f1()
+  call this%rho_ion%copy_slice( pos, p_copy_1to2 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -812,5 +905,57 @@ function get_multi_max(this)
   get_multi_max = this%multi_max
 
 end function get_multi_max
+
+subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
+
+  implicit none
+
+  class(part2d_buf), intent(inout) :: this
+  type(options), intent(in) :: opts
+  class(fdist2d), intent(inout) :: pf
+  real, intent(in) :: qbm, dt, s
+  logical, intent(in), optional :: if_empty
+
+  ! local data
+  character(len=18), save :: sname = 'init_part2d_buf'
+  integer :: npmax, nbmax
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%qbm = qbm
+  this%dt  = dt
+  this%part_dim = 3
+
+  ! this is max number of particles to be ionized
+  npmax      = pf%ppc1 * pf%ppc2 * p_num_theta
+  nbmax      = max(int(0.1*npmax),100)
+  this%npmax = npmax
+  this%nbmax = nbmax
+  this%npp   = 0
+
+  this%dr   = pf%getdex()
+  this%edge = opts%get_nd(1) * this%dr
+
+  ! only allocate position and charge, no need to initialize with profile
+  allocate( this%x( 2, npmax ), this%q( npmax ) )
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine init_part2d_buf
+
+subroutine end_part2d_buf(this)
+
+   implicit none
+
+   class(part2d_buf), intent(inout) :: this
+   character(len=18), save :: sname = 'end_part2d_buf'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   deallocate( this%x, this%q )
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine end_part2d_buf
 
 end module neutral_class
