@@ -108,7 +108,7 @@ subroutine alloc_field( this, max_mode )
 end subroutine alloc_field
 
 subroutine init_field( this, opts, dim, max_mode, gc_num, &
-  entity, smooth_type, smooth_order )
+  entity, smooth_type, smooth_order, has_2d )
 
   implicit none
 
@@ -117,41 +117,54 @@ subroutine init_field( this, opts, dim, max_mode, gc_num, &
   integer, intent(in) :: max_mode, dim
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity, smooth_type, smooth_order
+  logical, intent(in), optional :: has_2d
 
-  integer :: i
+  integer :: i, entity_, smooth_type_, smooth_order_
+  logical :: has_2d_
   integer, dimension(2,2) :: gc_num_new
   character(len=20), save :: sname = "init_field"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%dim       = dim
+  ! set values of optional arguments
+  entity_       = p_entity_none
+  smooth_type_  = p_smooth_none
+  smooth_order_ = 0
+  has_2d_       = .true.
+  if ( present(entity) ) entity_ = entity
+  if ( present(smooth_type) ) smooth_type_ = smooth_type
+  if ( present(smooth_order) ) smooth_order_ = smooth_order
+  if ( present(has_2d) ) has_2d_ = has_2d
+
+  this%dim      = dim
   this%max_mode = max_mode
-  this%dr        = opts%get_dr()
-  this%dxi       = opts%get_dxi()
+  this%dr       = opts%get_dr()
+  this%dxi      = opts%get_dxi()
+  this%entity   = entity_
 
-  if ( present(entity) ) then
-    this%entity = entity
-  else
-    this%entity = p_entity_none
-  endif
+  ! gc_num_new(:,1) = gc_num(:,1)
+  ! gc_num_new(:,2) = gc_num(:,2)
 
-  gc_num_new(:,1) = gc_num(:,1)
+  call this%smooth%new( smooth_type_, smooth_order_ )
+  gc_num_new(1,1) = max( gc_num(1,1), smooth_order_ )
+  gc_num_new(2,1) = max( gc_num(2,1), smooth_order_ )
   gc_num_new(:,2) = gc_num(:,2)
-  if ( present(smooth_type) .and. present(smooth_order) ) then
-    call this%smooth%new( smooth_type, smooth_order )
-    gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
-    gc_num_new(:,2) = gc_num(:,2)
-  else
-    call this%smooth%new( p_smooth_none, 0 )
-  endif
+
+  ! if ( present(smooth_type) .and. present(smooth_order) ) then
+  !   call this%smooth%new( smooth_type, smooth_order )
+  !   gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
+  !   gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
+  !   gc_num_new(:,2) = gc_num(:,2)
+  ! else
+  !   call this%smooth%new( p_smooth_none, 0 )
+  ! endif
 
   allocate( this%rf_re(0:max_mode) )
   allocate( this%rf_im(max_mode) )
   do i = 0, this%max_mode
-    call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
+    call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
     if (i==0) cycle
-    call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=.true. )
+    call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

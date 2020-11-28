@@ -329,7 +329,7 @@ subroutine init_diag_plasma( this, input, plasma )
               dump_freq = ndump, &
               dim       = 1, &
               type_label= 'charge_cyl_m', &
-              filename  = './Neutrals'//num2str(i)//'/'//'Charge'//'/', &
+              filename  = './Neutral'//num2str(i)//'/'//'Charge'//'/', &
               dataname  = 'charge', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
@@ -348,7 +348,7 @@ subroutine init_diag_plasma( this, input, plasma )
               dump_freq = ndump, &
               dim       = 1, &
               type_label= 'ion_cyl_m', &
-              filename  = './Neutrals'//num2str(i)//'/'//'Ion_charge'//'/', &
+              filename  = './Neutral'//num2str(i)//'/'//'Ion_charge'//'/', &
               dataname  = 'ion_charge', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
@@ -367,7 +367,7 @@ subroutine init_diag_plasma( this, input, plasma )
               dump_freq = ndump, &
               psample   = psample, &
               type_label= 'raw', &
-              filename  = './Neutrals'//num2str(i)//'/Raw/', &
+              filename  = './Neutral'//num2str(i)//'/Raw/', &
               dataname  = 'raw', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &

@@ -289,6 +289,9 @@ subroutine run_simulation( this )
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
+    cu    = 0.0
+    acu   = 0.0
+    amu   = 0.0
 
     do j = 1, this%nstep2d
 

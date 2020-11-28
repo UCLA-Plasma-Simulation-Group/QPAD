@@ -24,7 +24,7 @@ type, abstract :: fdist2d
 
    integer :: noff, nr, nrp
 
-   integer :: ppc1, ppc2, nmode
+   integer :: ppc1, ppc2, nmode, num_theta
    real :: qm, den
    character(len=:), allocatable :: long_prof
    real, dimension(:), allocatable :: s, fs
@@ -55,7 +55,7 @@ subroutine ab_dist2d( this, x, p, gamma, q, psi, npp, s )
    real, intent(in) :: s
 end subroutine ab_dist2d
 
-subroutine ab_init_fdist2d(this,input,opts,i)
+subroutine ab_init_fdist2d(this,input,opts,i,sect)
    import fdist2d
    import input_json
    import options
@@ -64,6 +64,7 @@ subroutine ab_init_fdist2d(this,input,opts,i)
    type(input_json), intent(inout) :: input
    type(options), intent(in) :: opts
    integer, intent(in) :: i
+   character(len=*), intent(in) :: sect
 end subroutine ab_init_fdist2d
 
 end interface
@@ -191,7 +192,7 @@ subroutine end_fdist2d(this)
 
 end subroutine end_fdist2d
 
-subroutine init_fdist2d_000(this,input,opts,i)
+subroutine init_fdist2d_000(this,input,opts,i,sect)
 
    implicit none
 
@@ -199,9 +200,10 @@ subroutine init_fdist2d_000(this,input,opts,i)
    type(input_json), intent(inout) :: input
    type(options), intent(in) :: opts
    integer, intent(in) :: i
+   character(len=*), intent(in) :: sect
 
    ! local data
-   integer :: npf,ppc1,ppc2,n1,nmode
+   integer :: npf,ppc1,ppc2,n1,nmode,num_theta, xtra
    integer(kind=LG) :: npmax
    real :: qm, den, lr, ur
    character(len=20) :: sn,s1
@@ -213,8 +215,9 @@ subroutine init_fdist2d_000(this,input,opts,i)
    this%nr   = opts%get_nd(1)
    this%nrp  = opts%get_ndp(1)
 
-   write (sn,'(I3.3)') i
-   s1 = 'species('//trim(sn)//')'
+   ! write (sn,'(I3.3)') i
+   ! s1 = 'species('//trim(sn)//')'
+   s1 = trim(sect) // '(' // num2str(i) // ')'
    call input%get('simulation.grid(1)',n1)
    call input%get('simulation.box.r(1)',lr)
    call input%get('simulation.box.r(2)',ur)
@@ -222,6 +225,7 @@ subroutine init_fdist2d_000(this,input,opts,i)
    call input%get(trim(s1)//'.profile',npf)
    call input%get(trim(s1)//'.ppc(1)',ppc1)
    call input%get(trim(s1)//'.ppc(2)',ppc2)
+   call input%get(trim(s1)//'.num_theta', num_theta)
    call input%get(trim(s1)//'.q',qm)
    call input%get(trim(s1)//'.density',den)
    call input%get(trim(s1)//'.longitudinal_profile',this%long_prof)
@@ -233,12 +237,12 @@ subroutine init_fdist2d_000(this,input,opts,i)
    this%npf = npf
    this%nmode = nmode
    this%ppc1 = ppc1
-   if (nmode == 0) ppc2 = 1
    this%ppc2 = ppc2
+   this%num_theta = num_theta
    this%qm = qm
    this%den = den
-   npmax = n1*ppc1*ppc2*4
-   this%npmax = npmax
+   xtra = 10
+   this%npmax = this%nrp * ppc1 * ppc2 * num_theta * xtra
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine init_fdist2d_000
 
@@ -251,21 +255,22 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    real, intent(in) :: s
    ! local data
    character(len=18), save :: sname = 'dist2d_000'
-   integer(kind=LG) :: nps, i
-   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff
+   integer(kind=LG) :: nps
+   integer :: nr, nrp, n_theta, ppc1, ppc2, i1, i2, noff, i, j
    real :: qm, den_temp
    integer :: prof_l
-   real :: r1, t0, dr
+   real :: r1, theta, dr, dtheta
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    nr   = this%nr
    nrp  = this%nrp
    noff = this%noff
+   n_theta = this%num_theta
    
    ppc1 = this%ppc1; ppc2 = this%ppc2
-   t0 = 2.0*pi/ppc2
    dr = this%dex
+   dtheta = 2.0 * pi / n_theta
    den_temp = 1.0
    if (noff+nrp == nr .and. nrp > 2) nrp = nrp - 2
    if (trim(this%long_prof) == 'piecewise') then
@@ -288,32 +293,36 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
          end if
       end do
    end if
-   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
-   nps = 1
-! initialize the particle positions
-   do i=1, nrp
-      do i1 = 0, ppc1-1
-         r1 = (i1 + 0.5)/ppc1 + i - 1 + noff
-         do i2=0, ppc2-1
-            x(1,nps) = r1*dr*cos(i2*t0)
-            x(2,nps) = r1*dr*sin(i2*t0)
-            p(1,nps) = 0.0
-            p(2,nps) = 0.0
-            p(3,nps) = 0.0
-            gamma(nps) = 1.0
-            psi(nps) = 1.0
-            q(nps) = qm*r1
-            nps = nps + 1
+   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)/real(n_theta)
+   
+   ! initialize the particle positions
+   nps = 0
+   do j = 1, n_theta
+      do i = 1, nrp
+         do i1 = 1, ppc1
+            r1 = (i1 - 0.5)/ppc1 + i - 1 + noff
+            do i2 = 1, ppc2
+               nps = nps + 1
+               theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+               x(1,nps) = r1 * dr * cos(theta)
+               x(2,nps) = r1 * dr * sin(theta)
+               p(1,nps) = 0.0
+               p(2,nps) = 0.0
+               p(3,nps) = 0.0
+               gamma(nps) = 1.0
+               psi(nps) = 1.0
+               q(nps) = qm*r1
+            enddo
          enddo
       enddo
    enddo
 
-   npp = nps - 1
+   npp = nps
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine dist2d_000
 !
-subroutine init_fdist2d_012(this,input,opts,i)
+subroutine init_fdist2d_012(this,input,opts,i,sect)
 
    implicit none
 
@@ -321,8 +330,9 @@ subroutine init_fdist2d_012(this,input,opts,i)
    type(input_json), intent(inout) :: input
    type(options), intent(in) :: opts
    integer, intent(in) :: i
+   character(len=*), intent(in) :: sect
 ! local data
-   integer :: npf,ppc1,ppc2,n1,nmode
+   integer :: npf,ppc1,ppc2,n1,nmode, num_theta, xtra
    integer(kind=LG) :: npmax
    real :: qm, den, lr, ur
    character(len=20) :: sn,s1
@@ -334,8 +344,9 @@ subroutine init_fdist2d_012(this,input,opts,i)
    this%nr   = opts%get_nd(1)
    this%nrp  = opts%get_ndp(1)
 
-   write (sn,'(I3.3)') i
-   s1 = 'species('//trim(sn)//')'
+   ! write (sn,'(I3.3)') i
+   ! s1 = 'species('//trim(sn)//')'
+   s1 = trim(sect) // '(' // num2str(i) // ')'
    call input%get('simulation.grid(1)',n1)
    call input%get('simulation.box.r(1)',lr)
    call input%get('simulation.box.r(2)',ur)
@@ -357,12 +368,12 @@ subroutine init_fdist2d_012(this,input,opts,i)
    this%npf = npf
    this%nmode = nmode
    this%ppc1 = ppc1
-   if (nmode == 0) ppc2 = 1
    this%ppc2 = ppc2
+   this%num_theta = num_theta
    this%qm = qm
    this%den = den
-   npmax = n1*ppc1*ppc2*4
-   this%npmax = npmax
+   xtra = 10
+   this%npmax = this%nrp * ppc1 * ppc2 * num_theta * xtra
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_fdist2d_012
@@ -376,21 +387,23 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
    real, intent(in) :: s
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
-   integer(kind=LG) :: nps, i
-   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff
+   integer(kind=LG) :: nps
+   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff, i, j, n_theta
    real :: qm, den_temp
    integer :: prof_l, ii
-   real :: r1, t0, dr, rr
+   real :: r1, theta, dtheta, dr, rr
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    nr   = this%nr
    nrp  = this%nrp
    noff = this%noff
+   n_theta = this%num_theta
 
-   ppc1 = this%ppc1; ppc2 = this%ppc2
-   t0 = 2.0*pi/ppc2
+   ppc1 = this%ppc1
+   ppc2 = this%ppc2
    dr = this%dex
+   dtheta = 2.0 * pi / n_theta
    den_temp = 1.0
 
    if (trim(this%long_prof) == 'piecewise') then
@@ -418,8 +431,7 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
          end if
       end do
    end if
-   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
-   nps = 1
+   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)/real(n_theta)
    prof_l = size(this%fr)
    if (prof_l /= size(this%r)) then
       write (erstr,*) 'The piecewise_radial_density and r array have different sizes!'
@@ -427,41 +439,45 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
       return
    end if
 
-! initialize the particle positions
-   do i=1, nrp
-      do i1 = 0, ppc1-1
-         rr = (i1 + 0.5)/ppc1 + i - 1 + noff
-         r1 = rr*dr
-         if (r1<this%r(1) .or. r1>this%r(prof_l)) then
-            cycle
-         end if
-         do ii = 2, prof_l
-            if (this%r(ii) <= this%r(ii-1)) then
-               write (erstr,*) 'r is not monotonically increasing!'
-               call write_err(trim(erstr))
-               return
+   ! initialize the particle positions
+   nps = 0
+   do j = 1, n_theta
+      do i = 1, nrp
+         do i1 = 1, ppc1
+            rr = (i1 - 0.5)/ppc1 + i - 1 + noff
+            r1 = rr*dr
+            if (r1<this%r(1) .or. r1>this%r(prof_l)) then
+               cycle
             end if
-            if (r1<=this%r(ii)) then
-               den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
-               &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
-               exit
-            end if
-         end do
-         do i2=0, ppc2-1
-            x(1,nps) = r1*cos(i2*t0)
-            x(2,nps) = r1*sin(i2*t0)
-            p(1,nps) = 0.0
-            p(2,nps) = 0.0
-            p(3,nps) = 0.0
-            gamma(nps) = 1.0
-            psi(nps) = 1.0
-            q(nps) = qm*den_temp*rr
-            nps = nps + 1
+            do ii = 2, prof_l
+               if (this%r(ii) <= this%r(ii-1)) then
+                  write (erstr,*) 'r is not monotonically increasing!'
+                  call write_err(trim(erstr))
+                  return
+               end if
+               if (r1<=this%r(ii)) then
+                  den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+                  &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+                  exit
+               end if
+            end do
+            do i2 = 1, ppc2
+               nps = nps + 1
+               theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+               x(1,nps) = r1 * cos(theta)
+               x(2,nps) = r1 * sin(theta)
+               p(1,nps) = 0.0
+               p(2,nps) = 0.0
+               p(3,nps) = 0.0
+               gamma(nps) = 1.0
+               psi(nps) = 1.0
+               q(nps) = qm * den_temp * rr
+            enddo
          enddo
       enddo
    enddo
 
-   npp = nps - 1
+   npp = nps
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine dist2d_012

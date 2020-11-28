@@ -130,7 +130,7 @@ type neutral
   real, dimension(:,:), allocatable :: ion_old
 
   ! the ion charge density for diagnostic 
-  class(field_rho), allocatable :: rho_ion
+  class(field_rho), allocatable :: rho_ion, rho_ion_tmp
 
   contains
 
@@ -168,10 +168,11 @@ save
 character(len=10) :: cls_name = 'neutral'
 integer, parameter :: cls_level = 2
 
-integer, parameter :: p_num_theta = 32
-
 ! tables of sine and cosine for azimuthal Fourier decomposition
 ! real, dimension(:), allocatable, save :: sin_tab, cos_tab
+
+integer, dimension(:,:), allocatable, save :: ion_part_cnt
+real, dimension(:,:), allocatable, save :: multi_ion_r
 
 contains
 
@@ -183,6 +184,7 @@ subroutine alloc_neutral( this )
 
    if ( .not. associated( this%part ) ) then
       allocate( part2d :: this%part )
+      allocate( part2d_buf :: this%part_buf )
    endif
 
 end subroutine alloc_neutral
@@ -204,7 +206,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
 
   ! local data
   character(len=18), save :: sname = 'init_neutral'
-  integer :: i, nrp
+  integer :: i, nrp, n_theta
   real :: pi2_ntheta
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -213,17 +215,19 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%wp = wp
   this%dt = opts%get_dxi()
 
-  allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion )
+  allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion, this%rho_ion_tmp )
 
   if ( present(smth_type) .and. present(smth_ord) ) then
     call this%q%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%rho_ion%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
+    call this%rho_ion_tmp%new( opts, max_mode, p_ps_linear, smth_type, smth_ord, has_2d=.false. )
     call this%cu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%dcu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
     call this%amu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
   else
     call this%q%new( opts, max_mode, p_ps_linear )
     call this%rho_ion%new( opts, max_mode, p_ps_linear )
+    call this%rho_ion_tmp%new( opts, max_mode, p_ps_linear, has_2d=.false. )
     call this%cu%new( opts, max_mode, p_ps_linear )
     call this%dcu%new( opts, max_mode, p_ps_linear )
     call this%amu%new( opts, max_mode, p_ps_linear )
@@ -235,6 +239,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%q  = 0.0
   this%cu = 0.0
   this%rho_ion = 0.0
+  this%rho_ion_tmp = 0.0
 
   ! call this%q%ag()
 
@@ -323,21 +328,26 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
 
   ! initialize the ionization level array
   nrp = opts%get_ndp(1)
-  allocate( this%multi_ion( nrp, p_num_theta, this%multi_max + 2 ) )
-  allocate( this%ion_old( nrp, p_num_theta ) )
+  n_theta = pf%num_theta
+  allocate( this%multi_ion( nrp, n_theta, this%multi_max + 2 ) )
+  allocate( this%ion_old( nrp, n_theta ) )
   this%multi_ion = 0.0
   this%multi_ion( :, :, this%idx_neut ) = 1.0
+
+  allocate( ion_part_cnt(nrp, n_theta) )
+  allocate( multi_ion_r(nrp, n_theta) )
+  ion_part_cnt = 0
 
   ! normalized longitudinal density
   this%density = this%pf%get_density(0.0)
   
   ! normalized charge (coordinate of the particle array) 
   this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm / &
-    ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) )
+    ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(n_theta) )
 
   ! initialize trigonometric function tables
-  ! pi2_ntheta = 2.0 * pi / real( p_num_theta )
-  ! do i = 1, p_num_theta
+  ! pi2_ntheta = 2.0 * pi / real( n_theta )
+  ! do i = 1, n_theta
   !   sin_tab(i) = sin( pi2_ntheta * (i-1) )
   !   cos_tab(i) = cos( pi2_ntheta * (i-1) )
   ! enddo
@@ -384,25 +394,28 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
   ! local data
   character(len=18), save :: sname = 'ionize_neutral'
   real, dimension(:,:), pointer :: e_re => null(), e_im => null()
-  integer :: i, j, k, m, nrp, noff, ppc_tot, max_mode, multi_max, idx_neut, idx_ion
+  integer :: i, j, k, m, nrp, n_theta, noff, ppc_tot, max_mode, multi_max, idx_neut, idx_ion
   real :: eij, cons, inj, dens_temp, theta, pi2_ntheta
   real :: w_ion(20)
-  real, dimension(p_num_theta) :: e1, e2, e3
+  real, dimension(:), allocatable :: e1, e2, e3
   complex(kind=DB) :: phase, phase_inc
   logical :: shoot
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp        = e%rf_re(0)%get_ndp(1)
+  n_theta    = size( multi_ion, 2 )
   noff       = e%rf_re(0)%get_noff(1)
   max_mode   = e%get_max_mode()
   ppc_tot    = ppc(1) * ppc(2)
-  pi2_ntheta = 2.0 * pi / real( p_num_theta )
+  pi2_ntheta = 2.0 * pi / real( n_theta )
   multi_max  = size( multi_ion, 3 ) - 2
   idx_neut   = multi_max + 1
   idx_ion    = multi_max + 2
 
-  do k = 1, p_num_theta
+  allocate( e1(nrp), e2(nrp), e3(nrp) )
+
+  do k = 1, n_theta
 
     theta = pi2_ntheta * ( k - 1 )
     phase_inc = cmplx( cos(theta), sin(theta) )
@@ -494,7 +507,7 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
           enddo ! all levels in the middle
 
           ! update the last level
-          multi_ion(j, k, multi_max) = multi_ion(j, k, multi_max) + cons
+          multi_ion(j, k, multi_max) = min( multi_ion(j, k, multi_max) + cons, 1.0 )
 
           ! End use Runge Kutta method
 
@@ -504,6 +517,8 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
           do i = 1, multi_max
             multi_ion(j, k, idx_ion) = multi_ion(j, k, idx_ion) + real(i) * multi_ion(j,k,i)
           enddo
+
+          multi_ion_r(j,k) = multi_ion(j,k,idx_ion)
 
           ! We want the total ion level that corresponds to release an electron at 'half' step (like OSIRIS and qpic2.0)
           ! Now the multi_ion(:,:,idx_ion) is discrete
@@ -516,6 +531,8 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
 
     enddo
   enddo
+
+  deallocate( e1, e2, e3 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -535,21 +552,22 @@ subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
 
   ! local
   character(len=18), save :: sname = 'add_particles'
-  integer :: nrp, noff, ppc_tot, i, j, k, pp1, pp2, ppc_add, multi_max, idx_ion
+  integer :: nrp, noff, ppc_tot, i, j, k, pp1, pp2, ppc_add, multi_max, idx_ion, n_theta
   real :: r, dr, theta, dtheta
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  dr      = psi%get_dr()
-  dtheta  = 2.0 * pi / real( p_num_theta )
   nrp     = psi%rf_re(0)%get_ndp(1)
+  n_theta = size( multi_ion, 2 )
   noff    = psi%rf_re(0)%get_noff(1)
+  dr      = psi%get_dr()
+  dtheta  = 2.0 * pi / real( n_theta )
   ppc_tot = ppc(1) * ppc(2)
   multi_max = size( multi_ion, 3 ) - 2
   idx_ion = multi_max + 2
   part_buf%npp = 0
 
-  do k = 1, p_num_theta
+  do k = 1, n_theta
     do j = 1, nrp
 
       ! calculate the # of particles to inject based on the difference in ion density between 
@@ -565,16 +583,18 @@ subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
         pp2 = pp2 + 1
 
         ! randomly generate injection position
-        r     = ( rand() + j + noff - 1 ) * dr
-        theta = ( rand() + k - 1.5 ) * dtheta
+        ! r     = rand() + j + noff - 1
+        ! theta = ( rand() + k - 1.5 ) * dtheta
+        r     = j + noff - 1 + ( real(i) - 0.5 ) / ppc_add
+        theta = ( k - 1 ) * dtheta
 
-        part%x(1,pp1)   = r * cos(theta)
-        part%x(2,pp1)   = r * sin(theta)
+        part%x(1,pp1)   = r * dr * cos(theta)
+        part%x(2,pp1)   = r * dr * sin(theta)
         part%p(1,pp1)   = 0.0
         part%p(2,pp1)   = 0.0
         part%p(3,pp1)   = 0.0
         part%gamma(pp1) = 1.0
-        part%q(pp1)     = qm
+        part%q(pp1)     = qm * r
         part%psi(pp1)   = 1.0
 
         ! store the position of ionized particles for ion charge deposition
@@ -585,6 +605,8 @@ subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
       enddo
       part%npp = part%npp + ppc_add
       part_buf%npp = part_buf%npp + ppc_add
+
+      ion_part_cnt(j,k) = ion_part_cnt(j,k) + ppc_add
 
     enddo
   enddo
@@ -625,7 +647,10 @@ subroutine renew_neutral( this, s )
   
   ! normalized charge (coordinate of the particle array) 
   this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm &
-    / ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) )
+    / ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(this%pf%num_theta) )
+
+  this%part%npp = 0
+  this%part_buf%npp = 0
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -666,13 +691,14 @@ subroutine ion_deposit_neutral( this, q_tot )
            
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%rho_ion = 0.0
+  this%rho_ion_tmp = 0.0
 
-  call this%part_buf%qdeposit( this%rho_ion )
-  call this%rho_ion%acopy_gc_f1( dir=p_mpi_forward )
-  call this%rho_ion%smooth_f1()
-  call this%rho_ion%copy_gc_f1()
+  call this%part_buf%qdeposit( this%rho_ion_tmp )
+  call this%rho_ion_tmp%acopy_gc_f1( dir=p_mpi_forward )
+  call this%rho_ion_tmp%smooth_f1()
+  call this%rho_ion_tmp%copy_gc_f1()
   
+  call add_f1( this%rho_ion_tmp, this%rho_ion )
   call add_f1( this%rho_ion, q_tot )
 
   ! clear up the buffer
@@ -885,10 +911,8 @@ subroutine cbq_neutral( this, pos )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call add_f1( this%cu, this%q, (/3/), (/1/) )
-  call this%q%smooth_f1()
   call this%q%copy_slice( pos, p_copy_1to2 )
 
-  call this%rho_ion%smooth_f1()
   call this%rho_ion%copy_slice( pos, p_copy_1to2 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -927,7 +951,7 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
   this%part_dim = 3
 
   ! this is max number of particles to be ionized
-  npmax      = pf%ppc1 * pf%ppc2 * p_num_theta
+  npmax      = pf%ppc1 * pf%ppc2 * pf%num_theta * opts%get_ndp(1)
   nbmax      = max(int(0.1*npmax),100)
   this%npmax = npmax
   this%nbmax = nbmax
