@@ -142,7 +142,7 @@ subroutine init_simulation(this, input, opts)
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
-  allocate( this%tag_neut(2, this%nneutrals), this%id_neut(2, this%nneutrals) )
+  allocate( this%tag_neut(3, this%nneutrals), this%id_neut(3, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
 
   this%id_field = MPI_REQUEST_NULL
@@ -276,7 +276,8 @@ subroutine run_simulation( this )
       ! tag 1 and 2 are for particle array and ion density transfer respectively
       this%tag_neut(1,k) = ntag()
       this%tag_neut(2,k) = ntag()
-      call neut(k)%precv( this%tag_neut(1,k), this%tag_neut(2,k) )
+      this%tag_neut(3,k) = ntag()
+      call neut(k)%precv( this%tag_neut(1,k), this%tag_neut(2,k), this%tag_neut(3,k) )
     enddo
 
     ! pipeline data transfer for current and species B-field
@@ -402,7 +403,8 @@ subroutine run_simulation( this )
     ! pipeline for neutrals
     do k = 1, this%nneutrals
       call neut(k)%psend( this%tag_neut(1,k), this%id_neut(1,k), &
-                          this%tag_neut(2,k), this%id_neut(2,k) )
+                          this%tag_neut(2,k), this%id_neut(2,k), &
+                          this%tag_neut(3,k), this%id_neut(3,k) )
     enddo
 
     ! pipeline for E and B fields
@@ -428,6 +430,7 @@ subroutine run_simulation( this )
     do k = 1, this%nneutrals
       call mpi_wait( this%id_neut(1,k), istat, ierr )
       call mpi_wait( this%id_neut(2,k), istat, ierr )
+      call mpi_wait( this%id_neut(3,k), istat, ierr )
       call neut(k)%renew( i*this%dt )
     enddo
 

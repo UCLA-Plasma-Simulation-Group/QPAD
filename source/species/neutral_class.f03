@@ -158,8 +158,10 @@ type, extends( part2d ) :: part2d_buf
 
    contains
 
-   procedure :: new => init_part2d_buf
-   procedure :: end => end_part2d_buf
+   procedure :: new      => init_part2d_buf
+   procedure :: end      => end_part2d_buf
+   procedure :: pipesend => pipesend_part2d_buf
+   procedure :: piperecv => piperecv_part2d_buf
 
 end type part2d_buf
 
@@ -167,12 +169,6 @@ save
 
 character(len=10) :: cls_name = 'neutral'
 integer, parameter :: cls_level = 2
-
-! tables of sine and cosine for azimuthal Fourier decomposition
-! real, dimension(:), allocatable, save :: sin_tab, cos_tab
-
-integer, dimension(:,:), allocatable, save :: ion_part_cnt
-real, dimension(:,:), allocatable, save :: multi_ion_r
 
 contains
 
@@ -334,23 +330,12 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%multi_ion = 0.0
   this%multi_ion( :, :, this%idx_neut ) = 1.0
 
-  allocate( ion_part_cnt(nrp, n_theta) )
-  allocate( multi_ion_r(nrp, n_theta) )
-  ion_part_cnt = 0
-
   ! normalized longitudinal density
   this%density = this%pf%get_density(0.0)
   
   ! normalized charge (coordinate of the particle array) 
   this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm / &
     ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(n_theta) )
-
-  ! initialize trigonometric function tables
-  ! pi2_ntheta = 2.0 * pi / real( n_theta )
-  ! do i = 1, n_theta
-  !   sin_tab(i) = sin( pi2_ntheta * (i-1) )
-  !   cos_tab(i) = cos( pi2_ntheta * (i-1) )
-  ! enddo
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -518,8 +503,6 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
             multi_ion(j, k, idx_ion) = multi_ion(j, k, idx_ion) + real(i) * multi_ion(j,k,i)
           enddo
 
-          multi_ion_r(j,k) = multi_ion(j,k,idx_ion)
-
           ! We want the total ion level that corresponds to release an electron at 'half' step (like OSIRIS and qpic2.0)
           ! Now the multi_ion(:,:,idx_ion) is discrete
           multi_ion(j, k, idx_ion) = real(multi_max) / real(ppc_tot) * &
@@ -606,8 +589,6 @@ subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
       part%npp = part%npp + ppc_add
       part_buf%npp = part_buf%npp + ppc_add
 
-      ion_part_cnt(j,k) = ion_part_cnt(j,k) + ppc_add
-
     enddo
   enddo
 
@@ -638,9 +619,9 @@ subroutine renew_neutral( this, s )
   this%multi_ion( :, :, this%idx_neut ) = 1.0
 
   ! TODO: WHY NEED THIS
-  if ( id_stage() == 0 ) then
-    call this%q%copy_slice( 1, p_copy_1to2 )       
-  endif
+  ! if ( id_stage() == 0 ) then
+  !   call this%q%copy_slice( 1, p_copy_1to2 )       
+  ! endif
 
   ! normalized longitudinal density
   this%density = this%pf%get_density(s)
@@ -770,13 +751,13 @@ subroutine end_neutral( this )
 
 end subroutine end_neutral
 
-subroutine psend_neutral( this, tag_q, id_q, tag_ion, id_ion )
+subroutine psend_neutral( this, tag_part, id_part, tag_ion1, id_ion1, tag_ion2, id_ion2 )
 
   implicit none
 
   class(neutral), intent(inout) :: this
-  integer, intent(in) :: tag_q, tag_ion
-  integer, intent(inout) :: id_q, id_ion
+  integer, intent(in) :: tag_part, tag_ion1, tag_ion2
+  integer, intent(inout) :: id_part, id_ion1, id_ion2
   ! local data
   character(len=18), save :: sname = 'psend_neutral'
   integer :: i, idproc_des, ierr, count
@@ -784,10 +765,11 @@ subroutine psend_neutral( this, tag_q, id_q, tag_ion, id_ion )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  call this%part%pipesend( tag_q, id_q )
+  call this%part%pipesend( tag_part, id_part )
+  call this%rho_ion%pipe_send( tag_ion1, id_ion1, 'forward' )
 
   if ( id_stage() == num_stages() - 1 ) then
-    id_ion = MPI_REQUEST_NULL
+    id_ion2 = MPI_REQUEST_NULL
     call stop_tprof( 'pipeline' )
     call write_dbg( cls_name, sname, cls_level, 'ends' )
     return
@@ -796,8 +778,8 @@ subroutine psend_neutral( this, tag_q, id_q, tag_ion, id_ion )
   idproc_des = id_proc() + num_procs_loc()
   count = size( this%multi_ion )
 
-  call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag_ion, &
-    comm_world(), id_ion, ierr )
+  call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag_ion2, &
+    comm_world(), id_ion2, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -808,12 +790,12 @@ subroutine psend_neutral( this, tag_q, id_q, tag_ion, id_ion )
 
 end subroutine psend_neutral
 
-subroutine precv_neutral( this, tag_q, tag_ion )
+subroutine precv_neutral( this, tag_part, tag_ion1, tag_ion2 )
 
   implicit none
 
   class(neutral), intent(inout) :: this
-  integer, intent(in) :: tag_q, tag_ion
+  integer, intent(in) :: tag_part, tag_ion1, tag_ion2
   ! local data
   character(len=18), save :: sname = 'precv_neutral'
   integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -822,7 +804,8 @@ subroutine precv_neutral( this, tag_q, tag_ion )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  call this%part%piperecv( tag_q )
+  call this%part%piperecv( tag_part )
+  call this%rho_ion%pipe_recv( tag_ion1, 'forward', 'replace' )
 
   if ( id_stage() == 0 ) then
     call stop_tprof( 'pipeline' )
@@ -833,7 +816,7 @@ subroutine precv_neutral( this, tag_q, tag_ion )
   idproc_src = id_proc() - num_procs_loc()
   count = size( this%multi_ion)
 
-  call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag_ion, &
+  call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag_ion2, &
     comm_world(), stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
@@ -981,5 +964,103 @@ subroutine end_part2d_buf(this)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part2d_buf
+
+subroutine pipesend_part2d_buf(this, tag, id)
+
+  implicit none
+
+  class(part2d_buf), intent(inout) :: this
+  integer, intent(in) :: tag
+  integer, intent(inout) :: id
+
+  ! local data
+  character(len=18), save :: sname = 'pipesend_part2d_buf'
+  integer :: des, ierr, i
+  real, dimension(:,:), allocatable, save :: sbuf
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  if ( .not. allocated(sbuf) ) then
+    allocate( sbuf( this%part_dim, this%npmax ) )
+  endif
+
+  des = id_proc() + num_procs_loc()
+
+  if ( des >= num_procs() ) then
+    id = MPI_REQUEST_NULL
+    call write_dbg(cls_name, sname, cls_level, 'ends')
+    return
+  endif
+
+  ! to be implemented if using tile
+  ! call this%pcb()
+
+  do i = 1, this%npp
+    sbuf(1:2,i) = this%x(:,i)
+    sbuf(3,i)   = this%q(i)
+  enddo
+
+  ! NOTE: npp*xdim might be larger than MAX_INT32
+  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+    comm_world(), id, ierr)
+
+  ! check for errors
+  if (ierr /= 0) then
+    call write_err('MPI_ISEND failed')
+  endif
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine pipesend_part2d_buf
+
+subroutine piperecv_part2d_buf(this, tag)
+
+  implicit none
+
+  class(part2d_buf), intent(inout) :: this
+  integer, intent(in) :: tag
+  ! local data
+  character(len=18), save :: sname = 'piperecv_part2d_buf'
+  integer, dimension(MPI_STATUS_SIZE) :: istat
+  integer :: nps, des, ierr, i
+  real, dimension(:,:), allocatable, save :: rbuf
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  if ( .not. allocated(rbuf) ) then
+    allocate( rbuf( this%part_dim, this%npmax ) )
+  endif
+
+  des = id_proc() - num_procs_loc()
+
+  if (des < 0) then
+    call write_dbg(cls_name, sname, cls_level, 'ends')
+    return
+  endif
+
+  ! NOTE: npp*xdim might be larger than MAX_INT32
+  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), p_dtype_real, &
+    des, tag, comm_world(), istat, ierr)
+
+  call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
+
+  this%npp = nps/this%part_dim
+
+  do i = 1, this%npp
+    this%x(:,i)   = rbuf(1:2,i)
+    this%q(i)     = rbuf(3,i)
+  enddo
+
+  ! to be implemented if using tile
+  ! call this%pcp(fd)
+
+  ! check for errors
+  if (ierr /= 0) then
+    call write_err('MPI failed')
+  endif
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine piperecv_part2d_buf
 
 end module neutral_class
