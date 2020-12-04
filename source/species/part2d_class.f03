@@ -72,13 +72,9 @@ save
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 
-! TODO: data communication, to be deleted
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-integer(kind=LG), dimension(:), allocatable :: ihole
-
 contains
 
-subroutine init_part2d( this, opts, pf, qbm, dt, s )
+subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    implicit none
 
@@ -86,10 +82,12 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s )
    type(options), intent(in) :: opts
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
+   logical, intent(in), optional :: if_empty
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax, nbmax
+   logical :: empty = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -98,7 +96,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s )
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%getnpmax()
-   nbmax      = max(int(0.01*npmax),100)
+   nbmax      = max(int(0.1*npmax),100)
    this%npmax = npmax
    this%nbmax = nbmax
    this%npp   = 0
@@ -110,13 +108,12 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s )
    allocate( this%p( p_p_dim, npmax ) )
    allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
 
+   if ( present( if_empty ) ) empty = if_empty
+
    ! initialize particle coordinates according to specified profile
-   call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   if (.not. allocated(sbufl)) then
-      allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
-      allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
-      allocate( ihole( nbmax*2 ) )
-   end if
+   if ( .not. empty ) then
+      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
+   endif
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -137,19 +134,29 @@ subroutine end_part2d(this)
 
 end subroutine end_part2d
 
-subroutine renew_part2d( this, pf, s )
+subroutine renew_part2d( this, pf, s, if_empty )
 
    implicit none
 
    class(part2d), intent(inout) :: this
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: s
+   logical, intent(in), optional :: if_empty
+
    ! local data
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
+   this%npp = 0
+
+   if ( present(if_empty) ) then
+      if ( if_empty ) then
+         call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
+      endif
+   else
+      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
+   endif
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

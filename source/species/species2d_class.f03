@@ -68,7 +68,7 @@ subroutine alloc_species2d( this )
 end subroutine alloc_species2d
 
 subroutine init_species2d(this,opts,pf,part_shape,&
-&num_modes,qbm,xdim,s,smooth_type,smooth_order)
+&num_modes,qbm,s,smooth_type,smooth_order)
 
    implicit none
 
@@ -76,7 +76,7 @@ subroutine init_species2d(this,opts,pf,part_shape,&
    type(options), intent(in) :: opts
    class(fdist2d), intent(inout), target :: pf
    real, intent(in) :: qbm, s
-   integer, intent(in) :: xdim, part_shape, num_modes
+   integer, intent(in) :: part_shape, num_modes
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    real :: dt
@@ -269,7 +269,7 @@ subroutine psend_species2d(this, tag, id)
    integer, intent(in) :: tag
    integer, intent(inout) :: id
 ! local data
-   character(len=18), save :: sname = 'pipesend_part2d'
+   character(len=18), save :: sname = 'pipesend_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%part%pipesend(tag,id)
@@ -340,7 +340,6 @@ subroutine cbq_species2d(this,pos)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    ! call add_f1(this%q,this%cu,this%q,(/1/),(/3/),(/1/))
    call add_f1( this%cu, this%q, (/3/), (/1/) )
-   call this%q%smooth_f1()
    call this%q%copy_slice(pos,p_copy_1to2)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

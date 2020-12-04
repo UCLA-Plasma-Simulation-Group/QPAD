@@ -48,17 +48,19 @@ end type field_djdxi
 contains
 
 subroutine init_field_rho( this, opts, max_mode, part_shape, &
-  smooth_type, smooth_order )
+  smth_type, smth_order, has_2d )
 
   implicit none
 
   class( field_rho ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, part_shape
-  integer, intent(in), optional :: smooth_type, smooth_order
+  integer, intent(in), optional :: smth_type, smth_order
+  logical, intent(in), optional :: has_2d
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim
+  integer :: dim, smth_type_, smth_order_
+  logical :: has_2d_
   character(len=20), save :: cls_name = "field_rho"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_rho"
@@ -83,20 +85,33 @@ subroutine init_field_rho( this, opts, max_mode, part_shape, &
   end select
 
   dim = 1
+  smth_type_  = p_smooth_none
+  smth_order_ = 0
+  has_2d_     = .true.
+  if ( present(smth_type) ) smth_type_ = smth_type
+  if ( present(smth_order) ) smth_order_ = smth_order
+  if ( present(has_2d) ) has_2d_ = has_2d
+
+  gc_num(1,1) = max( gc_num(1,1), smth_order_ )
+  gc_num(2,1) = max( gc_num(2,1), smth_order_ )
+
+  call this%field%new( opts, dim, max_mode, gc_num, &
+      smooth_type=smth_type_, smooth_order=smth_order_, has_2d=has_2d_ )
+
   ! call initialization routine of the parent class
-  if ( present(smooth_type) .and. present(smooth_order) ) then
+  ! if ( present(smth_type) .and. present(smth_order) ) then
 
-    gc_num(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num(2,1) = max( gc_num(2,1), smooth_order )
+  !   gc_num(1,1) = max( gc_num(1,1), smth_order )
+  !   gc_num(2,1) = max( gc_num(2,1), smth_order )
 
-    call this%field%new( opts, dim, max_mode, gc_num, &
-      smooth_type=smooth_type, smooth_order=smooth_order )
+  !   call this%field%new( opts, dim, max_mode, gc_num, &
+  !     smooth_type=smth_type, smooth_order=smth_order )
 
-  else
+  ! else
 
-    call this%field%new( opts, dim, max_mode, gc_num )
+  !   call this%field%new( opts, dim, max_mode, gc_num )
 
-  endif
+  ! endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
