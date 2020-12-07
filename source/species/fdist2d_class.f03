@@ -7,7 +7,6 @@ use input_class
 use param
 use sysutil_module
 
-
 implicit none
 
 private
@@ -28,6 +27,7 @@ type, abstract :: fdist2d
    real :: qm, den
    character(len=:), allocatable :: long_prof
    real, dimension(:), allocatable :: s, fs
+   logical :: random_pos
 
    contains
    generic :: new => init_fdist2d
@@ -232,7 +232,9 @@ subroutine init_fdist2d_000(this,input,opts,i,sect)
    if (trim(this%long_prof) == 'piecewise') then
       call input%get(trim(s1)//'.piecewise_density',this%fs)
       call input%get(trim(s1)//'.piecewise_s',this%s)
-   end if
+   endif
+   call input%get( trim(s1)//'.random_pos', this%random_pos )
+
    this%dex = (ur - lr)/real(n1)
    this%npf = npf
    this%nmode = nmode
@@ -256,7 +258,7 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
    ! local data
    character(len=18), save :: sname = 'dist2d_000'
    integer(kind=LG) :: nps
-   integer :: nr, nrp, n_theta, ppc1, ppc2, i1, i2, noff, i, j
+   integer :: nr, nrp, n_theta, ppc1, ppc2, ppc_tot, i1, i2, noff, i, j
    real :: qm, den_temp
    integer :: prof_l
    real :: r1, theta, dr, dtheta
@@ -279,31 +281,34 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
          write (erstr,*) 'The s is out of the bound!'
          call write_err(trim(erstr))
          return
-      end if
+      endif
       do i = 2, prof_l
          if (this%s(i) < this%s(i-1)) then
             write (erstr,*) 's is not monotonically increasing!'
             call write_err(trim(erstr))
             return
-         end if
+         endif
          if (s<=this%s(i)) then
             den_temp = this%fs(i-1) + (this%fs(i)-this%fs(i-1))/&
             &(this%s(i)-this%s(i-1))*(s-this%s(i-1))
             exit
-         end if
-      end do
-   end if
+         endif
+      enddo
+   endif
    qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)/real(n_theta)
    
    ! initialize the particle positions
    nps = 0
-   do j = 1, n_theta
-      do i = 1, nrp
-         do i1 = 1, ppc1
-            r1 = (i1 - 0.5)/ppc1 + i - 1 + noff
-            do i2 = 1, ppc2
+   if ( this%random_pos ) then
+
+      ppc_tot = ppc1 * ppc2
+
+      do j = 1, n_theta
+         do i = 1, nrp
+            do i1 = 1, ppc_tot
                nps = nps + 1
-               theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+               r1 = rand() + real( i - 1 + noff )
+               theta = ( rand() + j - 1.5 ) * dtheta
                x(1,nps) = r1 * dr * cos(theta)
                x(2,nps) = r1 * dr * sin(theta)
                p(1,nps) = 0.0
@@ -315,7 +320,30 @@ subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
             enddo
          enddo
       enddo
-   enddo
+
+   else
+
+      do j = 1, n_theta
+         do i = 1, nrp
+            do i1 = 1, ppc1
+               r1 = (i1 - 0.5)/ppc1 + real(i - 1 + noff)
+               do i2 = 1, ppc2
+                  nps = nps + 1
+                  theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+                  x(1,nps) = r1 * dr * cos(theta)
+                  x(2,nps) = r1 * dr * sin(theta)
+                  p(1,nps) = 0.0
+                  p(2,nps) = 0.0
+                  p(3,nps) = 0.0
+                  gamma(nps) = 1.0
+                  psi(nps) = 1.0
+                  q(nps) = qm*r1
+               enddo
+            enddo
+         enddo
+      enddo
+
+   endif
 
    npp = nps
 
@@ -360,9 +388,10 @@ subroutine init_fdist2d_012(this,input,opts,i,sect)
    if (trim(this%long_prof) == 'piecewise') then
       call input%get(trim(s1)//'.piecewise_density',this%fs)
       call input%get(trim(s1)//'.piecewise_s',this%s)
-   end if
+   endif
    call input%get(trim(s1)//'.piecewise_radial_density',this%fr)
    call input%get(trim(s1)//'.piecewise_r',this%r)
+   call input%get( trim(s1)//'.random_pos', this%random_pos )
 
    this%dex = (ur - lr)/real(n1)
    this%npf = npf
@@ -388,7 +417,7 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
 ! local data
    character(len=18), save :: sname = 'dist2d_012:'
    integer(kind=LG) :: nps
-   integer :: nr, nrp, ppc1, ppc2, i1, i2, noff, i, j, n_theta
+   integer :: nr, nrp, ppc1, ppc2, ppc_tot, i1, i2, noff, i, j, n_theta
    real :: qm, den_temp
    integer :: prof_l, ii
    real :: r1, theta, dtheta, dr, rr
@@ -409,61 +438,55 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
    if (trim(this%long_prof) == 'piecewise') then
       prof_l = size(this%fs)
       if (prof_l /= size(this%s)) then
-         write (erstr,*) 'The piecewise_density and s array have different sizes!'
-         call write_err(trim(erstr))
-         return
-      end if
+         call write_err('The piecewise_density and s array have different sizes!')
+      endif
       if (s<this%s(1) .or. s>this%s(prof_l)) then
-         write (erstr,*) 'The s is out of the bound!'
-         call write_err(trim(erstr))
-         return
-      end if
+         call write_err('The s is out of the bound!')
+      endif
       do i = 2, prof_l
          if (this%s(i) < this%s(i-1)) then
-            write (erstr,*) 's is not monotonically increasing!'
-            call write_err(trim(erstr))
-            return
-         end if
+            call write_err('s is not monotonically increasing!')
+         endif
          if (s<=this%s(i)) then
             den_temp = this%fs(i-1) + (this%fs(i)-this%fs(i-1))/&
             &(this%s(i)-this%s(i-1))*(s-this%s(i-1))
             exit
-         end if
-      end do
-   end if
+         endif
+      enddo
+   endif
    qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)/real(n_theta)
    prof_l = size(this%fr)
    if (prof_l /= size(this%r)) then
-      write (erstr,*) 'The piecewise_radial_density and r array have different sizes!'
-      call write_err(trim(erstr))
-      return
-   end if
+      call write_err('The piecewise_radial_density and r array have different sizes!')
+   endif
 
    ! initialize the particle positions
    nps = 0
-   do j = 1, n_theta
-      do i = 1, nrp
-         do i1 = 1, ppc1
-            rr = (i1 - 0.5)/ppc1 + i - 1 + noff
-            r1 = rr*dr
-            if (r1<this%r(1) .or. r1>this%r(prof_l)) then
-               cycle
-            end if
-            do ii = 2, prof_l
-               if (this%r(ii) <= this%r(ii-1)) then
-                  write (erstr,*) 'r is not monotonically increasing!'
-                  call write_err(trim(erstr))
-                  return
-               end if
-               if (r1<=this%r(ii)) then
-                  den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
-                  &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
-                  exit
-               end if
-            end do
-            do i2 = 1, ppc2
+
+   if ( this%random_pos ) then
+
+      ppc_tot = ppc1 * ppc2
+
+      do j = 1, n_theta
+         do i = 1, nrp
+            do i1 = 1, ppc_tot
+               rr = rand() + real( i - 1 + noff )
+               r1 = rr * dr
+               if ( r1 < this%r(1) .or. r1 > this%r(prof_l) ) then
+                  cycle
+               endif
+               do ii = 2, prof_l
+                  if ( this%r(ii) <= this%r(ii-1) ) then
+                     call write_err( 'r is not monotonically increasing!' )
+                  endif
+                  if ( r1 <= this%r(ii) ) then
+                     den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+                     &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+                     exit
+                  endif
+               enddo
                nps = nps + 1
-               theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+               theta = ( rand() + j - 1.5 ) * dtheta
                x(1,nps) = r1 * cos(theta)
                x(2,nps) = r1 * sin(theta)
                p(1,nps) = 0.0
@@ -475,7 +498,44 @@ subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
             enddo
          enddo
       enddo
-   enddo
+
+   else
+
+      do j = 1, n_theta
+         do i = 1, nrp
+            do i1 = 1, ppc1
+               rr = (i1 - 0.5)/ppc1 + i - 1 + noff
+               r1 = rr*dr
+               if ( r1 < this%r(1) .or. r1 > this%r(prof_l) ) then
+                  cycle
+               endif
+               do ii = 2, prof_l
+                  if ( this%r(ii) <= this%r(ii-1) ) then
+                     call write_err( 'r is not monotonically increasing!' )
+                  endif
+                  if ( r1 <= this%r(ii) ) then
+                     den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
+                     &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
+                     exit
+                  endif
+               enddo
+               do i2 = 1, ppc2
+                  nps = nps + 1
+                  theta = ( (i2 - 0.5) / ppc2 + j - 1.5 ) * dtheta
+                  x(1,nps) = r1 * cos(theta)
+                  x(2,nps) = r1 * sin(theta)
+                  p(1,nps) = 0.0
+                  p(2,nps) = 0.0
+                  p(3,nps) = 0.0
+                  gamma(nps) = 1.0
+                  psi(nps) = 1.0
+                  q(nps) = qm * den_temp * rr
+               enddo
+            enddo
+         enddo
+      enddo
+
+   endif
 
    npp = nps
 
