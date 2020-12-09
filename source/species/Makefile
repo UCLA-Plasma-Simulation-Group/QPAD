@@ -1,4 +1,5 @@
 # This is meant to be included by the parent Makefile
+src += fdist2d_lib.f03
 src += fdist2d_class.f03
 src += part2d_class.f03
 src += part2d_comm.f03
