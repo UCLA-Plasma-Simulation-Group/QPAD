@@ -14,6 +14,7 @@
     "dt" : 10.0,
     "nbeams" : 2,
     "nspecies" : 1,
+    "nneutrals" : 0,
     "dump_restart" : false,
     "ndump_restart" : 1,
     "read_restart" : false,
@@ -96,7 +97,8 @@
 [
     {
     "profile" : 0,
-    "ppc" : [2,16],
+    "ppc" : [2,2],
+    "num_theta" : 16,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
