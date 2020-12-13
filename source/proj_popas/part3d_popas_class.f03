@@ -48,7 +48,7 @@ subroutine get_emittance_part3d_popas( this, fid, tstep, recv_tag, send_tag, id 
   idproc_dest = id_proc() + nprocs_loc
 
   ! receive message from the previous stage
-  if ( idproc_orig >= 0 ) then
+  if ( id_stage() > 0 ) then
 
     call mpi_recv( msg, 11, p_dtype_real, idproc_orig, recv_tag, comm_world(), &
       MPI_STATUS_IGNORE, ierr )
@@ -86,12 +86,12 @@ subroutine get_emittance_part3d_popas( this, fid, tstep, recv_tag, send_tag, id 
 
   ! send message to next stage
   ! the last stage calculates the results
-  if ( idproc_dest < num_procs() ) then
+  if ( id_stage() < num_stages() - 1 ) then
     call mpi_isend( msg, 11, p_dtype_real, idproc_dest, send_tag, comm_world(), &
       id, ierr )
   else
 
-    call mpi_reduce( msg, rslt, 11, p_dtype_real, MPI_SUM, id_proc_loc(), comm_loc(), ierr )
+    call mpi_reduce( msg, rslt, 11, p_dtype_real, MPI_SUM, 0, comm_loc(), ierr )
 
     ! the first processor in the last stage output data
     if ( id_proc_loc() == 0 ) then
@@ -132,7 +132,7 @@ subroutine get_ene_spread_part3d_popas( this, fid, tstep, recv_tag, send_tag, id
   idproc_dest = id_proc() + nprocs_loc
 
   ! receive message from the previous stage
-  if ( idproc_orig >= 0 ) then
+  if ( id_stage() > 0 ) then
 
     call mpi_recv( msg, 3, p_dtype_real, idproc_orig, recv_tag, comm_world(), &
       MPI_STATUS_IGNORE, ierr )
@@ -163,19 +163,19 @@ subroutine get_ene_spread_part3d_popas( this, fid, tstep, recv_tag, send_tag, id
   ! the last stage calculates the results
   msg = (/gam, gam2, w_tot/)
 
-  if ( idproc_dest < num_procs() ) then
+  if ( id_stage() < num_stages() - 1 ) then
     call mpi_isend( msg, 3, p_dtype_real, idproc_dest, recv_tag, comm_world(), &
       id, ierr )
   else
 
-    call mpi_reduce( msg, rslt, 3, p_dtype_real, MPI_SUM, id_proc_loc(), comm_loc(), ierr )
+    call mpi_reduce( msg, rslt, 3, p_dtype_real, MPI_SUM, 0, comm_loc(), ierr )
 
     ! the first processor in the last stage output data
     if ( id_proc_loc() == 0 ) then
 
       rslt(1:2) = rslt(1:2) / rslt(3)
       ene_spread = sqrt( rslt(2) - rslt(1) * rslt(1) ) / rslt(1)
-    
+
       write (fid,'(I8.8,D22.14)') tstep, ene_spread
       flush(fid)
 
