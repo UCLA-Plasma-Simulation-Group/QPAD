@@ -95,13 +95,13 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%dt  = dt
    this%part_dim = 2 + p_p_dim + 3
 
-   npmax      = pf%getnpmax()
+   npmax      = pf%np_max
    nbmax      = max(int(0.1*npmax),100)
    this%npmax = npmax
    this%nbmax = nbmax
    this%npp   = 0
 
-   this%dr   = pf%getdex()
+   this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
    
    allocate( this%x( 2, npmax ) )
@@ -111,9 +111,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    if ( present( if_empty ) ) empty = if_empty
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) then
-      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   endif
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -144,19 +142,15 @@ subroutine renew_part2d( this, pf, s, if_empty )
    logical, intent(in), optional :: if_empty
 
    ! local data
+   logical :: empty = .false.
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%npp = 0
 
-   if ( present(if_empty) ) then
-      if ( if_empty ) then
-         call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-      endif
-   else
-      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   endif
+   if ( present( if_empty ) ) empty = if_empty
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

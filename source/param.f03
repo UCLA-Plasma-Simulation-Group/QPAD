@@ -133,6 +133,14 @@ integer, parameter :: p_neut_H  = 1, &
                       p_neut_Xe = 54, &
                       p_neut_Cs = 55
 
+! ================================================================
+! parameters for profile
+! ================================================================
+integer, parameter :: p_prof_uniform = 0, &
+                      p_prof_pw_linear = 1, &
+                      p_prof_gaussian = 2, &
+                      p_prof_para_chl = 3, &
+                      p_prof_hllw_chl = 4
 
 ! ================================================================
 ! others
