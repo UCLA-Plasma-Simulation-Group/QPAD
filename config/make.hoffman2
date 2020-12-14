@@ -18,7 +18,7 @@ LINKER_OPTS = -fopenmp -O3
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
-HYPRE_LIB = /u/home/l/lifei/local/hypre/lib
+HYPRE_LIB = /u/home/l/lifei/local/hypre/intel-17.0.1/lib
 JSON_INC=/u/home/l/lifei/json-fortran/build/include
 JSON_LIB=/u/home/l/lifei/json-fortran/build/lib
 #HDF5_INC = /usr/local/hdf5/include
