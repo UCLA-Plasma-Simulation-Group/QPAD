@@ -60,9 +60,6 @@ if __name__ == '__main__':
     filename = 'Re0/' + file_list[0]
     with h5py.File(filename, 'r') as h5file:
 
-        # read file attributes
-        file_attrs = {name: value for name, value in h5file.attrs.items()}
-
         # read dataset name and attributes
         dset_name = list(h5file.keys())[1]
         h5dset = h5file[dset_name]
@@ -87,6 +84,10 @@ if __name__ == '__main__':
 
         # add m = 0 mode to the merged dataset
         with h5py.File('Re0/' + filename, 'r') as h5file:
+
+            # read file attributes
+            file_attrs = {name: value for name, value in h5file.attrs.items()}
+
             dset = np.array(h5file[dset_name])
             merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:])
             merged_dset[:, dset_size[1] - 1:] += dset
