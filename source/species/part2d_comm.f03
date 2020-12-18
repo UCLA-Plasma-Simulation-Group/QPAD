@@ -1,10 +1,10 @@
 module part2d_comm
 
-use sysutil
+use sysutil_module
 use param
 use mpi
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use part2d_class
 
@@ -19,9 +19,6 @@ integer, parameter :: p_self = 0, &
                       p_owd = 2
 
 integer, parameter :: iter_max = 1000
-
-class(parallel_pipe), pointer :: pp => null()
-class(grid), pointer :: gp => null()
 
 ! send and receive buffer for MPI
 real, dimension(:,:,:), pointer :: send_buf => null()
@@ -76,34 +73,30 @@ subroutine set_part2d_comm( part_dim, npmax )
   integer, intent(in) :: part_dim
   integer, intent(in) :: npmax
 
-  real :: buf_ratio = 0.01 
+  real :: buf_ratio = 0.1 
 
   dim_max  = max( part_dim, dim_max )
   buf_size = max( int(npmax * buf_ratio), buf_size )
 
 end subroutine set_part2d_comm
 
-subroutine init_part2d_comm( pp_, gp_ )
+subroutine init_part2d_comm( opts )
 
   implicit none
 
-  class( parallel_pipe ), intent(in), pointer :: pp_
-  class( grid ), intent(in), pointer :: gp_
+  class( options), intent(in) :: opts
 
   integer :: nvp, noff, nrp
   real :: dr
-
-  pp => pp_
-  gp => gp_
 
   allocate( send_buf( dim_max, buf_size, 2 ) )
   allocate( recv_buf( dim_max, buf_size, 2 ) )
   allocate( ihole( buf_size ) )
 
-  nvp = pp%getlnvp()
+  nvp = num_procs_loc()
 
   ! set neighbor processors' id
-  pid( p_self ) = pp%getidproc()
+  pid( p_self ) = id_proc()
   pid( p_iwd )  = pid( p_self ) - 1
   pid( p_owd )  = pid( p_self ) + 1
 
@@ -111,9 +104,9 @@ subroutine init_part2d_comm( pp_, gp_ )
   phys_bnd = get_phys_bnd( pid(p_self), nvp )
 
   ! set edges of MPI node
-  noff = gp%get_noff(1)
-  nrp  = gp%get_ndp(1)
-  dr   = gp%get_dr()
+  noff = opts%get_noff(1)
+  nrp  = opts%get_ndp(1)
+  dr   = opts%get_dr()
   
   if ( phys_bnd(p_iwd) ) then
     redge(p_lower) = 0.0
@@ -140,18 +133,15 @@ subroutine move_part2d_comm( part )
 
   class( part2d ), intent(inout) :: part
 
-  integer :: bsize, rsize, ssize, ierr, part_dim, iter
-  integer :: mreal, mint, loc_grp, world
+  integer :: bsize, rsize, ssize, ierr, part_dim, iter, loc_grp, world
   integer, dimension(MPI_STATUS_SIZE) :: istat
   integer, dimension(2) :: sid, rid
   integer, dimension(2) :: scnt_max
 
   character(len=18), save :: sname = 'move_part2d_comm'
 
-  world    = pp%getlworld()
-  loc_grp  = pp%getlgrp()
-  mreal    = pp%getmreal()
-  mint     = pp%getmint()
+  world    = comm_world()
+  loc_grp  = comm_loc()
   part_dim = part%part_dim
   bsize    = buf_size * dim_max
 
@@ -170,7 +160,7 @@ subroutine move_part2d_comm( part )
 
     ! receive from inward and unpack particles
     if ( .not. phys_bnd(p_iwd) ) then
-      call mpi_irecv( recv_buf(:,:,p_lower), bsize, mreal, pid(p_iwd), &
+      call mpi_irecv( recv_buf(:,:,p_lower), bsize, p_dtype_real, pid(p_iwd), &
         iter, world, rid(1), ierr )
     else
       rid(1) = MPI_REQUEST_NULL
@@ -178,7 +168,7 @@ subroutine move_part2d_comm( part )
 
     ! receive from outward and unpack particles
     if ( .not. phys_bnd(p_owd) ) then
-      call mpi_irecv( recv_buf(:,:,p_upper), bsize, mreal, pid(p_owd), &
+      call mpi_irecv( recv_buf(:,:,p_upper), bsize, p_dtype_real, pid(p_owd), &
         iter, world, rid(2), ierr )
     else
       rid(2) = MPI_REQUEST_NULL
@@ -194,7 +184,7 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ssize = send_cnt(p_iwd) * part_dim
-      call mpi_isend( send_buf(:,:,p_lower), ssize, mreal, pid(p_iwd), &
+      call mpi_isend( send_buf(:,:,p_lower), ssize, p_dtype_real, pid(p_iwd), &
         iter, world, sid(1), ierr )
       
     else
@@ -206,7 +196,7 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_owd) ) then
 
       ssize = send_cnt(p_owd) * part_dim
-      call mpi_isend( send_buf(:,:,p_upper), ssize, mreal, pid(p_owd), &
+      call mpi_isend( send_buf(:,:,p_upper), ssize, p_dtype_real, pid(p_owd), &
         iter, world, sid(2), ierr )
 
     else
@@ -216,11 +206,11 @@ subroutine move_part2d_comm( part )
 
     ! wait receiving finish
     call mpi_wait( rid(1), istat, ierr )
-    call mpi_get_count( istat, mreal, rsize, ierr )
+    call mpi_get_count( istat, p_dtype_real, rsize, ierr )
     recv_cnt(p_iwd) = rsize / part_dim
 
     call mpi_wait( rid(2), istat, ierr )
-    call mpi_get_count( istat, mreal, rsize, ierr )
+    call mpi_get_count( istat, p_dtype_real, rsize, ierr )
     recv_cnt(p_owd) = rsize / part_dim
 
     ! wait sending finsh
@@ -240,7 +230,7 @@ subroutine move_part2d_comm( part )
     endif
 
     ! check if need move particles further
-    call mpi_allreduce( send_cnt, scnt_max, 4, mint, MPI_MAX, loc_grp, ierr )
+    call mpi_allreduce( send_cnt, scnt_max, 4, p_dtype_int, MPI_MAX, loc_grp, ierr )
     if ( scnt_max(p_iwd) == 0 .and. scnt_max(p_owd) == 0 ) then
       exit
     endif

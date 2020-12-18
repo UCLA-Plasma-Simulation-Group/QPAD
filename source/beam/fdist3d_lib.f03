@@ -1,6 +1,6 @@
 module fdist3d_lib
 
-use sysutil
+use sysutil_module
 use random
 use param
 

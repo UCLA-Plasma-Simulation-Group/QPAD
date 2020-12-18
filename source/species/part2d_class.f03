@@ -1,11 +1,9 @@
-! part2d class for QPAD
-
 module part2d_class
 
 use param
-use sysutil
-use parallel_pipe_class
-use grid_class
+use sysutil_module
+use parallel_module
+use options_class
 use field_class
 use ufield_class
 use fdist2d_class
@@ -21,8 +19,6 @@ private
 public :: part2d
 
 type part2d
-
-   class(parallel_pipe), pointer :: pp => null()
 
    ! qbm = particle charge/mass ratio
    ! dt = time interval between successive calculations
@@ -47,9 +43,10 @@ type part2d
    real, dimension(:), pointer :: q => null()
    ! array for psi
    real, dimension(:), pointer :: psi => null()
-
    ! particle upper boundaries
    real :: edge
+   ! particle buffer
+   real, dimension(:,:), pointer :: pbuf => null()
 
    contains
 
@@ -76,53 +73,52 @@ save
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 
-! TODO: data communication, to be deleted
-real, dimension(:,:), allocatable :: sbufl, sbufr, rbufl, rbufr
-integer(kind=LG), dimension(:), allocatable :: ihole
+real, dimension(:,:), allocatable :: recv_buf
+integer :: recv_buf_size = 0
 
 contains
 
-subroutine init_part2d( this, pp, gp, pf, qbm, dt, s )
+subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    implicit none
 
    class(part2d), intent(inout) :: this
-   class(parallel_pipe), intent(in), pointer :: pp
-   class(grid), intent(in), pointer :: gp
+   type(options), intent(in) :: opts
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
+   logical, intent(in), optional :: if_empty
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax, nbmax
+   logical :: empty = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-   this%pp  => pp
    this%qbm = qbm
    this%dt  = dt
    this%part_dim = 2 + p_p_dim + 3
 
-   npmax      = pf%getnpmax()
-   nbmax      = max(int(0.01*npmax),100)
+   npmax      = pf%np_max
+   nbmax      = max(int(0.1*npmax),100)
    this%npmax = npmax
    this%nbmax = nbmax
    this%npp   = 0
 
-   this%dr   = pf%getdex()
-   this%edge = gp%get_nd(1) * this%dr
+   this%dr   = opts%get_dr()
+   this%edge = opts%get_nd(1) * this%dr
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
    allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
+   allocate( this%pbuf( this%part_dim, npmax ) )
+
+   recv_buf_size = max( recv_buf_size, npmax )
+
+   if ( present( if_empty ) ) empty = if_empty
 
    ! initialize particle coordinates according to specified profile
-   call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   if (.not. allocated(sbufl)) then
-      allocate( sbufl( this%part_dim, nbmax ), sbufr( this%part_dim, nbmax ) )
-      allocate( rbufl( this%part_dim, nbmax ), rbufr( this%part_dim, nbmax ) )
-      allocate( ihole( nbmax*2 ) )
-   end if
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -143,19 +139,25 @@ subroutine end_part2d(this)
 
 end subroutine end_part2d
 
-subroutine renew_part2d( this, pf, s )
+subroutine renew_part2d( this, pf, s, if_empty )
 
    implicit none
 
    class(part2d), intent(inout) :: this
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: s
+   logical, intent(in), optional :: if_empty
+
    ! local data
+   logical :: empty = .false.
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
+   this%npp = 0
+
+   if ( present( if_empty ) ) empty = if_empty
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -189,7 +191,7 @@ subroutine qdeposit_part2d( this, q )
   q_re => q%get_rf_re()
   q_im => q%get_rf_im()
 
-  max_mode = q%get_num_modes()
+  max_mode = q%get_max_mode()
 
   noff = q_re(0)%get_noff(1)
   nrp  = q_re(0)%get_ndp(1)
@@ -333,7 +335,7 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
 
   idt = 1.0 / this%dt
   qtmh = 0.5 * this%qbm * this%dt
-  max_mode = ef%get_num_modes()
+  max_mode = ef%get_max_mode()
 
   noff = cu_re(0)%get_noff(1)
   nrp  = cu_re(0)%get_ndp(1)
@@ -682,7 +684,7 @@ subroutine push_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
   qtmh = this%qbm * this%dt * 0.5
-  max_mode = ef%get_num_modes()
+  max_mode = ef%get_max_mode()
 
   ef_re => ef%get_rf_re()
   ef_im => ef%get_rf_im()
@@ -854,10 +856,10 @@ end subroutine update_bound_part2d
 
 !    psi_re => psi%get_rf_re()
 !    psi_im => psi%get_rf_im()
-!    ! call part2d_extractpsi(this%part,this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_num_modes())
+!    ! call part2d_extractpsi(this%part,this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
    
 !    call part2d_extractpsi(this%x, this%p, this%gamma, this%q, this%psi,&
-!     this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_num_modes())
+!     this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
 
 !    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -874,17 +876,12 @@ subroutine pipesend_part2d(this, tag, id)
   ! local data
   character(len=18), save :: sname = 'pipesend_part2d'
   integer :: des, ierr, i
-  real, dimension(:,:), allocatable, save :: sbuf
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  if ( .not. allocated(sbuf) ) then
-    allocate( sbuf( this%part_dim, this%npmax ) )
-  endif
+  des = id_proc() + num_procs_loc()
 
-  des = this%pp%getidproc() + this%pp%getlnvp()
-
-  if (des >= this%pp%getnvp()) then
+  if ( des >= num_procs() ) then
     id = MPI_REQUEST_NULL
     call write_dbg(cls_name, sname, cls_level, 'ends')
     return
@@ -894,16 +891,16 @@ subroutine pipesend_part2d(this, tag, id)
   ! call this%pcb()
 
   do i = 1, this%npp
-    sbuf(1:2,i) = this%x(:,i)
-    sbuf(3:5,i) = this%p(:,i)
-    sbuf(6,i)   = this%gamma(i)
-    sbuf(7,i)   = this%psi(i)
-    sbuf(8,i)   = this%q(i)
+    this%pbuf(1:2,i) = this%x(:,i)
+    this%pbuf(3:5,i) = this%p(:,i)
+    this%pbuf(6,i)   = this%gamma(i)
+    this%pbuf(7,i)   = this%psi(i)
+    this%pbuf(8,i)   = this%q(i)
   enddo
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), this%pp%getmreal(), &
-    des, tag, this%pp%getlworld(), id, ierr)
+  call MPI_ISEND(this%pbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+    comm_world(), id, ierr)
 
   ! check for errors
   if (ierr /= 0) then
@@ -924,15 +921,14 @@ subroutine piperecv_part2d(this, tag)
   character(len=18), save :: sname = 'piperecv_part2d'
   integer, dimension(MPI_STATUS_SIZE) :: istat
   integer :: nps, des, ierr, i
-  real, dimension(:,:), allocatable, save :: rbuf
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  if ( .not. allocated(rbuf) ) then
-    allocate( rbuf( this%part_dim, this%npmax ) )
+  if ( .not. allocated(recv_buf) ) then
+    allocate( recv_buf( this%part_dim, recv_buf_size ) )
   endif
 
-  des = this%pp%getidproc() - this%pp%getlnvp()
+  des = id_proc() - num_procs_loc()
 
   if (des < 0) then
     call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -940,19 +936,19 @@ subroutine piperecv_part2d(this, tag)
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), this%pp%getmreal(), &
-    des, tag, this%pp%getlworld(), istat, ierr)
+  call MPI_RECV(recv_buf, int(this%npmax*this%part_dim), p_dtype_real, &
+    des, tag, comm_world(), istat, ierr)
 
-  call MPI_GET_COUNT(istat, this%pp%getmreal(), nps, ierr)
+  call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
 
   this%npp = nps/this%part_dim
 
   do i = 1, this%npp
-    this%x(:,i)   = rbuf(1:2,i)
-    this%p(:,i)   = rbuf(3:5,i)
-    this%gamma(i) = rbuf(6,i)
-    this%psi(i)   = rbuf(7,i)
-    this%q(i)     = rbuf(8,i)
+    this%x(:,i)   = recv_buf(1:2,i)
+    this%p(:,i)   = recv_buf(3:5,i)
+    this%gamma(i) = recv_buf(6,i)
+    this%psi(i)   = recv_buf(7,i)
+    this%q(i)     = recv_buf(8,i)
   enddo
 
   ! to be implemented if using tile
@@ -980,7 +976,7 @@ subroutine writehdf5_part2d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ! call pwpart(this%pp,file,this%part,this%npp,1,ierr)
-   call pwpart(this%pp,file,this%x, this%p, this%q, this%npp,1,ierr)
+   call pwpart(file,this%x, this%p, this%q, this%npp,1,ierr)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

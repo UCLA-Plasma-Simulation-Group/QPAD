@@ -1,12 +1,12 @@
 module field_src_class
 
 use field_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use ufield_smooth_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 
 implicit none
@@ -22,8 +22,6 @@ type, extends( field ) :: field_rho
   contains
 
   generic :: new => init_field_rho
-  ! procedure :: get_q_ax1, get_q_ax2
-  ! procedure :: get_q_ax ! get the on-axis charge according to charge conservation
   procedure, private :: init_field_rho
 
 end type field_rho
@@ -49,19 +47,20 @@ end type field_djdxi
 
 contains
 
-subroutine init_field_rho( this, pp, gp, num_modes, part_shape, &
-  smooth_type, smooth_order )
+subroutine init_field_rho( this, opts, max_mode, part_shape, &
+  smth_type, smth_order, has_2d )
 
   implicit none
 
   class( field_rho ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape
-  integer, intent(in), optional :: smooth_type, smooth_order
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, part_shape
+  integer, intent(in), optional :: smth_type, smth_order
+  logical, intent(in), optional :: has_2d
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim
+  integer :: dim, smth_type_, smth_order_
+  logical :: has_2d_
   character(len=20), save :: cls_name = "field_rho"
   integer, parameter :: cls_level = 3
   character(len=20), save :: sname = "init_field_rho"
@@ -86,34 +85,46 @@ subroutine init_field_rho( this, pp, gp, num_modes, part_shape, &
   end select
 
   dim = 1
+  smth_type_  = p_smooth_none
+  smth_order_ = 0
+  has_2d_     = .true.
+  if ( present(smth_type) ) smth_type_ = smth_type
+  if ( present(smth_order) ) smth_order_ = smth_order
+  if ( present(has_2d) ) has_2d_ = has_2d
+
+  gc_num(1,1) = max( gc_num(1,1), smth_order_ )
+  gc_num(2,1) = max( gc_num(2,1), smth_order_ )
+
+  call this%field%new( opts, dim, max_mode, gc_num, &
+      smooth_type=smth_type_, smooth_order=smth_order_, has_2d=has_2d_ )
+
   ! call initialization routine of the parent class
-  if ( present(smooth_type) .and. present(smooth_order) ) then
+  ! if ( present(smth_type) .and. present(smth_order) ) then
 
-    gc_num(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num(2,1) = max( gc_num(2,1), smooth_order )
+  !   gc_num(1,1) = max( gc_num(1,1), smth_order )
+  !   gc_num(2,1) = max( gc_num(2,1), smth_order )
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num, &
-      smooth_type=smooth_type, smooth_order=smooth_order )
+  !   call this%field%new( opts, dim, max_mode, gc_num, &
+  !     smooth_type=smth_type, smooth_order=smth_order )
 
-  else
+  ! else
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num )
+  !   call this%field%new( opts, dim, max_mode, gc_num )
 
-  endif
+  ! endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_rho
 
-subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
+subroutine init_field_jay( this, opts, max_mode, part_shape, &
   smooth_type, smooth_order )
 
   implicit none
 
   class( field_jay ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, part_shape
   integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
@@ -148,12 +159,12 @@ subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
     gc_num(1,1) = max( gc_num(1,1), smooth_order )
     gc_num(2,1) = max( gc_num(2,1), smooth_order )
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num, &
+    call this%field%new( opts, dim, max_mode, gc_num, &
       smooth_type=smooth_type, smooth_order=smooth_order )
 
   else
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num )
+    call this%field%new( opts, dim, max_mode, gc_num )
 
   endif
 
@@ -161,15 +172,14 @@ subroutine init_field_jay( this, pp, gp, num_modes, part_shape, &
 
 end subroutine init_field_jay
 
-subroutine init_field_djdxi( this, pp, gp, num_modes, part_shape, &
+subroutine init_field_djdxi( this, opts, max_mode, part_shape, &
   smooth_type, smooth_order )
 
   implicit none
 
   class( field_djdxi ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, part_shape
   integer, intent(in), optional :: smooth_type, smooth_order
 
   integer, dimension(2,2) :: gc_num
@@ -204,12 +214,12 @@ subroutine init_field_djdxi( this, pp, gp, num_modes, part_shape, &
     gc_num(1,1) = max( gc_num(1,1), smooth_order )
     gc_num(2,1) = max( gc_num(2,1), smooth_order )
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num, &
+    call this%field%new( opts, dim, max_mode, gc_num, &
       smooth_type=smooth_type, smooth_order=smooth_order )
 
   else
 
-    call this%field%new( pp, gp, dim, num_modes, gc_num )
+    call this%field%new( opts, dim, max_mode, gc_num )
 
   endif
 
@@ -248,11 +258,11 @@ subroutine solve_field_djdxi( this, acu, amu )
   amu_re => amu%get_rf_re()
   amu_im => amu%get_rf_im()
 
-  noff = this%rf_re(0)%get_noff(1)
-  nvp = this%rf_re(0)%pp%getlnvp()
-  idproc = this%rf_re(0)%pp%getlidproc()
+  noff   = this%rf_re(0)%get_noff(1)
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
 
-  do mode = 0, this%num_modes
+  do mode = 0, this%max_mode
 
     uacu_re => acu_re(mode)%get_f1()
     uamu_re => amu_re(mode)%get_f1()

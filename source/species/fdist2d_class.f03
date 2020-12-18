@@ -1,421 +1,262 @@
-! fdist2d class for QPAD
-
 module fdist2d_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use input_class
 use param
-use sysutil
-
+use sysutil_module
+use fdist2d_lib
+use random
 
 implicit none
 
 private
 
-public :: fdist2d, fdist2d_wrap, fdist2d_000, fdist2d_012
+public :: fdist2d
 
-type, abstract :: fdist2d
+type :: fdist2d
+  ! Density profiles in perpendicular and longitudinal directions
+  integer, dimension(2) :: prof_type
+  ! Number of particles per cell
+  integer, dimension(2) :: ppc
+  ! Number of azimuthal divisions
+  integer :: num_theta
+  ! Maximum number of particles in this partition
+  integer :: np_max
+  real :: dr
+  integer :: noff, nr, nrp, max_mode
+  ! Thermal velocity
+  real, dimension(p_p_dim) :: uth
+  ! Charge mass ratio
+  real :: qm
+  ! Global density
+  real :: density
+  ! Minimum density for particle injection
+  real :: den_min
+  ! Parameter list of longitudinal density profile
+  real, dimension(:), pointer :: prof_pars_lon => null()
+  ! Parameter list of perpendicular density profile
+  real, dimension(:), pointer :: prof_pars_perp => null()
 
-   private
-   class(parallel_pipe), pointer :: pp => null()
-   class(grid), pointer :: gp => null()
+  procedure( set_prof_interface ), nopass, pointer :: set_prof_lon => null()
+  procedure( set_prof_interface ), nopass, pointer :: set_prof_perp => null()
 
-! ndprof = profile type
-   integer :: npf, npmax
-   real :: dex
+  procedure( get_den_lon_interface ), nopass, pointer :: get_den_lon => null()
+  procedure( get_den_perp_interface ), nopass, pointer :: get_den_perp => null()
 
-   contains
-   generic :: new => init_fdist2d
-   generic :: del => end_fdist2d
-   generic :: dist => dist2d
-   procedure(ab_init_fdist2d), deferred, private :: init_fdist2d
-   procedure, private :: end_fdist2d
-   procedure(ab_dist2d), deferred, private :: dist2d
-   procedure :: getnpf, getnpmax, getdex
+  contains
+  procedure :: new    => init_fdist2d
+  procedure :: del    => end_fdist2d
+  procedure :: inject => inject_fdist2d
 
 end type fdist2d
 
-abstract interface
-
-subroutine ab_dist2d( this, x, p, gamma, q, psi, npp, s )
-   import fdist2d
-   import ufield
-   import LG
-   implicit none
-   class(fdist2d), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
-   integer(kind=LG), intent(inout) :: npp
-   ! class(ufield), intent(in), pointer :: ud
-   real, intent(in) :: s
-end subroutine ab_dist2d
-
-subroutine ab_init_fdist2d(this,input,i)
-   import fdist2d
-   import input_json
-   implicit none
-   class(fdist2d), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
-   integer, intent(in) :: i
-end subroutine ab_init_fdist2d
-
+interface
+  subroutine get_den_perp_interface( x, s, prof_pars_perp, prof_pars_lon, den_value )
+    implicit none
+    real, intent(in), dimension(2) :: x
+    real, intent(in) :: s
+    real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
+    real, intent(out) :: den_value
+  end subroutine get_den_perp_interface
 end interface
 
-type fdist2d_wrap
-   class(fdist2d), allocatable :: p
-end type fdist2d_wrap
+interface
+  subroutine get_den_lon_interface( s, prof_pars_lon, den_value )
+    implicit none
+    real, intent(in) :: s
+    real, intent(in), dimension(:), pointer :: prof_pars_lon
+    real, intent(out) :: den_value
+  end subroutine get_den_lon_interface
+end interface
 
-type, extends(fdist2d) :: fdist2d_000
-! Transeversely uniform profile with uniform or piecewise longitudinal profile
-   private
-! xppc, yppc = particle per cell in x and y directions
-   integer :: ppc1, ppc2, nmode
-   real :: qm, den
-   character(len=:), allocatable :: long_prof
-   real, dimension(:), allocatable :: s, fs
-
-   contains
-   procedure, private :: init_fdist2d => init_fdist2d_000
-   procedure, private :: dist2d => dist2d_000
-
-end type fdist2d_000
-
-type, extends(fdist2d) :: fdist2d_012
-! hollow channel with f(r) profile
-   private
-! xppc, yppc = particle per cell in x and y directions
-   integer :: ppc1, ppc2, nmode
-   real :: qm, den
-   ! real :: cx, cy
-   real, dimension(:), allocatable :: r, fr
-   character(len=:), allocatable :: long_prof
-   real, dimension(:), allocatable :: s, fs
-
-   contains
-   procedure, private :: init_fdist2d => init_fdist2d_012
-   procedure, private :: dist2d => dist2d_012
-
-end type fdist2d_012
+interface
+  subroutine set_prof_interface( input, sect_name, prof_pars )
+    import input_json
+    implicit none
+    type( input_json ), intent(inout) :: input
+    character(len=*), intent(in) :: sect_name
+    real, intent(inout), dimension(:), pointer :: prof_pars
+  end subroutine set_prof_interface
+end interface
 
 character(len=20), parameter :: cls_name = "fdist2d"
 integer, parameter :: cls_level = 2
-character(len=128) :: erstr
 
 contains
 
-function getnpf(this)
+subroutine init_fdist2d( this, input, opts, sect, sect_id )
 
-   implicit none
+  implicit none
 
-   class(fdist2d), intent(in) :: this
-   integer :: getnpf
+  class( fdist2d ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  character(len=*), intent(in) :: sect
+  integer, intent(in) :: sect_id
 
-   getnpf = this%npf
+  integer :: xtra
+  character(len=20) :: sect_name
+  character(len=:), allocatable :: prof_name
+  character(len=18), save :: sname = 'init_fdist2d'
 
-end function getnpf
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-function getnpmax(this)
+  this%noff = opts%get_noff(1)
+  this%nr   = opts%get_nd(1)
+  this%nrp  = opts%get_ndp(1)
+  this%dr   = opts%get_dr()
 
-   implicit none
+  sect_name = trim(sect) // '(' // num2str(sect_id) // ')'
+  call input%get( 'simulation.max_mode', this%max_mode )
 
-   class(fdist2d), intent(in) :: this
-   integer :: getnpmax
+  ! read profile types
+  call input%get( trim(sect_name) // '.profile(1)', prof_name )
+  select case ( trim(prof_name) )
 
-   getnpmax = this%npmax
+    case ( 'uniform' )
+      this%prof_type(1)  = p_prof_uniform
+      this%set_prof_perp => set_prof_perp_uniform
+      this%get_den_perp  => get_den_perp_uniform
 
-end function getnpmax
+    case ( 'parabolic-channel' )
+      this%prof_type(1)  = p_prof_para_chl
+      this%set_prof_perp => set_prof_perp_para_chl
+      this%get_den_perp  => get_den_perp_para_chl
 
-function getdex(this)
+    case ( 'hollow-channel' )
+      this%prof_type(1)  = p_prof_hllw_chl
+      this%set_prof_perp => set_prof_perp_hllw_chl
+      this%get_den_perp  => get_den_perp_hllw_chl
 
-   implicit none
+    case default
+      call write_err( 'Invalid transverse density profile! Currently available &
+        &include "uniform", "parabolic-channel" and "hollow-channel".' )
 
-   class(fdist2d), intent(in) :: this
-   real :: getdex
+  end select
 
-   getdex = this%dex
+  call input%get( trim(sect_name) // '.profile(2)', prof_name )
+  select case ( trim(prof_name) )
 
-end function getdex
+    case ( 'uniform' )
+      this%prof_type(2) = p_prof_uniform
+      this%set_prof_lon => set_prof_lon_uniform
+      this%get_den_lon  => get_den_lon_uniform
 
-subroutine end_fdist2d(this)
+    case ( 'piecewise-linear' )
+      this%prof_type(2) = p_prof_pw_linear
+      this%set_prof_lon => set_prof_lon_pw_linear
+      this%get_den_lon  => get_den_lon_pw_linear
 
-   implicit none
+    case default
+      call write_err( 'Invalid longitudinal density profile! Currently available &
+        &include "uniform" and "piecewise-linear".' )
 
-   class(fdist2d), intent(inout) :: this
+  end select
 
-   character(len=18), save :: sname = 'end_fdist2d'
+  ! read and store the profile parameters into the parameter lists
+  call this%set_prof_perp( input, trim(sect_name), this%prof_pars_perp )
+  call this%set_prof_lon( input, trim(sect_name), this%prof_pars_lon )
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call input%get( trim(sect_name) // '.ppc(1)', this%ppc(1) )
+  call input%get( trim(sect_name) // '.ppc(2)', this%ppc(2) )
+  call input%get( trim(sect_name) // '.num_theta', this%num_theta )
+  call input%get( trim(sect_name) // '.q', this%qm )
+  call input%get( trim(sect_name) // '.density', this%density )
+  call input%get( trim(sect_name) // '.den_min', this%den_min )
+  ! call input%get( trim(sect_name) // '.random_pos', this%random_pos )
+  call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
+  call input%get( trim(sect_name) // '.uth(2)', this%uth(2) )
+  call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
+
+  ! calculate the maximum particles number allowed in this partition
+  xtra = 10
+  this%np_max = this%nrp * product(this%ppc) * this%num_theta * xtra
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine init_fdist2d
+
+subroutine end_fdist2d( this )
+
+  implicit none
+
+  class( fdist2d ), intent(inout) :: this
+  character(len=18), save :: sname = 'end_fdist2d'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  if ( associated(this%prof_pars_lon) ) deallocate( this%prof_pars_lon )
+  if ( associated(this%prof_pars_perp) ) deallocate( this%prof_pars_perp )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_fdist2d
 
-subroutine init_fdist2d_000(this,input,i)
+subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
 
-   implicit none
+  implicit none
 
-   class(fdist2d_000), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
-   integer, intent(in) :: i
+  class( fdist2d ), intent(inout) :: this
+  real, intent(inout), dimension(:,:) :: x, p
+  real, intent(inout), dimension(:) :: gamma, psi, q
+  integer(kind=LG), intent(inout) :: npp
+  real, intent(in) :: s
 
-   ! local data
-   integer :: npf,ppc1,ppc2,n1,nmode
-   integer(kind=LG) :: npmax
-   real :: qm, den, lr, ur
-   character(len=20) :: sn,s1
-   character(len=18), save :: sname = 'init_fdist2d_000'
+  integer :: i, j, i1, i2, ppc_tot, n_theta, nrp, noff
+  integer(kind=LG) :: ipart
+  real :: dr, dtheta, den_lon, den_perp, rn, theta, coef
+  real, dimension(2) :: x_tmp
+  character(len=18), save :: sname = 'inject_fdist2d'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%pp => input%pp
-   this%gp => input%gp
-   write (sn,'(I3.3)') i
-   s1 = 'species('//trim(sn)//')'
-   call input%get('simulation.grid(1)',n1)
-   call input%get('simulation.box.r(1)',lr)
-   call input%get('simulation.box.r(2)',ur)
-   call input%get('simulation.max_mode',nmode)
-   call input%get(trim(s1)//'.profile',npf)
-   call input%get(trim(s1)//'.ppc(1)',ppc1)
-   call input%get(trim(s1)//'.ppc(2)',ppc2)
-   call input%get(trim(s1)//'.q',qm)
-   call input%get(trim(s1)//'.density',den)
-   call input%get(trim(s1)//'.longitudinal_profile',this%long_prof)
-   if (trim(this%long_prof) == 'piecewise') then
-      call input%get(trim(s1)//'.piecewise_density',this%fs)
-      call input%get(trim(s1)//'.piecewise_s',this%s)
-   end if
-   this%dex = (ur - lr)/real(n1)
-   this%npf = npf
-   this%nmode = nmode
-   this%ppc1 = ppc1
-   if (nmode == 0) ppc2 = 1
-   this%ppc2 = ppc2
-   this%qm = qm
-   this%den = den
-   npmax = n1*ppc1*ppc2*4
-   this%npmax = npmax
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-end subroutine init_fdist2d_000
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-subroutine dist2d_000( this, x, p, gamma, q, psi, npp, s )
-   implicit none
-   class(fdist2d_000), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
-   integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: s
-   ! local data
-   character(len=18), save :: sname = 'dist2d_000'
-   integer(kind=LG) :: nps, i
-   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
-   real :: qm, den_temp
-   integer :: prof_l
-   real :: r1, t0, dr
+  nrp     = this%nrp
+  noff    = this%noff
+  n_theta = this%num_theta
+  dr      = this%dr
+  dtheta  = 2.0 * pi / n_theta
+  ppc_tot = product( this%ppc )
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
+  call this%get_den_lon( s, this%prof_pars_lon, den_lon )
+  coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
-   n1    = this%gp%get_nd(1)
-   n1p   = this%gp%get_ndp(1)
-   noff1 = this%gp%get_noff(1)
-   
-   ppc1 = this%ppc1; ppc2 = this%ppc2
-   t0 = 2.0*pi/ppc2
-   dr = this%dex
-   den_temp = 1.0
-   if (noff1+n1p == n1 .and. n1p > 2) n1p = n1p - 2
-   if (trim(this%long_prof) == 'piecewise') then
-      prof_l = size(this%fs)
-      if (s<this%s(1) .or. s>this%s(prof_l)) then
-         write (erstr,*) 'The s is out of the bound!'
-         call write_err(trim(erstr))
-         return
-      end if
-      do i = 2, prof_l
-         if (this%s(i) < this%s(i-1)) then
-            write (erstr,*) 's is not monotonically increasing!'
-            call write_err(trim(erstr))
-            return
-         end if
-         if (s<=this%s(i)) then
-            den_temp = this%fs(i-1) + (this%fs(i)-this%fs(i-1))/&
-            &(this%s(i)-this%s(i-1))*(s-this%s(i-1))
-            exit
-         end if
-      end do
-   end if
-   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
-   nps = 1
-! initialize the particle positions
-   do i=1, n1p
-      do i1 = 0, ppc1-1
-         r1 = (i1 + 0.5)/ppc1 + i - 1 + noff1
-         do i2=0, ppc2-1
-            x(1,nps) = r1*dr*cos(i2*t0)
-            x(2,nps) = r1*dr*sin(i2*t0)
-            p(1,nps) = 0.0
-            p(2,nps) = 0.0
-            p(3,nps) = 0.0
-            gamma(nps) = 1.0
-            psi(nps) = 1.0
-            q(nps) = qm*r1
-            nps = nps + 1
-         enddo
+  ipart = 0
+  do j = 1, n_theta
+    do i = 1, nrp
+      
+      do i1 = 1, this%ppc(1)
+        rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff)
+        
+        do i2 = 1, this%ppc(2)
+          
+          theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.5 ) * dtheta
+
+          x_tmp(1) = rn * dr * cos(theta)
+          x_tmp(2) = rn * dr * sin(theta)
+
+          call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp )
+
+          if ( den_lon * den_perp * this%density < this%den_min ) cycle
+
+          ipart = ipart + 1
+          x(1,ipart) = x_tmp(1)
+          x(2,ipart) = x_tmp(2)
+          q(ipart) = rn * den_perp * den_lon * this%density * coef
+          p(1,ipart) = this%uth(1) * ranorm()
+          p(2,ipart) = this%uth(2) * ranorm()
+          p(3,ipart) = this%uth(3) * ranorm()
+          gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
+          psi(ipart) = gamma(ipart) - p(3,ipart)
+          
+        enddo
       enddo
-   enddo
+    enddo
+  enddo
 
-   npp = nps - 1
+  npp = ipart
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-end subroutine dist2d_000
-!
-subroutine init_fdist2d_012(this,input,i)
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-   implicit none
+end subroutine inject_fdist2d
 
-   class(fdist2d_012), intent(inout) :: this
-   type(input_json), intent(inout), pointer :: input
-   integer, intent(in) :: i
-! local data
-   integer :: npf,ppc1,ppc2,n1,nmode
-   integer(kind=LG) :: npmax
-   real :: qm, den, lr, ur
-   character(len=20) :: sn,s1
-   character(len=18), save :: sname = 'init_fdist2d_012:'
-
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   this%pp => input%pp
-   this%gp => input%gp
-   write (sn,'(I3.3)') i
-   s1 = 'species('//trim(sn)//')'
-   call input%get('simulation.grid(1)',n1)
-   call input%get('simulation.box.r(1)',lr)
-   call input%get('simulation.box.r(2)',ur)
-   call input%get('simulation.max_mode',nmode)
-   call input%get(trim(s1)//'.profile',npf)
-   call input%get(trim(s1)//'.ppc(1)',ppc1)
-   call input%get(trim(s1)//'.ppc(2)',ppc2)
-   call input%get(trim(s1)//'.q',qm)
-   call input%get(trim(s1)//'.density',den)
-   call input%get(trim(s1)//'.longitudinal_profile',this%long_prof)
-   if (trim(this%long_prof) == 'piecewise') then
-      call input%get(trim(s1)//'.piecewise_density',this%fs)
-      call input%get(trim(s1)//'.piecewise_s',this%s)
-   end if
-   call input%get(trim(s1)//'.piecewise_radial_density',this%fr)
-   call input%get(trim(s1)//'.piecewise_r',this%r)
-
-   this%dex = (ur - lr)/real(n1)
-   this%npf = npf
-   this%nmode = nmode
-   this%ppc1 = ppc1
-   if (nmode == 0) ppc2 = 1
-   this%ppc2 = ppc2
-   this%qm = qm
-   this%den = den
-   npmax = n1*ppc1*ppc2*4
-   this%npmax = npmax
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-
-end subroutine init_fdist2d_012
-!
-subroutine dist2d_012(this,x,p,gamma,q,psi,npp,s)
-   implicit none
-   class(fdist2d_012), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:), pointer, intent(inout) :: gamma, q, psi
-   integer(kind=LG), intent(inout) :: npp
-   real, intent(in) :: s
-! local data
-   character(len=18), save :: sname = 'dist2d_012:'
-   integer(kind=LG) :: nps, i
-   integer :: n1, n1p, ppc1, ppc2, i1, i2, noff1
-   real :: qm, den_temp
-   integer :: prof_l, ii
-   real :: r1, t0, dr, rr
-
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   n1    = this%gp%get_nd(1)
-   n1p   = this%gp%get_ndp(1)
-   noff1 = this%gp%get_noff(1)
-
-   ppc1 = this%ppc1; ppc2 = this%ppc2
-   t0 = 2.0*pi/ppc2
-   dr = this%dex
-   den_temp = 1.0
-
-   if (trim(this%long_prof) == 'piecewise') then
-      prof_l = size(this%fs)
-      if (prof_l /= size(this%s)) then
-         write (erstr,*) 'The piecewise_density and s array have different sizes!'
-         call write_err(trim(erstr))
-         return
-      end if
-      if (s<this%s(1) .or. s>this%s(prof_l)) then
-         write (erstr,*) 'The s is out of the bound!'
-         call write_err(trim(erstr))
-         return
-      end if
-      do i = 2, prof_l
-         if (this%s(i) < this%s(i-1)) then
-            write (erstr,*) 's is not monotonically increasing!'
-            call write_err(trim(erstr))
-            return
-         end if
-         if (s<=this%s(i)) then
-            den_temp = this%fs(i-1) + (this%fs(i)-this%fs(i-1))/&
-            &(this%s(i)-this%s(i-1))*(s-this%s(i-1))
-            exit
-         end if
-      end do
-   end if
-   qm = den_temp*this%den*this%qm/abs(this%qm)/real(ppc1)/real(ppc2)
-   nps = 1
-   prof_l = size(this%fr)
-   if (prof_l /= size(this%r)) then
-      write (erstr,*) 'The piecewise_radial_density and r array have different sizes!'
-      call write_err(trim(erstr))
-      return
-   end if
-
-! initialize the particle positions
-   do i=1, n1p
-      do i1 = 0, ppc1-1
-         rr = (i1 + 0.5)/ppc1 + i - 1 + noff1
-         r1 = rr*dr
-         if (r1<this%r(1) .or. r1>this%r(prof_l)) then
-            cycle
-         end if
-         do ii = 2, prof_l
-            if (this%r(ii) <= this%r(ii-1)) then
-               write (erstr,*) 'r is not monotonically increasing!'
-               call write_err(trim(erstr))
-               return
-            end if
-            if (r1<=this%r(ii)) then
-               den_temp = this%fr(ii-1) + (this%fr(ii)-this%fr(ii-1))/&
-               &(this%r(ii)-this%r(ii-1))*(r1-this%r(ii-1))
-               exit
-            end if
-         end do
-         do i2=0, ppc2-1
-            x(1,nps) = r1*cos(i2*t0)
-            x(2,nps) = r1*sin(i2*t0)
-            p(1,nps) = 0.0
-            p(2,nps) = 0.0
-            p(3,nps) = 0.0
-            gamma(nps) = 1.0
-            psi(nps) = 1.0
-            q(nps) = qm*den_temp*rr
-            nps = nps + 1
-         enddo
-      enddo
-   enddo
-
-   npp = nps - 1
-
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-end subroutine dist2d_012
-!
 end module fdist2d_class

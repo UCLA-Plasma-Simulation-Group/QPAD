@@ -5,9 +5,9 @@ use field_src_class
 use field_solver_class
 use ufield_class
 use param
-use sysutil
-use parallel_pipe_class
-use grid_class
+use sysutil_module
+use parallel_module
+use options_class
 use debug_tool
 use mpi
 
@@ -26,7 +26,6 @@ type, extends( field ) :: field_b
 
   class( field_solver ), dimension(:), pointer :: solver_bz      => null()
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
-  class( field_solver ), dimension(:), pointer :: solver_bt_iter => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
 
@@ -41,6 +40,7 @@ type, extends( field ) :: field_b
 
   procedure :: init_field_b
   procedure :: del => end_field_b
+  procedure :: alloc => alloc_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
   procedure, private :: set_source_bt_iter
@@ -55,14 +55,38 @@ end type field_b
 
 contains
 
-subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity )
+subroutine alloc_field_b( this, max_mode )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape, entity, boundary
+  integer, intent(in) :: max_mode
+
+  if ( .not. associated( this%solver_bz ) ) then
+    allocate( field_solver :: this%solver_bz(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bt ) ) then
+    allocate( field_solver :: this%solver_bt(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bplus ) ) then
+    allocate( field_solver :: this%solver_bplus(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_bminus ) ) then
+    allocate( field_solver :: this%solver_bminus(0:max_mode) )
+  endif
+
+end subroutine alloc_field_b
+
+subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, part_shape, entity, boundary
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -71,8 +95,8 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = gp%get_ndp(1)
-  dr  = gp%get_dr()
+  nrp = opts%get_ndp(1)
+  dr  = opts%get_dr()
 
   select case ( part_shape )
 
@@ -93,22 +117,19 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, num_modes, gc_num, entity )
+  call this%field%new( opts, dim, max_mode, gc_num, entity )
 
   ! initialize solver
   select case ( entity )
 
   case ( p_entity_plasma )
 
-    allocate( this%solver_bz( 0:num_modes ) )
-    allocate( this%solver_bplus( 0:num_modes ) )
-    allocate( this%solver_bminus( 0:num_modes ) )
-    do i = 0, num_modes
-      call this%solver_bz(i)%new( pp, gp, i, dr, kind=p_fk_bz, &
+    do i = 0, max_mode
+      call this%solver_bz(i)%new( opts, i, dr, kind=p_fk_bz, &
         bnd=boundary, stype=p_hypre_cycred )
-      call this%solver_bplus(i)%new( pp, gp, i, dr, kind=p_fk_bplus, &
+      call this%solver_bplus(i)%new( opts, i, dr, kind=p_fk_bplus, &
         bnd=boundary, stype=p_hypre_cycred )
-      call this%solver_bminus(i)%new( pp, gp, i, dr, kind=p_fk_bminus, &
+      call this%solver_bminus(i)%new( opts, i, dr, kind=p_fk_bminus, &
         bnd=boundary, stype=p_hypre_cycred )
     enddo
 
@@ -117,9 +138,8 @@ subroutine init_field_b( this, pp, gp, num_modes, part_shape, boundary, entity )
 
   case ( p_entity_beam )
 
-    allocate( this%solver_bt( 0:num_modes ) )
-    do i = 0, num_modes
-      call this%solver_bt(i)%new( pp, gp, i, dr, kind=p_fk_bt, &
+    do i = 0, max_mode
+      call this%solver_bt(i)%new( opts, i, dr, kind=p_fk_bt, &
         bnd=boundary, stype=p_hypre_cycred )
     enddo
 
@@ -149,7 +169,7 @@ subroutine end_field_b( this )
   select case ( this%entity )
 
   case ( p_entity_plasma )
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%solver_bz(i)%del()
       call this%solver_bplus(i)%del()
       call this%solver_bminus(i)%del()
@@ -159,7 +179,7 @@ subroutine end_field_b( this )
     deallocate( this%solver_bminus )
 
   case ( p_entity_beam )
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%solver_bt(i)%del()
     enddo
     deallocate( this%solver_bt )
@@ -198,8 +218,8 @@ subroutine set_source_bz( this, mode, jay_re, jay_im )
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
   noff   = jay_re%get_noff(1)
-  nvp    = jay_re%pp%getlnvp()
-  idproc = jay_re%pp%getlidproc()
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
   dr     = this%dr
   dr2    = dr*dr
 
@@ -290,7 +310,7 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   class( ufield ), intent(in), optional :: q_im
   integer, intent(in) :: mode
 
-  integer :: i, nrp, noff, dtype, comm
+  integer :: i, nrp, noff, comm
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real ::dr, dr2, rmax
   character(len=20), save :: sname = 'set_source_bt'
@@ -302,8 +322,7 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   noff  = q_re%get_noff(1)
   dr    = this%dr
   dr2   = dr**2
-  dtype = q_re%pp%getmreal()
-  comm  = q_re%pp%getlgrp()
+  comm  = comm_loc()
   rmax  = (q_re%get_nd(1)-0.5) * dr
 
   f1_re => q_re%get_f1()
@@ -353,8 +372,8 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve plasma bt' )
 
-  nvp    = jay_re%pp%getlnvp()
-  idproc = jay_re%pp%getlidproc()
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
   nrp    = jay_re%get_ndp(1)
   noff   = jay_re%get_noff(1)
   idr    = 1.0 / this%dr
@@ -523,7 +542,7 @@ subroutine get_solution_bt( this, mode )
   class( field_b ), intent(inout) :: this
   integer, intent(in) :: mode
 
-  integer :: i, nrp, idproc, nvp, noff, dtype, ierr, comm, msgid1, msgid2
+  integer :: i, nrp, idproc, nvp, noff, ierr, comm, msgid1, msgid2
   real :: idr, idrh, ir
   real, dimension(2), save :: lbuf, ubuf
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
@@ -534,11 +553,10 @@ subroutine get_solution_bt( this, mode )
   call start_tprof( 'solve beam bt' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
-  idproc = this%rf_re(mode)%pp%getlidproc()
-  nvp    = this%rf_re(mode)%pp%getlnvp()
+  idproc = id_proc_loc()
+  nvp    = num_procs_loc()
   noff   = this%rf_re(mode)%get_noff(1)
-  comm   = this%rf_re(mode)%pp%getlgrp()
-  dtype  = this%rf_re(mode)%pp%getmreal()
+  comm   = comm_loc()
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
 
@@ -549,13 +567,13 @@ subroutine get_solution_bt( this, mode )
   ! forward message passing
   ! receiver
   if ( idproc > 0 ) then
-    call MPI_IRECV( lbuf(1), 1, dtype, idproc-1, 1, comm, msgid1, ierr )
-    call MPI_IRECV( lbuf(2), 1, dtype, idproc-1, 2, comm, msgid2, ierr )
+    call MPI_IRECV( lbuf(1), 1, p_dtype_real, idproc-1, 1, comm, msgid1, ierr )
+    call MPI_IRECV( lbuf(2), 1, p_dtype_real, idproc-1, 2, comm, msgid2, ierr )
   endif
   ! sender
   if ( idproc < nvp-1 ) then
-    call MPI_SEND( this%buf1_re(nrp), 1, dtype, idproc+1, 1, comm, ierr )
-    call MPI_SEND( this%buf1_im(nrp), 1, dtype, idproc+1, 2, comm, ierr )
+    call MPI_SEND( this%buf1_re(nrp), 1, p_dtype_real, idproc+1, 1, comm, ierr )
+    call MPI_SEND( this%buf1_im(nrp), 1, p_dtype_real, idproc+1, 2, comm, ierr )
   endif
   ! wait receiving finish
   if ( idproc > 0 ) then
@@ -566,13 +584,13 @@ subroutine get_solution_bt( this, mode )
   ! backward message passing
   ! receiver
   if ( idproc < nvp-1 ) then
-    call MPI_IRECV( ubuf(1), 1, dtype, idproc+1, 1, comm, msgid1, ierr )
-    call MPI_IRECV( ubuf(2), 1, dtype, idproc+1, 2, comm, msgid2, ierr )
+    call MPI_IRECV( ubuf(1), 1, p_dtype_real, idproc+1, 1, comm, msgid1, ierr )
+    call MPI_IRECV( ubuf(2), 1, p_dtype_real, idproc+1, 2, comm, msgid2, ierr )
   endif
   ! sender
   if ( idproc > 0 ) then
-    call MPI_SEND( this%buf1_re(1), 1, dtype, idproc-1, 1, comm, ierr )
-    call MPI_SEND( this%buf1_im(1), 1, dtype, idproc-1, 2, comm, ierr )
+    call MPI_SEND( this%buf1_re(1), 1, p_dtype_real, idproc-1, 1, comm, ierr )
+    call MPI_SEND( this%buf1_im(1), 1, p_dtype_real, idproc-1, 2, comm, ierr )
   endif
   ! wait receiving finish
   if ( idproc < nvp-1 ) then
@@ -688,7 +706,7 @@ subroutine get_solution_bt_iter( this, mode )
   call start_tprof( 'solve plasma bt' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
-  idproc = this%rf_re(mode)%pp%getlidproc()
+  idproc = id_proc_loc()
 
   if ( mode == 0 ) then
 
@@ -746,7 +764,7 @@ subroutine solve_field_bz( this, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bz( i, jay_re(i) )
@@ -784,7 +802,7 @@ subroutine solve_field_bt( this, rho )
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bt( i, rho_re(i) )
@@ -826,7 +844,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )

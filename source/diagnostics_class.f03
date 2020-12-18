@@ -1,15 +1,16 @@
 module diagnostics_class
 
-use parallel_class
-use parallel_pipe_class
+use parallel_module
+use options_class
 use hdf5io_class
 use sim_fields_class
 use sim_beams_class
-use sim_species_class
+use sim_plasma_class
 use field_class
 use beam3d_class
 use species2d_class
-use sysutil
+use neutral_class
+use sysutil_module
 use param
 use input_class
 use mpi
@@ -18,33 +19,40 @@ implicit none
 
 private
 
-public :: sim_diag
+public :: sim_diag, diag_node
 
 type diag_node
-
-  ! private
-
+  
   class( diag_node ), pointer :: next => null()
+  ! HDF5 files
   type( hdf5file ), dimension(:), allocatable :: files
+  ! Number of HDF5 files
+  integer :: num_files
+  ! Target object to be associated
   class(*), pointer :: obj => null()
-  integer :: num_files=1, dim = 0, df=0, psample=0, ty=p_tdiag_grid
+  ! Text diagnostic file identifier
+  integer :: fid
+  ! Dimension of the grid data
+  integer :: dim = 0
+  ! Dump frequency
+  integer :: dump_freq = 0
+  ! Sampling percentage
+  integer :: psample = 0
+  ! Diagnostic type
+  character(len=32) :: type_label = ''
+  ! Tag and identifier for pipeline data communication
   integer :: tag = -1, id = MPI_REQUEST_NULL
 
   contains
 
-  generic :: new => init_diag_node
-  generic :: del => end_diag_node
+  procedure :: new => init_diag_node
+  procedure :: del => end_diag_node
   procedure :: set_sim_time
-
-  procedure, private :: init_diag_node, end_diag_node
 
 end type diag_node
 
 type sim_diag
 
-  ! private
-
-  class( parallel_pipe ), pointer :: pp => null()
   class( diag_node ), pointer :: head => null()
   class( diag_node ), pointer :: diag => null()
   integer :: num_diag = 0
@@ -54,27 +62,31 @@ type sim_diag
 
   contains
 
-  generic :: new => init_sim_diag
-  generic :: del => end_sim_diag
-  generic :: run => run_sim_diag
+  procedure :: alloc => alloc_sim_diag
+  procedure :: new => init_sim_diag
+  procedure :: del => end_sim_diag
+  procedure :: run => run_sim_diag
+  procedure :: set_ndump_gcd
+  procedure :: to_next, to_head, to_tail, is_tail
   generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst
 
-  procedure, private :: init_sim_diag, end_sim_diag, run_sim_diag
   procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst
-  procedure, private :: to_next, to_head, to_tail, is_tail
-  procedure, private :: set_ndump_gcd
+  procedure, private :: init_diag_beams
+  procedure, private :: init_diag_plasma
+  procedure, private :: init_diag_fields
+  procedure, private :: init_diag_rst
 
 end type sim_diag
 
 contains
 
-subroutine init_diag_node( this, obj, df, num_files, dim, psample, id )
+subroutine init_diag_node( this, obj, dump_freq, num_files, dim, psample, id )
 
   implicit none
 
   class( diag_node ), intent(inout) :: this
   class(*), intent(in), target :: obj
-  integer, intent(in) :: df
+  integer, intent(in) :: dump_freq
   integer, intent(in), optional :: num_files, dim, psample, id
 
   integer, save :: cls_level = 3
@@ -84,7 +96,7 @@ subroutine init_diag_node( this, obj, df, num_files, dim, psample, id )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   this%obj => obj
-  this%df = df
+  this%dump_freq = dump_freq
   if ( present(num_files) ) this%num_files = num_files
   if ( present(dim) ) this%dim = dim
   if ( present(psample) ) this%psample = psample
@@ -141,46 +153,39 @@ subroutine set_sim_time( this, tstep, time )
 
 end subroutine set_sim_time
 
-subroutine init_sim_diag( this, pp, input, fields, beams, species )
+subroutine alloc_sim_diag( this, input )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( input_json ), intent(inout) :: input
-  class( sim_fields ), intent(inout), target :: fields
+  type( input_json ), intent(inout) :: input
+
+  ! placeholder, do nothing currently
+
+end subroutine alloc_sim_diag
+
+subroutine init_diag_beams( this, input, beams )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
   class( sim_beams ), intent(in), target :: beams
-  class( sim_species ), intent(in), target :: species
 
   ! local data
-  integer :: nbeams, nspecies, max_mode, ndump, psample, dim
-  integer :: i, j, k, m, n, ierr
+  integer :: nbeams, max_mode, ndump, psample
+  integer :: i, j, k, m, n
   real :: rmin, rmax, zmin, zmax, dt
-  logical :: rst
-  character(len=32) :: sn1, sn2, sn3, sn4
   character(len=:), allocatable :: ss
-  class(*), pointer :: obj => null()
-
-  integer, save :: cls_level = 2
-  character(len=32), save :: cls_name = 'sim_diag'
-  character(len=32), save :: sname = 'init_sim_diag'
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  this%pp => pp
-  this%num_diag = 0
 
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.nbeams', nbeams )
-  call input%get( 'simulation.nspecies', nspecies )
 
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
   call input%get( 'simulation.box.z(1)', zmin )
   call input%get( 'simulation.box.z(2)', zmax )
   call input%get( 'simulation.dt', dt )
-
-  call input%get( 'simulation.dump_restart', rst )
 
   ! add beam diagnostics
   do i = 1, nbeams
@@ -197,8 +202,9 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
             call this%add_diag( &
               obj       = beams%beam(i), &
               max_mode  = max_mode, &
-              df        = ndump, &
+              dump_freq = ndump, &
               dim       = 1, &
+              type_label= 'charge_cyl_m', &
               filename  = './Beam'//num2str(i)//'/Charge/', &
               dataname  = 'charge', &
               timeunit  = '1 / \omega_p', &
@@ -217,13 +223,13 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
             call input%get( 'beam('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
             call this%add_diag( &
               obj       = beams%beam(i), &
-              df        = ndump, &
+              dump_freq = ndump, &
               psample   = psample, &
+              type_label= 'raw', &
               filename  = './Beam'//num2str(i)//'/Raw/', &
               dataname  = 'raw', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
-              ty        = 'particles', &
               units     = '', &
               label     = 'Beam Raw' )
           end select
@@ -231,6 +237,30 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
       endif
     enddo ! end of j
   enddo ! end of i
+
+end subroutine init_diag_beams
+
+subroutine init_diag_plasma( this, input, plasma )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  class( sim_plasma ), intent(in), target :: plasma
+  ! local data
+  integer :: nspecies, nneutrals, max_mode, ndump, psample
+  integer :: i, j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=:), allocatable :: ss
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.nspecies', nspecies )
+  call input%get( 'simulation.nneutrals', nneutrals )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
 
   ! add species diagnostics
   do i = 1, nspecies
@@ -245,10 +275,11 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           select case ( trim(ss) )
           case ( 'charge_cyl_m' )
             call this%add_diag( &
-              obj       = species%spe(i), &
+              obj       = plasma%spe(i), &
               max_mode  = max_mode, &
-              df        = ndump, &
+              dump_freq = ndump, &
               dim       = 1, &
+              type_label= 'charge_cyl_m', &
               filename  = './Species'//num2str(i)//'/'//'Charge'//'/', &
               dataname  = 'charge', &
               timeunit  = '1 / \omega_p', &
@@ -264,14 +295,14 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           case ( 'raw' )
             call input%get( 'species('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
             call this%add_diag( &
-              obj       = species%spe(i), &
-              df        = ndump, &
+              obj       = plasma%spe(i), &
+              dump_freq = ndump, &
               psample   = psample, &
+              type_label= 'raw', &
               filename  = './Species'//num2str(i)//'/Raw/', &
               dataname  = 'raw', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
-              ty        = 'particles', &
               units     = '', &
               label     = 'Species Raw' )
           end select
@@ -280,7 +311,99 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
     enddo ! end of j
   enddo ! end of i
 
-  ! add field diagnostics
+  ! add neutral diagnostics
+  do i = 1, nneutrals
+    call input%info( 'neutrals('//num2str(i)//').diag', n_children=m )
+    do j = 1, m
+      call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'charge_cyl_m' )
+            call this%add_diag( &
+              obj       = plasma%neut(i), &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = 1, &
+              type_label= 'charge_cyl_m', &
+              filename  = './Neutral'//num2str(i)//'/'//'Charge'//'/', &
+              dataname  = 'charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          case ( 'ion_cyl_m' )
+            call this%add_diag( &
+              obj       = plasma%neut(i), &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = 1, &
+              type_label= 'ion_cyl_m', &
+              filename  = './Neutral'//num2str(i)//'/'//'Ion_charge'//'/', &
+              dataname  = 'ion_charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          case ( 'raw' )
+            call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
+            call this%add_diag( &
+              obj       = plasma%neut(i), &
+              dump_freq = ndump, &
+              psample   = psample, &
+              type_label= 'raw', &
+              filename  = './Neutral'//num2str(i)//'/Raw/', &
+              dataname  = 'raw', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              units     = '', &
+              label     = 'Neutral Raw' )
+          end select
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
+
+end subroutine init_diag_plasma
+
+subroutine init_diag_fields( this, input, opts, fields )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_fields ), intent(inout), target :: fields
+  ! local data
+  integer :: max_mode, ndump, dim
+  integer :: j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=32) :: sn1, sn2, sn3, sn4
+  character(len=:), allocatable :: ss
+  class(*), pointer :: obj => null()
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
+
   call input%info( 'field.diag', n_children=m )
   do j = 1, m
     call input%get( 'field.diag'//'('//num2str(j)//').ndump', ndump )
@@ -410,7 +533,8 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 3
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%alloc( max_mode )
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -423,7 +547,8 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 1
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%alloc( max_mode )
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -436,7 +561,8 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
           dim = 2
           if ( .not. associated(fields%vpot) ) then
             allocate( fields%vpot )
-            call fields%vpot%new( pp, fields%psi%gp, max_mode, p_ps_linear, &
+            call fields%vpot%alloc( max_mode )
+            call fields%vpot%new( opts, max_mode, p_ps_linear, &
               p_bnd_open )
           endif
           obj => fields%vpot
@@ -445,8 +571,9 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
         call this%add_diag( &
           obj       = obj, &
           max_mode  = max_mode, &
-          df        = ndump, &
+          dump_freq = ndump, &
           dim       = dim, &
+          type_label= trim(ss), &
           filename  = './Fields/'//trim(sn1)//'/', &
           dataname  = trim(sn2), &
           timeunit  = '1 / \omega_p', &
@@ -463,21 +590,73 @@ subroutine init_sim_diag( this, pp, input, fields, beams, species )
     endif
   enddo ! end of j
 
+end subroutine init_diag_fields
+
+subroutine init_diag_rst( this, input, beams )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  class( sim_beams ), intent(in), target :: beams
+
+  integer :: i, ndump, nbeams
+
+  call input%get( 'simulation.ndump_restart', ndump )
+  call input%get( 'simulation.nbeams', nbeams )
+  do i = 1, nbeams
+    call this%add_diag( &
+      obj        = beams%beam(i), &
+      dump_freq  = ndump, &
+      type_label = 'rst', &
+      filename   = './RST/Beam'//num2str(i,2)//'/', &
+      dataname   = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6) )
+  enddo
+
+end subroutine init_diag_rst
+
+subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_fields ), intent(inout) :: fields
+  class( sim_beams ), intent(in) :: beams
+  class( sim_plasma ), intent(in) :: plasma
+
+  ! local data
+  integer :: ierr
+  logical :: rst
+
+  integer, save :: cls_level = 2
+  character(len=32), save :: cls_name = 'sim_diag'
+  character(len=32), save :: sname = 'init_sim_diag'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%num_diag = 0
+
+  call input%get( 'simulation.dump_restart', rst )
+
+  ! initialize beam diagnostics
+  call this%init_diag_beams( input, beams )
+
+  ! initialize species diagnostics
+  call this%init_diag_plasma( input, plasma )
+
+  ! initialize field diagnostics
+  call this%init_diag_fields( input, opts, fields )
+
+  ! initialize restart file diagnostics
   if (rst) then
-    call input%get( 'simulation.ndump_restart', ndump )
-    do i = 1, nbeams
-       call this%add_diag( &
-        obj      = beams%beam(i), &
-        df       = ndump, &
-        filename = './RST/Beam'//num2str(i,2)//'/', &
-        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(pp%getidproc(),6), &
-        ty       = 'restart' )
-    enddo
+    call this%init_diag_rst( input, beams )
   endif
 
   call this%set_ndump_gcd()
 
-  call MPI_BARRIER( pp%getlworld(), ierr )
+  call mpi_barrier( comm_world(), ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -531,35 +710,73 @@ subroutine run_sim_diag( this, tstep, dt )
   if ( .not. associated(this%diag) ) return
 
   do
-    if ( mod( tstep, this%diag%df ) == 0 ) then
+    if ( mod( tstep, this%diag%dump_freq ) == 0 ) then
 
       call this%diag%set_sim_time( tstep, tstep*dt )
+
       select type ( obj => this%diag%obj )
+
       class is ( field )
+
         rtag = ntag(); stag = rtag
-        call MPI_WAIT( this%diag%id, istat, ierr )
+        call mpi_wait( this%diag%id, istat, ierr )
         call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
+      
       class is ( beam3d )
-        select case ( this%diag%ty )
-        case ( p_tdiag_raw )
+
+        select case ( trim( this%diag%type_label ) )
+
+        case ( 'raw' )
+
           rtag = ntag(); stag = rtag
-          call MPI_WAIT( this%diag%id, istat, ierr )
+          call mpi_wait( this%diag%id, istat, ierr )
           call obj%wr( this%diag%files(1), this%diag%psample, rtag, stag, this%diag%id )
-        case ( p_tdiag_grid )
+
+        case ( 'charge_cyl_m' )
+
           rtag = ntag(); stag = rtag
-          call MPI_WAIT( this%diag%id, istat, ierr )
+          call mpi_wait( this%diag%id, istat, ierr )
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
-        case ( p_tdiag_rst )
+
+        case ( 'rst' )
+
           call obj%wrst( this%diag%files(1) )
+
         end select
+
       class is ( species2d )
-        select case ( this%diag%ty )
-        case ( p_tdiag_raw )
+
+        select case ( trim( this%diag%type_label ) )
+
+        case ( 'raw' )
           call obj%wr( this%diag%files(1) )
-        case ( p_tdiag_grid )
+
+        case ( 'charge_cyl_m' )
+
           rtag = ntag(); stag = rtag
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
+
         end select
+
+      class is ( neutral )
+
+        select case ( trim( this%diag%type_label ) )
+
+        case ( 'raw' )
+          call obj%wr( this%diag%files(1) )
+
+        case ( 'charge_cyl_m' )
+
+          rtag = ntag(); stag = rtag
+          call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
+
+        case ( 'ion_cyl_m' )
+
+          rtag = ntag(); stag = rtag
+          call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
+
+        end select
+
       end select
 
     endif
@@ -577,15 +794,15 @@ subroutine run_sim_diag( this, tstep, dt )
 end subroutine run_sim_diag
 
 ! add 2d-plot diagnostics of cylindrical modes
-subroutine add_diag_cym( this, obj, max_mode, df, dim, filename, dataname, timeunit, dt, &
-  axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
+subroutine add_diag_cym( this, obj, max_mode, dump_freq, dim, type_label, filename, &
+  dataname, timeunit, dt, axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: max_mode, df, dim
-  character(len=*), intent(in) :: filename, timeunit, dataname, units, label
+  integer, intent(in) :: max_mode, dump_freq, dim
+  character(len=*), intent(in) :: filename, timeunit, dataname, units, label, type_label
   integer, intent(in) :: rank
   real, intent(in) :: dt
   character(len=*), dimension(3), intent(in) :: axisname, axislabel, axisunits
@@ -602,16 +819,16 @@ subroutine add_diag_cym( this, obj, max_mode, df, dim, filename, dataname, timeu
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
+    call this%head%new( obj, dump_freq, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
+    call this%diag%new( obj, dump_freq, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
   endif
 
-  this%diag%ty = p_tdiag_grid
+  this%diag%type_label = trim(type_label)
 
   do i = 1, 2*max_mode+1
 
@@ -644,14 +861,14 @@ subroutine add_diag_cym( this, obj, max_mode, df, dim, filename, dataname, timeu
 end subroutine add_diag_cym
 
 ! add restart file for particles
-subroutine add_diag_rst( this, obj, df, filename, dataname, ty )
+subroutine add_diag_rst( this, obj, dump_freq, type_label, filename, dataname )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: df
-  character(len=*), intent(in) :: filename, dataname, ty
+  integer, intent(in) :: dump_freq
+  character(len=*), intent(in) :: filename, dataname, type_label
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag'
@@ -661,19 +878,20 @@ subroutine add_diag_rst( this, obj, df, filename, dataname, ty )
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=1 )
+    call this%head%new( obj, dump_freq, num_files=1 )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=1 )
+    call this%diag%new( obj, dump_freq, num_files=1 )
   endif
 
-  this%diag%ty = p_tdiag_rst
+  this%diag%type_label = trim(type_label)
+
   call system( 'mkdir -p '//trim(filename) )
   call this%diag%files(1)%new( &
-    ty        = ty, &
+    ty        = 'restart', &
     filename  = filename, &
     dataname  = dataname )
 
@@ -684,15 +902,15 @@ subroutine add_diag_rst( this, obj, df, filename, dataname, ty )
 end subroutine add_diag_rst
 
 ! add raw data for particles
-subroutine add_diag_raw( this, obj, df, psample, filename, dataname, timeunit, dt, &
-  ty, units, label )
+subroutine add_diag_raw( this, obj, dump_freq, psample, type_label, filename, &
+  dataname, timeunit, dt, units, label )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: df, psample
-  character(len=*), intent(in) :: filename, timeunit, dataname, units, label, ty
+  integer, intent(in) :: dump_freq, psample
+  character(len=*), intent(in) :: filename, timeunit, dataname, units, label, type_label
   real, intent(in) :: dt
 
   integer, save :: cls_level = 2
@@ -703,21 +921,22 @@ subroutine add_diag_raw( this, obj, df, psample, filename, dataname, timeunit, d
 
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, df, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
+    call this%head%new( obj, dump_freq, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, df, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
+    call this%diag%new( obj, dump_freq, num_files=1, psample=psample, id=MPI_REQUEST_NULL )
   endif
 
-  this%diag%ty = p_tdiag_raw
+  this%diag%type_label = trim(type_label)
+
   call system( 'mkdir -p '//trim(filename) )
   call this%diag%files(1)%new( &
     timeunit  = timeunit, &
     dt        = dt, &
-    ty        = ty, &
+    ty        = 'particles', &
     filename  = filename, &
     dataname  = dataname, &
     units     = units, &
@@ -745,11 +964,11 @@ subroutine set_ndump_gcd( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%to_head()
-  this%ndump_gcd = this%diag%df
+  this%ndump_gcd = this%diag%dump_freq
   do
     ! use Euclidean algorithm to calculate GCD
     a = this%ndump_gcd
-    b = this%diag%df
+    b = this%diag%dump_freq
     if ( b == 0 ) b = 1
     do while ( mod(a,b) /= 0 )
       temp = a

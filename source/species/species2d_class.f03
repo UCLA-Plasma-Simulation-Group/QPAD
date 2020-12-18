@@ -1,11 +1,9 @@
-! species2d class for QPAD
-
 module species2d_class
 
-use parallel_pipe_class
+use parallel_module
 use param
-use sysutil
-use grid_class
+use sysutil_module
+use options_class
 use fdist2d_class
 use field_psi_class
 use field_e_class
@@ -31,10 +29,10 @@ type species2d
    class(field_jay), allocatable :: cu, amu
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
-   class(parallel_pipe), pointer :: pp => null()
 
    contains
 
+   procedure :: alloc => alloc_species2d
    procedure :: new   => init_species2d
    procedure :: renew => renew_species2d
    procedure :: del   => end_species2d
@@ -56,18 +54,29 @@ character(len=10) :: cls_name = 'species2d'
 integer, parameter :: cls_level = 2
 
 contains
-!
-subroutine init_species2d(this,pp,gd,pf,part_shape,&
-&num_modes,qbm,xdim,s,smooth_type,smooth_order)
+
+subroutine alloc_species2d( this )
 
    implicit none
 
    class(species2d), intent(inout) :: this
-   class(parallel_pipe), intent(in), pointer :: pp
-   class(grid), intent(in), pointer :: gd
+
+   if ( .not. associated( this%part ) ) then
+      allocate( part2d :: this%part )
+   endif
+
+end subroutine alloc_species2d
+
+subroutine init_species2d(this,opts,pf,part_shape,&
+&num_modes,qbm,s,smooth_type,smooth_order)
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   type(options), intent(in) :: opts
    class(fdist2d), intent(inout), target :: pf
    real, intent(in) :: qbm, s
-   integer, intent(in) :: xdim, part_shape, num_modes
+   integer, intent(in) :: part_shape, num_modes
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    real :: dt
@@ -76,25 +85,24 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%pf => pf
-   this%pp => pp
-   dt = gd%get_dxi()
+   dt = opts%get_dxi()
 
-   allocate(this%part,this%q,this%qn,this%cu,this%amu,this%dcu)
+   allocate(this%q,this%qn,this%cu,this%amu,this%dcu)
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
-      call this%q%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
-      call this%qn%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
-      call this%cu%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
-      call this%dcu%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
-      call this%amu%new(pp,gd,num_modes,part_shape,smooth_type,smooth_order)
+      call this%q%new(opts,num_modes,part_shape,smooth_type,smooth_order)
+      call this%qn%new(opts,num_modes,part_shape,smooth_type,smooth_order)
+      call this%cu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
+      call this%dcu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
+      call this%amu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
    else
-      call this%q%new(pp,gd,num_modes,part_shape)
-      call this%qn%new(pp,gd,num_modes,part_shape)
-      call this%cu%new(pp,gd,num_modes,part_shape)
-      call this%dcu%new(pp,gd,num_modes,part_shape)
-      call this%amu%new(pp,gd,num_modes,part_shape)
+      call this%q%new(opts,num_modes,part_shape)
+      call this%qn%new(opts,num_modes,part_shape)
+      call this%cu%new(opts,num_modes,part_shape)
+      call this%dcu%new(opts,num_modes,part_shape)
+      call this%amu%new(opts,num_modes,part_shape)
    endif
-   call this%part%new(pp,gd,pf,qbm,dt,s)
+   call this%part%new(opts,pf,qbm,dt,s)
 
    this%qn = 0.0
    this%cu = 0.0
@@ -102,7 +110,7 @@ subroutine init_species2d(this,pp,gd,pf,part_shape,&
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
-   if (pp%getstageid() == 0) then
+   if (id_stage() == 0) then
       ! call this%q%smooth(this%q)
       call this%q%copy_slice(1,p_copy_1to2)
    end if
@@ -141,7 +149,7 @@ subroutine renew_species2d(this,s)
    call this%qn%acopy_gc_f1( dir=p_mpi_forward )
    call this%qn%copy_gc_f1()
    this%q = this%qn
-   if (this%pp%getstageid() == 0) then
+   if (id_stage() == 0) then
       ! call this%q%smooth(this%q)
       call this%q%copy_slice(1,p_copy_1to2)
    end if
@@ -261,7 +269,7 @@ subroutine psend_species2d(this, tag, id)
    integer, intent(in) :: tag
    integer, intent(inout) :: id
 ! local data
-   character(len=18), save :: sname = 'pipesend_part2d'
+   character(len=18), save :: sname = 'pipesend_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%part%pipesend(tag,id)
@@ -332,7 +340,6 @@ subroutine cbq_species2d(this,pos)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    ! call add_f1(this%q,this%cu,this%q,(/1/),(/3/),(/1/))
    call add_f1( this%cu, this%q, (/3/), (/1/) )
-   call this%q%smooth_f1()
    call this%q%copy_slice(pos,p_copy_1to2)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

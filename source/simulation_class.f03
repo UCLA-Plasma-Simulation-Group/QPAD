@@ -1,11 +1,10 @@
 module simulation_class
 
-use parallel_class
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use sim_fields_class
 use sim_beams_class
-use sim_species_class
+use sim_plasma_class
 use diagnostics_class
 use field_class
 use field_psi_class
@@ -15,9 +14,10 @@ use field_e_class
 use field_src_class
 use beam3d_class
 use species2d_class
+use neutral_class
 
 use input_class
-use sysutil
+use sysutil_module
 use param
 use mpi
 
@@ -35,33 +35,29 @@ type simulation
 
   ! private
 
-  type( input_json ), pointer :: input => null()
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
+  class( sim_fields ), pointer :: fields => null()
+  class( sim_plasma ), pointer :: plasma => null()
+  class( sim_beams ),  pointer :: beams  => null()
+  class( sim_diag ),   pointer :: diag   => null()
 
-  type( sim_fields ) :: fields
-  type( sim_species ) :: species
-  type( sim_beams ) :: beams
-  type( sim_diag ) :: diag
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, tstep
+  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, nneutrals, tstep
   integer :: ndump, max_mode
 
   ! pipeline parameters
   integer, dimension(:), allocatable :: tag_field, id_field
   integer, dimension(:), allocatable :: tag_spe, id_spe
+  integer, dimension(:,:), allocatable :: tag_neut, id_neut
   integer, dimension(:), allocatable :: tag_beam, id_beam
   integer, dimension(:), allocatable :: tag_bq, id_bq
   integer, dimension(:), allocatable :: tag_diag, id_diag
 
   contains
 
-  generic :: new => init_simulation
-  generic :: del => end_simulation
-  generic :: run => run_simulation
-
-  procedure, private :: init_simulation, end_simulation
-  procedure, private :: run_simulation
+  procedure :: alloc => alloc_simulation
+  procedure :: new   => init_simulation
+  procedure :: del   => end_simulation
+  procedure :: run   => run_simulation
 
 end type simulation
 
@@ -70,62 +66,103 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine init_simulation(this)
+subroutine alloc_simulation( this, input )
+
+  implicit none
+
+  class( simulation ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  ! local data
+  character(len=18), save :: sname = 'alloc_simulation'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  if ( .not. associated( this%fields ) )  allocate( sim_fields :: this%fields )
+  if ( .not. associated( this%plasma ) ) allocate( sim_plasma :: this%plasma )
+  if ( .not. associated( this%beams ) )   allocate( sim_beams :: this%beams )
+  if ( .not. associated( this%diag ) )    allocate( sim_diag :: this%diag )
+
+  call this%fields%alloc( input )
+  call this%plasma%alloc( input )
+  call this%beams%alloc( input )
+  call this%diag%alloc( input )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine alloc_simulation
+
+subroutine init_simulation(this, input, opts)
 
   implicit none
 
   class(simulation), intent(inout) :: this
+  type(input_json), intent(inout) :: input
+  type(options), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'init_simulation'
 
   real :: n0, dt, time
   logical :: read_rst
-
-  allocate( this%input )
-  call this%input%new()
-  this%pp => this%input%pp
-  this%gp => this%input%gp
+  integer :: rnd_seed, num_seeds
+  integer, dimension(:), allocatable :: seed
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%dr  = this%gp%get_dr()
-  this%dxi = this%gp%get_dxi()
-  this%nstep2d = this%gp%get_ndp(2)
+  this%dr  = opts%get_dr()
+  this%dxi = opts%get_dxi()
+  this%nstep2d = opts%get_ndp(2)
 
-  call this%input%get( 'simulation.n0', n0 )
-  call this%input%get( 'simulation.time', time )
-  call this%input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.n0', n0 )
+  call input%get( 'simulation.time', time )
+  call input%get( 'simulation.dt', dt )
   this%nstep3d = time/dt
   this%dt = dt
 
-  call this%input%get( 'simulation.read_restart', read_rst )
+  call input%get( 'simulation.read_restart', read_rst )
   if (read_rst) then
-    call this%input%get( 'simulation.restart_timestep', this%start3d )
+    call input%get( 'simulation.restart_timestep', this%start3d )
     this%start3d = this%start3d + 1
   else
     this%start3d = 1
   endif
 
-  call this%input%get( 'simulation.iter', this%iter )
-  call this%input%get( 'simulation.nbeams', this%nbeams )
-  call this%input%get( 'simulation.nspecies', this%nspecies )
-  call this%input%get( 'simulation.max_mode', this%max_mode )
+  call input%get( 'simulation.iter', this%iter )
+  call input%get( 'simulation.nbeams', this%nbeams )
+  call input%get( 'simulation.nspecies', this%nspecies )
+  call input%get( 'simulation.nneutrals', this%nneutrals )
+  call input%get( 'simulation.max_mode', this%max_mode )
+  call input%get( 'simulation.random_seed', rnd_seed )
 
-  call this%fields%new( this%input )
-  call this%beams%new( this%input )
-  call this%species%new( this%input, (this%start3d-1)*dt )
+  call this%fields%new( input, opts )
+  call this%beams%new( input, opts )
+  call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
-  call this%diag%new( this%pp, this%input, this%fields, this%beams, this%species )
+  call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
 
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
+  allocate( this%tag_neut(3, this%nneutrals), this%id_neut(3, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
 
-  this%id_field(:) = MPI_REQUEST_NULL
-  this%id_spe(:)   = MPI_REQUEST_NULL
-  this%id_beam(:)  = MPI_REQUEST_NULL
-  this%id_bq(:)    = MPI_REQUEST_NULL
+  this%id_field = MPI_REQUEST_NULL
+  this%id_spe   = MPI_REQUEST_NULL
+  this%id_neut  = MPI_REQUEST_NULL
+  this%id_beam  = MPI_REQUEST_NULL
+  this%id_bq    = MPI_REQUEST_NULL
+
+  ! initialize pseudo-random number sequence
+  if ( rnd_seed == 0 ) then
+    ! OS generated seed
+    call random_seed()
+  else
+    ! user specified seeds
+    call random_seed( size=num_seeds )
+    allocate( seed(num_seeds) )
+    seed = rnd_seed
+    call random_seed( put=seed )
+    deallocate( seed )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -138,20 +175,19 @@ subroutine end_simulation(this)
   class( simulation ), intent(inout) :: this
 
   ! local data
+  integer :: ierr
   character(len=18), save :: sname = 'end_simulation'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%fields%del()
   call this%beams%del()
-  call this%species%del()
+  call this%plasma%del()
   call this%diag%del()
-  call this%gp%del()
-  call this%pp%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-  ! call MPI_FINALIZE(ierr)
+  call mpi_finalize(ierr)
 
 end subroutine end_simulation
 
@@ -174,6 +210,7 @@ subroutine run_simulation( this )
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
+  type(neutral), dimension(:), pointer :: neut
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -195,8 +232,8 @@ subroutine run_simulation( this )
   acu    => this%fields%acu
 
   beam => this%beams%beam
-  spe  => this%species%spe
-
+  spe  => this%plasma%spe
+  neut => this%plasma%neut
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
@@ -209,9 +246,7 @@ subroutine run_simulation( this )
       this%tag_bq(k) = ntag()
       call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
     enddo
-    do k = 1, this%nbeams
-      call beam(k)%qdp( this%tag_bq(k) )
-    enddo
+
     call this%diag%run( 0, this%dt )
 
   endif
@@ -236,27 +271,30 @@ subroutine run_simulation( this )
       call spe(k)%precv( this%tag_spe(k) )
     enddo
 
-    ! pipeline data transfer for fields
-    this%tag_field(1) = ntag(); call cu%pipe_recv( this%tag_field(1) )
-    this%tag_field(2) = ntag(); call b%pipe_recv( this%tag_field(2) )
-    this%tag_field(3) = ntag(); call e%pipe_recv( this%tag_field(3) )
-    this%tag_field(4) = ntag(); call psi%pipe_recv( this%tag_field(4), nslice=2 )
+    ! pipeline data transfer for neutrals
+    do k = 1, this%nneutrals
+      ! tag 1 and 2 are for particle array and ion density transfer respectively
+      this%tag_neut(1,k) = ntag()
+      this%tag_neut(2,k) = ntag()
+      this%tag_neut(3,k) = ntag()
+      call neut(k)%precv( this%tag_neut(1,k), this%tag_neut(2,k), this%tag_neut(3,k) )
+    enddo
 
-    call cu%copy_slice( 1, p_copy_2to1 )
+    ! pipeline data transfer for current and species B-field
+    this%tag_field(1) = ntag()
+    call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
+    this%tag_field(4) = ntag()
+    call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
+
     b     = 0.0
     e     = 0.0
-    b_spe = 0.0
     e_spe = 0.0
     psi   = 0.0
+    cu    = 0.0
+    acu   = 0.0
+    amu   = 0.0
 
-    do j = 1, this%nstep2d + 1
-
-      ! finish the beam qdeposit
-      if ( j == this%nstep2d + 1 ) then
-        do k = 1, this%nbeams
-          call beam(k)%qdp( this%tag_bq(k) )
-        enddo
-      endif
+    do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
@@ -265,25 +303,28 @@ subroutine run_simulation( this )
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
       enddo
+      do k = 1, this%nneutrals
+        call neut(k)%qdp( q_spe )
+        call neut(k)%ion_deposit( q_spe )
+      enddo
 
       call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
-      ! do k = 1, this%nspecies
-      !   call spe(k)%extpsi( psi )
-      ! enddo
-      ! call e%solve( psi, j )
       call b_spe%solve( cu )
 
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
-        call e%solve( cu ) !!!
+        call e%solve( cu )
         call e%solve( b, psi )
         cu = 0.0
         acu = 0.0
         amu = 0.0
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, cu, amu, acu )
+        enddo
+        do k = 1, this%nneutrals
+          call neut(k)%amjdp( e, b, cu, amu, acu )
         enddo
 
         call dcu%solve( acu, amu )
@@ -292,6 +333,9 @@ subroutine run_simulation( this )
         if ( l == this%iter ) then
           do k = 1, this%nspecies
             call spe(k)%cbq(j)
+          enddo
+          do k = 1, this%nneutrals
+            call neut(k)%cbq(j)
           enddo
           call cu%copy_slice( j, p_copy_1to2 )
         endif
@@ -312,14 +356,42 @@ subroutine run_simulation( this )
 
       call dot_f1( this%dxi, dcu )
       call add_f1( dcu, cu, (/1,2/), (/1,2/) )
+
+      ! send the last slice of current and species B-field to the next stage
+      if ( j == this%nstep2d ) then
+        call mpi_wait( this%id_field(1), istat, ierr )
+        call cu%pipe_send( this%tag_field(1), this%id_field(1), 'forward' )
+        call mpi_wait( this%id_field(4), istat, ierr )
+        call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
+      endif
+
+      ! advance species particles
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
       enddo
+
+      ! ionize and advance particles of neutrals
+      do k = 1, this%nneutrals
+        call neut(k)%update( e, psi, i*this%dt )
+        call neut(k)%push( e, b )
+      enddo
+
       call e%copy_slice( j, p_copy_1to2 )
       call b%copy_slice( j, p_copy_1to2 )
       call psi%copy_slice( j, p_copy_1to2 )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
+
+      ! send the first slice of E and B field back to the last stage for 3D 
+      ! particle push
+      if ( j == 1 ) then
+        call mpi_wait( this%id_field(2), istat, ierr )
+        this%tag_field(2) = ntag()
+        call b%pipe_send( this%tag_field(2), this%id_field(2), 'backward', 'inner' )
+        call mpi_wait( this%id_field(3), istat, ierr )
+        this%tag_field(3) = ntag()
+        call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
+      endif
 
     enddo ! 2d loop
 
@@ -328,28 +400,38 @@ subroutine run_simulation( this )
       call spe(k)%psend( this%tag_spe(k), this%id_spe(k) )
     enddo
 
-    ! pipeline for fields
-    call MPI_WAIT( this%id_field(1), istat, ierr )
-    call cu%pipe_send( this%tag_field(1), this%id_field(1) )
-    call MPI_WAIT( this%id_field(2), istat, ierr )
-    call b%pipe_send( this%tag_field(2), this%id_field(2) )
-    call MPI_WAIT( this%id_field(3), istat, ierr )
-    call e%pipe_send( this%tag_field(3), this%id_field(3) )
-    call MPI_WAIT( this%id_field(4), istat, ierr )
-    call psi%pipe_send( this%tag_field(4), this%id_field(4), nslice=2 )
+    ! pipeline for neutrals
+    do k = 1, this%nneutrals
+      call neut(k)%psend( this%tag_neut(1,k), this%id_neut(1,k), &
+                          this%tag_neut(2,k), this%id_neut(2,k), &
+                          this%tag_neut(3,k), this%id_neut(3,k) )
+    enddo
+
+    ! pipeline for E and B fields
+    call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )
+    call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
 
     ! pipeline for beams
     do k = 1, this%nbeams
       this%tag_beam(k) = ntag()
-      call MPI_WAIT( this%id_beam(k), istat, ierr )
+      call mpi_wait( this%id_beam(k), istat, ierr )
       call beam(k)%push( e, b, this%tag_beam(k), this%tag_beam(k), this%id_beam(k) )
     enddo
 
     call this%diag%run( this%tstep, this%dt )
 
+    ! renew species for next 3D step
     do k = 1, this%nspecies
-      call MPI_WAIT( this%id_spe(k), istat, ierr )
+      call mpi_wait( this%id_spe(k), istat, ierr )
       call spe(k)%renew( i*this%dt )
+    enddo
+
+    ! renew neutrals for next 3D step
+    do k = 1, this%nneutrals
+      call mpi_wait( this%id_neut(1,k), istat, ierr )
+      call mpi_wait( this%id_neut(2,k), istat, ierr )
+      call mpi_wait( this%id_neut(3,k), istat, ierr )
+      call neut(k)%renew( i*this%dt )
     enddo
 
   enddo ! 3d loop

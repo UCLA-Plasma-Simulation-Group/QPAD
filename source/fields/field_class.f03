@@ -1,12 +1,12 @@
 module field_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use ufield_class
 use ufield_smooth_class
 use hdf5io_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 
 implicit none
@@ -52,19 +52,18 @@ type :: field
 
   ! private
 
-  class( parallel_pipe ), pointer :: pp => null()
-  class( grid ), pointer :: gp => null()
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
   type( ufield_smooth ) :: smooth
 
   real :: dr, dxi
-  integer :: num_modes, dim
+  integer :: max_mode, dim
   integer :: entity
-  real, dimension(:,:,:,:), allocatable :: psend_buf, precv_buf
+  real, dimension(:,:,:), allocatable :: psend_buf, precv_buf
 
   contains
 
+  procedure :: alloc => alloc_field
   generic :: new => init_field, init_field_cp
   procedure :: del => end_field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
@@ -72,18 +71,20 @@ type :: field
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   procedure :: smooth_f1
   procedure :: copy_slice
-  procedure :: get_dr, get_dxi, get_num_modes, get_dim
+  procedure :: get_dr, get_dxi, get_max_mode, get_dim
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
-  procedure :: pipe_send, pipe_recv
-  procedure :: pipe_gc_send, pipe_gc_recv
+  generic :: pipe_send => pipe_send_f1, pipe_send_f2
+  generic :: pipe_recv => pipe_recv_f1, pipe_recv_f2
 
   procedure, private :: init_field, init_field_cp, end_field
   procedure, private :: get_rf_re_all, get_rf_re_mode, get_rf_im_all, get_rf_im_mode
   procedure, private :: write_hdf5_single, write_hdf5_pipe
+  procedure, private :: pipe_send_f1, pipe_recv_f1
+  procedure, private :: pipe_send_f2, pipe_recv_f2
 
-  generic :: assignment(=)   => assign_f1
-  generic :: as              => assign_f2
+  generic :: assignment(=) => assign_f1
+  generic :: as            => assign_f2
 
   procedure, private :: assign_f1, assign_f2
 
@@ -95,54 +96,75 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine init_field( this, pp, gp, dim, num_modes, gc_num, &
-  entity, smooth_type, smooth_order )
+subroutine alloc_field( this, max_mode )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, dim
+  integer, intent(in) :: max_mode
+
+  ! placeholder, do nothing
+
+end subroutine alloc_field
+
+subroutine init_field( this, opts, dim, max_mode, gc_num, &
+  entity, smooth_type, smooth_order, has_2d )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, dim
   integer, intent(in), dimension(2,2) :: gc_num
   integer, intent(in), optional :: entity, smooth_type, smooth_order
+  logical, intent(in), optional :: has_2d
 
-  integer :: i
+  integer :: i, entity_, smooth_type_, smooth_order_
+  logical :: has_2d_
   integer, dimension(2,2) :: gc_num_new
   character(len=20), save :: sname = "init_field"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%pp        => pp
-  this%gp        => gp
-  this%dim       = dim
-  this%num_modes = num_modes
-  this%dr        = gp%get_dr()
-  this%dxi       = gp%get_dxi()
+  ! set values of optional arguments
+  entity_       = p_entity_none
+  smooth_type_  = p_smooth_none
+  smooth_order_ = 0
+  has_2d_       = .true.
+  if ( present(entity) ) entity_ = entity
+  if ( present(smooth_type) ) smooth_type_ = smooth_type
+  if ( present(smooth_order) ) smooth_order_ = smooth_order
+  if ( present(has_2d) ) has_2d_ = has_2d
 
-  if ( present(entity) ) then
-    this%entity = entity
-  else
-    this%entity = p_entity_none
-  endif
+  this%dim      = dim
+  this%max_mode = max_mode
+  this%dr       = opts%get_dr()
+  this%dxi      = opts%get_dxi()
+  this%entity   = entity_
 
-  gc_num_new(:,1) = gc_num(:,1)
+  ! gc_num_new(:,1) = gc_num(:,1)
+  ! gc_num_new(:,2) = gc_num(:,2)
+
+  call this%smooth%new( smooth_type_, smooth_order_ )
+  gc_num_new(1,1) = max( gc_num(1,1), smooth_order_ )
+  gc_num_new(2,1) = max( gc_num(2,1), smooth_order_ )
   gc_num_new(:,2) = gc_num(:,2)
-  if ( present(smooth_type) .and. present(smooth_order) ) then
-    call this%smooth%new( smooth_type, smooth_order )
-    gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
-    gc_num_new(:,2) = gc_num(:,2)
-  else
-    call this%smooth%new( p_smooth_none, 0 )
-  endif
 
-  allocate( this%rf_re(0:num_modes) )
-  allocate( this%rf_im(num_modes) )
-  do i = 0, this%num_modes
-    call this%rf_re(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
+  ! if ( present(smooth_type) .and. present(smooth_order) ) then
+  !   call this%smooth%new( smooth_type, smooth_order )
+  !   gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
+  !   gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
+  !   gc_num_new(:,2) = gc_num(:,2)
+  ! else
+  !   call this%smooth%new( p_smooth_none, 0 )
+  ! endif
+
+  allocate( this%rf_re(0:max_mode) )
+  allocate( this%rf_im(max_mode) )
+  do i = 0, this%max_mode
+    call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
     if (i==0) cycle
-    call this%rf_im(i)%new( pp, gp, dim, i, gc_num_new, has_2d=.true. )
+    call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -158,17 +180,15 @@ subroutine init_field_cp( this, that )
 
   integer :: i
 
-  this%pp        => that%pp
-  this%gp        => that%gp
   this%dim       = that%get_dim()
-  this%num_modes = that%get_num_modes()
+  this%max_mode = that%get_max_mode()
   this%dr        = that%get_dr()
   this%dxi       = that%get_dxi()
   this%entity    = that%entity
 
-  allocate( this%rf_re(0:this%num_modes) )
-  allocate( this%rf_im(this%num_modes) )
-  do i = 0, this%num_modes
+  allocate( this%rf_re(0:this%max_mode) )
+  allocate( this%rf_im(this%max_mode) )
+  do i = 0, this%max_mode
     call this%rf_re(i)%new( that%get_rf_re(i) )
     if (i==0) cycle
     call this%rf_im(i)%new( that%get_rf_im(i) )
@@ -188,7 +208,7 @@ subroutine end_field( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call this%rf_re(0)%del()
-  do i = 1, this%num_modes
+  do i = 1, this%max_mode
     call this%rf_re(i)%del()
     call this%rf_im(i)%del()
   enddo
@@ -213,7 +233,7 @@ subroutine copy_slice( this, idx, dir )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'copy slices' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_slice( idx, dir )
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_slice( idx, dir )
@@ -235,7 +255,7 @@ subroutine copy_gc_f1( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_gc_f1()
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_gc_f1()
@@ -256,7 +276,7 @@ subroutine copy_gc_f2( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%copy_gc_f2()
     if ( i == 0 ) cycle
     call this%rf_im(i)%copy_gc_f2()
@@ -285,7 +305,7 @@ subroutine acopy_gc_f1( this, dir, ncell )
     nc = 1
   endif
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%acopy_gc_f1( dir, nc )
     if ( i == 0 ) cycle
     call this%rf_im(i)%acopy_gc_f1( dir, nc )
@@ -306,7 +326,7 @@ subroutine acopy_gc_f2( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%rf_re(i)%acopy_gc_f2()
     if ( i == 0 ) cycle
     call this%rf_im(i)%acopy_gc_f2()
@@ -316,302 +336,253 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-subroutine pipe_gc_send( this, tag, sid )
-
-  implicit none
-
-  class( field ), intent(inout) :: this
-  integer, intent(in) :: tag
-  integer, intent(inout) :: sid
-
-  integer :: i, j, k, m
-  integer :: idproc, idproc_des, stageid, nstage, lnvp, comm
-  integer :: n1p, nzp, count, dtype, ierr
-  integer, dimension(2) :: gc1, gc2
-  real, dimension(:,:,:,:), allocatable, save :: buf
-  character(len=20), save :: sname = "pipe_gc_send"
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'pipeline' )
-
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  nstage     = this%pp%getnstage()
-  idproc     = this%pp%getidproc()
-  idproc_des = idproc + lnvp
-  n1p        = size(this%rf_re(0)%f1, 2)
-  nzp        = this%gp%get_ndp(2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
-
-  gc1 = this%rf_re(0)%get_gc_num(1)
-  gc2 = this%rf_re(0)%get_gc_num(2)
-
-  if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
-
-  if ( stageid == nstage-1 ) then
-    sid = MPI_REQUEST_NULL
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
-  endif
-
-  if ( .not. allocated(buf) ) then
-    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
-  endif
-
-  ! pack m=0 mode
-  do k = 1, gc2(p_upper)
-    do j = 1, n1p
-      do i = 1, this%dim
-        buf(i,j,k,0) = this%rf_re(0)%f2(i, j-gc1(p_lower), nzp+k)
-      enddo
-    enddo
-  enddo
-
-  ! pack m>0 modes
-  if (this%num_modes > 0) then
-    do m = 1, this%num_modes
-      do k = 1, gc2(p_upper)
-        do j = 1, n1p
-          do i = 1, this%dim
-            buf(i,j,k,2*m-1) = this%rf_re(m)%f2(i, j-gc1(p_lower), nzp+k)
-            buf(i,j,k,2*m  ) = this%rf_im(m)%f2(i, j-gc1(p_lower), nzp+k)
-          enddo
-        enddo
-      enddo
-    enddo
-  endif
-
-  count = size(buf)
-  call MPI_ISEND( buf, count, dtype, idproc_des, tag, comm, sid, ierr )
-  ! check for error
-  if (ierr /= 0) call write_err('MPI_ISEND failed.')
-
-  call stop_tprof( 'pipeline' )
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine pipe_gc_send
-
-subroutine pipe_gc_recv( this, tag )
-
-  implicit none
-
-  class( field ), intent(inout) :: this
-  integer, intent(in) :: tag
-  ! integer, intent(inout) :: rid
-
-  integer :: i, j, k, m
-  integer :: idproc, idproc_src, stageid, lnvp, comm
-  integer :: n1p, count, dtype, ierr
-  integer, dimension(2) :: gc1, gc2
-  integer, dimension(MPI_STATUS_SIZE) :: stat
-  real, dimension(:,:,:,:), allocatable, save :: buf
-  character(len=20), save :: sname = "pipe_gc_recv"
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-  call start_tprof( 'pipeline' )
-
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
-  idproc_src = idproc - lnvp
-  n1p        = size(this%rf_re(0)%f1, 2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
-
-  gc1 = this%rf_re(0)%get_gc_num(1)
-  gc2 = this%rf_re(0)%get_gc_num(2)
-
-  if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
-
-  if ( stageid == 0 ) then
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
-  endif
-
-  if ( .not. allocated(buf) ) then
-    allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%num_modes) )
-  endif
-
-  count = size(buf)
-  call MPI_RECV( buf, count, dtype, idproc_src, tag, comm, stat, ierr )
-  ! check for error
-  if (ierr /= 0) call write_err('MPI_RECV failed.')
-
-  ! unpack m=0 mode
-  do k = 1, gc2(p_upper)
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%rf_re(0)%f2(i, j-gc1(p_lower), k) = &
-          this%rf_re(0)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,0)
-      enddo
-    enddo
-  enddo
-
-  ! unpack m>0 modes
-  if (this%num_modes > 0) then
-    do m = 1, this%num_modes
-      do k = 1, gc2(p_upper)
-        do j = 1, n1p
-          do i = 1, this%dim
-            this%rf_re(m)%f2(i, j-gc1(p_lower), k) = &
-              this%rf_re(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m-1)
-            this%rf_im(m)%f2(i, j-gc1(p_lower), k) = &
-              this%rf_im(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m  )
-          enddo
-        enddo
-      enddo
-    enddo
-  endif
-
-  call stop_tprof( 'pipeline' )
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine pipe_gc_recv
-
-! subroutine copy_gc_pipe( this, rtag, stag, rid, sid )
+! subroutine pipe_gc_send( this, tag, sid )
 
 !   implicit none
 
 !   class( field ), intent(inout) :: this
-!   integer, intent(in) :: rtag, stag
-!   integer, intent(inout) :: rid, sid
+!   integer, intent(in) :: tag
+!   integer, intent(inout) :: sid
 
-!   integer :: i, dir
-!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-!   integer :: nrp, nzp, count, dtype, gc_num, m
-!   integer :: ierr
-!   integer, dimension(MPI_STATUS_SIZE) :: stat
-!   real, dimension(:,:,:), allocatable, save :: rbuf, sbuf
-!   character(len=20), save :: sname = "copy_gc_pipe"
+!   integer :: i, j, k, m
+!   integer :: idproc, idproc_des, stageid, nstage, lnvp, comm
+!   integer :: n1p, nzp, count, ierr
+!   integer, dimension(2) :: gc1, gc2
+!   real, dimension(:,:,:,:), allocatable, save :: buf
+!   character(len=20), save :: sname = "pipe_gc_send"
 
 !   call write_dbg( cls_name, sname, cls_level, 'starts' )
+!   call start_tprof( 'pipeline' )
 
-!   nvp = this%gp%nvp(1)
-!   nstage = this%pp%getnstage()
-!   stageid = this%pp%getstageid()
-!   idproc = this%pp%getidproc()
-!   idproc_last = idproc - nvp
-!   idproc_next = idproc + nvp
-!   nrp = this%gp%ndp(1)
-!   nzp = this%gp%ndp(2)
-!   comm = this%pp%getlworld()
-!   dtype = this%pp%getmreal()
+!   lnvp       = num_procs_loc()
+!   stageid    = id_stage()
+!   nstage     = num_stages()
+!   idproc     = id_proc()
+!   idproc_des = idproc + lnvp
+!   n1p        = size(this%rf_re(0)%f1, 2)
+!   nzp        = this%rf_re(0)%get_ndp(2)
+!   comm       = comm_world()
 
-!   gc_num = this%rf_re(0)%gc_num(p_upper,2)
+!   gc1 = this%rf_re(0)%get_gc_num(1)
+!   gc2 = this%rf_re(0)%get_gc_num(2)
 
-!   if ( gc_num > 0 ) then
+!   if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
 
-!     if (this%num_modes == 0) then
-!       m = 1
-!     else
-!       m = 2 * this%num_modes + 1
-!     endif
-!     count = this%dim * nrp * gc_num * m
-
-!     if ( .not. allocated(rbuf) ) then
-!       allocate( rbuf(this%dim, nrp, gc_num, m), sbuf(this%dim, nrp, gc_num, m) )
-!     endif
-
-!     ! receiver
-!     if ( stageid < nstage-1 ) then
-!       call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
-!         count, dtype, idproc_next, rtag, comm, rid, ierr )
-!     else
-!       rid = MPI_REQUEST_NULL
-!     endif
-!     ! sender
-!     if ( stageid > 0 ) then
-!       call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
-!         count, dtype, idproc_last, stag, comm, sid, ierr )
-!     else
-!       sid = MPI_REQUEST_NULL
-!     endif
-
-!   else
-!     call write_err( 'No guard cells for backward copy!' )
+!   if ( stageid == nstage-1 ) then
+!     sid = MPI_REQUEST_NULL
+!     call stop_tprof( 'pipeline' )
+!     call write_dbg( cls_name, sname, cls_level, 'ends' )
+!     return
 !   endif
 
-!   do i = 0, this%num_modes
-!     call this%rf_re(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
-!     if ( i == 0 ) cycle
-!     call this%rf_im(i)%copy_gc_pipe( dir, rtag, stag, rid, sid )
+!   if ( .not. allocated(buf) ) then
+!     allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%max_mode) )
+!   endif
+
+!   ! pack m=0 mode
+!   do k = 1, gc2(p_upper)
+!     do j = 1, n1p
+!       do i = 1, this%dim
+!         buf(i,j,k,0) = this%rf_re(0)%f2(i, j-gc1(p_lower), nzp+k)
+!       enddo
+!     enddo
 !   enddo
 
+!   ! pack m>0 modes
+!   if (this%max_mode > 0) then
+!     do m = 1, this%max_mode
+!       do k = 1, gc2(p_upper)
+!         do j = 1, n1p
+!           do i = 1, this%dim
+!             buf(i,j,k,2*m-1) = this%rf_re(m)%f2(i, j-gc1(p_lower), nzp+k)
+!             buf(i,j,k,2*m  ) = this%rf_im(m)%f2(i, j-gc1(p_lower), nzp+k)
+!           enddo
+!         enddo
+!       enddo
+!     enddo
+!   endif
+
+!   count = size(buf)
+!   call MPI_ISEND( buf, count, p_dtype_real, idproc_des, tag, comm, sid, ierr )
+!   ! check for error
+!   if (ierr /= 0) call write_err('MPI_ISEND failed.')
+
+!   call stop_tprof( 'pipeline' )
 !   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-! end subroutine copy_gc_pipe
+! end subroutine pipe_gc_send
 
-subroutine pipe_send( this, stag, id, nslice )
+! subroutine pipe_gc_recv( this, tag )
+
+!   implicit none
+
+!   class( field ), intent(inout) :: this
+!   integer, intent(in) :: tag
+!   ! integer, intent(inout) :: rid
+
+!   integer :: i, j, k, m
+!   integer :: idproc, idproc_src, stageid, lnvp, comm
+!   integer :: n1p, count, ierr
+!   integer, dimension(2) :: gc1, gc2
+!   integer, dimension(MPI_STATUS_SIZE) :: stat
+!   real, dimension(:,:,:,:), allocatable, save :: buf
+!   character(len=20), save :: sname = "pipe_gc_recv"
+
+!   call write_dbg( cls_name, sname, cls_level, 'starts' )
+!   call start_tprof( 'pipeline' )
+
+!   lnvp       = num_procs_loc()
+!   stageid    = id_stage()
+!   idproc     = id_proc()
+!   idproc_src = idproc - lnvp
+!   n1p        = size(this%rf_re(0)%f1, 2)
+!   comm       = comm_world()
+
+!   gc1 = this%rf_re(0)%get_gc_num(1)
+!   gc2 = this%rf_re(0)%get_gc_num(2)
+
+!   if ( gc2(p_upper) <= 0 ) call write_err( 'No guard cells for pipeline guard cell copy!' )
+
+!   if ( stageid == 0 ) then
+!     call stop_tprof( 'pipeline' )
+!     call write_dbg( cls_name, sname, cls_level, 'ends' )
+!     return
+!   endif
+
+!   if ( .not. allocated(buf) ) then
+!     allocate( buf(this%dim, n1p, gc2(p_upper), 0:2*this%max_mode) )
+!   endif
+
+!   count = size(buf)
+!   call MPI_RECV( buf, count, p_dtype_real, idproc_src, tag, comm, stat, ierr )
+!   ! check for error
+!   if (ierr /= 0) call write_err('MPI_RECV failed.')
+
+!   ! unpack m=0 mode
+!   do k = 1, gc2(p_upper)
+!     do j = 1, n1p
+!       do i = 1, this%dim
+!         this%rf_re(0)%f2(i, j-gc1(p_lower), k) = &
+!           this%rf_re(0)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,0)
+!       enddo
+!     enddo
+!   enddo
+
+!   ! unpack m>0 modes
+!   if (this%max_mode > 0) then
+!     do m = 1, this%max_mode
+!       do k = 1, gc2(p_upper)
+!         do j = 1, n1p
+!           do i = 1, this%dim
+!             this%rf_re(m)%f2(i, j-gc1(p_lower), k) = &
+!               this%rf_re(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m-1)
+!             this%rf_im(m)%f2(i, j-gc1(p_lower), k) = &
+!               this%rf_im(m)%f2(i, j-gc1(p_lower), k) + buf(i,j,k,2*m  )
+!           enddo
+!         enddo
+!       enddo
+!     enddo
+!   endif
+
+!   call stop_tprof( 'pipeline' )
+!   call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+! end subroutine pipe_gc_recv
+
+subroutine pipe_send_f2( this, stag, id, dir, pos )
 
   implicit none
 
   class( field ), intent(inout) :: this
   integer, intent(in) :: stag
   integer, intent(inout) :: id
-  integer, intent(in), optional :: nslice
+  character(len=*), intent(in) :: dir, pos
 
-  integer :: i, j, k, m, ns
-  integer :: idproc, idproc_des, lnvp, comm, stageid, nstage
-  integer :: nzp, n1p, count, dtype, ierr
+  integer :: i, j, m, idproc_des, idx_send
+  integer :: nzp, n1p, count, ierr
   integer, dimension(2) :: gc
-  character(len=20), save :: sname = "pipe_send"
+  character(len=20), save :: sname = "pipe_send_f2"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
+  
+  nzp = this%rf_re(0)%get_ndp(2)
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
 
-  ns = 1
-  if ( present(nslice) ) ns = nslice
+  select case ( trim(dir) )
+  case ( 'forward' )
 
-  lnvp       = this%pp%getlnvp()
-  nstage     = this%pp%getnstage()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
-  idproc_des = idproc + lnvp
-  nzp        = this%gp%get_ndp(2)
-  n1p        = size(this%rf_re(0)%f1,2)
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
-  gc         = this%rf_re(0)%get_gc_num(1)
+    if ( id_stage() == num_stages() - 1 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
 
-  if ( stageid == nstage-1 ) then
-    id = MPI_REQUEST_NULL
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
-  endif
+    select case ( trim(pos) )
+    case ( 'inner' )
+      idx_send = nzp
+    case ( 'guard' )
+      idx_send = nzp + 1
+    case default
+      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+    end select
+
+    idproc_des = id_proc() + num_procs_loc()
+
+  case ( 'backward' )
+
+    if ( id_stage() == 0 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    select case ( trim(pos) )
+    case ( 'inner' )
+      idx_send = 1
+    case ( 'guard' )
+      idx_send = 0
+    case default
+      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+    end select
+
+    idproc_des = id_proc() - num_procs_loc()
+
+  case default
+    call write_err( 'Invalid data transfer direction! Valid options are "forward"&
+      & and "backward".' )
+  end select
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
+    allocate( this%psend_buf( this%dim, n1p, 0:2*this%max_mode ) )
   endif
 
-  ! copy m=0 mode
-  do k = 1, ns
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%psend_buf(i,j,k,0) = this%rf_re(0)%f2( i, j-gc(1), nzp+1-ns+k )
-      enddo
+  ! copy m = 0 mode
+  do j = 1, n1p
+    do i = 1, this%dim
+      this%psend_buf(i,j,0) = this%rf_re(0)%f2( i, j-gc(1), idx_send )
     enddo
   enddo
 
-  ! copy m>0 mode
-  if ( this%num_modes > 0 ) then
-    do m = 1, this%num_modes
-      do k = 1, ns
-        do j = 1, n1p
-          do i = 1, this%dim
-            this%psend_buf(i,j,k,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), nzp+1-ns+k )
-            this%psend_buf(i,j,k,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), nzp+1-ns+k )
-          enddo
+  ! copy m > 0 mode
+  if ( this%max_mode > 0 ) then
+    do m = 1, this%max_mode
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%psend_buf(i,j,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), idx_send )
+          this%psend_buf(i,j,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), idx_send )
         enddo
       enddo
     enddo
   endif
 
   count = size( this%psend_buf )
-  call MPI_ISEND( this%psend_buf, count, dtype, idproc_des, stag, comm, id, ierr )
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, &
+    comm_world(), id, ierr )
+
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -620,82 +591,335 @@ subroutine pipe_send( this, stag, id, nslice )
   call stop_tprof( 'pipeline' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine pipe_send
+end subroutine pipe_send_f2
 
-subroutine pipe_recv( this, rtag, nslice )
+subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
 
   implicit none
 
   class( field ), intent(inout) :: this
   integer, intent(in) :: rtag
-  integer, intent(in), optional :: nslice
+  character(len=*), intent(in) :: dir, pos, mode
 
-  integer :: i, j, k, m, ns
-  integer :: idproc, idproc_src, lnvp, n1p, comm, stageid
-  integer :: count, dtype, ierr
+  integer :: i, j, m, idx_recv, idproc_src, n1p, nzp
+  integer :: count, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
-  character(len=20), save :: sname = "pipe_precv"
+  character(len=20), save :: sname = "pipe_precv_f2"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'pipeline' )
 
-  ns = 1
-  if ( present(nslice) ) ns = nslice
+  nzp = this%rf_re(0)%get_ndp(2)
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
 
-  lnvp       = this%pp%getlnvp()
-  stageid    = this%pp%getstageid()
-  idproc     = this%pp%getidproc()
-  idproc_src = idproc - lnvp
-  comm       = this%pp%getlworld()
-  dtype      = this%pp%getmreal()
-  n1p        = size(this%rf_re(0)%f1,2)
-  gc         = this%rf_re(0)%get_gc_num(1)
+  select case ( trim(dir) )
+  case ( 'forward' )
+  
+    if ( id_stage() == 0 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
 
-  if ( stageid == 0 ) then
-    call stop_tprof( 'pipeline' )
-    call write_dbg( cls_name, sname, cls_level, 'ends' )
-    return
-  endif
+    select case ( trim(pos) )
+    case ( 'inner' )
+      idx_recv = 1
+    case ( 'guard' )
+      idx_recv = 0
+    case default
+      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+    end select
+
+    idproc_src = id_proc() - num_procs_loc()
+
+  case ( 'backward' )
+
+    if ( id_stage() == num_stages() - 1 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    select case ( trim(pos) )
+    case ( 'inner' )
+      idx_recv = nzp
+    case ( 'guard' )
+      idx_recv = nzp + 1
+    case default
+      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+    end select
+
+    idproc_src = id_proc() + num_procs_loc()
+
+  case default
+    call write_err( 'Invalid data transfer direction! Valid options are "forward"&
+      & and "backward".' )
+  end select
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, ns, 0:2*this%num_modes ) )
+    allocate( this%precv_buf( this%dim, n1p, 0:2*this%max_mode ) )
   endif
 
   count = size( this%precv_buf )
-  call MPI_RECV( this%precv_buf, count, dtype, idproc_src, rtag, comm, stat, ierr )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm_world(), stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )
   endif
 
-  ! copy m=0 mode
-  do k = 1, ns
+  select case ( trim(mode) )
+  case ( 'replace' )
+
+    ! copy m=0 mode
     do j = 1, n1p
       do i = 1, this%dim
-        this%rf_re(0)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,0)
+        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,0)
       enddo
+    enddo
+
+    ! copy m>0 mode
+    if ( this%max_mode > 0 ) then
+      do m = 1, this%max_mode
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m-1)
+            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+      enddo
+    endif
+
+  case ( 'add' )
+
+    ! copy m=0 mode
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = &
+        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,0)
+      enddo
+    enddo
+
+    ! copy m>0 mode
+    if ( this%max_mode > 0 ) then
+      do m = 1, this%max_mode
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = &
+            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m-1)
+            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = &
+            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+      enddo
+    endif
+
+  case default
+    call write_err( 'Invalid data transfer mode! Valid options are "replace" &
+      &and "add".' )
+  end select
+
+  call stop_tprof( 'pipeline' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine pipe_recv_f2
+
+subroutine pipe_send_f1( this, stag, id, dir )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: stag
+  integer, intent(inout) :: id
+  character(len=*), intent(in) :: dir
+
+  integer :: i, j, m, idproc_des
+  integer :: n1p, count, ierr
+  integer, dimension(2) :: gc
+  character(len=20), save :: sname = "pipe_send_f1"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
+  
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
+
+  select case ( trim(dir) )
+  case ( 'forward' )
+
+    if ( id_stage() == num_stages() - 1 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idproc_des = id_proc() + num_procs_loc()
+
+  case ( 'backward' )
+
+    if ( id_stage() == 0 ) then
+      id = MPI_REQUEST_NULL
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idproc_des = id_proc() - num_procs_loc()
+
+  case default
+    call write_err( 'Invalid data transfer direction! Valid options are "forward"&
+      & and "backward".' )
+  end select
+
+  if ( .not. allocated( this%psend_buf ) ) then
+    allocate( this%psend_buf( this%dim, n1p, 0:2*this%max_mode ) )
+  endif
+
+  ! copy m = 0 mode
+  do j = 1, n1p
+    do i = 1, this%dim
+      this%psend_buf(i,j,0) = this%rf_re(0)%f1( i, j-gc(1) )
     enddo
   enddo
 
-  ! copy m>0 mode
-  if ( this%num_modes > 0 ) then
-    do m = 1, this%num_modes
-      do k = 1, ns
-        do j = 1, n1p
-          do i = 1, this%dim
-            this%rf_re(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m-1)
-            this%rf_im(m)%f2( i, j-gc(1), 1-ns+k ) = this%precv_buf(i,j,k,2*m)
-          enddo
+  ! copy m > 0 mode
+  if ( this%max_mode > 0 ) then
+    do m = 1, this%max_mode
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%psend_buf(i,j,2*m-1) = this%rf_re(m)%f1( i, j-gc(1) )
+          this%psend_buf(i,j,2*m  ) = this%rf_im(m)%f1( i, j-gc(1) )
         enddo
       enddo
     enddo
   endif
 
+  count = size( this%psend_buf )
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm_world(), id, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_ISEND failed.' )
+  endif
+
   call stop_tprof( 'pipeline' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine pipe_recv
+end subroutine pipe_send_f1
+
+subroutine pipe_recv_f1( this, rtag, dir, mode )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  integer, intent(in) :: rtag
+  character(len=*), intent(in) :: dir, mode
+
+  integer :: i, j, m, idproc_src, n1p
+  integer :: count, ierr
+  integer, dimension(2) :: gc
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  character(len=20), save :: sname = "pipe_precv_f1"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'pipeline' )
+
+  n1p = size( this%rf_re(0)%f1, 2 )
+  gc  = this%rf_re(0)%get_gc_num(1)
+
+  select case ( trim(dir) )
+  case ( 'forward' )
+  
+    if ( id_stage() == 0 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idproc_src = id_proc() - num_procs_loc()
+
+  case ( 'backward' )
+
+    if ( id_stage() == num_stages() - 1 ) then
+      call stop_tprof( 'pipeline' )
+      call write_dbg( cls_name, sname, cls_level, 'ends' )
+      return
+    endif
+
+    idproc_src = id_proc() + num_procs_loc()
+
+  case default
+    call write_err( 'Invalid data transfer direction! Valid options are "forward"&
+      & and "backward".' )
+  end select
+
+  if ( .not. allocated( this%precv_buf ) ) then
+    allocate( this%precv_buf( this%dim, n1p, 0:2*this%max_mode ) )
+  endif
+
+  count = size( this%precv_buf )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm_world(), stat, ierr )
+  ! check for error
+  if ( ierr /= 0 ) then
+    call write_err( 'MPI_RECV failed.' )
+  endif
+
+  select case ( trim(mode) )
+  case ( 'replace' )
+
+    ! copy m=0 mode
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%rf_re(0)%f1( i, j-gc(1) ) = this%precv_buf(i,j,0)
+      enddo
+    enddo
+
+    ! copy m>0 mode
+    if ( this%max_mode > 0 ) then
+      do m = 1, this%max_mode
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m-1)
+            this%rf_im(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+      enddo
+    endif
+
+  case ( 'add' )
+
+    ! copy m=0 mode
+    do j = 1, n1p
+      do i = 1, this%dim
+        this%rf_re(0)%f1( i, j-gc(1) ) = &
+        this%rf_re(0)%f1( i, j-gc(1) ) + this%precv_buf(i,j,0)
+      enddo
+    enddo
+
+    ! copy m>0 mode
+    if ( this%max_mode > 0 ) then
+      do m = 1, this%max_mode
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_re(m)%f1( i, j-gc(1) ) = &
+            this%rf_re(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m-1)
+            this%rf_im(m)%f1( i, j-gc(1) ) = &
+            this%rf_im(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+      enddo
+    endif
+
+  case default
+    call write_err( 'Invalid data transfer mode! Valid options are "replace" &
+      &and "add".' )
+  end select
+
+  call stop_tprof( 'pipeline' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine pipe_recv_f1
 
 subroutine write_hdf5_single( this, files, dim )
 
@@ -710,7 +934,7 @@ subroutine write_hdf5_single( this, files, dim )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%rf_re(i)%write_hdf5( files(1), dim )
@@ -740,7 +964,7 @@ subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%rf_re(i)%write_hdf5( files(1), dim, rtag, stag, id )
@@ -770,7 +994,7 @@ subroutine smooth_f1( this )
 
   if ( .not. this%smooth%if_smooth() ) return
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%smooth%smooth_f1( this%rf_re(i) )
@@ -810,16 +1034,16 @@ function get_dxi( this )
 
 end function get_dxi
 
-function get_num_modes( this )
+function get_max_mode( this )
 
   implicit none
 
   class( field ), intent(in) :: this
-  integer :: get_num_modes
+  integer :: get_max_mode
 
-  get_num_modes = this%num_modes
+  get_max_mode = this%max_mode
 
-end function get_num_modes
+end function get_max_mode
 
 function get_dim( this )
 
@@ -891,7 +1115,7 @@ subroutine assign_f1( this, that )
 
   type is (real)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       this%rf_re(i) = that
       if (i == 0) cycle
       this%rf_im(i) = that
@@ -899,7 +1123,7 @@ subroutine assign_f1( this, that )
 
   class is (field)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       this%rf_re(i) = that%rf_re(i)
       if (i == 0) cycle
       this%rf_im(i) = that%rf_im(i)
@@ -926,7 +1150,7 @@ subroutine assign_f2( this, that )
 
   type is (real)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%rf_re(i)%as( that )
       if (i == 0) cycle
       call this%rf_im(i)%as( that )
@@ -934,7 +1158,7 @@ subroutine assign_f2( this, that )
 
   class is (field)
 
-    do i = 0, this%num_modes
+    do i = 0, this%max_mode
       call this%rf_re(i)%as( that%get_rf_re(i) )
       if (i == 0) cycle
       call this%rf_im(i)%as( that%get_rf_im(i) )
@@ -962,7 +1186,7 @@ subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
@@ -984,7 +1208,7 @@ subroutine add_f1_unitary_dim( a1, a2, dim1, dim2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
@@ -1005,7 +1229,7 @@ subroutine add_f1_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1026,7 +1250,7 @@ subroutine add_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f1( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call add_f1( a1%rf_im(i), ua2_im(i) )
@@ -1048,7 +1272,7 @@ subroutine sub_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i), dim1, dim2, dim3 )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i), dim1, dim2, dim3 )
@@ -1070,7 +1294,7 @@ subroutine sub_f1_unitary_dim( a1, a2, dim1, dim2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), ua2_re(i), dim1, dim2 )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), ua2_im(i), dim1, dim2 )
@@ -1091,7 +1315,7 @@ subroutine sub_f1_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1112,7 +1336,7 @@ subroutine sub_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f1( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call sub_f1( a1%rf_im(i), ua2_im(i) )
@@ -1133,7 +1357,7 @@ subroutine dot_f1_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a2%num_modes
+  do i = 0, a2%max_mode
     call dot_f1( a1, ua2_re(i) )
     if (i==0) cycle
     call dot_f1( a1, ua2_im(i) )
@@ -1155,7 +1379,7 @@ subroutine dot_f1_unitary_dim( a1, a2, dim )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a2%num_modes
+  do i = 0, a2%max_mode
     call dot_f1( a1, ua2_re(i), dim )
     if (i==0) cycle
     call dot_f1( a1, ua2_im(i), dim )
@@ -1176,7 +1400,7 @@ subroutine add_f2_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call add_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1197,7 +1421,7 @@ subroutine add_f2_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call add_f2( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call add_f2( a1%rf_im(i), ua2_im(i) )
@@ -1218,7 +1442,7 @@ subroutine sub_f2_binary( a1, a2, a3 )
   ua3_re => a3%get_rf_re()
   ua3_im => a3%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f2( a1%rf_re(i), a2%rf_re(i), ua3_re(i) )
     if (i==0) cycle
     call sub_f2( a1%rf_im(i), a2%rf_im(i), ua3_im(i) )
@@ -1239,7 +1463,7 @@ subroutine sub_f2_unitary( a1, a2 )
   ua2_re => a2%get_rf_re()
   ua2_im => a2%get_rf_im()
 
-  do i = 0, a1%num_modes
+  do i = 0, a1%max_mode
     call sub_f2( a1%rf_re(i), ua2_re(i) )
     if (i==0) cycle
     call sub_f2( a1%rf_im(i), ua2_im(i) )

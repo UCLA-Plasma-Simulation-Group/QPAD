@@ -10,6 +10,13 @@ public
 integer, parameter :: p_cache_size = 1024
 
 ! ================================================================
+! simulation module
+! ================================================================
+integer, parameter :: p_sim_standard = 0, &
+                      p_sim_popas = 1, &
+                      p_sim_tmplt = 99
+
+! ================================================================
 ! geometry related
 ! ================================================================
 integer, parameter :: p_cylindrical = 0, p_cartesian = 1
@@ -91,7 +98,7 @@ integer, parameter :: p_hypre_cycred = 1, &
 integer, parameter :: p_copy_1to2 = 1, p_copy_2to1 = -1
 
 ! ================================================================
-! parameters for copy guard cells
+! parameters for data communication
 ! ================================================================
 integer, parameter :: p_mpi_forward  = 1, &
                       p_mpi_backward = -1, &
@@ -107,8 +114,37 @@ integer, parameter :: p_smooth_none        = 0, &
 ! ================================================================
 ! parameters for diagnostic type
 ! ================================================================
-integer, parameter :: p_tdiag_grid = 0, &
-                      p_tdiag_raw  = 1, &
-                      p_tdiag_rst  = 2
+! integer, parameter :: p_tdiag_grid = 0, &
+!                       p_tdiag_raw  = 1, &
+!                       p_tdiag_rst  = 2
+
+! ================================================================
+! parameters for neutral species
+! ================================================================
+integer, parameter :: p_neut_H  = 1, &
+                      p_neut_He = 2, &
+                      p_neut_Li = 3, &
+                      p_neut_C  = 6, &
+                      p_neut_N  = 7, &
+                      p_neut_O  = 8, &
+                      p_neut_Ar = 18, &
+                      p_neut_K  = 19, &
+                      p_neut_Rb = 37, &
+                      p_neut_Xe = 54, &
+                      p_neut_Cs = 55
+
+! ================================================================
+! parameters for profile
+! ================================================================
+integer, parameter :: p_prof_uniform = 0, &
+                      p_prof_pw_linear = 1, &
+                      p_prof_gaussian = 2, &
+                      p_prof_para_chl = 3, &
+                      p_prof_hllw_chl = 4
+
+! ================================================================
+! others
+! ================================================================
+integer, parameter :: MAX_LEN_LABEL = 32
 
 end module param

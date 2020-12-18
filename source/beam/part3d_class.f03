@@ -1,11 +1,9 @@
-! part3d class for QPAD
-
 module part3d_class
 
 use param
-use sysutil
-use parallel_pipe_class
-use grid_class
+use sysutil_module
+use parallel_module
+use options_class
 use field_class
 use ufield_class
 use fdist3d_class
@@ -26,7 +24,6 @@ type part3d
 ! qbm = particle charge/mass ratio
 ! dt = time interval between successive calculations
 
-   class(parallel_pipe), pointer, public :: pp => null()
    real :: qbm, dt, dr, dz
    real :: z0
    ! nbmax = size of buffer for passing particles between processors
@@ -60,7 +57,7 @@ type part3d
    procedure :: push_boris   => push_boris_part3d
    procedure :: push_reduced => push_reduced_part3d
    procedure :: update_bound => update_bound_part3d
-   procedure, private :: push_spin => push_spin_part3d
+   procedure :: push_spin    => push_spin_part3d
 
    procedure :: wr   => writehdf5_part3d
    procedure :: wrst => writerst_part3d
@@ -77,13 +74,12 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
+subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
 
    implicit none
 
    class(part3d), intent(inout) :: this
-   class(parallel_pipe), intent(in), pointer :: pp
-   class(grid), intent(in), pointer :: gp
+   type(options), intent(in) :: opts
    class(fdist3d), intent(inout) :: pf
    real, intent(in) :: qbm, dt
    logical, intent(in) :: has_spin
@@ -97,7 +93,6 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    this%has_spin = has_spin
    this%anom_mag_moment = amm
 
-   this%pp => pp
    this%qbm = qbm
    this%dt = dt
    this%part_dim = p_x_dim + p_p_dim + 1
@@ -107,8 +102,8 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
    this%dz = pf%getdz()
    this%npmax = npmax
 
-   this%edge(1) = gp%get_nd(1) * this%dr
-   this%edge(2) = gp%get_nd(2) * this%dz
+   this%edge(1) = opts%get_nd(1) * this%dr
+   this%edge(2) = opts%get_nd(2) * this%dz
 
    ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
    nbmax = int(0.01*this%npmax)
@@ -127,11 +122,11 @@ subroutine init_part3d(this,pp,gp,pf,qbm,dt,has_spin,amm)
 
    ! initialize particle coordinates according to profile
    if ( this%has_spin ) then
-      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
-         gp%get_ndp(), this%s )
+      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
+         opts%get_ndp(), this%s )
    else
-      call pf%dist( this%x, this%p, this%q, this%npp, gp%get_noff(), &
-         gp%get_ndp() )
+      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
+         opts%get_ndp() )
    endif
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -169,9 +164,9 @@ subroutine qdeposit_part3d( this, q )
    real, dimension(:,:,:), pointer :: q0 => null(), qr => null(), qi => null()
    real, dimension(0:1) :: wtr, wtz ! interpolation weight
    real, dimension(p_cache_size) :: pos_r, pos_z ! normalized position
-   real :: idr, idz, r
+   real :: idr, idz, ir
    integer(kind=LG) :: ptrcur, pp
-   integer :: i, j, k, nn, mm, noff1, noff2, n1p, n2p, np, mode, max_mode
+   integer :: i, j, k, jstrt, nn, mm, noff1, noff2, nrp, nzp, np, mode, max_mode
    character(len=32), save :: sname = "qdeposit_part3d"
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -183,12 +178,12 @@ subroutine qdeposit_part3d( this, q )
    q_re => q%get_rf_re()
    q_im => q%get_rf_im()
 
-   max_mode = q%get_num_modes()
+   max_mode = q%get_max_mode()
 
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
-   n1p   = q_re(0)%get_ndp(1)
-   n2p   = q_re(0)%get_ndp(2)
+   nrp   = q_re(0)%get_ndp(1)
+   nzp   = q_re(0)%get_ndp(2)
    q0    => q_re(0)%get_f2()
 
    do ptrcur = 1, this%npp, p_cache_size
@@ -250,47 +245,43 @@ subroutine qdeposit_part3d( this, q )
       
    enddo
 
-   if (noff1 == 0) then
+   ! Correct the deposited charge by dividing the radius. Note that this is only
+   ! done for [1,nzp] in the longitudinal direction since the values at nzp+1 will
+   ! be transferred to the next stage and corrected there.
+   jstrt = 0
 
-      q0(1,0,:) = 0.0
-      q0(1,1,:) = 8.0 * q0(1,1,:)
-      do j = 2, n1p+1
-         r = j + noff1 - 1
-         q0(1,j,:) = q0(1,j,:) / r
-      end do
+   ! deal with the on-axis values
+   if ( id_proc_loc() == 0 ) then
 
-      do mode = 1, max_mode
-         qr => q_re(mode)%get_f2()
-         qi => q_im(mode)%get_f2()
-         qr(1,0,:) = 0.0
-         qi(1,0,:) = 0.0
-         qr(1,1,:) = 0.0
-         qi(1,1,:) = 0.0
-         do j = 2, n1p+1
-            r = j + noff1 - 1
-            qr(1,j,:) = qr(1,j,:) / r
-            qi(1,j,:) = qi(1,j,:) / r
-         enddo
-      enddo
-
-   else
-
-      do j = 0, n1p+1
-         r = j + noff1 - 1
-         q0(1,j,:) = q0(1,j,:) / r
-      end do
+      q0(1,0,1:nzp) = 0.0
+      q0(1,1,1:nzp) = 8.0 * q0(1,1,1:nzp)
 
       do mode = 1, max_mode
          qr => q_re(mode)%get_f2()
          qi => q_im(mode)%get_f2()
-         do j = 0, n1p+1
-            r = j + noff1 - 1
-            qr(1,j,:) = qr(1,j,:) / r
-            qi(1,j,:) = qi(1,j,:) / r
-         enddo
+
+         qr(1,0,1:nzp) = 0.0; qi(1,0,1:nzp) = 0.0
+         qr(1,1,1:nzp) = 0.0; qi(1,1,1:nzp) = 0.0
       enddo
+
+      jstrt = 2
 
    endif
+
+   do j = jstrt, nrp + 1
+      ir = 1.0 / real( j + noff1 - 1 )
+      q0(1,j,1:nzp) = q0(1,j,1:nzp) * ir
+   end do
+
+   do mode = 1, max_mode
+      qr => q_re(mode)%get_f2()
+      qi => q_im(mode)%get_f2()
+      do j = jstrt, nrp + 1
+         ir = 1.0 / real( j + noff1 - 1 )
+         qr(1,j,1:nzp) = qr(1,j,1:nzp) * ir
+         qi(1,j,1:nzp) = qi(1,j,1:nzp) * ir
+      enddo
+   enddo
 
    call stop_tprof( 'deposit 3D particles' )
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -317,7 +308,7 @@ subroutine push_boris_part3d( this, ef, bf )
    call start_tprof( 'push 3D particles' )
 
    qtmh = 0.5 * this%qbm * this%dt
-   max_mode = ef%get_num_modes()
+   max_mode = ef%get_max_mode()
 
    ef_re => ef%get_rf_re()
    ef_im => ef%get_rf_im()
@@ -436,7 +427,7 @@ subroutine push_reduced_part3d( this, ef, bf )
    call start_tprof( 'push 3D particles' )
 
    qtmh = this%qbm * this%dt * 0.5
-   max_mode = ef%get_num_modes()
+   max_mode = ef%get_max_mode()
 
    ef_re => ef%get_rf_re()
    ef_im => ef%get_rf_im()
@@ -756,10 +747,10 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
       &this%z0,rtag,stag,id,ierr, this%s)
    else
-      call pwpart_pipe(this%pp,file,this%x, this%p, this%q,this%npp,dspl,&
+      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
       &this%z0,rtag,stag,id,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -778,9 +769,9 @@ subroutine writerst_part3d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr, this%s)
+      call wpart(file,this%x, this%p, this%q,this%npp,1,ierr, this%s)
    else
-      call wpart(this%pp,file,this%x, this%p, this%q,this%npp,1,ierr)
+      call wpart(file,this%x, this%p, this%q,this%npp,1,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -798,9 +789,9 @@ subroutine readrst_part3d(this,file)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr, this%s)
+      call rpart(file,this%x, this%p, this%q,this%npp,ierr, this%s)
    else
-      call rpart(this%pp,file,this%x, this%p, this%q,this%npp,ierr)
+      call rpart(file,this%x, this%p, this%q,this%npp,ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

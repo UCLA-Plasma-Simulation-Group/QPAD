@@ -1,7 +1,7 @@
 {
 "simulation" : !note
 {
-    "nodes" : [2,1], 
+    "nodes" : [1,1], 
     "grid" : [512,512],
     "box" : {
         "r" : [0.0,12.0],
@@ -14,6 +14,7 @@
     "dt" : 10.0,
     "nbeams" : 1,
     "nspecies" : 1,
+    "nneutrals" : 0,
     "dump_restart" : false,
     "ndump_restart" : 1,
     "read_restart" : false,
@@ -21,8 +22,10 @@
     "iter" : 1,
     "smooth_type" : "none",
     "smooth_order" : 0,
-    "verbose" : 5,
-    "if_timing" : true
+    "verbose" : 0,
+    "if_timing" : true,
+    "random_seed" : 0,
+    "algorithm" : "standard"
 },
 "beam" :
 [
@@ -62,7 +65,8 @@
 [
     {
     "profile" : 0,
-    "ppc" : [2,32],
+    "ppc" : [2,2],
+    "num_theta" : 16,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,

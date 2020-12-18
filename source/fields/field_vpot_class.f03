@@ -1,7 +1,7 @@
 module field_vpot_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use field_class
 use field_b_class
 use field_psi_class
@@ -9,7 +9,7 @@ use field_src_class
 use field_solver_class
 use ufield_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 
 implicit none
@@ -36,6 +36,7 @@ type, extends( field ) :: field_vpot
   generic :: new => init_field_vpot
 
   procedure :: init_field_vpot
+  procedure :: alloc => alloc_field_vpot
   procedure :: del => end_field_vpot
   procedure, private :: set_source_vpotz
   procedure, private :: get_solution_vpotz
@@ -48,14 +49,34 @@ end type field_vpot
 
 contains
 
-subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
+subroutine alloc_field_vpot( this, max_mode )
 
   implicit none
 
   class( field_vpot ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
-  integer, intent(in) :: num_modes, part_shape, boundary
+  integer, intent(in) :: max_mode
+
+  if ( .not. associated( this%solver_vpotz ) ) then
+    allocate( field_solver :: this%solver_vpotz(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_vpotp ) ) then
+    allocate( field_solver :: this%solver_vpotp(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_vpotm ) ) then
+    allocate( field_solver :: this%solver_vpotm(0:max_mode) )
+  endif
+
+end subroutine alloc_field_vpot
+
+subroutine init_field_vpot( this, opts, max_mode, part_shape, boundary )
+
+  implicit none
+
+  class( field_vpot ), intent(inout) :: this
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: max_mode, part_shape, boundary
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
@@ -64,8 +85,8 @@ subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp = gp%get_ndp(1)
-  dr = gp%get_dr()
+  nrp = opts%get_ndp(1)
+  dr  = opts%get_dr()
 
   select case ( part_shape )
 
@@ -86,18 +107,15 @@ subroutine init_field_vpot( this, pp, gp, num_modes, part_shape, boundary )
 
   dim = 3
   ! call initialization routine of the parent class
-  call this%field%new( pp, gp, dim, num_modes, gc_num, entity=p_entity_plasma )
+  call this%field%new( opts, dim, max_mode, gc_num, entity=p_entity_plasma )
 
   ! initialize solver
-  allocate( this%solver_vpotz( 0:num_modes ) )
-  allocate( this%solver_vpotp( 0:num_modes ) )
-  allocate( this%solver_vpotm( 0:num_modes ) )
-  do i = 0, num_modes
-    call this%solver_vpotz(i)%new( pp, gp, i, dr, kind=p_fk_vpotz, &
+  do i = 0, max_mode
+    call this%solver_vpotz(i)%new( opts, i, dr, kind=p_fk_vpotz, &
       bnd=boundary, stype=p_hypre_cycred )
-    call this%solver_vpotp(i)%new( pp, gp, i, dr, kind=p_fk_vpotp, &
+    call this%solver_vpotp(i)%new( opts, i, dr, kind=p_fk_vpotp, &
       bnd=boundary, stype=p_hypre_cycred )
-    call this%solver_vpotm(i)%new( pp, gp, i, dr, kind=p_fk_vpotm, &
+    call this%solver_vpotm(i)%new( opts, i, dr, kind=p_fk_vpotm, &
       bnd=boundary, stype=p_hypre_cycred )
   enddo
   allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
@@ -118,7 +136,7 @@ subroutine end_field_vpot( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
     call this%solver_vpotz(i)%del()
     call this%solver_vpotp(i)%del()
     call this%solver_vpotm(i)%del()
@@ -291,7 +309,7 @@ subroutine get_solution_vpott( this, mode )
   call start_tprof( 'solve vpott' )
 
   nrp    = this%rf_re(mode)%get_ndp(1)
-  idproc = this%rf_re(mode)%pp%getlidproc()
+  idproc = id_proc_loc()
 
   if ( mode == 0 ) then
 
@@ -349,7 +367,7 @@ subroutine solve_field_vpotz( this, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_vpotz( i, jay_re(i) )
@@ -387,7 +405,7 @@ subroutine solve_field_vpott( this, jay )
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
 
-  do i = 0, this%num_modes
+  do i = 0, this%max_mode
 
     if ( i == 0 ) then
       call this%set_source_vpott( i, jay_re(i) )

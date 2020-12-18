@@ -1,10 +1,10 @@
 module ufield_class
 
-use parallel_pipe_class
-use grid_class
+use parallel_module
+use options_class
 use hdf5io_class
 use param
-use sysutil
+use sysutil_module
 use mpi
 
 implicit none
@@ -53,12 +53,10 @@ type :: ufield
 
   private
 
-  class( parallel_pipe ), pointer, public :: pp => null()
   real, dimension(:,:), pointer, public :: f1 => null()
   real, dimension(:,:,:), pointer, public :: f2 => null()
   integer, dimension(2) :: nd ! number of global grid points
   integer, dimension(2) :: ndp ! number of local grid points
-  integer, dimension(2) :: nvp
   integer :: dim ! dimension of array (guard cell excluded)
   integer, dimension(2) :: noff
   integer, dimension(2,2) :: gc_num ! number of guard cells
@@ -74,7 +72,6 @@ type :: ufield
   generic :: get_nd     => get_nd_all, get_nd_dim
   generic :: get_ndp    => get_ndp_all, get_ndp_dim
   generic :: get_gc_num => get_gc_num_all, get_gc_num_dim
-  generic :: get_nvp    => get_nvp_all, get_nvp_dim
   generic :: get_noff   => get_noff_all, get_noff_dim
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
   procedure :: get_dim
@@ -92,7 +89,6 @@ type :: ufield
   procedure, private :: get_nd_all, get_nd_dim
   procedure, private :: get_ndp_all, get_ndp_dim
   procedure, private :: get_gc_num_all, get_gc_num_dim
-  procedure, private :: get_nvp_all, get_nvp_dim
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
 
@@ -102,13 +98,12 @@ end type ufield
 
 contains
 
-subroutine init_ufield( this, pp, gp, dim, mode, gc_num, has_2d )
+subroutine init_ufield( this, opts, dim, mode, gc_num, has_2d )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
-  class( parallel_pipe ), intent(in), pointer :: pp
-  class( grid ), intent(in), pointer :: gp
+  type( options ), intent(in) :: opts
   integer, intent(in) :: dim, mode
   integer, intent(in), dimension(2,2) :: gc_num
   logical, intent(in), optional :: has_2d
@@ -117,14 +112,12 @@ subroutine init_ufield( this, pp, gp, dim, mode, gc_num, has_2d )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  this%pp => pp
-  this%nd = gp%get_nd()
-  this%nvp = gp%get_nvp()
-  this%dim = dim
-  this%ndp = gp%get_ndp()
-  this%noff = gp%get_noff()
+  this%nd     = opts%get_nd()
+  this%ndp    = opts%get_ndp()
+  this%noff   = opts%get_noff()
+  this%dim    = dim
   this%gc_num = gc_num
-  this%mode = mode
+  this%mode   = mode
 
   allocate( this%f1( dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -150,14 +143,12 @@ subroutine init_ufield_cp( this, that )
   class( ufield ), intent(inout) :: this
   class( ufield ), intent(in) :: that
 
-  this%pp => that%pp
-  this%nd = that%get_nd()
-  this%nvp = that%get_nvp()
-  this%dim = that%dim
-  this%ndp = that%get_ndp()
-  this%noff = that%get_noff()
+  this%nd     = that%get_nd()
+  this%ndp    = that%get_ndp()
+  this%noff   = that%get_noff()
+  this%dim    = that%dim
   this%gc_num = that%get_gc_num()
-  this%mode = that%mode
+  this%mode   = that%mode
 
   allocate( this%f1( this%dim, 1-this%gc_num(p_lower,1):this%ndp(1)+this%gc_num(p_upper,1) ) )
   this%f1 = 0.0
@@ -212,7 +203,7 @@ subroutine write_hdf5_single( this, file, dim )
   lsize = this%ndp
   noff = this%noff(1)
 
-  call pwfield( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, ierr )
+  call pwfield( file, this%f2(dim,1:,1:), gsize, lsize, noff, ierr )
 
   call stop_tprof( 'write hdf5' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -236,14 +227,14 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'write hdf5' )
 
-  nstage = this%pp%getnstage()
-  stageid = this%pp%getstageid()
+  nstage = num_stages()
+  stageid = id_stage()
 
   gsize = this%nd
   lsize = this%ndp
   noff = this%noff
 
-  call pwfield_pipe( this%pp, file, this%f2(dim,1:,1:), gsize, lsize, noff, &
+  call pwfield_pipe( file, this%f2(dim,1:,1:), gsize, lsize, noff, &
     rtag, stag, id, ierr )
 
   call stop_tprof( 'write hdf5' )
@@ -302,31 +293,30 @@ subroutine copy_gc_f1( this )
   class( ufield ), intent(inout) :: this
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, count, dtype
+  integer :: nrp, count
   integer :: tag = 1, msgid, ierr
   integer, dimension(MPI_STATUS_SIZE) :: stat
 
   call start_tprof( 'copy guard cells' )
 
-  idproc       = this%pp%getlidproc()
+  idproc       = id_proc_loc()
   idproc_left  = idproc - 1
   idproc_right = idproc + 1
   nrp          = this%ndp(1)
-  nvp          = this%pp%getlnvp()
-  comm         = this%pp%getlgrp()
-  dtype        = this%pp%getmreal()
+  nvp          = num_procs_loc()
+  comm         = comm_loc()
 
   ! forward message passing
   if ( this%gc_num(p_lower,1) > 0 ) then
     count = this%dim * this%gc_num(p_lower,1)
     ! receiver
     if ( idproc > 0 ) then
-      call MPI_IRECV( this%f1(1,1-this%gc_num(p_lower,1)), count, dtype, &
+      call MPI_IRECV( this%f1(1,1-this%gc_num(p_lower,1)), count, p_dtype_real, &
         idproc_left, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc < nvp-1 ) then
-      call MPI_SEND( this%f1(1,nrp+1-this%gc_num(p_lower,1)), count, dtype, &
+      call MPI_SEND( this%f1(1,nrp+1-this%gc_num(p_lower,1)), count, p_dtype_real, &
         idproc_right, tag, comm, ierr )
     endif
     ! wait receiving finish
@@ -340,12 +330,12 @@ subroutine copy_gc_f1( this )
     count = this%dim * this%gc_num(p_upper,1)
     ! receiver
     if ( idproc < nvp-1 ) then
-      call MPI_IRECV( this%f1(1,nrp+1), count, dtype, &
+      call MPI_IRECV( this%f1(1,nrp+1), count, p_dtype_real, &
         idproc_right, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc > 0 ) then
-      call MPI_SEND( this%f1(1,1), count, dtype, &
+      call MPI_SEND( this%f1(1,1), count, p_dtype_real, &
         idproc_left, tag, comm, ierr )
     endif
     ! wait receiving finish
@@ -365,21 +355,20 @@ subroutine copy_gc_f2( this )
   class( ufield ), intent(inout) :: this
 
   integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, nzp, count, dtype, lgc1, ugc1, lgc2, ugc2
+  integer :: nrp, nzp, count, lgc1, ugc1, lgc2, ugc2
   integer :: tag = 1, msgid, ierr, i, j, k
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:,:), allocatable :: buf1, buf2
 
   call start_tprof( 'copy guard cells' )
 
-  idproc = this%pp%getlidproc()
-  idproc_left =  idproc - 1
+  idproc       = id_proc_loc()
+  idproc_left  =  idproc - 1
   idproc_right = idproc + 1
-  nrp = this%ndp(1)
-  nzp = this%ndp(2)
-  nvp = this%pp%getlnvp()
-  comm = this%pp%getlgrp()
-  dtype = this%pp%getmreal()
+  nrp          = this%ndp(1)
+  nzp          = this%ndp(2)
+  nvp          = num_procs_loc()
+  comm         = comm_loc()
 
   allocate( buf1( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
   allocate( buf2( this%dim, maxval(this%gc_num(:,1)), size(this%f2,3) ) )
@@ -395,7 +384,7 @@ subroutine copy_gc_f2( this )
     ! receiver
     if ( idproc > 0 ) then
       buf1 = 0.0
-      call MPI_IRECV( buf1, count, dtype, idproc_left, tag, comm, msgid, ierr )
+      call MPI_IRECV( buf1, count, p_dtype_real, idproc_left, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc < nvp-1 ) then
@@ -406,7 +395,7 @@ subroutine copy_gc_f2( this )
           enddo
         enddo
       enddo
-      call MPI_SEND( buf2, count, dtype, idproc_right, tag, comm, ierr )
+      call MPI_SEND( buf2, count, p_dtype_real, idproc_right, tag, comm, ierr )
     endif
     ! wait receiving finish
     if ( idproc > 0 ) then
@@ -427,7 +416,7 @@ subroutine copy_gc_f2( this )
     ! receiver
     if ( idproc < nvp-1 ) then
       buf1 = 0.0
-      call MPI_IRECV( buf1, count, dtype, idproc_right, tag, comm, msgid, ierr )
+      call MPI_IRECV( buf1, count, p_dtype_real, idproc_right, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc > 0 ) then
@@ -438,7 +427,7 @@ subroutine copy_gc_f2( this )
           enddo
         enddo
       enddo
-      call MPI_SEND( buf2, count, dtype, idproc_left, tag, comm, ierr )
+      call MPI_SEND( buf2, count, p_dtype_real, idproc_left, tag, comm, ierr )
     endif
     ! wait receiving finish
     if ( idproc < nvp-1 ) then
@@ -460,90 +449,6 @@ subroutine copy_gc_f2( this )
 
 end subroutine copy_gc_f2
 
-! subroutine copy_gc_pipe( this, dir, rtag, stag, rid, sid )
-
-!   implicit none
-
-!   class( ufield ), intent(inout) :: this
-!   integer, intent(in) :: dir
-!   integer, intent(in) :: rtag, stag
-!   integer, intent(inout) :: rid, sid
-
-!   integer :: idproc, idproc_next, idproc_last, nstage, stageid, nvp, comm
-!   integer :: nzp, count, dtype
-!   integer :: ierr
-!   integer, dimension(MPI_STATUS_SIZE) :: stat
-
-!   call start_tprof( 'copy guard cells' )
-
-!   nvp = this%nvp(1)
-!   nstage = this%pp%getnstage()
-!   stageid = this%pp%getstageid()
-!   idproc = this%pp%getidproc()
-!   idproc_last = idproc - nvp
-!   idproc_next = idproc + nvp
-!   nzp = this%ndp(2)
-!   comm = this%pp%getlworld()
-!   dtype = this%pp%getmreal()
-
-!   select case (dir)
-
-!   ! forward message passing
-!   case ( p_mpi_forward )
-
-!     if ( this%gc_num(p_lower,2) > 0 ) then
-
-!       count = this%dim * size(this%f2,2) * this%gc_num(p_lower,2)
-!       ! receiver
-!       if ( stageid > 0 ) then
-!         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),1-this%gc_num(p_lower,2)), &
-!           count, dtype, idproc_last, rtag, comm, rid, ierr )
-!       else
-!         rid = MPI_REQUEST_NULL
-!       endif
-!       ! sender
-!       if ( stageid < nstage-1 ) then
-!         call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),nzp+1-this%gc_num(p_lower,2)), &
-!           count, dtype, idproc_next, stag, comm, sid, ierr )
-!       else
-!         sid = MPI_REQUEST_NULL
-!       endif
-
-!     else
-!       call write_err( 'No guard cells for forward copy!' )
-!     endif
-
-!   ! backward message passing
-!   case ( p_mpi_backward )
-
-!     if ( this%gc_num(p_upper,2) > 0 ) then
-
-!       count = this%dim * size(this%f2,2) * this%gc_num(p_upper,2)
-!       ! receiver
-!       if ( stageid < nstage-1 ) then
-!         call MPI_IRECV( this%f2(1,1-this%gc_num(p_lower,1),nzp+1), &
-!           count, dtype, idproc_next, rtag, comm, rid, ierr )
-!       else
-!         rid = MPI_REQUEST_NULL
-!       endif
-!       ! sender
-!       if ( stageid > 0 ) then
-!         call MPI_ISEND( this%f2(1,1-this%gc_num(p_lower,1),1), &
-!           count, dtype, idproc_last, stag, comm, sid, ierr )
-!       else
-!         sid = MPI_REQUEST_NULL
-!       endif
-
-!     else
-!       call write_err( 'No guard cells for backward copy!' )
-!     endif
-
-!   end select
-
-!   call stop_tprof( 'copy guard cells' )
-
-! end subroutine copy_gc_pipe
-
 subroutine acopy_gc_f1( this, dir, nc )
 
   implicit none
@@ -551,21 +456,19 @@ subroutine acopy_gc_f1( this, dir, nc )
   class( ufield ), intent(inout) :: this
   integer, intent(in) :: dir, nc
 
-  integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, count, dtype
+  integer :: idproc, idproc_left, idproc_right, nvp, comm, nrp, count
   integer :: tag = 1, msgid, ierr, i
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:), allocatable :: buf
 
   call start_tprof( 'copy & add guard cells' )
 
-  idproc       = this%pp%getlidproc()
+  idproc       = id_proc_loc()
   idproc_left  = idproc - 1
   idproc_right = idproc + 1
   nrp          = this%ndp(1)
-  nvp          = this%pp%getlnvp()
-  comm         = this%pp%getlgrp()
-  dtype        = this%pp%getmreal()
+  nvp          = num_procs_loc()
+  comm         = comm_loc()
 
   count = this%dim * nc
   allocate( buf(this%dim, nc) )
@@ -580,12 +483,12 @@ subroutine acopy_gc_f1( this, dir, nc )
     buf = 0.0
     ! receiver
     if ( idproc > 0 ) then
-      call MPI_IRECV( buf, count, dtype, &
+      call MPI_IRECV( buf, count, p_dtype_real, &
         idproc_left, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc < nvp-1 ) then
-      call MPI_SEND( this%f1(1,nrp+1), count, dtype, &
+      call MPI_SEND( this%f1(1,nrp+1), count, p_dtype_real, &
         idproc_right, tag, comm, ierr )
     endif
     ! wait receiving finish and add up guard cells
@@ -608,12 +511,12 @@ subroutine acopy_gc_f1( this, dir, nc )
     buf = 0.0
     ! receiver
     if ( idproc < nvp-1 ) then
-      call MPI_IRECV( buf, count, dtype, &
+      call MPI_IRECV( buf, count, p_dtype_real, &
         idproc_right, tag, comm, msgid, ierr )
     endif
     ! sender
     if ( idproc > 0 ) then
-      call MPI_SEND( this%f1(1,1-nc), count, dtype, &
+      call MPI_SEND( this%f1(1,1-nc), count, p_dtype_real, &
         idproc_left, tag, comm, ierr )
     endif
     ! wait receiving finish
@@ -638,22 +541,20 @@ subroutine acopy_gc_f2( this )
 
   class( ufield ), intent(inout) :: this
 
-  integer :: idproc, idproc_left, idproc_right, nvp, comm
-  integer :: nrp, nzp, count, dtype
+  integer :: idproc, idproc_left, idproc_right, nvp, comm, nrp, nzp, count
   integer :: tag = 1, msgid, ierr, i, j
   integer, dimension(MPI_STATUS_SIZE) :: stat
   real, dimension(:,:), allocatable :: buf1, buf2
 
   call start_tprof( 'copy & add guard cells' )
 
-  idproc = this%pp%getlidproc()
-  idproc_left =  idproc - 1
+  idproc       = id_proc_loc()
+  idproc_left  = idproc - 1
   idproc_right = idproc + 1
-  nrp = this%ndp(1)
-  nzp = this%ndp(2)
-  nvp = this%pp%getlnvp()
-  comm = this%pp%getlgrp()
-  dtype = this%pp%getmreal()
+  nrp          = this%ndp(1)
+  nzp          = this%ndp(2)
+  nvp          = num_procs_loc()
+  comm         = comm_loc()
 
   count = this%dim * (nzp+1)
   allocate( buf1( this%dim, nzp+1 ) )
@@ -666,7 +567,7 @@ subroutine acopy_gc_f2( this )
   ! receiver
   if ( idproc > 0 ) then
     buf1 = 0.0
-    call MPI_IRECV( buf1, count, dtype, &
+    call MPI_IRECV( buf1, count, p_dtype_real, &
       idproc_left, tag, comm, msgid, ierr )
   endif
   ! sender
@@ -676,7 +577,7 @@ subroutine acopy_gc_f2( this )
         buf2(i,j) = this%f2(i,nrp+1,j)
       enddo
     enddo
-    call MPI_SEND( buf2, count, dtype, &
+    call MPI_SEND( buf2, count, p_dtype_real, &
       idproc_right, tag, comm, ierr )
   endif
   ! wait receiving finish and add up guard cells
@@ -701,7 +602,7 @@ subroutine acopy_gc_f2( this )
   ! receiver
   ! if ( idproc < nvp-1 ) then
   !   buf1 = 0.0
-  !   call MPI_IRECV( buf1, count, dtype, &
+  !   call MPI_IRECV( buf1, count, p_dtype_real, &
   !     idproc_right, tag, comm, msgid, ierr )
   ! endif
   ! ! sender
@@ -711,7 +612,7 @@ subroutine acopy_gc_f2( this )
   !       buf2(i,j) = this%f2(i,1,j)
   !     enddo
   !   enddo
-  !   call MPI_SEND( buf2, count, dtype, &
+  !   call MPI_SEND( buf2, count, p_dtype_real, &
   !     idproc_left, tag, comm, ierr )
   ! endif
   ! ! wait receiving finish
@@ -1412,29 +1313,6 @@ function get_gc_num_dim( this, dim )
 
 end function get_gc_num_dim
 
-function get_nvp_all( this )
-
-  implicit none
-
-  class( ufield ), intent(in) :: this
-  integer, dimension(2) :: get_nvp_all
-
-  get_nvp_all = this%nvp
-
-end function get_nvp_all
-
-function get_nvp_dim( this, dim )
-
-  implicit none
-
-  class( ufield ), intent(in) :: this
-  integer, intent(in) :: dim
-  integer :: get_nvp_dim
-
-  get_nvp_dim = this%nvp(dim)
-
-end function get_nvp_dim
-
 function get_noff_all( this )
 
   implicit none
@@ -1490,6 +1368,5 @@ function has2d( this )
   has2d = this%has_2d
 
 end function has2d
-
 
 end module ufield_class

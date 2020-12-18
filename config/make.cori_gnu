@@ -5,17 +5,14 @@
 
 # Fortran compiler configuration
 FC = ftn -O3
-FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -fcheck=all
 
 # C compiler configuration
 CC = cc
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-# FPP = gcc -C -E -x assembler-with-cpp
-
-# Python 2.x configuration. Used for automatically generate compile rules
-PYTHON = python 
+FPP = gcc -C -E -cpp 
 
 # Linker configuration
 LINKER = ftn
@@ -23,10 +20,10 @@ LINKER_OPTS = -fopenmp -O3 -ffree-form
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -ldl -lz
 
 # Library dependencies
-HYPRE_LIB = $(HOME)/local/hypre-2.15.1/lib
-HYPRE_INC = $(HOME)/local/hypre-2.15.1/include
-JSON_LIB = $(HOME)/local/json-fortran-7.0.0/jsonfortran-gnu-7.0.0/lib
-JSON_INC = $(HOME)/local/json-fortran-7.0.0/jsonfortran-gnu-7.0.0/lib
+HYPRE_LIB = $(HOME)/local/hypre-2.15.1/gnu-8.3/lib
+HYPRE_INC = $(HOME)/local/hypre-2.15.1/gnu-8.3/include
+JSON_LIB = $(HOME)/local/json-fortran-8.2.0/jsonfortran-gnu-8.2.0/lib
+JSON_INC = $(HOME)/local/json-fortran-8.2.0/jsonfortran-gnu-8.2.0/lib
 HDF5_INC =
 HDF5_LIB = 
 

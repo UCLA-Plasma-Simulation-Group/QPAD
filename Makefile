@@ -11,11 +11,6 @@ all:
 # 	@cd source && make depend && make
 	@cd source && make
 
-.PHONY: module
-module:
-# 	@cd source && make depend && make module
-	@cd source && make module
-
 .PHONY: TEST_%
 TEST_%:
 	@cd source && make $@.e
@@ -39,7 +34,6 @@ help:
 	@echo ""
 	@echo "Options:"
 	@echo "all         - (default) make the main executable of QuickPIC"
-	@echo "module      - only compile the source files, not link to executable"
 	@echo "TEST_*.e    - generate test executable corresponding to the test source file in test directory."
 	@echo "              'make module' must be conducted before."
 	@echo "clean       - remove build directory."
