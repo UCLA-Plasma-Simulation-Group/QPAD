@@ -114,13 +114,10 @@ type neutral
   ! index of neutral gas residue in multi_ion array
   integer :: idx_neut
   ! index of total ion in multi_ion array
-  integer ::idx_ion
-
-  ! qm is the 8th coordinate for every particle.
-  ! If the longitudinal density of the plasma changes,
-  ! the qm will change correspondingly
-  real :: wp, dt, qm, density
+  integer :: idx_ion
   ! wp is plasma frequency in SI unit
+  real :: wp, dt
+  
   double precision, dimension(:,:), pointer :: rate_param
 
   ! in-cell ionization level. There are multi_max + 2 levels, the multi_max+1 level 
@@ -160,8 +157,8 @@ type, extends( part2d ) :: part2d_buf
 
    procedure :: new      => init_part2d_buf
    procedure :: end      => end_part2d_buf
-   procedure :: pipesend => pipesend_part2d_buf
-   procedure :: piperecv => piperecv_part2d_buf
+   ! procedure :: pipesend => pipesend_part2d_buf
+   ! procedure :: piperecv => piperecv_part2d_buf
 
 end type part2d_buf
 
@@ -331,22 +328,23 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%multi_ion( :, :, this%idx_neut ) = 1.0
 
   ! normalized longitudinal density
-  this%density = this%pf%get_density(0.0)
+  ! this%den_lon = this%pf%get_den_lon(0.0)
   
   ! normalized charge (coordinate of the particle array) 
-  this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm / &
-    ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(n_theta) )
+  ! this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm / &
+  !   ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(n_theta) )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_neutral
 
-subroutine update_neutral( this, e, psi )
+subroutine update_neutral( this, e, psi, s )
 
   implicit none
   class(neutral), intent(inout) :: this
   class(field_e), intent(in) :: e
   class(field_psi), intent(in) :: psi
+  real, intent(in) :: s
   ! local data
   character(len=18), save :: sname = 'update_neutral'
   integer :: i
@@ -355,12 +353,10 @@ subroutine update_neutral( this, e, psi )
 
   this%ion_old = this%multi_ion( :, :, this%idx_ion )
 
-  call ionize_neutral( this%multi_ion, this%rate_param, e, this%wp, this%dt, &
-    (/ this%pf%ppc1, this%pf%ppc2 /) )
+  call ionize_neutral( this%multi_ion, this%rate_param, e, this%wp, this%dt, this%pf%ppc )
 
   ! here multi_ion(:,:,idx_ion) and ion_old should be discrete.
-  call add_particles( this%part, this%part_buf, this%multi_ion, this%ion_old, psi, &
-    (/ this%pf%ppc1, this%pf%ppc2 /), this%qm )
+  call add_particles( this%pf, this%part, this%part_buf, this%multi_ion, this%ion_old, s )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -521,34 +517,37 @@ subroutine ionize_neutral( multi_ion, adk_coef, e, wp, dt, ppc )
 
 end subroutine ionize_neutral
 
-subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
+subroutine add_particles( prof, part, part_buf, multi_ion, ion_old, s )
 
   implicit none
 
+  class(fdist2d), intent(inout) :: prof
   class(part2d), intent(inout) :: part
   class(part2d_buf), intent(inout) :: part_buf
   real, intent(in), dimension(:,:,:) :: multi_ion
   real, intent(in), dimension(:,:) :: ion_old
-  integer, intent(in), dimension(2) :: ppc
-  class(field_psi), intent(in) :: psi
-  real, intent(in) :: qm
+  real, intent(in) :: s
 
   ! local
   character(len=18), save :: sname = 'add_particles'
   integer :: nrp, noff, ppc_tot, i, j, k, pp1, pp2, ppc_add, multi_max, idx_ion, n_theta
-  real :: r, dr, theta, dtheta
+  real :: rn, dr, theta, dtheta, den_lon, den_perp, coef
+  real, dimension(2) :: x_tmp
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp     = psi%rf_re(0)%get_ndp(1)
-  n_theta = size( multi_ion, 2 )
-  noff    = psi%rf_re(0)%get_noff(1)
-  dr      = psi%get_dr()
-  dtheta  = 2.0 * pi / real( n_theta )
-  ppc_tot = ppc(1) * ppc(2)
-  multi_max = size( multi_ion, 3 ) - 2
-  idx_ion = multi_max + 2
+  nrp          = prof%nrp
+  n_theta      = prof%num_theta
+  noff         = prof%noff
+  dr           = prof%dr
+  dtheta       = 2.0 * pi / real( n_theta )
+  ppc_tot      = product( prof%ppc )
+  multi_max    = size( multi_ion, 3 ) - 2
+  idx_ion      = multi_max + 2
   part_buf%npp = 0
+
+  call prof%get_den_lon( s, prof%prof_pars_lon, den_lon )
+  coef = real(multi_max) * sign(1.0, prof%qm) / ( real(ppc_tot) * real(n_theta) )
 
   do k = 1, n_theta
     do j = 1, nrp
@@ -562,22 +561,28 @@ subroutine add_particles( part, part_buf, multi_ion, ion_old, psi, ppc, qm )
       pp2 = part_buf%npp
       do i = 1, ppc_add
 
-        pp1 = pp1 + 1
-        pp2 = pp2 + 1
-
         ! randomly generate injection position
         ! r     = rand() + j + noff - 1
         ! theta = ( rand() + k - 1.5 ) * dtheta
-        r     = j + noff - 1 + ( real(i) - 0.5 ) / ppc_add
+        rn    = j + noff - 1 + ( real(i) - 0.5 ) / ppc_add
         theta = ( k - 1 ) * dtheta
+        x_tmp(1) = rn * dr * cos(theta)
+        x_tmp(2) = rn * dr * sin(theta)
+        
+        call prof%get_den_perp( x_tmp, s, prof%prof_pars_perp, prof%prof_pars_lon, den_perp )
 
-        part%x(1,pp1)   = r * dr * cos(theta)
-        part%x(2,pp1)   = r * dr * sin(theta)
+        if ( den_lon * den_perp * prof%density < prof%den_min ) cycle
+
+        pp1 = pp1 + 1
+        pp2 = pp2 + 1
+
+        part%x(1,pp1)   = x_tmp(1)
+        part%x(2,pp1)   = x_tmp(2)
+        part%q(pp1)     = rn * den_lon * den_perp * prof%density * coef
         part%p(1,pp1)   = 0.0
         part%p(2,pp1)   = 0.0
         part%p(3,pp1)   = 0.0
         part%gamma(pp1) = 1.0
-        part%q(pp1)     = qm * r
         part%psi(pp1)   = 1.0
 
         ! store the position of ionized particles for ion charge deposition
@@ -624,11 +629,11 @@ subroutine renew_neutral( this, s )
   ! endif
 
   ! normalized longitudinal density
-  this%density = this%pf%get_density(s)
+  ! this%den_lon = this%pf%get_den_lon(s)
   
   ! normalized charge (coordinate of the particle array) 
-  this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm &
-    / ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(this%pf%num_theta) )
+  ! this%qm = this%multi_max * this%density * this%pf%den * this%pf%qm &
+  !   / ( abs(this%pf%qm) * real(this%pf%ppc1) * real(this%pf%ppc2) * real(this%pf%num_theta) )
 
   this%part%npp = 0
   this%part_buf%npp = 0
@@ -925,7 +930,6 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
 
   ! local data
   character(len=18), save :: sname = 'init_part2d_buf'
-  integer :: npmax, nbmax
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -934,17 +938,15 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
   this%part_dim = 3
 
   ! this is max number of particles to be ionized
-  npmax      = pf%ppc1 * pf%ppc2 * pf%num_theta * opts%get_ndp(1)
-  nbmax      = max(int(0.1*npmax),100)
-  this%npmax = npmax
-  this%nbmax = nbmax
+  this%npmax = product( pf%ppc ) * pf%num_theta * opts%get_ndp(1)
+  this%nbmax = max( int(0.1*this%npmax), 100 )
   this%npp   = 0
 
-  this%dr   = pf%getdex()
+  this%dr   = opts%get_dr()
   this%edge = opts%get_nd(1) * this%dr
 
   ! only allocate position and charge, no need to initialize with profile
-  allocate( this%x( 2, npmax ), this%q( npmax ) )
+  allocate( this%x( 2, this%npmax ), this%q( this%npmax ) )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -965,102 +967,102 @@ subroutine end_part2d_buf(this)
 
 end subroutine end_part2d_buf
 
-subroutine pipesend_part2d_buf(this, tag, id)
+! subroutine pipesend_part2d_buf(this, tag, id)
 
-  implicit none
+!   implicit none
 
-  class(part2d_buf), intent(inout) :: this
-  integer, intent(in) :: tag
-  integer, intent(inout) :: id
+!   class(part2d_buf), intent(inout) :: this
+!   integer, intent(in) :: tag
+!   integer, intent(inout) :: id
 
-  ! local data
-  character(len=18), save :: sname = 'pipesend_part2d_buf'
-  integer :: des, ierr, i
-  real, dimension(:,:), allocatable, save :: sbuf
+!   ! local data
+!   character(len=18), save :: sname = 'pipesend_part2d_buf'
+!   integer :: des, ierr, i
+!   real, dimension(:,:), allocatable, save :: sbuf
 
-  call write_dbg(cls_name, sname, cls_level, 'starts')
+!   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  if ( .not. allocated(sbuf) ) then
-    allocate( sbuf( this%part_dim, this%npmax ) )
-  endif
+!   if ( .not. allocated(sbuf) ) then
+!     allocate( sbuf( this%part_dim, this%npmax ) )
+!   endif
 
-  des = id_proc() + num_procs_loc()
+!   des = id_proc() + num_procs_loc()
 
-  if ( des >= num_procs() ) then
-    id = MPI_REQUEST_NULL
-    call write_dbg(cls_name, sname, cls_level, 'ends')
-    return
-  endif
+!   if ( des >= num_procs() ) then
+!     id = MPI_REQUEST_NULL
+!     call write_dbg(cls_name, sname, cls_level, 'ends')
+!     return
+!   endif
 
-  ! to be implemented if using tile
-  ! call this%pcb()
+!   ! to be implemented if using tile
+!   ! call this%pcb()
 
-  do i = 1, this%npp
-    sbuf(1:2,i) = this%x(:,i)
-    sbuf(3,i)   = this%q(i)
-  enddo
+!   do i = 1, this%npp
+!     sbuf(1:2,i) = this%x(:,i)
+!     sbuf(3,i)   = this%q(i)
+!   enddo
 
-  ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
-    comm_world(), id, ierr)
+!   ! NOTE: npp*xdim might be larger than MAX_INT32
+!   call MPI_ISEND(sbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+!     comm_world(), id, ierr)
 
-  ! check for errors
-  if (ierr /= 0) then
-    call write_err('MPI_ISEND failed')
-  endif
+!   ! check for errors
+!   if (ierr /= 0) then
+!     call write_err('MPI_ISEND failed')
+!   endif
 
-  call write_dbg(cls_name, sname, cls_level, 'ends')
+!   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine pipesend_part2d_buf
+! end subroutine pipesend_part2d_buf
 
-subroutine piperecv_part2d_buf(this, tag)
+! subroutine piperecv_part2d_buf(this, tag)
 
-  implicit none
+!   implicit none
 
-  class(part2d_buf), intent(inout) :: this
-  integer, intent(in) :: tag
-  ! local data
-  character(len=18), save :: sname = 'piperecv_part2d_buf'
-  integer, dimension(MPI_STATUS_SIZE) :: istat
-  integer :: nps, des, ierr, i
-  real, dimension(:,:), allocatable, save :: rbuf
+!   class(part2d_buf), intent(inout) :: this
+!   integer, intent(in) :: tag
+!   ! local data
+!   character(len=18), save :: sname = 'piperecv_part2d_buf'
+!   integer, dimension(MPI_STATUS_SIZE) :: istat
+!   integer :: nps, des, ierr, i
+!   real, dimension(:,:), allocatable, save :: rbuf
 
-  call write_dbg(cls_name, sname, cls_level, 'starts')
+!   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  if ( .not. allocated(rbuf) ) then
-    allocate( rbuf( this%part_dim, this%npmax ) )
-  endif
+!   if ( .not. allocated(rbuf) ) then
+!     allocate( rbuf( this%part_dim, this%npmax ) )
+!   endif
 
-  des = id_proc() - num_procs_loc()
+!   des = id_proc() - num_procs_loc()
 
-  if (des < 0) then
-    call write_dbg(cls_name, sname, cls_level, 'ends')
-    return
-  endif
+!   if (des < 0) then
+!     call write_dbg(cls_name, sname, cls_level, 'ends')
+!     return
+!   endif
 
-  ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), p_dtype_real, &
-    des, tag, comm_world(), istat, ierr)
+!   ! NOTE: npp*xdim might be larger than MAX_INT32
+!   call MPI_RECV(rbuf, int(this%npmax*this%part_dim), p_dtype_real, &
+!     des, tag, comm_world(), istat, ierr)
 
-  call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
+!   call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
 
-  this%npp = nps/this%part_dim
+!   this%npp = nps/this%part_dim
 
-  do i = 1, this%npp
-    this%x(:,i)   = rbuf(1:2,i)
-    this%q(i)     = rbuf(3,i)
-  enddo
+!   do i = 1, this%npp
+!     this%x(:,i)   = rbuf(1:2,i)
+!     this%q(i)     = rbuf(3,i)
+!   enddo
 
-  ! to be implemented if using tile
-  ! call this%pcp(fd)
+!   ! to be implemented if using tile
+!   ! call this%pcp(fd)
 
-  ! check for errors
-  if (ierr /= 0) then
-    call write_err('MPI failed')
-  endif
+!   ! check for errors
+!   if (ierr /= 0) then
+!     call write_err('MPI failed')
+!   endif
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+!    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine piperecv_part2d_buf
+! end subroutine piperecv_part2d_buf
 
 end module neutral_class

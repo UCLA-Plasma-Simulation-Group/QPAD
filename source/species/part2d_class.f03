@@ -43,9 +43,10 @@ type part2d
    real, dimension(:), pointer :: q => null()
    ! array for psi
    real, dimension(:), pointer :: psi => null()
-
    ! particle upper boundaries
    real :: edge
+   ! particle buffer
+   real, dimension(:,:), pointer :: pbuf => null()
 
    contains
 
@@ -72,6 +73,9 @@ save
 character(len=20), parameter :: cls_name = "part2d"
 integer, parameter :: cls_level = 2
 
+real, dimension(:,:), allocatable :: recv_buf
+integer :: recv_buf_size = 0
+
 contains
 
 subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
@@ -95,25 +99,26 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%dt  = dt
    this%part_dim = 2 + p_p_dim + 3
 
-   npmax      = pf%getnpmax()
+   npmax      = pf%np_max
    nbmax      = max(int(0.1*npmax),100)
    this%npmax = npmax
    this%nbmax = nbmax
    this%npp   = 0
 
-   this%dr   = pf%getdex()
+   this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
    allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
+   allocate( this%pbuf( this%part_dim, npmax ) )
+
+   recv_buf_size = max( recv_buf_size, npmax )
 
    if ( present( if_empty ) ) empty = if_empty
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) then
-      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   endif
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -144,19 +149,15 @@ subroutine renew_part2d( this, pf, s, if_empty )
    logical, intent(in), optional :: if_empty
 
    ! local data
+   logical :: empty = .false.
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%npp = 0
 
-   if ( present(if_empty) ) then
-      if ( if_empty ) then
-         call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-      endif
-   else
-      call pf%dist( this%x, this%p, this%gamma, this%q, this%psi, this%npp, s )
-   endif
+   if ( present( if_empty ) ) empty = if_empty
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -875,13 +876,8 @@ subroutine pipesend_part2d(this, tag, id)
   ! local data
   character(len=18), save :: sname = 'pipesend_part2d'
   integer :: des, ierr, i
-  real, dimension(:,:), allocatable, save :: sbuf
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-  if ( .not. allocated(sbuf) ) then
-    allocate( sbuf( this%part_dim, this%npmax ) )
-  endif
 
   des = id_proc() + num_procs_loc()
 
@@ -895,15 +891,15 @@ subroutine pipesend_part2d(this, tag, id)
   ! call this%pcb()
 
   do i = 1, this%npp
-    sbuf(1:2,i) = this%x(:,i)
-    sbuf(3:5,i) = this%p(:,i)
-    sbuf(6,i)   = this%gamma(i)
-    sbuf(7,i)   = this%psi(i)
-    sbuf(8,i)   = this%q(i)
+    this%pbuf(1:2,i) = this%x(:,i)
+    this%pbuf(3:5,i) = this%p(:,i)
+    this%pbuf(6,i)   = this%gamma(i)
+    this%pbuf(7,i)   = this%psi(i)
+    this%pbuf(8,i)   = this%q(i)
   enddo
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_ISEND(sbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+  call MPI_ISEND(this%pbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
     comm_world(), id, ierr)
 
   ! check for errors
@@ -925,12 +921,11 @@ subroutine piperecv_part2d(this, tag)
   character(len=18), save :: sname = 'piperecv_part2d'
   integer, dimension(MPI_STATUS_SIZE) :: istat
   integer :: nps, des, ierr, i
-  real, dimension(:,:), allocatable, save :: rbuf
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  if ( .not. allocated(rbuf) ) then
-    allocate( rbuf( this%part_dim, this%npmax ) )
+  if ( .not. allocated(recv_buf) ) then
+    allocate( recv_buf( this%part_dim, recv_buf_size ) )
   endif
 
   des = id_proc() - num_procs_loc()
@@ -941,7 +936,7 @@ subroutine piperecv_part2d(this, tag)
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(rbuf, int(this%npmax*this%part_dim), p_dtype_real, &
+  call MPI_RECV(recv_buf, int(this%npmax*this%part_dim), p_dtype_real, &
     des, tag, comm_world(), istat, ierr)
 
   call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
@@ -949,11 +944,11 @@ subroutine piperecv_part2d(this, tag)
   this%npp = nps/this%part_dim
 
   do i = 1, this%npp
-    this%x(:,i)   = rbuf(1:2,i)
-    this%p(:,i)   = rbuf(3:5,i)
-    this%gamma(i) = rbuf(6,i)
-    this%psi(i)   = rbuf(7,i)
-    this%q(i)     = rbuf(8,i)
+    this%x(:,i)   = recv_buf(1:2,i)
+    this%p(:,i)   = recv_buf(3:5,i)
+    this%gamma(i) = recv_buf(6,i)
+    this%psi(i)   = recv_buf(7,i)
+    this%q(i)     = recv_buf(8,i)
   enddo
 
   ! to be implemented if using tile

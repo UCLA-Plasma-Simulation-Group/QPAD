@@ -372,7 +372,7 @@ subroutine run_simulation( this )
 
       ! ionize and advance particles of neutrals
       do k = 1, this%nneutrals
-        call neut(k)%update( e, psi )
+        call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
       enddo
 

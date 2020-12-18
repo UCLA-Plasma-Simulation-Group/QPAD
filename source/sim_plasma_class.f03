@@ -20,7 +20,7 @@ type sim_plasma
 
   class( species2d ), dimension(:), pointer :: spe => null()
   class( neutral ), dimension(:), pointer :: neut => null()
-  type( fdist2d_wrap ), dimension(:), pointer :: pf_spe => null(), pf_neut => null()
+  type( fdist2d ), dimension(:), pointer :: pf_spe => null(), pf_neut => null()
 
   integer :: num_species, num_neutrals
 
@@ -106,50 +106,25 @@ subroutine init_sim_plasma( this, input, opts, s )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
 
+  ! initialize profiles of species and neutrals
   allocate( this%pf_spe( this%num_species ), this%pf_neut( this%num_neutrals ) )
 
   do i = 1, this%num_species
-
-    call input%get( 'species('//num2str(i)//').profile', npf )
-    select case ( npf )
-    case (0)
-       allocate( fdist2d_000 :: this%pf_spe(i)%p )
-       call this%pf_spe(i)%p%new( input, opts, i, 'species' )
-    case (12)
-       allocate( fdist2d_012 :: this%pf_spe(i)%p )
-       call this%pf_spe(i)%p%new( input, opts, i, 'species' )
-    ! Add new distributions right above this line
-    case default
-       call write_err( 'Invalid species profile!' )
-    end select
-
+    call this%pf_spe(i)%new( input, opts, 'species', i )
   enddo
 
   do i = 1, this%num_neutrals
-
-    call input%get( 'neutrals('//num2str(i)//').profile', npf )
-    select case ( npf )
-    case (0)
-       allocate( fdist2d_000 :: this%pf_neut(i)%p )
-       call this%pf_neut(i)%p%new( input, opts, i, 'neutrals' )
-    case (12)
-       allocate( fdist2d_012 :: this%pf_neut(i)%p )
-       call this%pf_neut(i)%p%new( input, opts, i, 'neutrals' )
-    ! Add new distributions right above this line
-    case default
-       call write_err( 'Invalid neutral profile!' )
-    end select
-
+    call this%pf_neut(i)%new( input, opts, 'neutrals', i )
   enddo
 
   ! initialize 2D particle manager
   part_dim = 8
   ! loop over all the 2D particle profile to get the buffer size
   do i = 1, this%num_species
-    call set_part2d_comm( part_dim, npmax = this%pf_spe(i)%p%getnpmax() )
+    call set_part2d_comm( part_dim, npmax = this%pf_spe(i)%np_max )
   enddo
   do i = 1, this%num_neutrals
-    call set_part2d_comm( part_dim, npmax = this%pf_neut(i)%p%getnpmax() )
+    call set_part2d_comm( part_dim, npmax = this%pf_neut(i)%np_max )
   enddo
   call init_part2d_comm( opts )
 
@@ -158,7 +133,7 @@ subroutine init_sim_plasma( this, input, opts, s )
     call input%get( 'species('//num2str(i)//').q', qm )
     call input%get( 'species('//num2str(i)//').m', qbm )
     qbm = qm / qbm
-    call this%spe(i)%new( opts, this%pf_spe(i)%p, ps, max_mode, &
+    call this%spe(i)%new( opts, this%pf_spe(i), ps, max_mode, &
       qbm, s, sm_type, sm_ord )
 
   enddo
@@ -170,7 +145,7 @@ subroutine init_sim_plasma( this, input, opts, s )
     call input%get( 'neutrals('//num2str(i)//').element', elem )
     call input%get( 'neutrals('//num2str(i)//').ion_max', ion_max )
     qbm = qm / qbm
-    call this%neut(i)%new( opts, this%pf_neut(i)%p, max_mode, elem, ion_max, &
+    call this%neut(i)%new( opts, this%pf_neut(i), max_mode, elem, ion_max, &
       qbm, omega_p, s, sm_type, sm_ord )
 
   enddo

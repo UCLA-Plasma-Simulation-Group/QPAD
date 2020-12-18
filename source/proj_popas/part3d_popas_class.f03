@@ -87,8 +87,10 @@ subroutine get_emittance_part3d_popas( this, fid, tstep, recv_tag, send_tag, id 
   ! send message to next stage
   ! the last stage calculates the results
   if ( id_stage() < num_stages() - 1 ) then
+
     call mpi_isend( msg, 11, p_dtype_real, idproc_dest, send_tag, comm_world(), &
       id, ierr )
+
   else
 
     call mpi_reduce( msg, rslt, 11, p_dtype_real, MPI_SUM, 0, comm_loc(), ierr )
@@ -109,8 +111,8 @@ subroutine get_emittance_part3d_popas( this, fid, tstep, recv_tag, send_tag, id 
       write( fid, '(I8.8,8D22.14)' ) tstep, avg_x2(1), avg_p2(1), &
         avg_xp(1), emit(1), avg_x2(2), avg_p2(2), avg_xp(2), emit(2)
       flush( fid )
-    endif
 
+    endif
   endif
 
 end subroutine get_emittance_part3d_popas
@@ -180,7 +182,6 @@ subroutine get_ene_spread_part3d_popas( this, fid, tstep, recv_tag, send_tag, id
       flush(fid)
 
     endif
-
   endif
 
 end subroutine get_ene_spread_part3d_popas
