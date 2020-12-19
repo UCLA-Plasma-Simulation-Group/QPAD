@@ -1179,8 +1179,9 @@ subroutine pwpart_3d_pipe(file,x,p,q,npp,dspl,z0,rtag,stag,id,ierr,s)
  integer, dimension(10) :: istat
  character(len=:), allocatable :: filename
  character(len=8) :: st
- logical :: has_spin = .false.
+ logical :: has_spin
 
+ has_spin = .false.
  if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)

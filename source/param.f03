@@ -127,11 +127,14 @@ integer, parameter :: p_neut_H  = 1, &
                       p_neut_C  = 6, &
                       p_neut_N  = 7, &
                       p_neut_O  = 8, &
+                      p_neut_Ne = 10, &
+                      p_neut_Na = 11, &
                       p_neut_Ar = 18, &
                       p_neut_K  = 19, &
                       p_neut_Rb = 37, &
                       p_neut_Xe = 54, &
-                      p_neut_Cs = 55
+                      p_neut_Cs = 55, &
+                      p_neut_Yb = 70
 
 ! ================================================================
 ! parameters for profile
