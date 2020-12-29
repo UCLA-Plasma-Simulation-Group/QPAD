@@ -156,13 +156,13 @@ subroutine init_sim_beams( this, input, opts )
     call input%get( 'beam('//num2str(i)//').m', qbm )
     qbm = qm/qbm
 
-    push_type = p_push_reduced
+    push_type = p_push3_reduced
     call input%get( 'beam('//num2str(i)//').push_type', str )
     select case ( trim(str) )
     case ( 'reduced' )
-      push_type = p_push_reduced
+      push_type = p_push3_reduced
     case ( 'boris' )
-      push_type = p_push_boris
+      push_type = p_push3_boris
     case default
       call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
     end select
