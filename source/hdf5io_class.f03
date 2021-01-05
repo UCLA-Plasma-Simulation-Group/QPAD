@@ -1535,8 +1535,9 @@ subroutine wpart(file,x,p,q,npp,dspl,ierr,s)
  integer(hid_t) :: memspaceID, aid
  character(len=:), allocatable :: filename
  character(len=8) :: st
- logical :: has_spin = .false.
+ logical :: has_spin
 
+ has_spin = .false.
  if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
@@ -1661,8 +1662,9 @@ subroutine rpart(file,x,p,q,npp,ierr,s)
  integer(hid_t) :: memspaceID, aid
  character(len=:), allocatable :: filename
  character(len=8) :: st
- logical :: has_spin = .false.
+ logical :: has_spin
 
+ has_spin = .false.
  if (present(s)) has_spin = .true.
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
