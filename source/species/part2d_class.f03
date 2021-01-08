@@ -81,7 +81,7 @@ integer, parameter :: cls_level = 2
 real, dimension(:,:), allocatable :: recv_buf
 integer :: recv_buf_size = 0
 
-integer, parameter :: p_max_subcyc = 65535
+integer, parameter :: p_max_subcyc = 1024
 
 contains
 
@@ -845,9 +845,9 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
 
   enddo ! chunk loop
 
-  call write_stdout( "[amj] max sub-cycling times = " // num2str(n_subcyc_max) )
+  ! call write_stdout( "[amj] max sub-cycling times = " // num2str(n_subcyc_max) )
   if ( np_fail > 0 ) then
-    call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np_fail) // &
+    call write_stdout( '[amj] Max number of sub-cycling reached. ' // num2str(np_fail) // &
             ' particles have not yet finished sub-cycling.' )
   endif
 
@@ -1324,9 +1324,9 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
   enddo ! chunk loop
 
   ! DEBUG
-  call write_stdout( "[push] max sub-cycling times = " // num2str(n_subcyc_max) )
+  ! call write_stdout( "[push] max sub-cycling times = " // num2str(n_subcyc_max) )
   if ( np_fail > 0 ) then
-    call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np_fail) // &
+    call write_stdout( '[push] Max number of sub-cycling reached. ' // num2str(np_fail) // &
           ' particles have not yet finished sub-cycling.' )
   endif
 
