@@ -104,7 +104,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    this%qbm = qbm
    this%dt  = dt
-   this%dt_eff_max = 10.0 * dt ! TODO: hard-coded, will put into input file
+   this%dt_eff_max = pf%dt_eff_max
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%np_max
@@ -591,7 +591,7 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
   real, dimension(:,:), pointer :: cui => null(), dcui => null(), amui => null()
 
   integer(kind=LG) :: ptrcur, pp
-  integer :: i, j, noff, nrp, np, np_subcyc, mode, max_mode, n_subcyc, exit_cnt, n_subcyc_max
+  integer :: i, j, noff, nrp, np, np_subcyc, mode, max_mode, n_subcyc, exit_cnt, n_subcyc_max, np_fail
   integer, dimension(p_cache_size) :: ix, ix_subcyc, ndt_rem
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, p_old, p_new, p_subcyc
   real, dimension(2, p_cache_size) :: x_subcyc
@@ -621,6 +621,7 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
   amu0 => amu_re(0)%get_f1()
 
   n_subcyc_max = 0
+  np_fail = 0
 
   do ptrcur = 1, this%npp, p_cache_size
 
@@ -765,8 +766,7 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
       ! when reaching the max number of sub-cycling, store the unfinished particles
       ! and pop out a warning.
       if ( n_subcyc == p_max_subcyc ) then
-        call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np_subcyc) // &
-          ' particles have not yet finished sub-cycling.' )
+        np_fail = np_fail + np_subcyc
         do i = 1, np_subcyc
           pp = ix_subcyc(i) - ptrcur + 1
           ir = 1.0 / sqrt( x_subcyc(1,i)**2 + x_subcyc(2,i)**2 )
@@ -845,7 +845,11 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
 
   enddo ! chunk loop
 
-  print *, "[amj] max sub-cycling times = ", n_subcyc_max
+  call write_stdout( "[amj] max sub-cycling times = " // num2str(n_subcyc_max) )
+  if ( np_fail > 0 ) then
+    call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np_fail) // &
+            ' particles have not yet finished sub-cycling.' )
+  endif
 
   if ( noff == 0 ) then
 
@@ -1159,7 +1163,7 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode, exit_cnt
-  integer :: n_subcyc, n_subcyc_max
+  integer :: n_subcyc, n_subcyc_max, np_fail
   real :: qtmh1, qtmh2, dtc, ostq
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_subcyc
   real, dimension(2, p_cache_size) :: x_subcyc
@@ -1173,7 +1177,8 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
   n_subcyc_max = 0
-  max_mode  = ef%get_max_mode()
+  np_fail = 0
+  max_mode = ef%get_max_mode()
 
   ef_re => ef%get_rf_re()
   ef_im => ef%get_rf_im()
@@ -1301,8 +1306,7 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
       ! when reaching the max number of sub-cycling, store the unfinished particles
       ! and pop out a warning.
       if ( n_subcyc == p_max_subcyc ) then
-        ! call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np) // &
-        !   ' particles have not yet finished sub-cycling.' )
+        np_fail = np_fail + np
         do i = 1, np
           this%p(:, ix_subcyc(i) ) = p_subcyc(:,i)
           dtc = this%dt / ( sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 ) - p_subcyc(3,i) )
@@ -1320,7 +1324,11 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
   enddo ! chunk loop
 
   ! DEBUG
-  print *, "[push] max sub-cycling times = ", n_subcyc_max
+  call write_stdout( "[push] max sub-cycling times = " // num2str(n_subcyc_max) )
+  if ( np_fail > 0 ) then
+    call write_stdout( 'Max number of sub-cycling reached. ' // num2str(np_fail) // &
+          ' particles have not yet finished sub-cycling.' )
+  endif
 
   call stop_tprof( 'push 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
