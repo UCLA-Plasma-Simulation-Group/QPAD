@@ -1273,7 +1273,6 @@ subroutine init_fdist3d_101(this,input,i)
    call input%get(trim(s1)//'.file_center(3)', this%file_ctr(3))
    call input%get(trim(s1)//'.xconv_fac', this%xconv)
    call input%get(trim(s1)//'.qconv_fac', this%qconv)
-   this%qconv = this%qconv / ( this%dx**2 * this%dz * 2.0 * pi )
    call input%get(trim(s1)//'.filename', this%filename)
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -1294,7 +1293,7 @@ subroutine dist3d_101(this,x,p,q,npp,noff,ndp,s)
    integer, intent(in), dimension(2) :: noff, ndp
 
    ! local data
-   real :: rbuf, xconv, qconv
+   real :: rbuf
    real, dimension(2) :: redge, zedge
    integer :: i, pp, ptrcur, ierr
    character(len=18), save :: sname = 'dist3d_101'
@@ -1314,11 +1313,6 @@ subroutine dist3d_101(this,x,p,q,npp,noff,ndp,s)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    if ( present(s) ) has_spin = .true.
-
-   ! conversion factor from OSIRIS to QPAD
-   ! xconv = 1.0 / sqrt( this%os_n0 )
-   ! qconv = product( this%os_dx ) / ( 2*pi * this%dx**2 * this%dz * &
-   !    sqrt(this%os_n0) * this%os_fraction )
 
    allocate( xbuf(p_cache_size, p_x_dim) )
    allocate( pbuf(p_cache_size, p_p_dim) )
