@@ -106,7 +106,7 @@ subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
    this%edge(2) = opts%get_nd(2) * this%dz
 
    ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
-   nbmax = int(0.01*this%npmax)
+   nbmax = int(0.1*this%npmax)
    this%nbmax = nbmax
    this%npp = 0
    this%z0 = pf%getz0()
