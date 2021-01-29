@@ -75,7 +75,7 @@ subroutine set_part2d_comm( part_dim, npmax )
   integer, intent(in) :: part_dim
   integer, intent(in) :: npmax
 
-  real :: buf_ratio = 0.1 
+  real :: buf_ratio = 0.2
 
   dim_max  = max( part_dim, dim_max )
   buf_size = max( int(npmax * buf_ratio), buf_size )
@@ -354,7 +354,7 @@ subroutine pack_particles( part, edge, sbuf, ihole, scnt, des )
     if ( goto_des( x, edge, des ) ) then
 
       if ( scnt >= buf_size ) then
-        call write_err( '3D particle MPI buffer overflow!' )
+        call write_err( '2D particle MPI buffer overflow!' )
       endif
 
       scnt = scnt + 1
