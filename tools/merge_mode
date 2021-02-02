@@ -45,17 +45,19 @@ if __name__ == '__main__':
 
     # read input arguments
     phi = 0
+    phi_degree = 0
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             print('Usage: merge_mode -a <angle in degree>')
         elif opt in ('-a', '--angle'):
+            phi_degree = arg
             phi = float(arg) / 180 * np.pi
 
     max_mode = get_max_mode()
     file_list = get_file_list()
     num_files = len(file_list)
-    if not os.path.exists('Merged'):
-        os.mkdir('Merged')
+    if not os.path.exists('Merged_angle_'+str(phi_degree)):
+        os.mkdir('Merged_angle_'+str(phi_degree))
 
     filename = 'Re0/' + file_list[0]
     with h5py.File(filename, 'r') as h5file:
@@ -106,7 +108,7 @@ if __name__ == '__main__':
                 merged_dset[:, dset_size[1] - 1:] -= dset * np.sin(mode * phi)
 
         # write to the h5 files
-        with h5py.File('Merged/' + filename, 'w') as h5file:
+        with h5py.File('Merged_angle_'+str(phi_degree)+'/' + filename, 'w') as h5file:
 
             # write file attributes
             for key, val in file_attrs.items():
