@@ -7,10 +7,10 @@ import sys
 import getopt
 
 
-def get_max_mode():
+def get_max_mode(path = './'):
 
-    real_dirs = glob.glob('Re*')
-    imag_dirs = glob.glob('Im*')
+    real_dirs = glob.glob(path + 'Re*')
+    imag_dirs = glob.glob(path + 'Im*')
     num_real_dirs = 0
     num_imag_dirs = 0
 
@@ -27,39 +27,22 @@ def get_max_mode():
     return num_real_dirs - 1
 
 
-def get_file_list():
+def get_file_list(path = './'):
 
-    file_list = glob.glob('Re0/*_*.h5')
+    file_list = glob.glob(path + 'Re0/*_*.h5')
     file_list = [os.path.basename(file) for file in file_list]
     return file_list
+    # e.g.: file_list = ['charge_00000000.h5', 'charge_00000001.h5']
 
-
-if __name__ == '__main__':
-
-    # check input arguments
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:', ['help', 'angle='])
-    except getopt.GetoptError:
-        print('Usage: merge_mode -a <angle in degree>')
-        sys.exit(2)
-
-    # read input arguments
-    phi = 0
-    phi_degree = 0
-    for opt, arg in opts:
-        if opt in ('-h', '--help'):
-            print('Usage: merge_mode -a <angle in degree>')
-        elif opt in ('-a', '--angle'):
-            phi_degree = arg
-            phi = float(arg) / 180 * np.pi
-
-    max_mode = get_max_mode()
-    file_list = get_file_list()
+def merge(path = './',phi_degree=0):
+    phi = float(phi_degree) / 180 * np.pi
+    max_mode = get_max_mode(path)
+    file_list = get_file_list(path)
     num_files = len(file_list)
-    if not os.path.exists('Merged_angle_'+str(phi_degree)):
-        os.mkdir('Merged_angle_'+str(phi_degree))
+    if not os.path.exists(path+'Merged_angle_'+str(phi_degree)):
+        os.mkdir(path+'Merged_angle_'+str(phi_degree))
 
-    filename = 'Re0/' + file_list[0]
+    filename = path + 'Re0/' + file_list[0]
     with h5py.File(filename, 'r') as h5file:
 
         # read dataset name and attributes
@@ -79,13 +62,13 @@ if __name__ == '__main__':
 
     for filename in file_list:
 
-        print('Merging file ' + filename + '...')
+        print('Merging file ' + path + filename + '...')
 
         # initialize merged dataset
         merged_dset = np.zeros((dset_size[0], dset_size[1] * 2 - 1))
 
         # add m = 0 mode to the merged dataset
-        with h5py.File('Re0/' + filename, 'r') as h5file:
+        with h5py.File(path + 'Re0/' + filename, 'r') as h5file:
 
             # read file attributes
             file_attrs = {name: value for name, value in h5file.attrs.items()}
@@ -97,18 +80,18 @@ if __name__ == '__main__':
         # add m > 0 modes to the merged dataset
         for mode in np.arange(1, max_mode + 1):
 
-            with h5py.File('Re' + str(mode) + '/' + filename, 'r') as h5file:
+            with h5py.File(path + 'Re' + str(mode) + '/' + filename, 'r') as h5file:
                 dset = np.array(h5file[dset_name])
                 merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:]) * 2 * np.cos(mode * (phi + np.pi))
                 merged_dset[:, dset_size[1] - 1:] += dset * 2 * np.cos(mode * phi)
 
-            with h5py.File('Im' + str(mode) + '/' + filename, 'r') as h5file:
+            with h5py.File(path + 'Im' + str(mode) + '/' + filename, 'r') as h5file:
                 dset = np.array(h5file[dset_name])
                 merged_dset[:, 0:dset_size[1] - 1] -= np.fliplr(dset[:, 1:]) * np.sin(mode * (phi + np.pi))
                 merged_dset[:, dset_size[1] - 1:] -= dset * np.sin(mode * phi)
 
         # write to the h5 files
-        with h5py.File('Merged_angle_'+str(phi_degree)+'/' + filename, 'w') as h5file:
+        with h5py.File(path + 'Merged_angle_'+str(phi_degree)+'/' + filename, 'w') as h5file:
 
             # write file attributes
             for key, val in file_attrs.items():
