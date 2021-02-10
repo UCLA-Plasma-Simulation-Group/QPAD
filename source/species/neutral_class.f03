@@ -336,6 +336,8 @@ type neutral
   integer :: idx_ion
   ! wp is plasma frequency in SI unit
   real :: wp, dt
+  ! pusher type
+  integer :: push_type
   
   double precision, dimension(:,:), pointer :: rate_param
 
@@ -402,7 +404,7 @@ subroutine alloc_neutral( this )
 end subroutine alloc_neutral
 
 subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
-  smth_type, smth_ord )
+  push_type, smth_type, smth_ord )
 ! element is atomic number. e.g.: For Li, element = 3
 ! max_e is the maximum number of electrons that the programmer allow the atom
 ! to lose due to the ionization. It should be less or equal to element
@@ -412,7 +414,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   class(neutral), intent(inout) :: this
   type(options), intent(in) :: opts
   class(fdist2d), intent(inout), target :: pf
-  integer, intent(in) :: max_mode, elem, max_e
+  integer, intent(in) :: max_mode, elem, max_e, push_type
   real, intent(in) :: qbm, wp, s
   integer, intent(in), optional :: smth_type, smth_ord
 
@@ -426,6 +428,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%pf => pf
   this%wp = wp
   this%dt = opts%get_dxi()
+  this%push_type = push_type
 
   allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion, this%rho_ion_add )
 
@@ -948,7 +951,13 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   this%cu = 0.0
   this%dcu = 0.0
   this%amu = 0.0
-  call this%part%amjdeposit( e, b, this%cu, this%amu, this%dcu )  
+  select case ( this%push_type )
+    case ( p_push2_robust )
+      call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu )
+    case ( p_push2_robust_subcyc )
+      call this%part%amjdeposit_robust_subcyc( e, b, this%cu, this%amu, this%dcu )
+  end select
+  
   call this%cu%acopy_gc_f1( dir=p_mpi_forward )
   call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
   call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -978,7 +987,13 @@ subroutine push_neutral( this, e, b )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call this%part%push( e, b )
+  select case ( this%push_type )
+    case ( p_push2_robust )
+      call this%part%push_robust( e, b )
+    case ( p_push2_robust_subcyc )
+      call this%part%push_robust_subcyc( e, b )
+  end select
+
   call this%part%update_bound()
   call move_part2d_comm( this%part )
   

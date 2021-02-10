@@ -25,6 +25,9 @@ type part2d
    ! dr = radial cell size
    real :: qbm, dt, dr
 
+   ! maximum effective time step (only used for sub-cycling)
+   real :: dt_eff_max
+
    ! nbmax = size of buffer for passing particles between processors
    ! npp = number of particles in current partition
    ! npmax = maximum number of particles in each partition
@@ -50,16 +53,18 @@ type part2d
 
    contains
 
-   procedure :: new          => init_part2d
-   procedure :: renew        => renew_part2d
-   procedure :: del          => end_part2d
-   procedure :: qdeposit     => qdeposit_part2d
-   procedure :: amjdeposit   => amjdeposit_part2d
-   procedure :: push         => push_part2d
-   procedure :: update_bound => update_bound_part2d
-   ! procedure :: extract_psi  => extract_psi_part2d
-   procedure :: pipesend     => pipesend_part2d
-   procedure :: piperecv     => piperecv_part2d
+   procedure :: new                      => init_part2d
+   procedure :: renew                    => renew_part2d
+   procedure :: del                      => end_part2d
+   procedure :: qdeposit                 => qdeposit_part2d
+   procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
+   procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
+   procedure :: push_robust              => push_robust_part2d
+   procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
+   procedure :: update_bound             => update_bound_part2d
+   ! procedure :: extract_psi            => extract_psi_part2d
+   procedure :: pipesend                 => pipesend_part2d
+   procedure :: piperecv                 => piperecv_part2d
 
    ! TODO: particle manager to be rewritten
    ! procedure :: pmv => pmove
@@ -75,6 +80,8 @@ integer, parameter :: cls_level = 2
 
 real, dimension(:,:), allocatable :: recv_buf
 integer :: recv_buf_size = 0
+
+integer, parameter :: p_max_subcyc = 1024
 
 contains
 
@@ -97,6 +104,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    this%qbm = qbm
    this%dt  = dt
+   this%dt_eff_max = pf%dt_eff_max
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%np_max
@@ -292,7 +300,7 @@ subroutine qdeposit_part2d( this, q )
 
 end subroutine qdeposit_part2d
 
-subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
+subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
   implicit none
@@ -301,7 +309,7 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
   class(field), intent(in) :: cu, amu, dcu
   class(field), intent(in) :: ef, bf
   ! local data
-  character(len=18), save :: sname = 'amjdeposit_part2d'
+  character(len=32), save :: sname = 'amjdeposit_robust_part2d'
   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
   type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
   type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
@@ -321,8 +329,6 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
   real, dimension(p_p_dim) :: du, u2
   real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
   complex(kind=DB) :: phase, phase0
-
-  integer :: stat
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
   call start_tprof( 'deposit 2D particles' )
@@ -562,7 +568,384 @@ subroutine amjdeposit_part2d( this, ef, bf, cu, amu, dcu )
   call stop_tprof( 'deposit 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine amjdeposit_part2d
+end subroutine amjdeposit_robust_part2d
+
+subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
+! deposit the current, acceleration and momentum flux
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: cu, amu, dcu
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=18), save :: sname = 'amjdeposit_robust_subcyc_part2d'
+  type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+  type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+  type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
+  type(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
+  type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
+
+  real, dimension(:,:), pointer :: cu0 => null(), dcu0 => null(), amu0 => null()
+  real, dimension(:,:), pointer :: cur => null(), dcur => null(), amur => null()
+  real, dimension(:,:), pointer :: cui => null(), dcui => null(), amui => null()
+
+  integer(kind=LG) :: ptrcur, pp
+  integer :: i, j, noff, nrp, np, np_subcyc, mode, max_mode, n_subcyc, exit_cnt, n_subcyc_max, np_fail
+  integer, dimension(p_cache_size) :: ix, ix_subcyc, ndt_rem
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, p_old, p_new, p_subcyc
+  real, dimension(2, p_cache_size) :: x_subcyc
+  real, dimension(0:1, p_cache_size) :: wt
+  real, dimension(p_cache_size) :: cc, ss, gam_subcyc, dt_subcyc
+  real, dimension(p_p_dim) :: du, u2, utmp
+  real :: qtmh1, qtmh2, idt, ostq, ipsi, dpsi, w, ir, dtc, pcos, psin
+  complex(kind=DB) :: phase, phase0
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'deposit 2D particles' )
+
+  ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
+  bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
+  cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
+  dcu_re => dcu%get_rf_re(); dcu_im => dcu%get_rf_im()
+  amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
+
+  idt = 1.0 / this%dt
+  max_mode = ef%get_max_mode()
+
+  noff = cu_re(0)%get_noff(1)
+  nrp  = cu_re(0)%get_ndp(1)
+
+  cu0  => cu_re(0)%get_f1()
+  dcu0 => dcu_re(0)%get_f1()
+  amu0 => amu_re(0)%get_f1()
+
+  n_subcyc_max = 0
+  np_fail = 0
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! get the time-centered fields by interpolation
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+
+    ! calculate wake field and transform momentum from Cartesian to cylindrical coordinates
+    pp = ptrcur
+    do i = 1, np
+      wp(1,i) = ep(1,i) - bp(2,i)
+      wp(2,i) = ep(2,i) + bp(1,i)
+      wp(3,i) = ep(3,i)
+      pp = pp + 1
+    enddo
+
+    ! initialize sub-cycling
+    pp = ptrcur
+    do i = 1, np
+
+      ! momentum for sub-cycling is in Cartesian coordinates
+      p_subcyc(:,i) = this%p(:,pp)
+
+      ! synchronize the particle position with the momentum for sub-cycling
+      gam_subcyc(i) = sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 )
+      dtc = 0.5 * this%dt / ( gam_subcyc(i) - p_subcyc(3,i) )
+      x_subcyc(1,i) = this%x(1,pp) - dtc * p_subcyc(1,i)
+      x_subcyc(2,i) = this%x(2,pp) - dtc * p_subcyc(2,i)
+
+      ! get the old momentum in cylindrical coordinates
+      ir = 1.0 / sqrt( x_subcyc(1,i)**2 + x_subcyc(2,i)**2 )
+      pcos = x_subcyc(1,i) * ir
+      psin = x_subcyc(2,i) * ir
+      p_old(1,i) = p_subcyc(1,i) * pcos + p_subcyc(2,i) * psin
+      p_old(2,i) = p_subcyc(2,i) * pcos - p_subcyc(1,i) * psin
+      p_old(3,i) = p_subcyc(3,i)
+      
+      ! particle index for sub-cycling
+      ix_subcyc(i) = pp      
+      
+      ! calculate the sub-cycling time step
+      ndt_rem(i) = ceiling( this%dt / min( this%dt, this%dt_eff_max * (1.0 - p_subcyc(3,i) / gam_subcyc(i)) ) )
+      dt_subcyc(i) = this%dt / ndt_rem(i)
+
+      ! advance position by a half sub-cycling time step
+      dtc = 0.5 * dt_subcyc(i) / ( gam_subcyc(i) - p_subcyc(3,i) )
+      x_subcyc(1,i) = x_subcyc(1,i) + p_subcyc(1,i) * dtc
+      x_subcyc(2,i) = x_subcyc(2,i) + p_subcyc(2,i) * dtc
+
+      pp = pp + 1
+    enddo
+
+    n_subcyc = 0
+    np_subcyc = np
+    ! begin sub-cycling
+    do while ( np_subcyc > 0 )
+
+      ! interpolate fields to particles
+      call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x_subcyc, this%dr, &
+        bp, ep, np_subcyc, int(1, kind=LG), p_cartesian )
+
+      do i = 1, np_subcyc
+
+        qtmh1 = 0.5 * dt_subcyc(i) * this%qbm / ( gam_subcyc(i) - p_subcyc(3,i) )
+        qtmh2 = qtmh1 * gam_subcyc(i)
+
+        ! scale the fields
+        ep(:,i) = ep(:,i) * qtmh2
+        bp(:,i) = bp(:,i) * qtmh1
+
+        ! first half of electric field acceleration
+        utmp = p_subcyc(:,i) + ep(:,i)
+
+        ! rotation about magnetic field
+        p_subcyc(1,i) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
+        p_subcyc(2,i) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
+        p_subcyc(3,i) = utmp(3) + utmp(1) * bp(2,i) - utmp(2) * bp(1,i)
+
+        ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+        bp(:,i) = bp(:,i) * ostq
+
+        utmp(1) = utmp(1) + p_subcyc(2,i) * bp(3,i) - p_subcyc(3,i) * bp(2,i)
+        utmp(2) = utmp(2) + p_subcyc(3,i) * bp(1,i) - p_subcyc(1,i) * bp(3,i)
+        utmp(3) = utmp(3) + p_subcyc(1,i) * bp(2,i) - p_subcyc(2,i) * bp(1,i)
+
+        ! second half of electric field acceleration
+        p_subcyc(:,i) = utmp + ep(:,i)
+
+        ! update the remaining time step numbers
+        ndt_rem(i) = ndt_rem(i) - 1
+
+        ! advance position
+        gam_subcyc(i) = sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 )
+        dtc = dt_subcyc(i) / ( gam_subcyc(i) - p_subcyc(3,i) )
+        x_subcyc(1,i) = x_subcyc(1,i) + p_subcyc(1,i) * dtc
+        x_subcyc(2,i) = x_subcyc(2,i) + p_subcyc(2,i) * dtc
+
+      enddo
+
+      ! store the particles that finished sub-cycling and rearrange sub-cycling array
+      exit_cnt = 0; i = 1
+      do while ( i <= np_subcyc - exit_cnt )
+
+        ! the particles that have used up the global 2D time step or went out of the boundary
+        ! will exit the sub-cycling.
+        ir = sqrt( x_subcyc(1,i)**2 + x_subcyc(2,i)**2 )
+        if ( ndt_rem(i) == 0 .or. ir >= this%edge ) then
+
+          ! store the new momentum in cylindrical coordinates
+          pp = ix_subcyc(i) - ptrcur + 1
+          pcos = x_subcyc(1,i) / ir
+          psin = x_subcyc(2,i) / ir
+          p_new(1,pp) = p_subcyc(1,i) * pcos + p_subcyc(2,i) * psin
+          p_new(2,pp) = p_subcyc(2,i) * pcos - p_subcyc(1,i) * psin
+          p_new(3,pp) = p_subcyc(3,i)
+
+          ! move the last element of sub-cycling array to current position
+          x_subcyc(:,i) = x_subcyc( :, np_subcyc - exit_cnt )
+          p_subcyc(:,i) = p_subcyc( :, np_subcyc - exit_cnt )
+          ix_subcyc(i)  = ix_subcyc( np_subcyc - exit_cnt )
+          dt_subcyc(i)  = dt_subcyc( np_subcyc - exit_cnt )
+          gam_subcyc(i) = gam_subcyc( np_subcyc - exit_cnt )
+          ndt_rem(i)    = ndt_rem( np_subcyc - exit_cnt )
+
+          exit_cnt = exit_cnt + 1
+
+        else
+          i = i + 1
+        endif
+
+      enddo
+      np_subcyc = np_subcyc - exit_cnt
+      n_subcyc = n_subcyc + 1
+
+      ! when reaching the max number of sub-cycling, store the unfinished particles
+      ! and pop out a warning.
+      if ( n_subcyc == p_max_subcyc ) then
+        np_fail = np_fail + np_subcyc
+        do i = 1, np_subcyc
+          pp = ix_subcyc(i) - ptrcur + 1
+          ir = 1.0 / sqrt( x_subcyc(1,i)**2 + x_subcyc(2,i)**2 )
+          pcos = x_subcyc(1,i) * ir
+          psin = x_subcyc(2,i) * ir
+          p_new(1,pp) = p_subcyc(1,i) * pcos + p_subcyc(2,i) * psin
+          p_new(2,pp) = p_subcyc(2,i) * pcos - p_subcyc(1,i) * psin
+          p_new(3,pp) = p_subcyc(3,i)
+        enddo
+        exit
+      endif
+
+    enddo ! sub-cycling
+
+    n_subcyc_max = max(n_subcyc_max, n_subcyc)
+
+    ! calculate and store time-centered values
+    ! deposit momentum flux, acceleration density, and current density
+    pp = ptrcur
+    do i = 1, np
+
+      du(1) = idt * ( p_new(1,i) - p_old(1,i) )
+      du(2) = idt * ( p_new(2,i) - p_old(2,i) )
+      
+      ! store time-centered values
+      utmp  = 0.5 * ( p_new(:,i) + p_old(:,i) )
+      this%gamma(pp) = sqrt( 1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 )
+      this%psi(pp)   = this%gamma(pp) - utmp(3)
+
+      ipsi = 1.0 / this%psi(pp)
+      dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * utmp(1) + wp(2,i) * utmp(2) ) * ipsi )
+
+      du(1) = du(1) + utmp(1) * dpsi * ipsi
+      du(2) = du(2) + utmp(2) * dpsi * ipsi
+
+      u2(1) = utmp(1) * utmp(1) * ipsi
+      u2(2) = utmp(1) * utmp(2) * ipsi
+      u2(3) = utmp(2) * utmp(2) * ipsi
+
+      phase0 = cmplx( cc(i), -ss(i) )
+      phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+
+      ! deposit m = 0 mode
+      do j = 0, 1
+        w = wt(j,i) * real(phase)
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * utmp(1:3)
+        dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
+      enddo
+
+      ! deposit m > 0 mode
+      do mode = 1, max_mode
+
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+        phase = phase * phase0
+
+        do j = 0, 1
+          w = wt(j,i) * real(phase)
+          cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * utmp(1:3)
+          dcur( 1:2, ix(i)+j ) = dcur( 1:2, ix(i)+j ) + w * du(1:2)
+          amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
+
+          w = wt(j,i) * aimag(phase)
+          cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * utmp(1:3)
+          dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
+          amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
+        enddo
+
+      enddo
+
+      pp = pp + 1
+    enddo
+
+  enddo ! chunk loop
+
+  ! call write_stdout( "[amj] max sub-cycling times = " // num2str(n_subcyc_max) )
+  if ( np_fail > 0 ) then
+    call write_stdout( '[amj] Max number of sub-cycling reached. ' // num2str(np_fail) // &
+            ' particles have not yet finished sub-cycling.' )
+  endif
+
+  if ( noff == 0 ) then
+
+    ! guard cells on the axis are useless
+    cu0(1:3,0)  = 0.0
+    dcu0(1:2,0) = 0.0
+    amu0(1:3,0) = 0.0
+
+    cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
+    dcu0(1:2,1) = 0.0
+    amu0(1:3,1) = 0.0
+
+    do mode = 1, max_mode
+
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      ! guard cells on the axis are useless
+      cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
+      dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
+      amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
+       
+      if ( mode == 1 ) then
+        cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
+        dcur(1:2,1) = 8.0 * dcur(1:2,1)
+        amur(1:3,1) = 0.0
+        cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+        dcui(1:2,1) = 8.0 * dcui(1:2,1)
+        amui(1:3,1) = 0.0
+      elseif ( mode == 2 ) then
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 8.0 * amur(1:3,1)
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 8.0 * amui(1:3,1)
+      else
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 0.0
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 0.0
+       endif
+    enddo
+
+    do j = 2, nrp + 1
+      ir = 1.0 / ( j + noff - 1 )
+      cu0(1:3,j)  = cu0(1:3,j)  * ir
+      dcu0(1:2,j) = dcu0(1:2,j) * ir
+      amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+    do mode = 1, max_mode
+
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      do j = 2, nrp + 1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
+
+  else
+
+    do j = 0, nrp + 1
+       ir = 1.0 / ( j + noff - 1 )
+       cu0(1:3,j)  = cu0(1:3,j)  * ir
+       dcu0(1:2,j) = dcu0(1:2,j) * ir
+       amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+    do mode = 1, max_mode
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      do j = 0, nrp+1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
+
+  endif
+
+  call stop_tprof( 'deposit 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine amjdeposit_robust_subcyc_part2d
 
 subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, ep, np, ptrcur, &
   geom, weight, ix, pcos, psin )
@@ -663,22 +1046,20 @@ subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, e
 
 end subroutine interp_emf_part2d
 
-subroutine push_part2d( this, ef, bf )
+subroutine push_robust_part2d( this, ef, bf )
 
   implicit none
 
   class(part2d), intent(inout) :: this
   class(field), intent(in) :: ef, bf
   ! local data
-  character(len=18), save :: sname = 'push_part2d'
+  character(len=18), save :: sname = 'push_robust_part2d'
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
   real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
   integer(kind=LG) :: ptrcur, pp
-
-  integer :: stat
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
   call start_tprof( 'push 2D particles' )
@@ -706,8 +1087,11 @@ subroutine push_part2d( this, ef, bf )
 
     pp = ptrcur
     do i = 1, np
-      qtmh1 = qtmh / this%psi(pp)
-      qtmh2 = qtmh1 * this%gamma(pp)
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+      ! qtmh1 = qtmh / this%psi(pp)
+      ! qtmh2 = qtmh1 * this%gamma(pp)
+      qtmh1 = qtmh / ( gam - this%p(3,pp) )
+      qtmh2 = qtmh1 * gam
       ep(:,i) = ep(:,i) * qtmh2
       bp(:,i) = bp(:,i) * qtmh1
       pp = pp + 1
@@ -766,7 +1150,190 @@ subroutine push_part2d( this, ef, bf )
   call stop_tprof( 'push 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine push_part2d
+end subroutine push_robust_part2d
+
+subroutine push_robust_subcyc_part2d( this, ef, bf )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=18), save :: sname = 'push_robust_subcyc_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+
+  integer :: i, np, max_mode, exit_cnt
+  integer :: n_subcyc, n_subcyc_max, np_fail
+  real :: qtmh1, qtmh2, dtc, ostq
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_subcyc
+  real, dimension(2, p_cache_size) :: x_subcyc
+  real, dimension(p_cache_size) :: dt_subcyc, gam_subcyc
+  real, dimension(p_p_dim) :: utmp
+  integer, dimension(p_cache_size) :: ndt_rem
+  integer(kind=LG), dimension(p_cache_size) :: ix_subcyc
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+  n_subcyc_max = 0
+  np_fail = 0
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! initialize sub-cycling
+    pp = ptrcur
+    do i = 1, np
+      p_subcyc(:,i) = this%p(:,pp)
+      
+      ! synchronize the particle position with the momentum for sub-cycling
+      gam_subcyc(i) = sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 )
+      dtc = 0.5 * this%dt / ( gam_subcyc(i) - p_subcyc(3,i) )
+      x_subcyc(1,i) = this%x(1,pp) - dtc * p_subcyc(1,i)
+      x_subcyc(2,i) = this%x(2,pp) - dtc * p_subcyc(2,i)
+
+      ! particle index for sub-cycling
+      ix_subcyc(i) = pp
+
+      ! calculate the current sub-cycling time step
+      ndt_rem(i) = ceiling( this%dt / min( this%dt, this%dt_eff_max * (1.0 - p_subcyc(3,i) / gam_subcyc(i)) ) )
+      dt_subcyc(i) = this%dt / ndt_rem(i)
+
+      ! advance position by half sub-cycling time step
+      dtc = 0.5 * dt_subcyc(i) / ( gam_subcyc(i) - p_subcyc(3,i) )
+      x_subcyc(1,i) = x_subcyc(1,i) + p_subcyc(1,i) * dtc
+      x_subcyc(2,i) = x_subcyc(2,i) + p_subcyc(2,i) * dtc
+
+      pp = pp + 1
+    enddo
+
+    n_subcyc = 0
+    ! begin sub-cycling
+    do while( np > 0 )
+
+      ! interpolate fields to particles for sub-cycling
+      call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x_subcyc, this%dr, &
+        bp, ep, np, int(1, kind=LG), p_cartesian )
+      
+      do i = 1, np
+
+        qtmh1 = 0.5 * dt_subcyc(i) * this%qbm / ( gam_subcyc(i) - p_subcyc(3,i) )
+        qtmh2 = qtmh1 * gam_subcyc(i)
+
+        ep(:,i) = ep(:,i) * qtmh2
+        bp(:,i) = bp(:,i) * qtmh1
+
+        ! first half of electric field acceleration
+        utmp = p_subcyc(:,i) + ep(:,i)
+
+        ! rotation about magnetic field
+        p_subcyc(1,i) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
+        p_subcyc(2,i) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
+        p_subcyc(3,i) = utmp(3) + utmp(1) * bp(2,i) - utmp(2) * bp(1,i)
+
+        ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+        bp(1,i) = bp(1,i) * ostq
+        bp(2,i) = bp(2,i) * ostq
+        bp(3,i) = bp(3,i) * ostq
+
+        utmp(1) = utmp(1) + p_subcyc(2,i) * bp(3,i) - p_subcyc(3,i) * bp(2,i)
+        utmp(2) = utmp(2) + p_subcyc(3,i) * bp(1,i) - p_subcyc(1,i) * bp(3,i)
+        utmp(3) = utmp(3) + p_subcyc(1,i) * bp(2,i) - p_subcyc(2,i) * bp(1,i)
+
+        ! second half of electric field acceleration
+        p_subcyc(:,i) = utmp + ep(:,i)
+
+        ! update the remaining time step numbers
+        ndt_rem(i) = ndt_rem(i) - 1
+
+        ! advance position
+        gam_subcyc(i) = sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 )
+        ! dt_subcyc(i) = min( dt_rem(i), this%dt_eff_max * (1.0 - p_subcyc(3,i) / gam_subcyc(i)) )
+        dtc = dt_subcyc(i) / ( gam_subcyc(i) - p_subcyc(3,i) )
+        x_subcyc(1,i) = x_subcyc(1,i) + p_subcyc(1,i) * dtc
+        x_subcyc(2,i) = x_subcyc(2,i) + p_subcyc(2,i) * dtc
+
+      enddo
+
+      ! store the particles that finished sub-cycling and rearrange sub-cycling array
+      exit_cnt = 0; i = 1
+      do while ( i <= np - exit_cnt )
+
+        ! the particles that have used up the global 2D time step or went out of the boundary
+        ! will exit the sub-cycling.
+        if ( ndt_rem(i) == 0 .or. &
+          x_subcyc(1,i)**2 + x_subcyc(2,i)**2 >= this%edge**2 ) then
+
+          ! store the momentum          
+          this%p( :, ix_subcyc(i) ) = p_subcyc(:,i)
+
+          ! advance the position by a full 2D time step and store it
+          dtc = this%dt / ( sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 ) - p_subcyc(3,i) )
+          this%x( 1, ix_subcyc(i) ) = this%x( 1, ix_subcyc(i) ) + p_subcyc(1,i) * dtc
+          this%x( 2, ix_subcyc(i) ) = this%x( 2, ix_subcyc(i) ) + p_subcyc(2,i) * dtc
+
+          ! move the last element of sub-cycling array to current position
+          x_subcyc(:,i) = x_subcyc( :, np - exit_cnt )
+          p_subcyc(:,i) = p_subcyc( :, np - exit_cnt )
+          ix_subcyc(i)  = ix_subcyc( np - exit_cnt )
+          dt_subcyc(i)  = dt_subcyc( np - exit_cnt )
+          gam_subcyc(i) = gam_subcyc( np - exit_cnt )
+          ndt_rem(i)    = ndt_rem( np - exit_cnt )
+
+          exit_cnt = exit_cnt + 1
+
+        else
+          i = i + 1
+        endif
+
+      enddo
+      np = np - exit_cnt
+      n_subcyc = n_subcyc + 1
+
+      ! when reaching the max number of sub-cycling, store the unfinished particles
+      ! and pop out a warning.
+      if ( n_subcyc == p_max_subcyc ) then
+        np_fail = np_fail + np
+        do i = 1, np
+          this%p(:, ix_subcyc(i) ) = p_subcyc(:,i)
+          dtc = this%dt / ( sqrt( 1.0 + p_subcyc(1,i)**2 + p_subcyc(2,i)**2 + p_subcyc(3,i)**2 ) - p_subcyc(3,i) )
+          this%x( 1, ix_subcyc(i) ) = this%x( 1, ix_subcyc(i) ) + p_subcyc(1,i) * dtc
+          this%x( 2, ix_subcyc(i) ) = this%x( 2, ix_subcyc(i) ) + p_subcyc(2,i) * dtc
+        enddo
+        exit
+      endif
+
+    enddo ! sub-cycling
+
+    ! DEBUG
+    n_subcyc_max = max(n_subcyc_max, n_subcyc)
+
+  enddo ! chunk loop
+
+  ! DEBUG
+  ! call write_stdout( "[push] max sub-cycling times = " // num2str(n_subcyc_max) )
+  if ( np_fail > 0 ) then
+    call write_stdout( '[push] Max number of sub-cycling reached. ' // num2str(np_fail) // &
+          ' particles have not yet finished sub-cycling.' )
+  endif
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_robust_subcyc_part2d
 
 subroutine update_bound_part2d( this )
 
@@ -815,32 +1382,6 @@ subroutine update_bound_part2d( this )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine update_bound_part2d
-
-! subroutine pmove(this,fd)
-
-!    implicit none
-
-!    class(part2d), intent(inout) :: this
-!    class(field), intent(in) :: fd
-! ! local data
-!    character(len=18), save :: sname = 'pmove'
-!    class(ufield), pointer :: ud
-
-!    integer :: stat
-
-!    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-!    ud => fd%get_rf_re(0)
-!    ! call part2d_pmove(this%part,this%pp,this%npp,this%dr,this%xdim,this%npmax,&
-!    ! &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
-
-!    call part2d_pmove(this%x, this%p, this%gamma, this%q, this%psi,&
-!    &this%pp,this%npp,this%dr,this%part_dim,this%npmax,&
-!    &this%nbmax,ud,sbufl,sbufr,rbufl,rbufr,ihole)
-
-!    call write_dbg(cls_name, sname, cls_level, 'ends')
-
-! end subroutine pmove
 
 ! subroutine extract_psi_part2d(this,psi)
 

@@ -25,6 +25,8 @@ type :: fdist2d
   ! Maximum number of particles in this partition
   integer :: np_max
   real :: dr
+  ! Maximum effective time step for subcycling pusher
+  real :: dt_eff_max
   integer :: noff, nr, nrp, max_mode
   ! Thermal velocity
   real, dimension(p_p_dim) :: uth
@@ -166,6 +168,7 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   call input%get( trim(sect_name) // '.density', this%density )
   call input%get( trim(sect_name) // '.den_min', this%den_min )
   ! call input%get( trim(sect_name) // '.random_pos', this%random_pos )
+  call input%get( trim(sect_name) // '.dt_eff_max', this%dt_eff_max )
   call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
   call input%get( trim(sect_name) // '.uth(2)', this%uth(2) )
   call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
