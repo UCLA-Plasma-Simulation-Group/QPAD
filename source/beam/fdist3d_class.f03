@@ -766,7 +766,7 @@ subroutine init_fdist3d_002(this,input,i)
       endif
       sumz = sumz + (this%fz(ii) + this%fz(ii-1)) * (this%z(ii) - this%z(ii-1)) * 0.5
    end do
-   this%z = this%z/dz
+   this%z = (this%z - this%z0) / dz
    this%npf = npf
    this%dx = dr
    this%dz = dz
