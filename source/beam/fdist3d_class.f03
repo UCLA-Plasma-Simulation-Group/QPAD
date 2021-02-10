@@ -17,7 +17,7 @@ implicit none
 private
 
 public :: fdist3d, fdist3d_wrap
-public :: fdist3d_000, fdist3d_001, fdist3d_002, fdist3d_100
+public :: fdist3d_000, fdist3d_001, fdist3d_002, fdist3d_100, fdist3d_101
 
 type, abstract :: fdist3d
 
@@ -155,6 +155,24 @@ type, extends(fdist3d) :: fdist3d_100
    procedure, private :: dist3d => dist3d_100
 
 end type fdist3d_100
+
+type, extends(fdist3d) :: fdist3d_101
+! External particle imported from file
+   private
+
+   real :: rmax, zmin, zmax
+   real :: xconv, qconv
+   real, dimension(3) :: bctr, file_ctr
+   character(len=:), allocatable :: filename
+   logical :: quiet
+
+   contains
+
+   procedure, private :: init_fdist3d => init_fdist3d_101
+   procedure, private :: deposit_fdist3d => deposit_fdist3d_101
+   procedure, private :: dist3d => dist3d_101
+
+end type fdist3d_101
 
 character(len=10), save :: cls_name = 'fdist3d'
 integer, save :: cls_level = 2
@@ -1208,5 +1226,277 @@ subroutine deposit_fdist3d_100(this,q)
    call write_err( 'Free-stream deposition is not supported for external particles.' )   
 
 end subroutine deposit_fdist3d_100
+
+subroutine init_fdist3d_101(this,input,i)
+
+   implicit none
+
+   class(fdist3d_101), intent(inout) :: this
+   type(input_json), intent(inout) :: input
+   integer, intent(in) :: i
+
+   ! local data
+   real :: min, max
+   integer :: nr, nz
+   character(len=20) :: s1
+   character(len=32), save :: sname = 'init_fdist3d_101:'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   s1 = 'beam('//num2str(i)//')'
+
+   ! regular params
+   call input%get(trim(s1)//'.profile', this%npf)
+   call input%get(trim(s1)//'.npmax', this%npmax)
+   call input%get(trim(s1)//'.evolution', this%evol)
+   ! call input%get(trim(s1)//'.quiet_start',quiet)
+   ! call input%get('simulation.n0', n0)
+   call input%get('simulation.grid(1)', nr)
+   call input%get('simulation.box.r(1)', min)
+   call input%get('simulation.box.r(2)', max)
+   this%dx = (max - min) / real(nr)
+   this%rmax = max
+   call input%get('simulation.grid(2)', nz)
+   call input%get('simulation.box.z(1)', min)
+   call input%get('simulation.box.z(2)', max)
+   this%dz = (max - min) / real(nz)
+   this%z0 = min
+   this%zmin = 0.0
+   this%zmax = max - min
+
+   ! params for external particle import
+   call input%get(trim(s1)//'.center(1)', this%bctr(1))
+   call input%get(trim(s1)//'.center(2)', this%bctr(2))
+   call input%get(trim(s1)//'.center(3)', this%bctr(3))
+   call input%get(trim(s1)//'.file_center(1)', this%file_ctr(1))
+   call input%get(trim(s1)//'.file_center(2)', this%file_ctr(2))
+   call input%get(trim(s1)//'.file_center(3)', this%file_ctr(3))
+   call input%get(trim(s1)//'.xconv_fac', this%xconv)
+   call input%get(trim(s1)//'.qconv_fac', this%qconv)
+   call input%get(trim(s1)//'.filename', this%filename)
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine init_fdist3d_101
+!
+subroutine dist3d_101(this,x,p,q,npp,noff,ndp,s)
+
+   use iso_c_binding
+
+   implicit none
+
+   class(fdist3d_101), intent(inout) :: this
+   real, dimension(:,:), pointer, intent(inout) :: x, p
+   real, dimension(:,:), pointer, intent(inout), optional :: s
+   real, dimension(:), pointer, intent(inout) :: q
+   integer(kind=LG), intent(inout) :: npp
+   integer, intent(in), dimension(2) :: noff, ndp
+
+   ! local data
+   real :: rbuf
+   real, dimension(2) :: redge, zedge
+   integer :: i, pp, ptrcur, ierr
+   character(len=18), save :: sname = 'dist3d_101'
+
+   integer(hsize_t), dimension(2) :: dims, maxdims
+   integer(hsize_t), dimension(2) :: chunk_size, offset
+   integer(hid_t) :: file_id, grp_id, treal, dtype_id
+   integer(hid_t), dimension(p_x_dim) :: xdset_id
+   integer(hid_t), dimension(p_p_dim) :: pdset_id
+   integer(hid_t), dimension(p_s_dim) :: sdset_id
+   integer(hid_t) :: qdset_id, fspace_id, mspace_id
+   real, dimension(:,:), pointer :: xbuf => null(), pbuf => null(), sbuf => null()
+   real, dimension(:), pointer :: qbuf => null()
+   logical :: has_spin = .false.
+   integer, parameter :: real_kind_8 = kind(1.0d0)
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   if ( present(s) ) has_spin = .true.
+
+   allocate( xbuf(p_cache_size, p_x_dim) )
+   allocate( pbuf(p_cache_size, p_p_dim) )
+   allocate( qbuf(p_cache_size) )
+   if (has_spin) allocate( sbuf(p_cache_size, p_s_dim) )
+
+   treal = detect_precision()
+
+   if (noff(1) == 0) then
+      redge(1) = 0.0
+   else
+      redge(1) = noff(1) * this%dx
+   endif
+   redge(2) = redge(1) + ndp(1) * this%dx
+   zedge(1) = noff(2) * this%dz + this%zmin
+   zedge(2) = zedge(1) + ndp(2) * this%dz
+
+   call h5open_f( ierr )
+   call h5fopen_f( this%filename, H5F_ACC_RDONLY_F, file_id, ierr )
+   call h5gopen_f( file_id, '/', grp_id, ierr )
+
+   ! get metadata of dataset to be read
+   call h5dopen_f( grp_id, 'x1', xdset_id(1), ierr )
+   call h5dget_space_f( xdset_id(1), fspace_id, ierr )
+   call h5dget_type_f( xdset_id(1), dtype_id, ierr )
+   call h5sget_simple_extent_dims_f( fspace_id, dims, maxdims, ierr )
+   call h5sclose_f( fspace_id, ierr )
+   call h5dclose_f( xdset_id(1), ierr )
+
+   ! create memory dataspace
+   call h5screate_simple_f( 2, (/int(p_cache_size, hsize_t), 1_hsize_t/), &
+      mspace_id, ierr )
+
+   ! open all the datasets to be read
+   call h5dopen_f( grp_id, 'x1', xdset_id(1), ierr )
+   call h5dopen_f( grp_id, 'x2', xdset_id(2), ierr )
+   call h5dopen_f( grp_id, 'x3', xdset_id(3), ierr )
+   call h5dopen_f( grp_id, 'p1', pdset_id(1), ierr )
+   call h5dopen_f( grp_id, 'p2', pdset_id(2), ierr )
+   call h5dopen_f( grp_id, 'p3', pdset_id(3), ierr )
+   call h5dopen_f( grp_id, 'q', qdset_id, ierr )
+   if ( has_spin ) then
+      call h5dopen_f( grp_id, 's1', sdset_id(1), ierr )
+      call h5dopen_f( grp_id, 's2', sdset_id(2), ierr )
+      call h5dopen_f( grp_id, 's3', sdset_id(3), ierr )
+   endif
+
+   pp = 0
+   offset = 0
+   chunk_size(1) = 0
+   chunk_size(2) = 1
+   do ptrcur = 1, dims(1), p_cache_size
+
+      ! check if last copy of table and set np
+      if( ptrcur + p_cache_size > dims(1) ) then
+        chunk_size(1) = dims(1) - ptrcur + 1
+        call h5sset_extent_simple_f( mspace_id, 2, (/int(chunk_size(1), hsize_t), 1_hsize_t/), &
+         (/int(chunk_size(1), hsize_t), 1_hsize_t/), ierr )
+      else
+        chunk_size(1) = p_cache_size
+      endif
+
+      if ( pp + chunk_size(1) > this%npmax ) then
+         call write_err('Insufficient memory allocated. "npmax" is too small.')
+      endif
+
+      ! read chunk from datasets x1, x2, x3
+      do i = 1, p_x_dim
+         call h5dget_space_f( xdset_id(i), fspace_id, ierr )
+         call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
+            chunk_size, ierr) 
+         call h5dread_f( xdset_id(i), h5kind_to_type(real_kind_8, H5_REAL_KIND), &
+            xbuf(1,i), chunk_size, ierr, mspace_id, fspace_id )
+         call h5sclose_f( fspace_id, ierr )
+      enddo
+
+      ! read chunk from datasets p1, p2, p3
+      do i = 1, p_p_dim
+         call h5dget_space_f( pdset_id(i), fspace_id, ierr )
+         call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
+            chunk_size, ierr) 
+         call h5dread_f( pdset_id(i), h5kind_to_type(real_kind_8, H5_REAL_KIND), &
+            pbuf(1,i), chunk_size, ierr, mspace_id, fspace_id )
+         call h5sclose_f( fspace_id, ierr )
+      enddo
+
+      ! read chunk from dataset q
+      call h5dget_space_f( qdset_id, fspace_id, ierr )
+      call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
+         chunk_size, ierr) 
+      call h5dread_f( qdset_id, h5kind_to_type(real_kind_8, H5_REAL_KIND), &
+         qbuf, chunk_size, ierr, mspace_id, fspace_id )
+      call h5sclose_f( fspace_id, ierr )
+
+      ! read chunk from datasets s1, s2, s3
+      if ( has_spin ) then
+      do i = 1, p_s_dim
+         call h5dget_space_f( sdset_id(i), fspace_id, ierr )
+         call h5sselect_hyperslab_f( fspace_id, H5S_SELECT_SET_F, offset, &
+            chunk_size, ierr) 
+         call h5dread_f( sdset_id(i), h5kind_to_type(real_kind_8, H5_REAL_KIND), &
+            sbuf(1,i), chunk_size, ierr, mspace_id, fspace_id )
+         call h5sclose_f( fspace_id, ierr )
+      enddo
+      endif
+
+      ! convert and store particle data
+      do i = 1, chunk_size(1)
+
+         ! centralize particle position
+         xbuf(i,1) = ( xbuf(i,1) - this%file_ctr(1) ) * this%xconv
+         xbuf(i,2) = ( xbuf(i,2) - this%file_ctr(2) ) * this%xconv
+         xbuf(i,3) = ( xbuf(i,3) - this%file_ctr(3) ) * this%xconv
+
+         ! shift in QPAD space
+         xbuf(i,1) = this%bctr(1) + xbuf(i,1)
+         xbuf(i,2) = this%bctr(2) + xbuf(i,2)
+         xbuf(i,3) = this%bctr(3) - xbuf(i,3)
+
+         rbuf = sqrt( xbuf(i,1)**2 + xbuf(i,2)**2 )
+         if ( rbuf >= redge(1) .and. rbuf < redge(2) .and. &
+              xbuf(i,3) >= zedge(1) .and. xbuf(i,3) < zedge(2) ) then
+            pp = pp + 1
+            x(1,pp) = xbuf(i,1)
+            x(2,pp) = xbuf(i,2)
+            x(3,pp) = xbuf(i,3)
+            p(1,pp) = pbuf(i,1)
+            p(2,pp) = pbuf(i,2)
+            p(3,pp) = pbuf(i,3)
+            q(pp) = qbuf(i) * this%qconv
+            if (has_spin) then
+               s(1,pp) = sbuf(i,1)
+               s(2,pp) = sbuf(i,2)
+               s(3,pp) = sbuf(i,3)
+            endif
+         endif
+
+      enddo
+
+      offset(1) = offset(1) + chunk_size(1)
+
+   enddo
+
+   npp = pp
+
+   call h5sclose_f( mspace_id, ierr )
+   call h5dclose_f( xdset_id(1), ierr )
+   call h5dclose_f( xdset_id(2), ierr )
+   call h5dclose_f( xdset_id(3), ierr )
+   call h5dclose_f( pdset_id(1), ierr )
+   call h5dclose_f( pdset_id(2), ierr )
+   call h5dclose_f( pdset_id(3), ierr )
+   call h5dclose_f( qdset_id, ierr )
+   if (has_spin) then
+      call h5dclose_f( sdset_id(1), ierr )
+      call h5dclose_f( sdset_id(2), ierr )
+      call h5dclose_f( sdset_id(3), ierr )
+   endif
+
+   call h5gclose_f( grp_id, ierr )
+   call h5fclose_f( file_id, ierr )
+   call h5close_f( ierr )
+
+   deallocate( xbuf, pbuf, qbuf )
+   if (has_spin) deallocate( sbuf )
+
+   if (ierr /= 0) then
+      call write_err(cls_name//sname//'beam_dist100 error')
+   endif
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine dist3d_101
+
+!
+subroutine deposit_fdist3d_101(this,q)
+
+   implicit none
+
+   class(fdist3d_101), intent(inout) :: this
+   class(field), intent(inout) :: q
+
+   call write_err( 'Free-stream deposition is not supported for external particles.' )   
+
+end subroutine deposit_fdist3d_101
 
 end module fdist3d_class
