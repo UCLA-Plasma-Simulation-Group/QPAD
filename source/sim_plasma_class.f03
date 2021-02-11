@@ -139,10 +139,12 @@ subroutine init_sim_plasma( this, input, opts, s )
     select case ( trim(str) )
     case ( 'robust' )
       push_type = p_push2_robust
+    case ( 'clamp' )
+      push_type = p_push2_clamp
     case ( 'robust-subcycling' )
       push_type = p_push2_robust_subcyc
     case default
-      call write_err( 'Invalid pusher type! Only "robust" and "robust-subcycling" &
+      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
         &are supported currently.' )
     end select
 
@@ -164,10 +166,12 @@ subroutine init_sim_plasma( this, input, opts, s )
     select case ( trim(str) )
     case ( 'robust' )
       push_type = p_push2_robust
+    case ( 'clamp' )
+      push_type = p_push2_clamp
     case ( 'robust-subcycling' )
       push_type = p_push2_robust_subcyc
     case default
-      call write_err( 'Invalid pusher type! Only "robust" and "robust-subcycling" &
+      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
         &are supported currently.' )
     end select
 

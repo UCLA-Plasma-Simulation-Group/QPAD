@@ -50,6 +50,8 @@ type part2d
    real :: edge
    ! particle buffer
    real, dimension(:,:), pointer :: pbuf => null()
+   ! clamped value of 1 + psi
+   real :: psi_clamp
 
    contains
 
@@ -58,8 +60,10 @@ type part2d
    procedure :: del                      => end_part2d
    procedure :: qdeposit                 => qdeposit_part2d
    procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
+   procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
    procedure :: push_robust              => push_robust_part2d
+   procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
    procedure :: update_bound             => update_bound_part2d
    ! procedure :: extract_psi            => extract_psi_part2d
@@ -105,6 +109,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%qbm = qbm
    this%dt  = dt
    this%dt_eff_max = pf%dt_eff_max
+   this%psi_clamp = pf%psi_clamp
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%np_max
@@ -947,6 +952,288 @@ subroutine amjdeposit_robust_subcyc_part2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdeposit_robust_subcyc_part2d
 
+subroutine amjdeposit_clamp_part2d( this, ef, bf, cu, amu, dcu )
+! deposit the current, acceleration and momentum flux
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: cu, amu, dcu
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=18), save :: sname = 'amjdeposit_clamp_part2d'
+  type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+  type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+  type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
+  type(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
+  type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
+
+  real, dimension(:,:), pointer :: cu0 => null(), dcu0 => null(), amu0 => null()
+  real, dimension(:,:), pointer :: cur => null(), dcur => null(), amur => null()
+  real, dimension(:,:), pointer :: cui => null(), dcui => null(), amui => null()
+
+  integer(kind=LG) :: ptrcur, pp
+  integer :: i, j, noff, nrp, np, mode, max_mode
+  integer, dimension(p_cache_size) :: ix
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
+  real, dimension(0:1, p_cache_size) :: wt
+  real, dimension(p_cache_size) :: cc, ss
+  real, dimension(p_p_dim) :: du, u2
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
+  complex(kind=DB) :: phase, phase0
+
+  integer :: stat
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'deposit 2D particles' )
+
+  ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
+  bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
+  cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
+  dcu_re => dcu%get_rf_re(); dcu_im => dcu%get_rf_im()
+  amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
+
+  idt = 1.0 / this%dt
+  qtmh = 0.5 * this%qbm * this%dt
+  max_mode = ef%get_max_mode()
+
+  noff = cu_re(0)%get_noff(1)
+  nrp  = cu_re(0)%get_ndp(1)
+
+  cu0  => cu_re(0)%get_f1()
+  dcu0 => dcu_re(0)%get_f1()
+  amu0 => amu_re(0)%get_f1()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+
+    ! calculate wake field
+    do i = 1, np
+      wp(1,i) = ep(1,i) - bp(2,i)
+      wp(2,i) = ep(2,i) + bp(1,i)
+      wp(3,i) = ep(3,i)
+    enddo
+
+    ! transform momentum from Cartesian to cylindrical coordinates
+    pp = ptrcur
+    do i = 1, np
+      u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+      u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+      u0(3,i) = this%p(3,pp)
+      pp = pp + 1
+    enddo
+
+    ! half electric acceleration
+    do i = 1, np
+      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
+
+      ! clamp the value of 1 + psi
+      ipsi = min( 1.0 / this%psi_clamp, 1.0 / ( gam-u0(3,i) ) )
+
+      qtmh1 = qtmh * gam * ipsi
+      ep(:,i) = ep(:,i) * qtmh1
+      utmp(:,i) = u0(:,i) + ep(:,i)
+    enddo
+
+    ! scale magnetic field
+    do i = 1, np
+      gam = sqrt( 1.0 + utmp(1,i)**2 + utmp(2,i)**2 + utmp(3,i)**2 )
+
+      ! clamp the value of 1 + psi
+      ipsi = min( 1.0 / this%psi_clamp, 1.0 / ( gam - utmp(3,i) ) )
+
+      qtmh2 = qtmh * ipsi
+      bp(:,i) = bp(:,i) * qtmh2
+    enddo
+
+    ! magnetic rotation
+    do i = 1, np
+      u(1,i) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
+      u(2,i) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
+      u(3,i) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
+
+      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+      bp(:,i) = bp(:,i) * ostq
+
+      utmp(1,i) = utmp(1,i) + u(2,i) * bp(3,i) - u(3,i) * bp(2,i)
+      utmp(2,i) = utmp(2,i) + u(3,i) * bp(1,i) - u(1,i) * bp(3,i)
+      utmp(3,i) = utmp(3,i) + u(1,i) * bp(2,i) - u(2,i) * bp(1,i)
+    enddo
+
+    ! half electric acceleration
+    do i = 1, np
+      u(:,i) = utmp(:,i) + ep(:,i)
+    enddo
+
+    ! calculate and store time-centered values
+    ! deposit momentum flux, acceleration density, and current density
+    pp = ptrcur
+    do i = 1, np
+
+      du(1) = idt * ( u(1,i) - u0(1,i) )
+      du(2) = idt * ( u(2,i) - u0(2,i) )
+      
+      u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
+      this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
+
+      ! clamp the value of 1 + psi
+      this%psi(pp)   = max( this%psi_clamp, this%gamma(pp) - u(3,i) )
+
+      ipsi = 1.0 / this%psi(pp)
+      dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u(1,i) + wp(2,i) * u(2,i) ) * ipsi )
+
+      du(1) = du(1) + u(1,i) * dpsi * ipsi
+      du(2) = du(2) + u(2,i) * dpsi * ipsi
+
+      u2(1) = u(1,i) * u(1,i) * ipsi
+      u2(2) = u(1,i) * u(2,i) * ipsi
+      u2(3) = u(2,i) * u(2,i) * ipsi
+
+      phase0 = cmplx( cc(i), -ss(i) )
+      phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+
+      ! deposit m = 0 mode
+      do j = 0, 1
+        w = wt(j,i) * real(phase)
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
+        dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
+      enddo
+
+      ! deposit m > 0 mode
+      do mode = 1, max_mode
+
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+        phase = phase * phase0
+
+        do j = 0, 1
+          w = wt(j,i) * real(phase)
+          cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
+          dcur( 1:2, ix(i)+j ) = dcur( 1:2, ix(i)+j ) + w * du(1:2)
+          amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
+
+          w = wt(j,i) * aimag(phase)
+          cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
+          dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
+          amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
+        enddo
+
+      enddo
+
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  if ( noff == 0 ) then
+
+    ! guard cells on the axis are useless
+    cu0(1:3,0)  = 0.0
+    dcu0(1:2,0) = 0.0
+    amu0(1:3,0) = 0.0
+
+    cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
+    dcu0(1:2,1) = 0.0
+    amu0(1:3,1) = 0.0
+
+    do mode = 1, max_mode
+
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      ! guard cells on the axis are useless
+      cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
+      dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
+      amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
+       
+      if ( mode == 1 ) then
+        cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
+        dcur(1:2,1) = 8.0 * dcur(1:2,1)
+        amur(1:3,1) = 0.0
+        cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+        dcui(1:2,1) = 8.0 * dcui(1:2,1)
+        amui(1:3,1) = 0.0
+      elseif ( mode == 2 ) then
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 8.0 * amur(1:3,1)
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 8.0 * amui(1:3,1)
+      else
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 0.0
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 0.0
+       endif
+    enddo
+
+    do j = 2, nrp + 1
+      ir = 1.0 / ( j + noff - 1 )
+      cu0(1:3,j)  = cu0(1:3,j)  * ir
+      dcu0(1:2,j) = dcu0(1:2,j) * ir
+      amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+    do mode = 1, max_mode
+
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      do j = 2, nrp + 1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
+
+  else
+
+    do j = 0, nrp + 1
+       ir = 1.0 / ( j + noff - 1 )
+       cu0(1:3,j)  = cu0(1:3,j)  * ir
+       dcu0(1:2,j) = dcu0(1:2,j) * ir
+       amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+    do mode = 1, max_mode
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+      do j = 0, nrp+1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
+
+  endif
+
+  call stop_tprof( 'deposit 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine amjdeposit_clamp_part2d
+
 subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, ep, np, ptrcur, &
   geom, weight, ix, pcos, psin )
 
@@ -1334,6 +1621,119 @@ subroutine push_robust_subcyc_part2d( this, ef, bf )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_robust_subcyc_part2d
+
+subroutine push_clamp_part2d( this, ef, bf )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=18), save :: sname = 'push_clamp_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, psi_clamp
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  integer(kind=LG) :: ptrcur, pp
+
+  integer :: stat
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+  qtmh = this%qbm * this%dt * 0.5
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+
+    pp = ptrcur
+    do i = 1, np
+      ! Clamp the value of 1 + psi. It should be already checked in amjdeposit.
+      ! Here check it again for safety
+      psi_clamp = max( this%psi_clamp, this%psi(pp) )
+
+      qtmh1 = qtmh / psi_clamp
+      qtmh2 = qtmh1 * this%gamma(pp)
+      ep(:,i) = ep(:,i) * qtmh2
+      bp(:,i) = bp(:,i) * qtmh1
+      pp = pp + 1
+    enddo
+
+    ! first half of electric field acceleration
+    pp = ptrcur
+    do i = 1, np
+      utmp(:,i) = this%p(:,pp) + ep(:,i)
+      pp = pp + 1
+    enddo
+
+    ! rotation about magnetic field
+    pp = ptrcur
+    do i = 1, np
+      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
+      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
+      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    do i = 1, np
+      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+      bp(1,i) = bp(1,i) * ostq
+      bp(2,i) = bp(2,i) * ostq
+      bp(3,i) = bp(3,i) * ostq
+    enddo
+
+    pp = ptrcur
+    do i = 1, np
+      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    ! second half of electric field acc.
+    pp = ptrcur
+    do i = 1, np
+      this%p(:,pp) = utmp(:,i) + ep(:,i)
+      pp = pp + 1
+    enddo
+
+    ! advance particle position
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+
+      ! clamp the updated 1 + psi
+      psi_clamp = max( this%psi_clamp, gam - this%p(3,pp) )
+
+      dtc = this%dt / psi_clamp
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_clamp_part2d
 
 subroutine update_bound_part2d( this )
 
