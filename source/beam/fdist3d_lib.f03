@@ -293,7 +293,6 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       enddo
       tempz = ( real(j-1) + (tag - zf(j-1)) / (zf(j) - zf(j-1)) ) * dz + zmin
 
-
       tempxx = -cx(1)*(tempz-z0)**2-cx(2)*(tempz-z0)-cx(3)
       tempyy = -cy(1)*(tempz-z0)**2-cy(2)*(tempz-z0)-cy(3)
       do
