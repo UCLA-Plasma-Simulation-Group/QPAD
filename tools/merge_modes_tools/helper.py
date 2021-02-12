@@ -87,8 +87,8 @@ def merge(path = './',phi_degree=0):
 
             with h5py.File(path + 'Im' + str(mode) + '/' + filename, 'r') as h5file:
                 dset = np.array(h5file[dset_name])
-                merged_dset[:, 0:dset_size[1] - 1] -= np.fliplr(dset[:, 1:]) * np.sin(mode * (phi + np.pi))
-                merged_dset[:, dset_size[1] - 1:] -= dset * np.sin(mode * phi)
+                merged_dset[:, 0:dset_size[1] - 1] -= np.fliplr(dset[:, 1:]) * 2 * np.sin(mode * (phi + np.pi))
+                merged_dset[:, dset_size[1] - 1:] -= dset * 2 * np.sin(mode * phi)
 
         # write to the h5 files
         with h5py.File(path + 'Merged_angle_'+str(phi_degree)+'/' + filename, 'w') as h5file:

@@ -1,4 +1,5 @@
 The script merge_modes.py is used to merge all the modes from QPAD output.
+Before using this script, you should delete all the comments in qpinput.json
 
 #### HOW TO USE ####
 
