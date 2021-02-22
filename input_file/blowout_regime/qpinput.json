@@ -24,7 +24,7 @@
     "smooth_order" : 0,
     "verbose" : 0,
     "if_timing" : true,
-    "random_seed" : 0,
+    "random_seed" : 10,
     "algorithm" : "standard"
 },
 "beam" :
@@ -34,7 +34,7 @@
     "profile" : 1,
     "push_type" : "reduced",
     "has_spin" : false,
-    "np" : [128,32,256], ! number of particles in r, theta and z direction. Specified for profile 1
+    "np" : [128,32,256],
     "npmax" : 10000000,
     "q" : -1.0,
     "m" : 1.0,
@@ -64,13 +64,13 @@
 "species" :
 [
     {
-    "profile" : 0,
+    "profile" : ["uniform", "uniform"],
     "ppc" : [2,2],
     "num_theta" : 16,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
-    "longitudinal_profile" : "uniform",
+    "push_type" : "robust",
     "diag" :
     [
         {
@@ -80,7 +80,7 @@
     	{
     	"name" : ["raw"],
     	"ndump" : 1,
-    	"psample" : 100
+    	"psample" : 10
     	}
     ]    
     }
@@ -91,7 +91,7 @@
     "diag" :
     [
         {
-            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m","az_cyl_m"],
+            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m"],
             "ndump" : 1
         }
     ]

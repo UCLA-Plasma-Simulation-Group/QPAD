@@ -29,6 +29,7 @@ type species2d
    class(field_jay), allocatable :: cu, amu
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
+   integer :: push_type
 
    contains
 
@@ -67,8 +68,8 @@ subroutine alloc_species2d( this )
 
 end subroutine alloc_species2d
 
-subroutine init_species2d(this,opts,pf,part_shape,&
-&num_modes,qbm,s,smooth_type,smooth_order)
+subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
+   push_type, smooth_type, smooth_order )
 
    implicit none
 
@@ -76,7 +77,7 @@ subroutine init_species2d(this,opts,pf,part_shape,&
    type(options), intent(in) :: opts
    class(fdist2d), intent(inout), target :: pf
    real, intent(in) :: qbm, s
-   integer, intent(in) :: part_shape, num_modes
+   integer, intent(in) :: part_shape, max_mode, push_type
    integer, intent(in), optional :: smooth_type, smooth_order
 ! local data
    real :: dt
@@ -86,21 +87,22 @@ subroutine init_species2d(this,opts,pf,part_shape,&
 
    this%pf => pf
    dt = opts%get_dxi()
+   this%push_type = push_type
 
    allocate(this%q,this%qn,this%cu,this%amu,this%dcu)
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
-      call this%q%new(opts,num_modes,part_shape,smooth_type,smooth_order)
-      call this%qn%new(opts,num_modes,part_shape,smooth_type,smooth_order)
-      call this%cu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
-      call this%dcu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
-      call this%amu%new(opts,num_modes,part_shape,smooth_type,smooth_order)
+      call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      call this%qn%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      call this%cu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      call this%dcu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      call this%amu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
    else
-      call this%q%new(opts,num_modes,part_shape)
-      call this%qn%new(opts,num_modes,part_shape)
-      call this%cu%new(opts,num_modes,part_shape)
-      call this%dcu%new(opts,num_modes,part_shape)
-      call this%amu%new(opts,num_modes,part_shape)
+      call this%q%new(opts,max_mode,part_shape)
+      call this%qn%new(opts,max_mode,part_shape)
+      call this%cu%new(opts,max_mode,part_shape)
+      call this%dcu%new(opts,max_mode,part_shape)
+      call this%amu%new(opts,max_mode,part_shape)
    endif
    call this%part%new(opts,pf,qbm,dt,s)
 
@@ -184,7 +186,7 @@ subroutine qdp_species2d(this,q)
 
 end subroutine qdp_species2d
 !
-subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
+subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -202,7 +204,15 @@ subroutine amjdp_species2d(this,ef,bf,cu,amu,dcu)
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   call this%part%amjdeposit(ef,bf,this%cu,this%amu,this%dcu)
+   select case ( this%push_type )
+      case ( p_push2_robust )
+         call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
+      case ( p_push2_clamp )
+         call this%part%amjdeposit_clamp( ef, bf, this%cu, this%amu, this%dcu )
+      case ( p_push2_robust_subcyc )
+         call this%part%amjdeposit_robust_subcyc( ef, bf, this%cu, this%amu, this%dcu )
+   end select
+
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -233,9 +243,16 @@ subroutine push_species2d(this,ef,bf)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   call this%part%push(ef,bf)
+   select case ( this%push_type )
+      case ( p_push2_robust )
+         call this%part%push_robust( ef, bf )
+      case ( p_push2_clamp )
+         call this%part%push_clamp( ef, bf )
+      case ( p_push2_robust_subcyc )
+         call this%part%push_robust_subcyc( ef, bf )
+   end select
+
    call this%part%update_bound()
-   ! call this%part%pmv(this%q)
    call move_part2d_comm( this%part )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')

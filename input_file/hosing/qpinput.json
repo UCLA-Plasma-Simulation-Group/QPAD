@@ -96,13 +96,13 @@
 "species" :
 [
     {
-    "profile" : 0,
+    "profile" : ["uniform", "uniform"],
     "ppc" : [2,2],
     "num_theta" : 16,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
-    "longitudinal_profile" : "uniform",
+    "push_type" : "robust",
     "diag" :
     [
         {
