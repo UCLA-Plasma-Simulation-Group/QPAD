@@ -168,13 +168,28 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   call input%get( trim(sect_name) // '.num_theta', this%num_theta )
   call input%get( trim(sect_name) // '.q', this%qm )
   call input%get( trim(sect_name) // '.density', this%density )
-  call input%get( trim(sect_name) // '.den_min', this%den_min )
-  ! call input%get( trim(sect_name) // '.random_pos', this%random_pos )
-  call input%get( trim(sect_name) // '.dt_eff_max', this%dt_eff_max )
-  call input%get( trim(sect_name) // '.fac_clamp', this%fac_clamp )
-  call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
-  call input%get( trim(sect_name) // '.uth(2)', this%uth(2) )
-  call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
+
+  this%den_min = 1.0d-10
+  if ( input%found( trim(sect_name) // '.den_min' ) ) then
+    call input%get( trim(sect_name) // '.den_min', this%den_min )
+  endif
+
+  this%dt_eff_max = 10.0
+  if ( input%found( trim(sect_name) // '.dt_eff_max' ) ) then
+    call input%get( trim(sect_name) // '.dt_eff_max', this%dt_eff_max )
+  endif
+
+  this%fac_clamp = 10.0
+  if ( input%found( trim(sect_name) // '.fac_clamp' ) ) then
+    call input%get( trim(sect_name) // '.fac_clamp', this%fac_clamp )
+  endif
+
+  this%uth = 0.0
+  if ( input%found( trim(sect_name) // '.uth' ) ) then
+    call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
+    call input%get( trim(sect_name) // '.uth(2)', this%uth(2) )
+    call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
+  endif
 
   ! calculate the maximum particles number allowed in this partition
   xtra = 10
