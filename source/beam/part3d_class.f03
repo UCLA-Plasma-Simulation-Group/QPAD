@@ -32,7 +32,7 @@ type part3d
    integer(kind=LG) :: npmax, nbmax, npp
    integer :: part_dim ! dimension of particle coordinates
    ! particle buffer for particle manager
-   real, dimension(:,:), pointer :: pbuff => null()
+   real, dimension(:), pointer :: pbuff => null()
    ! array for particle position
    real, dimension(:,:), pointer :: x => null()
    ! array for particle momenta
@@ -106,7 +106,7 @@ subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
    this%edge(2) = opts%get_nd(2) * this%dz
 
    ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
-   nbmax = int(0.01*this%npmax)
+   nbmax = int(0.1*this%npmax)
    this%nbmax = nbmax
    this%npp = 0
    this%z0 = pf%getz0()
@@ -118,7 +118,7 @@ subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
       allocate( this%s( p_s_dim, npmax ) )
    endif
 
-   allocate( this%pbuff( this%part_dim, nbmax ) )
+   allocate( this%pbuff( this%part_dim * nbmax ) )
 
    ! initialize particle coordinates according to profile
    if ( this%has_spin ) then

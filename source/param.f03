@@ -50,7 +50,9 @@ integer, parameter :: p_ps_linear = 1, p_ps_quadratic = 2
 ! ================================================================
 ! particle pusher
 ! ================================================================
-integer, parameter :: p_push_reduced = 1, p_push_boris = 2
+integer, parameter :: p_push3_reduced = 1, p_push3_boris = 2
+integer, parameter :: p_push2_robust = 1, p_push2_robust_subcyc = 2, &
+                      p_push2_clamp = 3
 
 ! ================================================================
 ! electromagnetic field solver
@@ -127,11 +129,14 @@ integer, parameter :: p_neut_H  = 1, &
                       p_neut_C  = 6, &
                       p_neut_N  = 7, &
                       p_neut_O  = 8, &
+                      p_neut_Ne = 10, &
+                      p_neut_Na = 11, &
                       p_neut_Ar = 18, &
                       p_neut_K  = 19, &
                       p_neut_Rb = 37, &
                       p_neut_Xe = 54, &
-                      p_neut_Cs = 55
+                      p_neut_Cs = 55, &
+                      p_neut_Yb = 70
 
 ! ================================================================
 ! parameters for profile

@@ -21,8 +21,10 @@ integer, parameter :: p_self = 0, &
 integer, parameter :: iter_max = 1000
 
 ! send and receive buffer for MPI
-real, dimension(:,:,:), pointer :: send_buf => null()
-real, dimension(:,:,:), pointer :: recv_buf => null()
+real, dimension(:), pointer :: send_buf_lower => null()
+real, dimension(:), pointer :: send_buf_upper => null()
+real, dimension(:), pointer :: recv_buf_lower => null()
+real, dimension(:), pointer :: recv_buf_upper => null()
 
 ! index of holes
 integer(kind=LG), dimension(:), pointer :: ihole => null()
@@ -73,7 +75,7 @@ subroutine set_part2d_comm( part_dim, npmax )
   integer, intent(in) :: part_dim
   integer, intent(in) :: npmax
 
-  real :: buf_ratio = 0.1 
+  real :: buf_ratio = 0.2
 
   dim_max  = max( part_dim, dim_max )
   buf_size = max( int(npmax * buf_ratio), buf_size )
@@ -89,8 +91,10 @@ subroutine init_part2d_comm( opts )
   integer :: nvp, noff, nrp
   real :: dr
 
-  allocate( send_buf( dim_max, buf_size, 2 ) )
-  allocate( recv_buf( dim_max, buf_size, 2 ) )
+  allocate( send_buf_lower( dim_max * buf_size ) )
+  allocate( send_buf_upper( dim_max * buf_size ) )
+  allocate( recv_buf_lower( dim_max * buf_size ) )
+  allocate( recv_buf_upper( dim_max * buf_size ) )
   allocate( ihole( buf_size ) )
 
   nvp = num_procs_loc()
@@ -121,8 +125,10 @@ subroutine end_part2d_comm()
 
   implicit none
 
-  if ( associated( send_buf ) ) deallocate( send_buf )
-  if ( associated( recv_buf ) ) deallocate( recv_buf )
+  if ( associated( send_buf_lower ) ) deallocate( send_buf_lower )
+  if ( associated( send_buf_upper ) ) deallocate( send_buf_upper )
+  if ( associated( recv_buf_lower ) ) deallocate( recv_buf_lower )
+  if ( associated( recv_buf_upper ) ) deallocate( recv_buf_upper )
   if ( associated( ihole ) ) deallocate( ihole )
 
 end subroutine end_part2d_comm
@@ -148,6 +154,12 @@ subroutine move_part2d_comm( part )
   call write_dbg("part2d_comm", sname, 2, 'starts')
   call start_tprof( 'move 2D particles' )
 
+  ! pack particles to inward/outward send buffers
+  call pack_particles( part, redge, send_buf_lower, ihole, &
+    send_cnt(p_iwd), p_iwd )
+  call pack_particles( part, redge, send_buf_upper, ihole, &
+    send_cnt(p_owd), p_owd )
+
   ! iteration of moving particles in r direction
   iter = 0
   do
@@ -158,9 +170,31 @@ subroutine move_part2d_comm( part )
 
     iter = iter + 1
 
+    ! send inward
+    if ( .not. phys_bnd(p_iwd) ) then
+
+      ssize = send_cnt(p_iwd) * part_dim
+      call mpi_isend( send_buf_lower, ssize, p_dtype_real, pid(p_iwd), &
+        iter, world, sid(1), ierr )
+      
+    else
+      sid(1) = MPI_REQUEST_NULL
+    endif
+    
+    ! send outward
+    if ( .not. phys_bnd(p_owd) ) then
+
+      ssize = send_cnt(p_owd) * part_dim
+      call mpi_isend( send_buf_upper, ssize, p_dtype_real, pid(p_owd), &
+        iter, world, sid(2), ierr )
+
+    else
+      sid(2) = MPI_REQUEST_NULL
+    endif
+
     ! receive from inward and unpack particles
     if ( .not. phys_bnd(p_iwd) ) then
-      call mpi_irecv( recv_buf(:,:,p_lower), bsize, p_dtype_real, pid(p_iwd), &
+      call mpi_irecv( recv_buf_lower, bsize, p_dtype_real, pid(p_iwd), &
         iter, world, rid(1), ierr )
     else
       rid(1) = MPI_REQUEST_NULL
@@ -168,41 +202,11 @@ subroutine move_part2d_comm( part )
 
     ! receive from outward and unpack particles
     if ( .not. phys_bnd(p_owd) ) then
-      call mpi_irecv( recv_buf(:,:,p_upper), bsize, p_dtype_real, pid(p_owd), &
+      call mpi_irecv( recv_buf_upper, bsize, p_dtype_real, pid(p_owd), &
         iter, world, rid(2), ierr )
     else
       rid(2) = MPI_REQUEST_NULL
     endif
-
-    ! pack particles to inward/outward send buffers
-    call pack_particles( part, redge, send_buf(:,:,p_lower), ihole, &
-      send_cnt(p_iwd), p_iwd )
-    call pack_particles( part, redge, send_buf(:,:,p_upper), ihole, &
-      send_cnt(p_owd), p_owd )
-
-    ! send inward
-    if ( .not. phys_bnd(p_iwd) ) then
-
-      ssize = send_cnt(p_iwd) * part_dim
-      call mpi_isend( send_buf(:,:,p_lower), ssize, p_dtype_real, pid(p_iwd), &
-        iter, world, sid(1), ierr )
-      
-    else
-      sid(1) = MPI_REQUEST_NULL
-    endif
-    send_cnt(p_iwd) = 0
-    
-    ! send outward
-    if ( .not. phys_bnd(p_owd) ) then
-
-      ssize = send_cnt(p_owd) * part_dim
-      call mpi_isend( send_buf(:,:,p_upper), ssize, p_dtype_real, pid(p_owd), &
-        iter, world, sid(2), ierr )
-
-    else
-      sid(2) = MPI_REQUEST_NULL
-    endif
-    send_cnt(p_owd) = 0
 
     ! wait receiving finish
     call mpi_wait( rid(1), istat, ierr )
@@ -214,23 +218,23 @@ subroutine move_part2d_comm( part )
     recv_cnt(p_owd) = rsize / part_dim
 
     ! wait sending finsh
-    call mpi_wait( sid(1), istat, ierr )
-    call mpi_wait( sid(2), istat, ierr )
+    call mpi_wait( sid(1), istat, ierr ); send_cnt(p_iwd) = 0
+    call mpi_wait( sid(2), istat, ierr ); send_cnt(p_owd) = 0
 
     ! unpack particles in inward receive buffer
     if ( .not. phys_bnd(p_iwd) ) then
-      call unpack_particles( part, redge, recv_buf(:,:,p_lower), recv_cnt(p_iwd), p_iwd, &
-        send_buf(:,:,p_upper), send_cnt(p_owd), p_owd )
+      call unpack_relay_particles( part, redge, recv_buf_lower, recv_cnt(p_iwd), p_iwd, &
+        send_buf_upper, send_cnt(p_owd), p_owd )
     endif
 
     ! unpack particles in outward receive buffer
     if ( .not. phys_bnd(p_owd) ) then
-      call unpack_particles( part, redge, recv_buf(:,:,p_upper), recv_cnt(p_owd), p_owd, &
-        send_buf(:,:,p_lower), send_cnt(p_iwd), p_iwd )
+      call unpack_relay_particles( part, redge, recv_buf_upper, recv_cnt(p_owd), p_owd, &
+        send_buf_lower, send_cnt(p_iwd), p_iwd )
     endif
 
     ! check if need move particles further
-    call mpi_allreduce( send_cnt, scnt_max, 4, p_dtype_int, MPI_MAX, loc_grp, ierr )
+    call mpi_allreduce( send_cnt, scnt_max, 2, p_dtype_int, MPI_MAX, loc_grp, ierr )
     if ( scnt_max(p_iwd) == 0 .and. scnt_max(p_owd) == 0 ) then
       exit
     endif
@@ -247,18 +251,18 @@ end subroutine move_part2d_comm
 ! particle array and those not belong to this node to other send buffers.
 ! This routine only moves particles inside current stage.
 ! -----------------------------------------------------------------------------
-subroutine unpack_particles( part, edge, rbuf, rcnt, src, sbuf, scnt, des )
+subroutine unpack_relay_particles( part, edge, rbuf, rcnt, src, sbuf, scnt, des )
 
   implicit none
 
   class(part2d), intent(inout) :: part
   real, intent(in), dimension(2) :: edge
-  real, intent(in), dimension(:,:) :: rbuf
-  real, intent(inout), dimension(:,:) :: sbuf
+  real, intent(in), dimension(:) :: rbuf
+  real, intent(inout), dimension(:) :: sbuf
   integer, intent(inout) :: scnt, rcnt
   integer, intent(in) :: src, des
 
-  integer :: i, npp, part_dim, stay_cnt
+  integer :: i, j, npp, part_dim, stay_cnt, go_cnt, stride
   real, dimension(2) :: x
 
   npp      = part%npp
@@ -270,31 +274,38 @@ subroutine unpack_particles( part, edge, rbuf, rcnt, src, sbuf, scnt, des )
   endif
 
   stay_cnt = 0
+  go_cnt = 0
 
   do i = 1, rcnt
 
-    x = rbuf( 1:2, i )
+    stride = (i - 1) * part_dim
+
+    x(1) = rbuf( 1 + stride )
+    x(2) = rbuf( 2 + stride )
 
     ! check if particle belongs to here
     if ( goto_here( x, edge ) ) then
 
       stay_cnt = stay_cnt + 1
 
-      part%x( 1:2, npp + stay_cnt ) = rbuf( 1:2, i )
-      part%p( 1:3, npp + stay_cnt ) = rbuf( 3:5, i )
-      part%gamma( npp + stay_cnt )  = rbuf(   6, i )
-      part%psi( npp + stay_cnt )    = rbuf(   7, i )
-      part%q( npp + stay_cnt )      = rbuf(   8, i )
-
-      rcnt = rcnt - 1
+      part%x( 1, npp + stay_cnt )  = rbuf( 1 + stride )
+      part%x( 2, npp + stay_cnt )  = rbuf( 2 + stride )
+      part%p( 1, npp + stay_cnt )  = rbuf( 3 + stride )
+      part%p( 2, npp + stay_cnt )  = rbuf( 4 + stride )
+      part%p( 3, npp + stay_cnt )  = rbuf( 5 + stride )
+      part%gamma( npp + stay_cnt ) = rbuf( 6 + stride )
+      part%psi( npp + stay_cnt )   = rbuf( 7 + stride )
+      part%q( npp + stay_cnt )     = rbuf( 8 + stride )
 
     ! check if particle goes to the destination neighbor node
     elseif ( goto_des( x, edge, des ) ) then
 
       scnt = scnt + 1
-      rcnt = rcnt - 1
+      go_cnt = go_cnt + 1
 
-      sbuf( 1:part_dim, scnt ) = rbuf( 1:part_dim, i )
+      do j = 1, part_dim
+        sbuf( j + (scnt - 1) * part_dim ) = rbuf( j + stride )
+      enddo
 
     ! particle goes back to where it comes from, should not happen
     elseif ( goto_des( x, edge, src ) ) then
@@ -307,13 +318,14 @@ subroutine unpack_particles( part, edge, rbuf, rcnt, src, sbuf, scnt, des )
   enddo
 
   ! check if all the particles in the receive buffer have been unpacked
+  rcnt = rcnt - stay_cnt - go_cnt
   if ( rcnt /= 0 ) then
     call write_err( 'There are unpacked particles!' )
   endif
 
   part%npp = npp + stay_cnt
 
-end subroutine unpack_particles
+end subroutine unpack_relay_particles
 
 subroutine pack_particles( part, edge, sbuf, ihole, scnt, des )
 
@@ -321,17 +333,17 @@ subroutine pack_particles( part, edge, sbuf, ihole, scnt, des )
 
   class(part2d), intent(inout) :: part
   real, intent(in), dimension(2) :: edge
-  real, intent(inout), dimension(:,:) :: sbuf
+  real, intent(inout), dimension(:) :: sbuf
   integer(kind=LG), intent(inout), dimension(:) :: ihole
   integer, intent(inout) :: scnt
   integer, intent(in) :: des
 
-  integer :: i, npp, go_cnt, part_dim, buf_size
+  integer :: i, npp, go_cnt, part_dim, buf_size, stride
   real, dimension(2) :: x
 
   npp = part%npp
   part_dim = part%part_dim
-  buf_size = size( sbuf, 2 )
+  buf_size = size( sbuf ) / part_dim
 
   go_cnt = 0
 
@@ -342,18 +354,22 @@ subroutine pack_particles( part, edge, sbuf, ihole, scnt, des )
     if ( goto_des( x, edge, des ) ) then
 
       if ( scnt >= buf_size ) then
-        call write_err( '3D particle MPI buffer overflow!' )
+        call write_err( '2D particle MPI buffer overflow!' )
       endif
 
       scnt = scnt + 1
       go_cnt = go_cnt + 1
       ihole(go_cnt) = i
 
-      sbuf( 1:2, scnt ) = part%x(1:2,i)
-      sbuf( 3:5, scnt ) = part%p(1:3,i)
-      sbuf(   6, scnt ) = part%gamma(i)
-      sbuf(   7, scnt ) = part%psi(i)
-      sbuf(   8, scnt ) = part%q(i)
+      stride = (scnt - 1) * part_dim
+      sbuf( 1 + stride ) = part%x(1,i)
+      sbuf( 2 + stride ) = part%x(2,i)
+      sbuf( 3 + stride ) = part%p(1,i)
+      sbuf( 4 + stride ) = part%p(2,i)
+      sbuf( 5 + stride ) = part%p(3,i)
+      sbuf( 6 + stride ) = part%gamma(i)
+      sbuf( 7 + stride ) = part%psi(i)
+      sbuf( 8 + stride ) = part%q(i)
 
     endif
   enddo
@@ -382,46 +398,63 @@ subroutine resize_buf( ratio )
 
   real, intent(in), optional :: ratio
 
-  real :: r = 2.0
-  real, dimension(:,:,:), allocatable :: buf_tmp
-  integer :: i, j
+  real, save :: r = 1.5
+  real, dimension(:), allocatable :: buf_tmp
+  integer :: i, len_old, len_new
 
   if ( present(ratio) ) r = ratio
 
-  allocate( buf_tmp( dim_max, buf_size, 2 ) )
-  buf_size = int( buf_size * r )
+  len_old = dim_max * buf_size
+  allocate( buf_tmp( len_old ) )
+  len_new = dim_max * int( buf_size * r )
 
-  ! resize receive buffer
-  do j = 1, 2
-    do i = 1, recv_cnt(j)
-      buf_tmp(:,i,j) = recv_buf(:,i,j)
-    enddo
+  ! resize lower receive buffer
+  do i = 1, len_old
+    buf_tmp(i) = recv_buf_lower(i)
   enddo
-  deallocate( recv_buf )
-  allocate( recv_buf( dim_max, buf_size, 2 ) )
-  do j = 1, 2
-    do i = 1, recv_cnt(j)
-      recv_buf(:,i,j) = buf_tmp(:,i,j)
-    enddo
+  deallocate( recv_buf_lower )
+  allocate( recv_buf_lower( len_new ) )
+  recv_buf_lower = 0.0
+  do i = 1, len_old
+    recv_buf_lower(i) = buf_tmp(i)
   enddo
 
-  ! resize send buffer
-  do j = 1, 2
-    do i = 1, send_cnt(j)
-      buf_tmp(:,i,j) = send_buf(:,i,j)
-    enddo
+  ! resize upper receive buffer
+  do i = 1, len_old
+    buf_tmp(i) = recv_buf_upper(i)
   enddo
-  deallocate( send_buf )
-  allocate( send_buf( dim_max, buf_size, 2 ) )
-  do j = 1, 2
-    do i = 1, recv_cnt(j)
-      send_buf(:,i,j) = buf_tmp(:,i,j)
-    enddo
+  deallocate( recv_buf_upper )
+  allocate( recv_buf_upper( len_new ) )
+  recv_buf_upper = 0.0
+  do i = 1, len_old
+    recv_buf_upper(i) = buf_tmp(i)
+  enddo
+
+  ! resize lower send buffer
+  do i = 1, len_old
+    buf_tmp(i) = send_buf_lower(i)
+  enddo
+  deallocate( send_buf_lower )
+  allocate( send_buf_lower( len_new ) )
+  send_buf_lower = 0.0
+  do i = 1, len_old
+    send_buf_lower(i) = buf_tmp(i)
+  enddo
+
+  ! resize upper send buffer
+  do i = 1, len_old
+    buf_tmp(i) = send_buf_upper(i)
+  enddo
+  deallocate( send_buf_upper )
+  allocate( send_buf_upper( len_new ) )
+  send_buf_upper = 0.0
+  do i = 1, len_old
+    send_buf_upper(i) = buf_tmp(i)
   enddo
 
   ! resize index of holes
   deallocate( ihole )
-  allocate( ihole( buf_size ) )
+  allocate( ihole( len_new / dim_max ) )
 
   deallocate( buf_tmp )
 

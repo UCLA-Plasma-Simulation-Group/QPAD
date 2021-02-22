@@ -139,10 +139,19 @@ subroutine write_err( estr )
   implicit none
 
   character(len=*), intent(in) :: estr
+  
+  integer :: ierr
+  logical :: flag
 
   call dtimer( dtime, itime, 1 )
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
-  stop
+  
+  call mpi_initialized( flag, ierr )
+  if ( flag ) then
+    call mpi_finalize( ierr )
+  else
+    stop
+  endif
 
 end subroutine write_err
 
