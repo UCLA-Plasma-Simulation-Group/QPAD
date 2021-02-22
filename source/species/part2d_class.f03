@@ -50,8 +50,8 @@ type part2d
    real :: edge
    ! particle buffer
    real, dimension(:,:), pointer :: pbuf => null()
-   ! clamped value of 1 + psi
-   real :: psi_clamp
+   ! clamped value of gamma/ (1 + psi)
+   real :: fac_clamp
 
    contains
 
@@ -109,7 +109,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%qbm = qbm
    this%dt  = dt
    this%dt_eff_max = pf%dt_eff_max
-   this%psi_clamp = pf%psi_clamp
+   this%fac_clamp = pf%fac_clamp
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%np_max
@@ -979,7 +979,7 @@ subroutine amjdeposit_clamp_part2d( this, ef, bf, cu, amu, dcu )
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
-  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, psi_plus1
   complex(kind=DB) :: phase, phase0
 
   integer :: stat
@@ -1037,10 +1037,11 @@ subroutine amjdeposit_clamp_part2d( this, ef, bf, cu, amu, dcu )
     do i = 1, np
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
 
-      ! clamp the value of 1 + psi
-      ipsi = min( 1.0 / this%psi_clamp, 1.0 / ( gam-u0(3,i) ) )
+      ! clamp the value of gamma/(1 + psi)
+      psi_plus1 = gam - u0(3,i)
+      call clamp_momentum( this%fac_clamp, u0(:,i), gam, psi_plus1 )
 
-      qtmh1 = qtmh * gam * ipsi
+      qtmh1 = qtmh * gam / psi_plus1
       ep(:,i) = ep(:,i) * qtmh1
       utmp(:,i) = u0(:,i) + ep(:,i)
     enddo
@@ -1049,10 +1050,8 @@ subroutine amjdeposit_clamp_part2d( this, ef, bf, cu, amu, dcu )
     do i = 1, np
       gam = sqrt( 1.0 + utmp(1,i)**2 + utmp(2,i)**2 + utmp(3,i)**2 )
 
-      ! clamp the value of 1 + psi
-      ipsi = min( 1.0 / this%psi_clamp, 1.0 / ( gam - utmp(3,i) ) )
-
-      qtmh2 = qtmh * ipsi
+      psi_plus1 = gam - utmp(3,i)
+      qtmh2 = qtmh / psi_plus1
       bp(:,i) = bp(:,i) * qtmh2
     enddo
 
@@ -1086,8 +1085,7 @@ subroutine amjdeposit_clamp_part2d( this, ef, bf, cu, amu, dcu )
       u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
       this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
 
-      ! clamp the value of 1 + psi
-      this%psi(pp)   = max( this%psi_clamp, this%gamma(pp) - u(3,i) )
+      this%psi(pp)   = this%gamma(pp) - u(3,i)
 
       ipsi = 1.0 / this%psi(pp)
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u(1,i) + wp(2,i) * u(2,i) ) * ipsi )
@@ -1633,7 +1631,7 @@ subroutine push_clamp_part2d( this, ef, bf )
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
-  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, psi_clamp
+  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, psi_plus1
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
   integer(kind=LG) :: ptrcur, pp
 
@@ -1665,11 +1663,11 @@ subroutine push_clamp_part2d( this, ef, bf )
 
     pp = ptrcur
     do i = 1, np
-      ! Clamp the value of 1 + psi. It should be already checked in amjdeposit.
+      ! Clamp the value of gamma/(1 + psi). It should be already checked in amjdeposit.
       ! Here check it again for safety
-      psi_clamp = max( this%psi_clamp, this%psi(pp) )
+      call clamp_momentum( this%fac_clamp, this%p(:,pp), this%gamma(pp), this%psi(pp) )
 
-      qtmh1 = qtmh / psi_clamp
+      qtmh1 = qtmh / this%psi(pp)
       qtmh2 = qtmh1 * this%gamma(pp)
       ep(:,i) = ep(:,i) * qtmh2
       bp(:,i) = bp(:,i) * qtmh1
@@ -1718,11 +1716,12 @@ subroutine push_clamp_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+      psi_plus1 = gam - this%p(3,pp)
 
-      ! clamp the updated 1 + psi
-      psi_clamp = max( this%psi_clamp, gam - this%p(3,pp) )
+      ! clamp the updated gamma / (1 + psi)
+      call clamp_momentum( this%fac_clamp, this%p(:,pp), gam, psi_plus1 )
 
-      dtc = this%dt / psi_clamp
+      dtc = this%dt / psi_plus1
       this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
       this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
       pp = pp + 1
@@ -1734,6 +1733,30 @@ subroutine push_clamp_part2d( this, ef, bf )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_clamp_part2d
+
+subroutine clamp_momentum( fac_clamp, p, gam, psi_plus1 )
+
+  implicit none
+
+  real, intent(in) :: fac_clamp
+  real, intent(inout), dimension(3) :: p
+  real, intent(inout) :: gam, psi_plus1
+
+  real :: scale
+
+  if ( gam / psi_plus1 > fac_clamp ) then
+
+    scale = ( fac_clamp - 1.0 )**2 * ( 1.0 + p(1)**2 + p(2)**2 )
+    scale = scale / ( (2.0 * fac_clamp - 1.0) * p(3)**2 )
+    scale = sqrt(scale)
+
+    p(3) = p(3) * scale
+    gam = sqrt( 1.0 + p(1)**2 + p(2)**2 + p(3)**2 )
+    psi_plus1 = gam - p(3)
+
+  endif
+
+end subroutine clamp_momentum
 
 subroutine update_bound_part2d( this )
 
