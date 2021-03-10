@@ -28,10 +28,9 @@ type part2d
    ! maximum effective time step (only used for sub-cycling)
    real :: dt_eff_max
 
-   ! nbmax = size of buffer for passing particles between processors
    ! npp = number of particles in current partition
    ! npmax = maximum number of particles in each partition
-   integer(kind=LG) :: npmax, nbmax, npp
+   integer(kind=LG) :: npmax, npp
 
    ! dimension of particle coordinates
    integer :: part_dim
@@ -69,11 +68,8 @@ type part2d
    ! procedure :: extract_psi            => extract_psi_part2d
    procedure :: pipesend                 => pipesend_part2d
    procedure :: piperecv                 => piperecv_part2d
-
-   ! TODO: particle manager to be rewritten
-   ! procedure :: pmv => pmove
-
-   procedure :: wr => writehdf5_part2d
+   procedure :: wr                       => writehdf5_part2d
+   procedure :: realloc                  => realloc_part2d
 
 end type
 
@@ -101,7 +97,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
-   integer :: npmax, nbmax
+   integer :: npmax
    logical :: empty = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -113,9 +109,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%part_dim = 2 + p_p_dim + 3
 
    npmax      = pf%np_max
-   nbmax      = max(int(0.1*npmax),100)
    this%npmax = npmax
-   this%nbmax = nbmax
    this%npp   = 0
 
    this%dr   = opts%get_dr()
@@ -151,6 +145,105 @@ subroutine end_part2d(this)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part2d
+
+subroutine realloc_part2d( this, ratio )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  real, intent(in) :: ratio
+
+  integer :: i, npmax
+  real, dimension(:), pointer :: tmp_ptr1
+  real, dimension(:,:), pointer :: tmp_ptr2
+  character(len=18), save :: sname = 'realloc_part2d'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  ! store the data to pbuf temporarily
+  do i = 1, this%npp
+    this%pbuf(1:2,i) = this%x(:,i)
+    this%pbuf(3:5,i) = this%p(:,i)
+    this%pbuf(6,i) = this%gamma(i)
+    this%pbuf(7,i) = this%psi(i)
+    this%pbuf(8,i) = this%q(i)
+  enddo
+
+  this%npmax = int( this%npmax * ratio )
+  npmax = this%npmax
+
+  ! tmp_ptr2 => this%x
+  ! nullify( this%x )
+  ! allocate( this%x( 2, this%npmax ) )
+  ! do i = 1, this%npp
+  !   this%x(:,i) = tmp_ptr2(:,i)
+  ! enddo
+  ! deallocate( tmp_ptr2 )
+
+  ! tmp_ptr2 => this%p
+  ! nullify( this%p )
+  ! allocate( this%p( p_p_dim, this%npmax ) )
+  ! do i = 1, this%npp
+  !   this%p(:,i) = tmp_ptr2(:,i)
+  ! enddo
+  ! deallocate( tmp_ptr2 )
+
+  ! tmp_ptr2 => this%pbuf
+  ! nullify( this%pbuf )
+  ! allocate( this%pbuf( this%part_dim, this%npmax ) )
+  ! deallocate( tmp_ptr2 )
+
+  ! tmp_ptr1 => this%gamma
+  ! nullify( this%gamma )
+  ! allocate( this%gamma( this%npmax ) )
+  ! do i = 1, this%npp
+  !   this%gamma(i) = tmp_ptr1(i)
+  ! enddo
+  ! deallocate( tmp_ptr1 )
+
+  ! tmp_ptr1 => this%psi
+  ! nullify( this%psi )
+  ! allocate( this%psi( this%npmax ) )
+  ! do i = 1, this%npp
+  !   this%psi(i) = tmp_ptr1(i)
+  ! enddo
+  ! deallocate( tmp_ptr1 )
+
+  ! tmp_ptr1 => this%q
+  ! nullify( this%q )
+  ! allocate( this%q( this%npmax ) )
+  ! do i = 1, this%npp
+  !   this%q(i) = tmp_ptr1(i)
+  ! enddo
+  ! deallocate( tmp_ptr1 )
+
+  ! deallocate( this%x, this%p, this%gamma, this%psi, this%q )
+  ! nullify( this%x, this%p, this%gamma, this%psi, this%q )
+
+  deallocate( this%x, this%p, this%gamma, this%psi, this%q )
+  print *, "here 1"
+  allocate( this%x( 2, npmax ) )
+  print *, "here 2"
+  allocate( this%p( p_p_dim, npmax ) )
+  print *, "here 3"
+  allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
+  print *, "here 4"
+
+  do i = 1, this%npp
+    this%x(:,i) = this%pbuf(1:2,i)
+    this%p(:,i) = this%pbuf(3:5,i)
+    this%gamma(i) = this%pbuf(6,i)
+    this%psi(i) = this%pbuf(7,i)
+    this%q(i) = this%pbuf(8,i)
+  enddo
+
+  deallocate( this%pbuf )
+  ! nullify( this%pbuf )
+  allocate( this%pbuf( this%part_dim, npmax ) )
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine realloc_part2d
 
 subroutine renew_part2d( this, pf, s, if_empty )
 
@@ -1899,8 +1992,16 @@ subroutine piperecv_part2d(this, tag)
     return
   endif
 
+  ! check if the receiving buffer needs to be reallocated
+  if ( this%npmax > recv_buf_size ) then
+    call write_stdout( 'Resizing 2D particle pipeline receiving buffer!' )
+    deallocate( recv_buf )
+    recv_buf_size = this%npmax
+    allocate( recv_buf( this%part_dim, recv_buf_size ) )
+  endif
+
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(recv_buf, int(this%npmax*this%part_dim), p_dtype_real, &
+  call MPI_RECV(recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
     des, tag, comm_world(), istat, ierr)
 
   call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)

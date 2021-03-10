@@ -100,7 +100,7 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   character(len=*), intent(in) :: sect
   integer, intent(in) :: sect_id
 
-  integer :: xtra
+  real :: xtra
   character(len=20) :: sect_name
   character(len=:), allocatable :: prof_name
   character(len=18), save :: sname = 'init_fdist2d'
@@ -192,8 +192,8 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   endif
 
   ! calculate the maximum particles number allowed in this partition
-  xtra = 10
-  this%np_max = this%nrp * product(this%ppc) * this%num_theta * xtra
+  xtra = 1.5
+  this%np_max = int( this%nrp * product(this%ppc) * this%num_theta * xtra )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 

@@ -1197,7 +1197,6 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
 
   ! this is max number of particles to be ionized
   this%npmax = product( pf%ppc ) * pf%num_theta * opts%get_ndp(1)
-  this%nbmax = max( int(0.1*this%npmax), 100 )
   this%npp   = 0
 
   this%dr   = opts%get_dr()
