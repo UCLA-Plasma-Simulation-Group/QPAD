@@ -21,17 +21,17 @@ integer, parameter :: p_self = 0, &
 integer, parameter :: iter_max = 1000
 
 ! send and receive buffer for MPI
-real, dimension(:), pointer :: send_buf_lower => null()
-real, dimension(:), pointer :: send_buf_upper => null()
-real, dimension(:), pointer :: recv_buf_lower => null()
-real, dimension(:), pointer :: recv_buf_upper => null()
+real, dimension(:), allocatable :: send_buf_lower
+real, dimension(:), allocatable :: send_buf_upper
+real, dimension(:), allocatable :: recv_buf_lower
+real, dimension(:), allocatable :: recv_buf_upper
 
 ! index of holes
-integer(kind=LG), dimension(:), pointer :: ihole => null()
+integer(kind=LG), dimension(:), allocatable :: ihole
 
-! reallocation buffer
-real, dimension(:), pointer :: tmp_real => null()
-integer(kind=LG), dimension(:), pointer :: tmp_int => null()
+! temporary arrays used to reallocate buffer
+real, dimension(:), allocatable :: tmp_real
+integer(kind=LG), dimension(:), allocatable :: tmp_int
 
 ! count of MPI buffers
 integer, dimension(2) :: send_cnt = 0
@@ -129,11 +129,13 @@ subroutine end_part2d_comm()
 
   implicit none
 
-  if ( associated( send_buf_lower ) ) deallocate( send_buf_lower )
-  if ( associated( send_buf_upper ) ) deallocate( send_buf_upper )
-  if ( associated( recv_buf_lower ) ) deallocate( recv_buf_lower )
-  if ( associated( recv_buf_upper ) ) deallocate( recv_buf_upper )
-  if ( associated( ihole ) ) deallocate( ihole )
+  if ( allocated( send_buf_lower ) ) deallocate( send_buf_lower )
+  if ( allocated( send_buf_upper ) ) deallocate( send_buf_upper )
+  if ( allocated( recv_buf_lower ) ) deallocate( recv_buf_lower )
+  if ( allocated( recv_buf_upper ) ) deallocate( recv_buf_upper )
+  if ( allocated( ihole ) ) deallocate( ihole )
+  if ( allocated( tmp_real ) ) deallocate( tmp_real )
+  if ( allocated( tmp_int ) ) deallocate( tmp_int )
 
 end subroutine end_part2d_comm
 
@@ -491,9 +493,7 @@ subroutine pack_particles( part )
       allocate( tmp_real( sbuf_cnt(p_iwd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_lower) ) = send_buf_lower
-      deallocate( send_buf_lower )
-      send_buf_lower => tmp_real
-      tmp_real => null()
+      call move_alloc( tmp_real, send_buf_lower )
     endif
 
     ! check upper sending buffer size
@@ -504,9 +504,7 @@ subroutine pack_particles( part )
       allocate( tmp_real( sbuf_cnt(p_owd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_upper) ) = send_buf_upper
-      deallocate( send_buf_upper )
-      send_buf_upper => tmp_real
-      tmp_real => null()
+      call move_alloc( tmp_real, send_buf_upper )
     endif
 
     ! check ihole array size
@@ -517,9 +515,7 @@ subroutine pack_particles( part )
       allocate( tmp_int( ihole_cnt ) )
       tmp_int = 0
       tmp_int( 1:size(ihole) ) = ihole
-      deallocate( ihole )
-      ihole => tmp_int
-      tmp_int => null()
+      call move_alloc( tmp_int, ihole )
     endif
 
   enddo
