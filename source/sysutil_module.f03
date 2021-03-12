@@ -147,11 +147,8 @@ subroutine write_err( estr )
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
   
   call mpi_initialized( flag, ierr )
-  if ( flag ) then
-    call mpi_finalize( ierr )
-  else
-    stop
-  endif
+  if ( flag ) call mpi_finalize( ierr )
+  stop
 
 end subroutine write_err
 
