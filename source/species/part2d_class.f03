@@ -36,21 +36,25 @@ type part2d
    integer :: part_dim
 
    ! array for particle position
-   real, dimension(:,:), pointer :: x => null()
+   real, dimension(:,:), allocatable :: x
    ! array for particle momenta
-   real, dimension(:,:), pointer :: p => null()
+   real, dimension(:,:), allocatable :: p
    ! array for time-centered gamma
-   real, dimension(:), pointer :: gamma => null()
+   real, dimension(:), allocatable :: gamma
    ! array for particle charge
-   real, dimension(:), pointer :: q => null()
+   real, dimension(:), allocatable :: q
    ! array for psi
-   real, dimension(:), pointer :: psi => null()
+   real, dimension(:), allocatable :: psi
    ! particle upper boundaries
    real :: edge
    ! particle buffer
-   real, dimension(:,:), pointer :: pbuf => null()
+   real, dimension(:,:), allocatable :: pbuf
    ! clamped value of gamma/ (1 + psi)
    real :: fac_clamp
+
+   ! temporary arrays used for buffer reallocation
+   real, private, dimension(:), allocatable :: tmp1
+   real, private, dimension(:,:), allocatable :: tmp2
 
    contains
 
@@ -154,91 +158,39 @@ subroutine realloc_part2d( this, ratio )
   real, intent(in) :: ratio
 
   integer :: i, npmax
-  real, dimension(:), pointer :: tmp_ptr1
-  real, dimension(:,:), pointer :: tmp_ptr2
   character(len=18), save :: sname = 'realloc_part2d'
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  ! store the data to pbuf temporarily
-  do i = 1, this%npp
-    this%pbuf(1:2,i) = this%x(:,i)
-    this%pbuf(3:5,i) = this%p(:,i)
-    this%pbuf(6,i) = this%gamma(i)
-    this%pbuf(7,i) = this%psi(i)
-    this%pbuf(8,i) = this%q(i)
-  enddo
-
   this%npmax = int( this%npmax * ratio )
   npmax = this%npmax
 
-  ! tmp_ptr2 => this%x
-  ! nullify( this%x )
-  ! allocate( this%x( 2, this%npmax ) )
-  ! do i = 1, this%npp
-  !   this%x(:,i) = tmp_ptr2(:,i)
-  ! enddo
-  ! deallocate( tmp_ptr2 )
+  allocate( this%tmp2( 2, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:2, 1:this%npp ) = this%x( 1:2, 1:this%npp )
+  call move_alloc( this%tmp2, this%x )
 
-  ! tmp_ptr2 => this%p
-  ! nullify( this%p )
-  ! allocate( this%p( p_p_dim, this%npmax ) )
-  ! do i = 1, this%npp
-  !   this%p(:,i) = tmp_ptr2(:,i)
-  ! enddo
-  ! deallocate( tmp_ptr2 )
+  allocate( this%tmp2( p_p_dim, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p( 1:p_p_dim, 1:this%npp )
+  call move_alloc( this%tmp2, this%p )
 
-  ! tmp_ptr2 => this%pbuf
-  ! nullify( this%pbuf )
-  ! allocate( this%pbuf( this%part_dim, this%npmax ) )
-  ! deallocate( tmp_ptr2 )
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%gamma( 1:this%npp )
+  call move_alloc( this%tmp1, this%gamma )
 
-  ! tmp_ptr1 => this%gamma
-  ! nullify( this%gamma )
-  ! allocate( this%gamma( this%npmax ) )
-  ! do i = 1, this%npp
-  !   this%gamma(i) = tmp_ptr1(i)
-  ! enddo
-  ! deallocate( tmp_ptr1 )
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%psi( 1:this%npp )
+  call move_alloc( this%tmp1, this%psi )
 
-  ! tmp_ptr1 => this%psi
-  ! nullify( this%psi )
-  ! allocate( this%psi( this%npmax ) )
-  ! do i = 1, this%npp
-  !   this%psi(i) = tmp_ptr1(i)
-  ! enddo
-  ! deallocate( tmp_ptr1 )
-
-  ! tmp_ptr1 => this%q
-  ! nullify( this%q )
-  ! allocate( this%q( this%npmax ) )
-  ! do i = 1, this%npp
-  !   this%q(i) = tmp_ptr1(i)
-  ! enddo
-  ! deallocate( tmp_ptr1 )
-
-  ! deallocate( this%x, this%p, this%gamma, this%psi, this%q )
-  ! nullify( this%x, this%p, this%gamma, this%psi, this%q )
-
-  deallocate( this%x, this%p, this%gamma, this%psi, this%q )
-  print *, "here 1"
-  allocate( this%x( 2, npmax ) )
-  print *, "here 2"
-  allocate( this%p( p_p_dim, npmax ) )
-  print *, "here 3"
-  allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
-  print *, "here 4"
-
-  do i = 1, this%npp
-    this%x(:,i) = this%pbuf(1:2,i)
-    this%p(:,i) = this%pbuf(3:5,i)
-    this%gamma(i) = this%pbuf(6,i)
-    this%psi(i) = this%pbuf(7,i)
-    this%q(i) = this%pbuf(8,i)
-  enddo
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%q( 1:this%npp )
+  call move_alloc( this%tmp1, this%q )
 
   deallocate( this%pbuf )
-  ! nullify( this%pbuf )
   allocate( this%pbuf( this%part_dim, npmax ) )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
