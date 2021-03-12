@@ -112,7 +112,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%fac_clamp = pf%fac_clamp
    this%part_dim = 2 + p_p_dim + 3
 
-   npmax      = pf%np_max
+   npmax      = pf%npmax
    this%npmax = npmax
    this%npp   = 0
 

@@ -23,7 +23,7 @@ type :: fdist2d
   ! Number of azimuthal divisions
   integer :: num_theta
   ! Maximum number of particles in this partition
-  integer :: np_max
+  integer :: npmax
   real :: dr
   ! Maximum effective time step for subcycling pusher
   real :: dt_eff_max
@@ -101,6 +101,7 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   integer, intent(in) :: sect_id
 
   real :: xtra
+  integer :: npmax_min
   character(len=20) :: sect_name
   character(len=:), allocatable :: prof_name
   character(len=18), save :: sname = 'init_fdist2d'
@@ -193,7 +194,14 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
 
   ! calculate the maximum particles number allowed in this partition
   xtra = 1.5
-  this%np_max = int( this%nrp * product(this%ppc) * this%num_theta * xtra )
+  npmax_min = this%nrp * product(this%ppc) * this%num_theta
+  this%npmax = int( npmax_min * xtra )
+  if ( input%found( trim(sect_name) // '.npmax' ) ) then
+    call input%get( trim(sect_name) // '.npmax', this%npmax )
+    if ( this%npmax < npmax_min ) then
+      call write_err( 'npmax is too small to initialize the 2D particles.' )
+    endif
+  endif
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
