@@ -188,9 +188,9 @@ subroutine push_beam3d(this,ef,bf,rtag,stag,sid)
    end if
 
    select case ( this%push_type )
-   case ( p_push_reduced )
+   case ( p_push3_reduced )
       call this%part%push_reduced( ef, bf )
-   case ( p_push_boris )
+   case ( p_push3_boris )
       call this%part%push_boris( ef, bf )
    end select
 

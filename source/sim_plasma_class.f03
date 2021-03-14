@@ -74,7 +74,7 @@ subroutine init_sim_plasma( this, input, opts, s )
   ! local data
   character(len=18), save :: sname = 'init_sim_plasma'
   real :: qm, qbm, omega_p, np
-  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max
+  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -133,8 +133,23 @@ subroutine init_sim_plasma( this, input, opts, s )
     call input%get( 'species('//num2str(i)//').q', qm )
     call input%get( 'species('//num2str(i)//').m', qbm )
     qbm = qm / qbm
+
+    push_type = p_push2_robust
+    call input%get( 'species('//num2str(i)//').push_type', str )
+    select case ( trim(str) )
+    case ( 'robust' )
+      push_type = p_push2_robust
+    case ( 'clamp' )
+      push_type = p_push2_clamp
+    case ( 'robust-subcycling' )
+      push_type = p_push2_robust_subcyc
+    case default
+      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
+        &are supported currently.' )
+    end select
+
     call this%spe(i)%new( opts, this%pf_spe(i), ps, max_mode, &
-      qbm, s, sm_type, sm_ord )
+      qbm, s, push_type, sm_type, sm_ord )
 
   enddo
 
@@ -145,8 +160,23 @@ subroutine init_sim_plasma( this, input, opts, s )
     call input%get( 'neutrals('//num2str(i)//').element', elem )
     call input%get( 'neutrals('//num2str(i)//').ion_max', ion_max )
     qbm = qm / qbm
+
+    push_type = p_push2_robust
+    call input%get( 'neutrals('//num2str(i)//').push_type', str )
+    select case ( trim(str) )
+    case ( 'robust' )
+      push_type = p_push2_robust
+    case ( 'clamp' )
+      push_type = p_push2_clamp
+    case ( 'robust-subcycling' )
+      push_type = p_push2_robust_subcyc
+    case default
+      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
+        &are supported currently.' )
+    end select
+
     call this%neut(i)%new( opts, this%pf_neut(i), max_mode, elem, ion_max, &
-      qbm, omega_p, s, sm_type, sm_ord )
+      qbm, omega_p, s, push_type, sm_type, sm_ord )
 
   enddo
 
