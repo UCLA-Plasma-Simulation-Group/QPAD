@@ -229,8 +229,8 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), &
-        iter_max+1, world, istat, ierr )
+      call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), iter_max+1, &
+        world, istat, ierr )
       rsize = size( recv_buf_lower )
       if ( recv_cnt(p_iwd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
@@ -256,7 +256,7 @@ subroutine move_part2d_comm( part )
     call mpi_wait( rid(2), istat, ierr )
     call mpi_wait( rid(1), istat, ierr )
 
-    ! unpack particles in inward receive buffer
+    ! unpack particles in inward/outward receive buffer
     call unpack_relay_particles( part )
 
     ! check if need move particles further
@@ -284,15 +284,13 @@ subroutine unpack_relay_particles( part )
   class(part2d), intent(inout) :: part
 
   integer :: i, j, npp, part_dim, stay_cnt, go_cnt, stride
-  integer, dimension(2) :: sbuf_cnt, rbuf_cnt
+  integer, dimension(2) :: sbuf_cnt
   real, dimension(2) :: x
 
   npp      = part%npp
   part_dim = part%part_dim
   sbuf_cnt(p_iwd) = size( send_buf_lower ) / part_dim
   sbuf_cnt(p_owd) = size( send_buf_upper ) / part_dim
-  rbuf_cnt(p_iwd) = size( recv_buf_lower ) / part_dim
-  rbuf_cnt(p_owd) = size( recv_buf_upper ) / part_dim
 
   ! if all the received particles stay in this partition, check particle buffer size
   if ( npp + sum(recv_cnt) > part%npmax ) then
