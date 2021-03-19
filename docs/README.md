@@ -1,41 +1,37 @@
-# Generate Documentation
+Welcome to the QPAD wiki! (The page is currently under construction)
+# Recent updates
 
-QuickPIC uses [FORD](https://github.com/cmacmackin/ford) to generate documentation. Before installing FORD, make sure Python and relevant libraries are correctly installed. The simplest way to install FORD is using [pip](https://pip.pypa.io/en/latest/) with this command
+## Update on 02/22/2021
+- Added a new push type "clamp" in "species" and "neutrals" sessions.
+- Change the parameters "uth" and "den_min" in the "species" and "neutrals" sessions to be optional.
 
-```
-sudo pip install ford
-```
+## Update on 12/17/2020
+- Changed usage of input file sessions "species" and "neutrals". The previous users should see the wiki pages for the description.
 
-which will install FORD and all its [dependencies](https://github.com/cmacmackin/ford/wiki/Dependencies) automatically. If you wish to install the most recent version (in case that FORD installed through pip runs abnormally in some systems), you can also clone the github repository:
+## Update on 12/12/2020
+- Added input file parameter descriptions for "neutrals" session.
+- Added a new parameter "nneutrals" into the "simulation" session.
+- Modified the definition of "ppc" in the "species" session.
+- Added a new parameter "num_theta" into the "species" session.
 
-```
-git clone https://github.com/cmacmackin/ford.git
-```
+## Update on 11/16/2020
+- Add a new entry "random_seed" into the "simulation" session of the input file.
 
-or download the [install package](https://github.com/cmacmackin/ford/archive/master.zip). Go into the FORD folder and run the command below to install manually:
+## Update on 10/21/2020
+- Add a new entry "algorithm" into the "simulation" session of the input file.
+- Modified the instruction of creating users' configuration file.
 
-```
-python setup.py install
-```
+## Update on 08/23/2020
+- Modified the guidance of installing JSON-FORTRAN library. Now the latest version 8.2.0 is recommended.
 
-If you wish to generate relation graphs in the documentation, the Graphviz binary is needed. On Debian based systems, this can be done with
+## Update on 04/26/2020
+- Add diagnostics for the plasma-induced vector potential.
+- Add external beam particle importing from OSIRIS.
+- Add spin dynamics (currently only available for external particle import).
 
-```
-sudo apt-get install graphviz
-```
+## Update on 03/02/2020
+- Add diagnostics for the plasma-induced fields.
 
-The project file (quickpic_ford.md) includes various [options](https://github.com/cmacmackin/ford/wiki/Project-File-Options) and information of the QuickPIC documentation in the meta-data. Be aware that the option __include__, which defines the directories for file searching of Fortran's intrinsic `include` statement, should be properly configured before generating the documentation. In current version of QuickPIC, only the path of `mpif.h` needs to be added to __include__ option in FORD_DOC.md, just as below
+## Update on 02/28/2020
+- Fixed some errors in the beam parameter definitions.
 
-```
-include: [path of "mpif.h"]
-```
-
-Before using FORD, keep in mind that you must make sure the QuickPIC source code compiles correctly because FORD is not made to check any syntax error. Run the command below to generate the documentation:
-
-```
-ford quickpic_ford.md
-```
-
-# Online documentation
-
-Visit [here](https://ucla-plasma-simulation-group.github.io/QuickPIC-OpenSource/) to see the documentation.
