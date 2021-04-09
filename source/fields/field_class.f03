@@ -557,13 +557,13 @@ subroutine pipe_send_f2( this, stag, id, dir, pos )
   end select
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, 0:2*this%max_mode ) )
+    allocate( this%psend_buf( this%dim, n1p, 2*this%max_mode+1 ) )
   endif
 
   ! copy m = 0 mode
   do j = 1, n1p
     do i = 1, this%dim
-      this%psend_buf(i,j,0) = this%rf_re(0)%f2( i, j-gc(1), idx_send )
+      this%psend_buf(i,j,1) = this%rf_re(0)%f2( i, j-gc(1), idx_send )
     enddo
   enddo
 
@@ -572,8 +572,12 @@ subroutine pipe_send_f2( this, stag, id, dir, pos )
     do m = 1, this%max_mode
       do j = 1, n1p
         do i = 1, this%dim
-          this%psend_buf(i,j,2*m-1) = this%rf_re(m)%f2( i, j-gc(1), idx_send )
-          this%psend_buf(i,j,2*m  ) = this%rf_im(m)%f2( i, j-gc(1), idx_send )
+          this%psend_buf(i,j,2*m) = this%rf_re(m)%f2( i, j-gc(1), idx_send )
+        enddo
+      enddo
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%psend_buf(i,j,2*m+1) = this%rf_im(m)%f2( i, j-gc(1), idx_send )
         enddo
       enddo
     enddo
@@ -659,7 +663,7 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
   end select
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, 0:2*this%max_mode ) )
+    allocate( this%precv_buf( this%dim, n1p, 2*this%max_mode+1 ) )
   endif
 
   count = size( this%precv_buf )
@@ -675,7 +679,7 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
     ! copy m=0 mode
     do j = 1, n1p
       do i = 1, this%dim
-        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,0)
+        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,1)
       enddo
     enddo
 
@@ -684,8 +688,12 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
       do m = 1, this%max_mode
         do j = 1, n1p
           do i = 1, this%dim
-            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m-1)
-            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m)
+            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf(i,j,2*m+1)
           enddo
         enddo
       enddo
@@ -697,7 +705,7 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
     do j = 1, n1p
       do i = 1, this%dim
         this%rf_re(0)%f2( i, j-gc(1), idx_recv ) = &
-        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,0)
+        this%rf_re(0)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,1)
       enddo
     enddo
 
@@ -707,9 +715,13 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
         do j = 1, n1p
           do i = 1, this%dim
             this%rf_re(m)%f2( i, j-gc(1), idx_recv ) = &
-            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m-1)
+            this%rf_re(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+        do j = 1, n1p
+          do i = 1, this%dim
             this%rf_im(m)%f2( i, j-gc(1), idx_recv ) = &
-            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m)
+            this%rf_im(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf(i,j,2*m+1)
           enddo
         enddo
       enddo
@@ -774,13 +786,13 @@ subroutine pipe_send_f1( this, stag, id, dir )
   end select
 
   if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, 0:2*this%max_mode ) )
+    allocate( this%psend_buf( this%dim, n1p, 2*this%max_mode+1 ) )
   endif
 
   ! copy m = 0 mode
   do j = 1, n1p
     do i = 1, this%dim
-      this%psend_buf(i,j,0) = this%rf_re(0)%f1( i, j-gc(1) )
+      this%psend_buf(i,j,1) = this%rf_re(0)%f1( i, j-gc(1) )
     enddo
   enddo
 
@@ -789,8 +801,12 @@ subroutine pipe_send_f1( this, stag, id, dir )
     do m = 1, this%max_mode
       do j = 1, n1p
         do i = 1, this%dim
-          this%psend_buf(i,j,2*m-1) = this%rf_re(m)%f1( i, j-gc(1) )
-          this%psend_buf(i,j,2*m  ) = this%rf_im(m)%f1( i, j-gc(1) )
+          this%psend_buf(i,j,2*m) = this%rf_re(m)%f1( i, j-gc(1) )
+        enddo
+      enddo
+      do j = 1, n1p
+        do i = 1, this%dim
+          this%psend_buf(i,j,2*m+1) = this%rf_im(m)%f1( i, j-gc(1) )
         enddo
       enddo
     enddo
@@ -855,7 +871,7 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
   end select
 
   if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, 0:2*this%max_mode ) )
+    allocate( this%precv_buf( this%dim, n1p, 2*this%max_mode+1 ) )
   endif
 
   count = size( this%precv_buf )
@@ -871,7 +887,7 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
     ! copy m=0 mode
     do j = 1, n1p
       do i = 1, this%dim
-        this%rf_re(0)%f1( i, j-gc(1) ) = this%precv_buf(i,j,0)
+        this%rf_re(0)%f1( i, j-gc(1) ) = this%precv_buf(i,j,1)
       enddo
     enddo
 
@@ -880,8 +896,12 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
       do m = 1, this%max_mode
         do j = 1, n1p
           do i = 1, this%dim
-            this%rf_re(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m-1)
-            this%rf_im(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m)
+            this%rf_re(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+        do j = 1, n1p
+          do i = 1, this%dim
+            this%rf_im(m)%f1( i, j-gc(1) ) = this%precv_buf(i,j,2*m+1)
           enddo
         enddo
       enddo
@@ -893,7 +913,7 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
     do j = 1, n1p
       do i = 1, this%dim
         this%rf_re(0)%f1( i, j-gc(1) ) = &
-        this%rf_re(0)%f1( i, j-gc(1) ) + this%precv_buf(i,j,0)
+        this%rf_re(0)%f1( i, j-gc(1) ) + this%precv_buf(i,j,1)
       enddo
     enddo
 
@@ -903,9 +923,13 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
         do j = 1, n1p
           do i = 1, this%dim
             this%rf_re(m)%f1( i, j-gc(1) ) = &
-            this%rf_re(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m-1)
+            this%rf_re(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m)
+          enddo
+        enddo
+        do j = 1, n1p
+          do i = 1, this%dim
             this%rf_im(m)%f1( i, j-gc(1) ) = &
-            this%rf_im(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m)
+            this%rf_im(m)%f1( i, j-gc(1) ) + this%precv_buf(i,j,2*m+1)
           enddo
         enddo
       enddo
