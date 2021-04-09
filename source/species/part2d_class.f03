@@ -1900,6 +1900,7 @@ subroutine piperecv_part2d(this, tag)
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
+  recv_buf = 0.0
   call MPI_RECV(recv_buf, int(this%npmax*this%part_dim), p_dtype_real, &
     des, tag, comm_world(), istat, ierr)
 

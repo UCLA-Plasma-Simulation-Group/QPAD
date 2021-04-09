@@ -23,9 +23,6 @@ use mpi
 
 use debug_tool
 
-! DEBUG CODE
-use hdf5io_class
-
 implicit none
 
 private
@@ -216,9 +213,6 @@ subroutine run_simulation( this )
   type(species2d), dimension(:), pointer :: spe
   type(neutral), dimension(:), pointer :: neut
 
-  ! DEBUG CODE
-  type( hdf5file ) :: file6, file7
-
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call start_tprof( 'total simulation time' )
@@ -241,9 +235,6 @@ subroutine run_simulation( this )
   beam => this%beams%beam
   spe  => this%plasma%spe
   neut => this%plasma%neut
-
-  ! DEBUG CODE
-  ! print *, 'id_proc = ', id_proc(), ', nstep2d = ', this%nstep2d
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
@@ -281,19 +272,6 @@ subroutine run_simulation( this )
       call spe(k)%precv( this%tag_spe(k) )
     enddo
 
-    ! DEBUG CODE
-    ! if ( id_proc() == 7 ) then
-    !   call file7%new( &
-    !     timeunit  = 'a.u.', &
-    !     dt        = 1.0, &
-    !     ty        = 'particles', &
-    !     filename  = './', &
-    !     dataname  = 'file7', &
-    !     units     = 'a.u.', &
-    !     label     = 'raw' )
-    !   call spe(1)%wr( file7 )
-    ! endif
-
     ! pipeline data transfer for neutrals
     do k = 1, this%nneutrals
       ! tag 1 and 2 are for particle array and ion density transfer respectively
@@ -307,27 +285,13 @@ subroutine run_simulation( this )
     ! pipeline data transfer for current and species B-field
     this%tag_field(1) = ntag()
     call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
-    ! ! DEBUG CODE
-    ! if ( id_proc() == 7 ) then
-    !   call write_data( cu%rf_re(0)%f1, 'cu1_proc7.txt', 1 )
-    !   call write_data( cu%rf_re(0)%f1, 'cu2_proc7.txt', 2 )
-    !   call write_data( cu%rf_re(0)%f1, 'cu3_proc7.txt', 3 )
-    ! endif
-
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
-    ! ! DEBUG CODE
-    ! if ( id_proc() == 7 ) then
-    !   call write_data( b_spe%rf_re(0)%f1, 'b_spe1_proc7.txt', 1 )
-    !   call write_data( b_spe%rf_re(0)%f1, 'b_spe2_proc7.txt', 2 )
-    !   call write_data( b_spe%rf_re(0)%f1, 'b_spe3_proc7.txt', 3 )
-    ! endif
 
     b     = 0.0
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
-    cu    = 0.0
     acu   = 0.0
     amu   = 0.0
 
@@ -340,13 +304,6 @@ subroutine run_simulation( this )
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
       enddo
-
-      ! DEBUG CODE
-      ! if ( j == 1 ) then
-      !   if ( id_proc() == 7 ) then
-      !     call write_data( q_spe%rf_re(0)%f1, 'q_spe_proc7.txt', 1 )
-      !   endif
-      ! endif
 
       do k = 1, this%nneutrals
         call neut(k)%qdp( q_spe )
@@ -408,15 +365,6 @@ subroutine run_simulation( this )
         call cu%pipe_send( this%tag_field(1), this%id_field(1), 'forward' )
         call mpi_wait( this%id_field(4), istat, ierr )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
-        ! ! DEBUG CODE
-        ! if ( id_proc() == 6 ) then
-        !   call write_data( cu%rf_re(0)%f1, 'cu1_proc6.txt', 1 )
-        !   call write_data( cu%rf_re(0)%f1, 'cu2_proc6.txt', 2 )
-        !   call write_data( cu%rf_re(0)%f1, 'cu3_proc6.txt', 3 )
-        !   call write_data( b_spe%rf_re(0)%f1, 'b_spe1_proc6.txt', 1 )
-        !   call write_data( b_spe%rf_re(0)%f1, 'b_spe2_proc6.txt', 2 )
-        !   call write_data( b_spe%rf_re(0)%f1, 'b_spe3_proc6.txt', 3 )
-        ! endif
       endif
 
       ! advance species particles
@@ -449,43 +397,10 @@ subroutine run_simulation( this )
 
     enddo ! 2d loop
 
-    ! DEBUG CODE
-    ! if ( id_proc() == 6 ) then
-    !   call file6%new( &
-    !     timeunit  = 'a.u.', &
-    !     dt        = 1.0, &
-    !     ty        = 'particles', &
-    !     filename  = './', &
-    !     dataname  = 'file6', &
-    !     units     = 'a.u.', &
-    !     label     = 'raw' )
-    !   call spe(1)%wr( file6 )
-    ! endif
-
-    ! DEBUG CODE
-    ! if ( id_proc() == 6 ) then
-    !   call file6%new( &
-    !     timeunit  = 'a.u.', &
-    !     dt        = 1.0, &
-    !     rank      = 2, &
-    !     filename  = './', &
-    !     dataname  = 'psi_proc6', &
-    !     units     = 'a.u.', &
-    !     label     = 'psi' )
-    !   call e%write_hdf5( file6, 3, rtag, stag, this%diag%id )
-    ! endif
-
     ! pipeline for species
     do k = 1, this%nspecies
       call spe(k)%psend( this%tag_spe(k), this%id_spe(k) )
     enddo
-
-    ! DEBUG CODE
-    ! q_spe = 0.0
-    ! call spe(1)%qdp( q_spe )
-    ! if ( id_proc() == 6 ) then
-    !   call write_data( q_spe%rf_re(0)%f1, 'q_spe_proc6.txt', 1 )
-    ! endif
 
     ! pipeline for neutrals
     do k = 1, this%nneutrals
