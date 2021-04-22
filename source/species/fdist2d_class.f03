@@ -38,6 +38,8 @@ type :: fdist2d
   real :: density
   ! Minimum density for particle injection
   real :: den_min
+  ! Switch if setting neutralized background
+  logical :: neutralized
   ! Parameter list of longitudinal density profile
   real, dimension(:), pointer :: prof_pars_lon => null()
   ! Parameter list of perpendicular density profile
@@ -190,6 +192,11 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
     call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
     call input%get( trim(sect_name) // '.uth(2)', this%uth(2) )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
+  endif
+
+  this%neutralized = .true.
+  if ( input%found( trim(sect_name) // '.neutralized' ) ) then
+    call input%get( trim(sect_name) // '.neutralized', this%neutralized )
   endif
 
   ! calculate the maximum particles number allowed in this partition
