@@ -28,30 +28,33 @@ type part2d
    ! maximum effective time step (only used for sub-cycling)
    real :: dt_eff_max
 
-   ! nbmax = size of buffer for passing particles between processors
    ! npp = number of particles in current partition
    ! npmax = maximum number of particles in each partition
-   integer(kind=LG) :: npmax, nbmax, npp
+   integer(kind=LG) :: npmax, npp
 
    ! dimension of particle coordinates
    integer :: part_dim
 
    ! array for particle position
-   real, dimension(:,:), pointer :: x => null()
+   real, dimension(:,:), allocatable :: x
    ! array for particle momenta
-   real, dimension(:,:), pointer :: p => null()
+   real, dimension(:,:), allocatable :: p
    ! array for time-centered gamma
-   real, dimension(:), pointer :: gamma => null()
+   real, dimension(:), allocatable :: gamma
    ! array for particle charge
-   real, dimension(:), pointer :: q => null()
+   real, dimension(:), allocatable :: q
    ! array for psi
-   real, dimension(:), pointer :: psi => null()
+   real, dimension(:), allocatable :: psi
    ! particle upper boundaries
    real :: edge
    ! particle buffer
-   real, dimension(:,:), pointer :: pbuf => null()
+   real, dimension(:,:), allocatable :: pbuf
    ! clamped value of gamma/ (1 + psi)
    real :: fac_clamp
+
+   ! temporary arrays used for buffer reallocation
+   real, private, dimension(:), allocatable :: tmp1
+   real, private, dimension(:,:), allocatable :: tmp2
 
    contains
 
@@ -69,11 +72,8 @@ type part2d
    ! procedure :: extract_psi            => extract_psi_part2d
    procedure :: pipesend                 => pipesend_part2d
    procedure :: piperecv                 => piperecv_part2d
-
-   ! TODO: particle manager to be rewritten
-   ! procedure :: pmv => pmove
-
-   procedure :: wr => writehdf5_part2d
+   procedure :: wr                       => writehdf5_part2d
+   procedure :: realloc                  => realloc_part2d
 
 end type
 
@@ -101,7 +101,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
-   integer :: npmax, nbmax
+   integer :: npmax
    logical :: empty = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -112,10 +112,8 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%fac_clamp = pf%fac_clamp
    this%part_dim = 2 + p_p_dim + 3
 
-   npmax      = pf%np_max
-   nbmax      = max(int(0.1*npmax),100)
+   npmax      = pf%npmax
    this%npmax = npmax
-   this%nbmax = nbmax
    this%npp   = 0
 
    this%dr   = opts%get_dr()
@@ -151,6 +149,53 @@ subroutine end_part2d(this)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part2d
+
+subroutine realloc_part2d( this, ratio )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  real, intent(in) :: ratio
+
+  integer :: i, npmax
+  character(len=18), save :: sname = 'realloc_part2d'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  this%npmax = int( this%npmax * ratio )
+  npmax = this%npmax
+
+  allocate( this%tmp2( 2, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:2, 1:this%npp ) = this%x( 1:2, 1:this%npp )
+  call move_alloc( this%tmp2, this%x )
+
+  allocate( this%tmp2( p_p_dim, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p( 1:p_p_dim, 1:this%npp )
+  call move_alloc( this%tmp2, this%p )
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%gamma( 1:this%npp )
+  call move_alloc( this%tmp1, this%gamma )
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%psi( 1:this%npp )
+  call move_alloc( this%tmp1, this%psi )
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%q( 1:this%npp )
+  call move_alloc( this%tmp1, this%q )
+
+  deallocate( this%pbuf )
+  allocate( this%pbuf( this%part_dim, npmax ) )
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine realloc_part2d
 
 subroutine renew_part2d( this, pf, s, if_empty )
 
@@ -1899,9 +1944,16 @@ subroutine piperecv_part2d(this, tag)
     return
   endif
 
+  ! check if the receiving buffer needs to be reallocated
+  if ( this%npmax > recv_buf_size ) then
+    call write_stdout( 'Resizing 2D particle pipeline receiving buffer!' )
+    deallocate( recv_buf )
+    recv_buf_size = this%npmax
+    allocate( recv_buf( this%part_dim, recv_buf_size ) )
+  endif
+
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  recv_buf = 0.0
-  call MPI_RECV(recv_buf, int(this%npmax*this%part_dim), p_dtype_real, &
+  call MPI_RECV(recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
     des, tag, comm_world(), istat, ierr)
 
   call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
