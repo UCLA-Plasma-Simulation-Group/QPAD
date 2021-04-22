@@ -13,6 +13,9 @@
 
 ## Change log
 
+**Update on 04/22/2021**
+- Added the switch "neutralized" in "species" sessions. This parameter is used to control whether to generate the neutralized background.
+
 **Update on 02/22/2021**
 - Added a new push type "clamp" in "species" and "neutrals" sessions.
 - Change the parameters "uth" and "den_min" in the "species" and "neutrals" sessions to be optional.

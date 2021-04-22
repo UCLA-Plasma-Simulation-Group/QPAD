@@ -32,15 +32,15 @@ type part3d
    integer(kind=LG) :: npmax, nbmax, npp
    integer :: part_dim ! dimension of particle coordinates
    ! particle buffer for particle manager
-   real, dimension(:), pointer :: pbuff => null()
+   real, dimension(:), allocatable :: pbuff
    ! array for particle position
-   real, dimension(:,:), pointer :: x => null()
+   real, dimension(:,:), allocatable :: x
    ! array for particle momenta
-   real, dimension(:,:), pointer :: p => null()
+   real, dimension(:,:), allocatable :: p
    ! array for particle charge
-   real, dimension(:), pointer :: q => null()
+   real, dimension(:), allocatable :: q
    ! array for particle spin
-   real, dimension(:,:), pointer :: s => null()
+   real, dimension(:,:), allocatable :: s
    ! particle upper boundaries
    real, dimension(2) :: edge
 
@@ -48,6 +48,10 @@ type part3d
 
    ! anomalous magnet moment for spin push
    real :: anom_mag_moment
+
+   ! temporary arrays used for buffer reallocation
+   real, private, dimension(:), allocatable :: tmp1
+   real, private, dimension(:,:), allocatable :: tmp2
 
    contains
 
@@ -58,6 +62,7 @@ type part3d
    procedure :: push_reduced => push_reduced_part3d
    procedure :: update_bound => update_bound_part3d
    procedure :: push_spin    => push_spin_part3d
+   procedure :: realloc      => realloc_part3d
 
    procedure :: wr   => writehdf5_part3d
    procedure :: wrst => writerst_part3d
@@ -132,7 +137,7 @@ subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_part3d
-!
+
 subroutine end_part3d(this)
 
    implicit none
@@ -150,7 +155,60 @@ subroutine end_part3d(this)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part3d
-!
+
+subroutine realloc_part3d( this, ratio, buf_type )
+
+  implicit none
+
+  class(part3d), intent(inout) :: this
+  real, intent(in) :: ratio
+  character(*), intent(in) :: buf_type
+
+  character(len=18), save :: sname = 'realloc_part3d'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  select case ( trim(buf_type) )
+
+  case ( 'particle' )
+
+    this%npmax = int( this%npmax * ratio )
+
+    allocate( this%tmp2( p_x_dim, this%npmax ) )
+    this%tmp2 = 0.0
+    this%tmp2( 1:p_x_dim, 1:this%npp ) = this%x( 1:p_x_dim, 1:this%npp )
+    call move_alloc( this%tmp2, this%x )
+
+    allocate( this%tmp2( p_p_dim, this%npmax ) )
+    this%tmp2 = 0.0
+    this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p( 1:p_p_dim, 1:this%npp )
+    call move_alloc( this%tmp2, this%p )
+
+    allocate( this%tmp1( this%npmax ) )
+    this%tmp1 = 0.0
+    this%tmp1( 1:this%npp ) = this%q( 1:this%npp )
+    call move_alloc( this%tmp1, this%q )
+
+    if ( this%has_spin ) then
+      allocate( this%tmp2( p_s_dim, this%npmax ) )
+      this%tmp2 = 0.0
+      this%tmp2( 1:p_s_dim, 1:this%npp ) = this%s( 1:p_s_dim, 1:this%npp )
+      call move_alloc( this%tmp2, this%s )
+    endif
+
+  case ( 'pipeline' )
+
+    this%nbmax = int( this%nbmax * ratio )
+
+    deallocate( this%pbuff )
+    allocate( this%pbuff( this%part_dim * this%nbmax ) )
+
+  end select
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine realloc_part3d
+
 subroutine qdeposit_part3d( this, q )
 
    implicit none

@@ -79,48 +79,61 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    real, intent(in) :: qbm, s
    integer, intent(in) :: part_shape, max_mode, push_type
    integer, intent(in), optional :: smooth_type, smooth_order
-! local data
+   ! local data
    real :: dt
+   logical :: ntd
    character(len=18), save :: sname = 'init_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   this%pf => pf
-   dt = opts%get_dxi()
+   this%pf        => pf
+   dt             = opts%get_dxi()
    this%push_type = push_type
+   ntd            = pf%neutralized
 
-   allocate(this%q,this%qn,this%cu,this%amu,this%dcu)
+   allocate( this%q, this%cu, this%amu, this%dcu )
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
       call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-      call this%qn%new(opts,max_mode,part_shape,smooth_type,smooth_order)
       call this%cu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
       call this%dcu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
       call this%amu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
    else
-      call this%q%new(opts,max_mode,part_shape)
-      call this%qn%new(opts,max_mode,part_shape)
+      call this%q%new(opts,max_mode,part_shape)      
       call this%cu%new(opts,max_mode,part_shape)
       call this%dcu%new(opts,max_mode,part_shape)
       call this%amu%new(opts,max_mode,part_shape)
    endif
    call this%part%new(opts,pf,qbm,dt,s)
 
-   this%qn = 0.0
+   this%q  = 0.0
    this%cu = 0.0
-   call this%part%qdeposit(this%qn)
-   call this%qn%acopy_gc_f1( dir=p_mpi_forward )
-   call this%qn%copy_gc_f1()
-   this%q = this%qn
-   if (id_stage() == 0) then
-      ! call this%q%smooth(this%q)
-      call this%q%copy_slice(1,p_copy_1to2)
-   end if
-   ! this%qn = this%qn*(-1.0)
-   call dot_f1( -1.0, this%qn )
+
+   ! deposit charge
+   call this%part%qdeposit( this%q )
+   call this%q%acopy_gc_f1( dir=p_mpi_forward )
+   call this%q%copy_gc_f1()
+   if (id_stage() == 0) call this%q%copy_slice( 1, p_copy_1to2 )
+
+   ! initialize the background
+   if ( ntd ) then
+
+      allocate( this%qn )
+      if ( present(smooth_type) .and. present(smooth_order) ) then
+         call this%qn%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      else
+         call this%qn%new(opts,max_mode,part_shape)
+      endif
+
+      this%qn = this%q
+      call dot_f1( -1.0, this%qn )
+
+   endif
+
    call write_dbg(cls_name, sname, cls_level, 'ends')
+
 end subroutine init_species2d
-!
+
 subroutine end_species2d(this)
 
    implicit none
@@ -130,37 +143,47 @@ subroutine end_species2d(this)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call this%part%del()
+   call this%q%del()
+   call this%cu%del()
+   call this%dcu%del()
+   call this%amu%del()
+   if ( allocated( this%qn ) ) call this%qn%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_species2d
-!
+
 subroutine renew_species2d(this,s)
 
    implicit none
 
    class(species2d), intent(inout) :: this
    real, intent(in) :: s
-! local data
+   ! local data
+   logical :: ntd
    character(len=18), save :: sname = 'renew_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
+   ntd = this%pf%neutralized
+
    call this%part%renew(this%pf,s)
-   this%qn = 0.0
-   call this%part%qdeposit(this%qn)
-   call this%qn%acopy_gc_f1( dir=p_mpi_forward )
-   call this%qn%copy_gc_f1()
-   this%q = this%qn
-   if (id_stage() == 0) then
-      ! call this%q%smooth(this%q)
-      call this%q%copy_slice(1,p_copy_1to2)
-   end if
-   ! this%qn = this%qn * (-1.0)
-   call dot_f1( -1.0, this%qn )
+
+   ! renew the charge density
+   this%q = 0.0
+   call this%part%qdeposit( this%q )
+   call this%q%acopy_gc_f1( dir=p_mpi_forward )
+   call this%q%copy_gc_f1()
+   if (id_stage() == 0) call this%q%copy_slice( 1, p_copy_1to2 )
+
+   ! renew the background
+   if ( ntd ) then
+      this%qn = this%q
+      call dot_f1( -1.0, this%qn )
+   endif
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine renew_species2d
-!
+
 subroutine qdp_species2d(this,q)
 ! deposit the charge density
 
@@ -168,7 +191,7 @@ subroutine qdp_species2d(this,q)
 
    class(species2d), intent(inout) :: this
    class(field_rho), intent(inout) :: q
-! local data
+   ! local data
    character(len=18), save :: sname = 'qdp_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -178,14 +201,13 @@ subroutine qdp_species2d(this,q)
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
-   ! q = this%q + q + this%qn
    call add_f1( this%q, q )
-   call add_f1( this%qn, q )
+   if ( this%pf%neutralized ) call add_f1( this%qn, q )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine qdp_species2d
-!
+
 subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
@@ -230,7 +252,7 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine amjdp_species2d
-!
+
 subroutine push_species2d(this,ef,bf)
 
    implicit none
@@ -238,7 +260,7 @@ subroutine push_species2d(this,ef,bf)
    class(species2d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
-! local data
+   ! local data
    character(len=18), save :: sname = 'push_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -258,7 +280,7 @@ subroutine push_species2d(this,ef,bf)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_species2d
-!
+
 ! subroutine extpsi_species2d(this,psi)
 
 !    implicit none
@@ -277,7 +299,7 @@ end subroutine push_species2d
 !    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 ! end subroutine extpsi_species2d
-!
+
 subroutine psend_species2d(this, tag, id)
 
    implicit none
@@ -285,7 +307,7 @@ subroutine psend_species2d(this, tag, id)
    class(species2d), intent(inout) :: this
    integer, intent(in) :: tag
    integer, intent(inout) :: id
-! local data
+   ! local data
    character(len=18), save :: sname = 'pipesend_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -293,14 +315,14 @@ subroutine psend_species2d(this, tag, id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine psend_species2d
-!
+
 subroutine precv_species2d(this, tag)
 
    implicit none
 
    class(species2d), intent(inout) :: this
    integer, intent(in) :: tag
-! local data
+   ! local data
    character(len=18), save :: sname = 'precv_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -308,14 +330,14 @@ subroutine precv_species2d(this, tag)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine precv_species2d
-!
+
 subroutine writehdf5_species2d(this,file)
 
    implicit none
 
    class(species2d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
-! local data
+   ! local data
    character(len=18), save :: sname = 'writehdf5_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -325,7 +347,7 @@ subroutine writehdf5_species2d(this,file)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_species2d
-!
+
 subroutine writeq_species2d(this,files,rtag,stag,id)
 
    implicit none
@@ -334,7 +356,7 @@ subroutine writeq_species2d(this,files,rtag,stag,id)
    class(hdf5file), dimension(:), intent(in) :: files
    integer, intent(in) :: rtag, stag
    integer, intent(inout) :: id
-! local data
+   ! local data
    character(len=18), save :: sname = 'writeq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -344,22 +366,21 @@ subroutine writeq_species2d(this,files,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writeq_species2d
-!
+
 subroutine cbq_species2d(this,pos)
 
    implicit none
 
    class(species2d), intent(inout) :: this
    integer, intent(in) :: pos
-! local data
+   ! local data
    character(len=18), save :: sname = 'cpq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   ! call add_f1(this%q,this%cu,this%q,(/1/),(/3/),(/1/))
    call add_f1( this%cu, this%q, (/3/), (/1/) )
    call this%q%copy_slice(pos,p_copy_1to2)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine cbq_species2d
-!
+
 end module species2d_class

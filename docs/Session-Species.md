@@ -51,6 +51,9 @@ It specifies the minimum density for injecting particles. Particles are only inj
 ### **"uth"**: real(3), optional
 The initial thermal velocity (proper velocity, i.e., &gamma;&beta;) in (x,y,z) directions. __Warning__: This is an experimental functionality. Setting non-zeros values to "uth" will lead to unphysical plasma oscillation, and the cause is unclear currently. If not necessary, one should always set this parameter zero. The default value is [0.0, 0.0, 0.0].
 
+### **"neutralized"**: logical, optional
+The switch whether to generate a neutralized background for the species. The default value is "true".
+
 ### **"diag"** : session array(\*), optional
 For the species, every type of diagnostics must be provided as a session. The parameters of each session include:
 
