@@ -439,28 +439,33 @@ subroutine deposit_fdist3d_000(this,q)
    class(fdist3d_000), intent(inout) :: this
    class(field), intent(inout) :: q
 ! local data
-   class(ufield), dimension(:), pointer :: q_re, q_im
-   real, dimension(:,:,:), pointer :: q0
+   class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
+   real, dimension(:,:,:), pointer :: q0 => null()
    real :: r, z, dr, dz
    integer :: i, j, noff1, noff2, n1p, n2p
-   real :: np, sigx, sigz, sigx2, sigz2
+   real :: np, sigx, sigy, sigz, sigx2, sigz2
    real :: bcz
 
-   q_im => null()
+   q_im => q%get_rf_im()
    q_re => q%get_rf_re()
-   q0 => q_re(0)%get_f2()
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
    n1p = q_re(0)%get_ndp(1)
    n2p = q_re(0)%get_ndp(2)
    dr = this%dx
    dz = this%dz
+
+   q0 => q_re(0)%get_f2()
    if (abs(this%qm) < 1.0e-6 ) then
       np = 0.0
    else
       np = this%np*this%qm/abs(this%qm)
    end if
    sigx = this%sigx
+   sigy = this%sigy
+   if ( sigx /= sigy ) then
+      call write_err( 'Non-evolving beam deposit only supports round beam ( sigma(1) == sigma(2) ) initialization.' )
+   endif
    sigz = this%sigz
    bcz = this%bcz
    sigx2 = 0.5/sigx**2
@@ -653,28 +658,33 @@ subroutine deposit_fdist3d_001(this,q)
    class(fdist3d_001), intent(inout) :: this
    class(field), intent(inout) :: q
 ! local data
-   class(ufield), dimension(:), pointer :: q_re, q_im
-   real, dimension(:,:,:), pointer :: q0
+   class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
+   real, dimension(:,:,:), pointer :: q0 => null()
    real :: r, z, dr, dz
    integer :: i, j, noff1, noff2, n1p, n2p
-   real :: np, sigx, sigz, sigx2, sigz2
+   real :: np, sigx, sigy, sigz, sigx2, sigz2
    real :: bcz
 
-   q_im => null()
+   q_im => q%get_rf_im()
    q_re => q%get_rf_re()
-   q0 => q_re(0)%get_f2()
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
    n1p = q_re(0)%get_ndp(1)
    n2p = q_re(0)%get_ndp(2)
    dr = this%dx
    dz = this%dz
+
+   q0 => q_re(0)%get_f2()
    if (abs(this%qm) < 1.0e-6 ) then
       np = 0.0
    else
       np = this%np*this%qm/abs(this%qm)
    end if
    sigx = this%sigx
+   sigy = this%sigy
+   if ( sigx /= sigy ) then
+      call write_err( 'Non-evolving beam deposit only supports round beam ( sigma(1) == sigma(2) ) initialization.' )
+   endif
    sigz = this%sigz
    bcz = this%bcz
    sigx2 = 0.5/sigx**2
@@ -901,15 +911,14 @@ subroutine deposit_fdist3d_002(this,q)
    class(fdist3d_002), intent(inout) :: this
    class(field), intent(inout) :: q
 ! local data
-   class(ufield), dimension(:), pointer :: q_re, q_im
-   real, dimension(:,:,:), pointer :: q0
+   class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
+   real, dimension(:,:,:), pointer :: q0 => null()
    real :: r, z, dr, dz, fz
    integer :: i, j, k, noff1, noff2, n1p, n2p, nzf
-   real :: np, sigx, sigx2
+   real :: np, sigx, sigy, sigx2
 
-   q_im => null()
+   q_im => q%get_rf_im()
    q_re => q%get_rf_re()
-   q0 => q_re(0)%get_f2()
    noff1 = q_re(0)%get_noff(1)
    noff2 = q_re(0)%get_noff(2)
    n1p = q_re(0)%get_ndp(1)
@@ -917,12 +926,17 @@ subroutine deposit_fdist3d_002(this,q)
    nzf = size(this%z)
    dr = this%dx
    dz = this%dz
+   q0 => q_re(0)%get_f2()
    if (abs(this%qm) < 1.0e-6 ) then
       np = 0.0
    else
       np = this%np*this%qm/abs(this%qm)
    end if
    sigx = this%sigx
+   sigy = this%sigy
+   if ( sigx /= sigy ) then
+      call write_err( 'Non-evolving beam deposit only supports round beam ( sigma(1) == sigma(2) ) initialization.' )
+   endif
    sigx2 = 0.5/sigx**2
 
    do i = 1, n1p
