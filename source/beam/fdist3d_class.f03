@@ -51,11 +51,10 @@ subroutine ab_dist3d(this,x,p,q,npp,noff,ndp,s)
    import LG
    implicit none
    class(fdist3d), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
-   ! class(ufield), intent(in), pointer :: ud
    integer, intent(in), dimension(2) :: noff, ndp
 end subroutine ab_dist3d
 !
@@ -365,9 +364,9 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp,s)
    implicit none
 
    class(fdist3d_000), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -579,9 +578,9 @@ subroutine dist3d_001(this,x,p,q,npp,noff,ndp,s)
    implicit none
 
    class(fdist3d_001), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -808,9 +807,9 @@ subroutine dist3d_002(this,x,p,q,npp,noff,ndp,s)
    implicit none
 
    class(fdist3d_002), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 ! local data1
@@ -1009,9 +1008,9 @@ subroutine dist3d_100(this,x,p,q,npp,noff,ndp,s)
    implicit none
 
    class(fdist3d_100), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 
@@ -1286,9 +1285,9 @@ subroutine dist3d_101(this,x,p,q,npp,noff,ndp,s)
    implicit none
 
    class(fdist3d_101), intent(inout) :: this
-   real, dimension(:,:), pointer, intent(inout) :: x, p
-   real, dimension(:,:), pointer, intent(inout), optional :: s
-   real, dimension(:), pointer, intent(inout) :: q
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
    integer(kind=LG), intent(inout) :: npp
    integer, intent(in), dimension(2) :: noff, ndp
 

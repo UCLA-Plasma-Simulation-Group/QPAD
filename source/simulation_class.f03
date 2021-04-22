@@ -48,7 +48,7 @@ type simulation
   integer, dimension(:), allocatable :: tag_field, id_field
   integer, dimension(:), allocatable :: tag_spe, id_spe
   integer, dimension(:,:), allocatable :: tag_neut, id_neut
-  integer, dimension(:), allocatable :: tag_beam, id_beam
+  integer, dimension(:,:), allocatable :: tag_beam, id_beam
   integer, dimension(:), allocatable :: tag_bq, id_bq
   integer, dimension(:), allocatable :: tag_diag, id_diag
 
@@ -154,7 +154,7 @@ subroutine init_simulation(this, input, opts)
   call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
 
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
-  allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
+  allocate( this%tag_beam(2, this%nbeams), this%id_beam(2, this%nbeams) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
   allocate( this%tag_neut(4, this%nneutrals), this%id_neut(4, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
@@ -413,9 +413,11 @@ subroutine run_simulation( this )
 
     ! pipeline for beams
     do k = 1, this%nbeams
-      this%tag_beam(k) = ntag()
-      call mpi_wait( this%id_beam(k), istat, ierr )
-      call beam(k)%push( e, b, this%tag_beam(k), this%tag_beam(k), this%id_beam(k) )
+      this%tag_beam(1,k) = ntag()
+      this%tag_beam(2,k) = ntag()
+      call mpi_wait( this%id_beam(1,k), istat, ierr )
+      call mpi_wait( this%id_beam(2,k), istat, ierr )
+      call beam(k)%push( e, b, this%tag_beam(:,k), this%id_beam(:,k) )
     enddo
 
     call this%diag%run( this%tstep, this%dt )
