@@ -294,6 +294,7 @@ subroutine unpack_relay_particles( part )
   integer :: i, j, npp, part_dim, stay_cnt, go_cnt, stride
   integer, dimension(2) :: sbuf_cnt
   real, dimension(2) :: x
+  real :: ratio
 
   npp      = part%npp
   part_dim = part%part_dim
@@ -301,10 +302,11 @@ subroutine unpack_relay_particles( part )
   sbuf_cnt(p_owd) = size( send_buf_upper ) / part_dim
 
   ! if all the received particles stay in this partition, check particle buffer size
-  if ( npp + sum(recv_cnt) > part%npmax ) then
+  ratio = real( npp + sum(recv_cnt) ) / part%npmax
+  if ( ratio > 1.0 ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle buffer!', only_root = .false. )
-    call part%realloc( ratio = 1.5 )
+    call part%realloc( ratio = ratio * 1.5 )
   endif
 
   ! if all the particles in the lower receiving buffer go to the outward partition,
@@ -312,7 +314,7 @@ subroutine unpack_relay_particles( part )
   if ( recv_cnt(p_iwd) + send_cnt(p_owd) > sbuf_cnt(p_owd) ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle sending buffer!', only_root = .false. )
-    sbuf_cnt(p_owd) = int( sbuf_cnt(p_owd) * 1.5 )
+    sbuf_cnt(p_owd) = ( recv_cnt(p_iwd) + send_cnt(p_owd) ) * 1.5
     deallocate( send_buf_upper )
     allocate( send_buf_upper( sbuf_cnt(p_owd) * part_dim ) )
   endif
@@ -322,7 +324,7 @@ subroutine unpack_relay_particles( part )
   if ( recv_cnt(p_owd) + send_cnt(p_iwd) > sbuf_cnt(p_iwd) ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle sending buffer!', only_root = .false. )
-    sbuf_cnt(p_iwd) = int( sbuf_cnt(p_iwd) * 1.5 )
+    sbuf_cnt(p_iwd) = ( recv_cnt(p_owd) + send_cnt(p_iwd) ) * 1.5
     deallocate( send_buf_lower )
     allocate( send_buf_lower( sbuf_cnt(p_iwd) * part_dim ) )
   endif

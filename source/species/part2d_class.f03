@@ -1934,6 +1934,7 @@ subroutine piperecv_part2d(this, tag)
   character(len=18), save :: sname = 'piperecv_part2d'
   integer, dimension(MPI_STATUS_SIZE) :: stat
   integer :: recv_cnt, src, ierr, i, stride
+  real :: ratio
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -1960,6 +1961,9 @@ subroutine piperecv_part2d(this, tag)
     deallocate( recv_buf )
     recv_buf_size = int( recv_cnt * 1.5 )
     allocate( recv_buf( recv_buf_size * this%part_dim ) )
+    ! DEBUG CODE
+    call write_stdout( '[process ' // num2str(id_proc()) // ']: Finished!', &
+      only_root = .false. )
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
@@ -1967,10 +1971,14 @@ subroutine piperecv_part2d(this, tag)
     src, tag, comm_world(), MPI_STATUS_IGNORE, ierr )
 
   ! check if the particle buffer needs to be reallocated
-  if ( recv_cnt > this%npmax ) then
+  ratio = real( recv_cnt ) / this%npmax
+  if ( ratio > 1.0 ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
           &particle buffer!', only_root = .false. )
-    call this%realloc( ratio = 1.5 )
+    call this%realloc( ratio = ratio * 1.5 )
+    ! DEBUG CODE
+    call write_stdout( '[process ' // num2str(id_proc()) // ']: Finished!', &
+      only_root = .false. )
   endif
 
   this%npp = recv_cnt
