@@ -1896,9 +1896,6 @@ subroutine pipesend_part2d(this, tag, id)
     return
   endif
 
-  ! to be implemented if using tile
-  ! call this%pcb()
-
   do i = 1, this%npp
     this%pbuf(1:2,i) = this%x(:,i)
     this%pbuf(3:5,i) = this%p(:,i)
@@ -1928,8 +1925,8 @@ subroutine piperecv_part2d(this, tag)
   integer, intent(in) :: tag
   ! local data
   character(len=18), save :: sname = 'piperecv_part2d'
-  integer, dimension(MPI_STATUS_SIZE) :: istat
-  integer :: nps, des, ierr, i
+  integer, dimension(MPI_STATUS_SIZE) :: stat
+  integer :: recv_cnt, src, ierr, i
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -1937,28 +1934,37 @@ subroutine piperecv_part2d(this, tag)
     allocate( recv_buf( this%part_dim, recv_buf_size ) )
   endif
 
-  des = id_proc() - num_procs_loc()
+  src = id_proc() - num_procs_loc()
 
-  if (des < 0) then
+  if (src < 0) then
     call write_dbg(cls_name, sname, cls_level, 'ends')
     return
   endif
 
+  ! probe for incoming message
+  call MPI_PROBE( src, tag, comm_world(), stat, ierr )
+  call MPI_GET_COUNT( stat, p_dtype_real, recv_cnt, ierr )
+  recv_cnt = recv_cnt / this%part_dim
+
   ! check if the receiving buffer needs to be reallocated
-  if ( this%npmax > recv_buf_size ) then
+  if ( recv_cnt > recv_buf_size ) then
     call write_stdout( 'Resizing 2D particle pipeline receiving buffer!' )
     deallocate( recv_buf )
-    recv_buf_size = this%npmax
+    recv_buf_size = int( recv_cnt * 1.5 )
     allocate( recv_buf( this%part_dim, recv_buf_size ) )
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV(recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
-    des, tag, comm_world(), istat, ierr)
+  call MPI_RECV( recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
+    src, tag, comm_world(), MPI_STATUS_IGNORE, ierr )
 
-  call MPI_GET_COUNT(istat, p_dtype_real, nps, ierr)
+  ! check if the particle buffer needs to be reallocated
+  if ( recv_cnt > this%npmax ) then
+    call write_stdout( 'Resizing 2D particle buffer!' )
+    call this%realloc( ratio = 1.5 )
+  endif
 
-  this%npp = nps/this%part_dim
+  this%npp = recv_cnt
 
   do i = 1, this%npp
     this%x(:,i)   = recv_buf(1:2,i)
@@ -1968,35 +1974,29 @@ subroutine piperecv_part2d(this, tag)
     this%q(i)     = recv_buf(8,i)
   enddo
 
-  ! to be implemented if using tile
-  ! call this%pcp(fd)
-
   ! check for errors
   if (ierr /= 0) then
     call write_err('MPI failed')
   endif
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine piperecv_part2d
-!
+
 subroutine writehdf5_part2d(this,file)
 
-   implicit none
+  implicit none
 
-   class(part2d), intent(inout) :: this
-   class(hdf5file), intent(in) :: file
-! local data
-   character(len=18), save :: sname = 'writehdf5_part2d'
-   integer :: ierr
+  class(part2d), intent(inout) :: this
+  class(hdf5file), intent(in) :: file
+  ! local data
+  character(len=18), save :: sname = 'writehdf5_part2d'
+  integer :: ierr
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   ! call pwpart(this%pp,file,this%part,this%npp,1,ierr)
-   call pwpart(file,this%x, this%p, this%q, this%npp,1,ierr)
-
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call pwpart( file, this%x, this%p, this%q, this%npp, 1, ierr )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_part2d
-!
+
 end module part2d_class
