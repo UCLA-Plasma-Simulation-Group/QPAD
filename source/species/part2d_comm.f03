@@ -497,7 +497,7 @@ subroutine pack_particles( part )
     if ( send_cnt(p_iwd) >= sbuf_cnt(p_iwd) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI sending buffer!', only_root = .false. )
-      sbuf_cnt(p_iwd) = int( sbuf_cnt(p_iwd) * 1.5 )
+      sbuf_cnt(p_iwd) = send_cnt(p_iwd) * 1.5
       allocate( tmp_real( sbuf_cnt(p_iwd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_lower) ) = send_buf_lower
@@ -508,7 +508,7 @@ subroutine pack_particles( part )
     if ( send_cnt(p_owd) >= sbuf_cnt(p_owd) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI sending buffer!', only_root = .false. )
-      sbuf_cnt(p_owd) = int( sbuf_cnt(p_owd) * 1.5 )
+      sbuf_cnt(p_owd) = send_cnt(p_owd) * 1.5
       allocate( tmp_real( sbuf_cnt(p_owd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_upper) ) = send_buf_upper
@@ -519,7 +519,7 @@ subroutine pack_particles( part )
     if ( go_cnt >= ihole_cnt ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI buffer!', only_root = .false. )
-      ihole_cnt = int( ihole_cnt * 1.5 )
+      ihole_cnt = go_cnt * 1.5
       allocate( tmp_int( ihole_cnt ) )
       tmp_int = 0
       tmp_int( 1:size(ihole) ) = ihole
