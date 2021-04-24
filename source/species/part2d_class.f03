@@ -86,6 +86,7 @@ real, dimension(:), allocatable :: recv_buf
 integer :: recv_buf_size = 0
 
 integer, parameter :: p_max_subcyc = 1024
+real, parameter :: p_buf_incr = 1.5
 
 contains
 
@@ -1959,11 +1960,8 @@ subroutine piperecv_part2d(this, tag)
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
           &particle pipeline receiving buffer!', only_root = .false. )
     deallocate( recv_buf )
-    recv_buf_size = int( recv_cnt * 1.5 )
+    recv_buf_size = int( recv_cnt * p_buf_incr )
     allocate( recv_buf( recv_buf_size * this%part_dim ) )
-    ! DEBUG CODE
-    call write_stdout( '[process ' // num2str(id_proc()) // ']: Finished!', &
-      only_root = .false. )
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
@@ -1975,10 +1973,7 @@ subroutine piperecv_part2d(this, tag)
   if ( ratio > 1.0 ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
           &particle buffer!', only_root = .false. )
-    call this%realloc( ratio = ratio * 1.5 )
-    ! DEBUG CODE
-    call write_stdout( '[process ' // num2str(id_proc()) // ']: Finished!', &
-      only_root = .false. )
+    call this%realloc( ratio = ratio * p_buf_incr )
   endif
 
   this%npp = recv_cnt

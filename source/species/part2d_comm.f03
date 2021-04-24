@@ -10,6 +10,8 @@ use part2d_class
 
 implicit none
 
+private
+
 save
 
 ! direction indicators
@@ -42,6 +44,9 @@ integer :: dim_max = 8
 
 ! current buffer size, same for send and receive buffers
 integer :: buf_size = 0
+
+! increment for buffer reallocation
+real, parameter :: p_buf_incr = 1.5
 
 ! self and neighbor processor id
 integer, dimension(0:2) :: pid
@@ -147,7 +152,7 @@ subroutine move_part2d_comm( part )
 
   integer :: rsize, ssize, ierr, part_dim, iter, loc_grp, world
   integer, dimension(MPI_STATUS_SIZE) :: istat
-  integer, dimension(2) :: sid, rid, touch_id
+  integer, dimension(2) :: sid, rid
   integer, dimension(2) :: scnt_max
 
   character(len=18), save :: sname = 'move_part2d_comm'
@@ -175,41 +180,29 @@ subroutine move_part2d_comm( part )
     ! send inward
     if ( .not. phys_bnd(p_iwd) ) then
 
-      ! inform the destination process the size of message
-      ! call mpi_isend( send_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), &
-      !   iter_max+1, world, touch_id(1), ierr )
-
       ssize = send_cnt(p_iwd) * part_dim
       call mpi_isend( send_buf_lower, ssize, p_dtype_real, pid(p_iwd), &
         iter, world, sid(1), ierr )
       
     else
-      ! touch_id(1) = MPI_REQUEST_NULL
-      sid(1)      = MPI_REQUEST_NULL
+      sid(1) = MPI_REQUEST_NULL
     endif
     
     ! send outward
     if ( .not. phys_bnd(p_owd) ) then
-
-      ! inform the destination process the size of message
-      ! call mpi_isend( send_cnt(p_owd), 1, p_dtype_int, pid(p_owd), &
-      !   iter_max+1, world, touch_id(2), ierr )
 
       ssize = send_cnt(p_owd) * part_dim
       call mpi_isend( send_buf_upper, ssize, p_dtype_real, pid(p_owd), &
         iter, world, sid(2), ierr )
 
     else
-      ! touch_id(2) = MPI_REQUEST_NULL
-      sid(2)      = MPI_REQUEST_NULL
+      sid(2) = MPI_REQUEST_NULL
     endif
 
     ! receive from outward and unpack particles
     if ( .not. phys_bnd(p_owd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      ! call mpi_recv( recv_cnt(p_owd), 1, p_dtype_int, pid(p_owd), iter_max+1, &
-      !   world, istat, ierr )
       call mpi_probe( pid(p_owd), iter, world, istat, ierr )
       call mpi_get_count( istat, p_dtype_real, recv_cnt(p_owd), ierr )
       recv_cnt(p_owd) = recv_cnt(p_owd) / part_dim
@@ -218,7 +211,7 @@ subroutine move_part2d_comm( part )
       if ( recv_cnt(p_owd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
           &particle upper MPI receiving buffer!', only_root = .false. )
-        rsize = int( recv_cnt(p_owd) * 1.5 ) * part_dim
+        rsize = int( recv_cnt(p_owd) * p_buf_incr ) * part_dim
         deallocate( recv_buf_upper )
         allocate( recv_buf_upper( rsize ) )
       endif
@@ -233,8 +226,6 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      ! call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), iter_max+1, &
-      !   world, istat, ierr )
       call mpi_probe( pid(p_iwd), iter, world, istat, ierr )
       call mpi_get_count( istat, p_dtype_real, recv_cnt(p_iwd), ierr )
       recv_cnt(p_iwd) = recv_cnt(p_iwd) / part_dim
@@ -243,7 +234,7 @@ subroutine move_part2d_comm( part )
       if ( recv_cnt(p_iwd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
           &particle lower MPI receiving buffer!', only_root = .false. )
-        rsize = int( recv_cnt(p_iwd) * 1.5 ) * part_dim
+        rsize = int( recv_cnt(p_iwd) * p_buf_incr ) * part_dim
         deallocate( recv_buf_lower )
         allocate( recv_buf_lower( rsize ) )
       endif
@@ -255,8 +246,6 @@ subroutine move_part2d_comm( part )
     endif
 
     ! wait sending finish
-    ! call mpi_wait( touch_id(1), istat, ierr )
-    ! call mpi_wait( touch_id(2), istat, ierr )
     call mpi_wait( sid(1), MPI_STATUS_IGNORE, ierr ); send_cnt(p_iwd) = 0
     call mpi_wait( sid(2), MPI_STATUS_IGNORE, ierr ); send_cnt(p_owd) = 0
 
@@ -306,7 +295,7 @@ subroutine unpack_relay_particles( part )
   if ( ratio > 1.0 ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle buffer!', only_root = .false. )
-    call part%realloc( ratio = ratio * 1.5 )
+    call part%realloc( ratio = ratio * p_buf_incr )
   endif
 
   ! if all the particles in the lower receiving buffer go to the outward partition,
@@ -314,7 +303,7 @@ subroutine unpack_relay_particles( part )
   if ( recv_cnt(p_iwd) + send_cnt(p_owd) > sbuf_cnt(p_owd) ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle sending buffer!', only_root = .false. )
-    sbuf_cnt(p_owd) = ( recv_cnt(p_iwd) + send_cnt(p_owd) ) * 1.5
+    sbuf_cnt(p_owd) = ( recv_cnt(p_iwd) + send_cnt(p_owd) ) * p_buf_incr
     deallocate( send_buf_upper )
     allocate( send_buf_upper( sbuf_cnt(p_owd) * part_dim ) )
   endif
@@ -324,7 +313,7 @@ subroutine unpack_relay_particles( part )
   if ( recv_cnt(p_owd) + send_cnt(p_iwd) > sbuf_cnt(p_iwd) ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
       &particle sending buffer!', only_root = .false. )
-    sbuf_cnt(p_iwd) = ( recv_cnt(p_owd) + send_cnt(p_iwd) ) * 1.5
+    sbuf_cnt(p_iwd) = ( recv_cnt(p_owd) + send_cnt(p_iwd) ) * p_buf_incr
     deallocate( send_buf_lower )
     allocate( send_buf_lower( sbuf_cnt(p_iwd) * part_dim ) )
   endif
@@ -497,7 +486,7 @@ subroutine pack_particles( part )
     if ( send_cnt(p_iwd) >= sbuf_cnt(p_iwd) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI sending buffer!', only_root = .false. )
-      sbuf_cnt(p_iwd) = send_cnt(p_iwd) * 1.5
+      sbuf_cnt(p_iwd) = send_cnt(p_iwd) * p_buf_incr
       allocate( tmp_real( sbuf_cnt(p_iwd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_lower) ) = send_buf_lower
@@ -508,7 +497,7 @@ subroutine pack_particles( part )
     if ( send_cnt(p_owd) >= sbuf_cnt(p_owd) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI sending buffer!', only_root = .false. )
-      sbuf_cnt(p_owd) = send_cnt(p_owd) * 1.5
+      sbuf_cnt(p_owd) = send_cnt(p_owd) * p_buf_incr
       allocate( tmp_real( sbuf_cnt(p_owd) * part_dim ) )
       tmp_real = 0.0
       tmp_real( 1:size(send_buf_upper) ) = send_buf_upper
@@ -519,7 +508,7 @@ subroutine pack_particles( part )
     if ( go_cnt >= ihole_cnt ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
         &particle MPI buffer!', only_root = .false. )
-      ihole_cnt = go_cnt * 1.5
+      ihole_cnt = go_cnt * p_buf_incr
       allocate( tmp_int( ihole_cnt ) )
       tmp_int = 0
       tmp_int( 1:size(ihole) ) = ihole
