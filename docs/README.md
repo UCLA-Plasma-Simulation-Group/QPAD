@@ -13,6 +13,9 @@
 
 ## Change log
 
+**Update on 04/24/2021**
+- Added a new parameter "npmax" into "species" and "neutral" sections. See the manual for details.
+
 **Update on 04/22/2021**
 - Added the switch "neutralized" in "species" sessions. This parameter is used to control whether to generate the neutralized background.
 

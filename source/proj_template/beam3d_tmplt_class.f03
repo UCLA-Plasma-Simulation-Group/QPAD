@@ -67,8 +67,8 @@ subroutine push_beam3d_tmplt( this, ef, bf, tag, sid )
    class(beam3d_tmplt), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
-   integer, intent(in), dimension(2) :: tag
-   integer, intent(inout), dimension(2) :: sid
+   integer, intent(in) :: tag
+   integer, intent(inout) :: sid
    ! local data
    class(part3d), pointer :: part_ptr
    character(len=32), save :: sname = 'push_beam3d_tmplt'

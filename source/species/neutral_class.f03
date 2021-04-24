@@ -13,6 +13,7 @@ use field_b_class
 use field_psi_class
 use field_src_class
 use hdf5io_class
+use mpi
 
 implicit none
 

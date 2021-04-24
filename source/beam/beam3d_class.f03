@@ -83,7 +83,7 @@ subroutine init_beam3d( this, opts, max_mode, part_shape, pf, qbm, dt, &
    ! local data
    character(len=32), save :: sname = 'init_beam3d'
    integer :: ierr
-   integer, dimension(2) :: id
+   integer :: id
    integer, dimension(MPI_STATUS_SIZE) :: istat
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -94,9 +94,8 @@ subroutine init_beam3d( this, opts, max_mode, part_shape, pf, qbm, dt, &
    this%evol = pf%getevol()
    call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
    call this%part%new(opts,pf,qbm,dt,has_spin,amm)
-   call move_part3d_comm( this%part, (/1,1/), id )
-   call mpi_wait( id(1), istat, ierr )
-   call mpi_wait( id(2), istat, ierr )
+   call move_part3d_comm( this%part, 1, id )
+   call mpi_wait( id, istat, ierr )
 
    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -177,8 +176,8 @@ subroutine push_beam3d( this, ef, bf, tag, sid )
    class(beam3d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
-   integer, intent(in), dimension(2) :: tag
-   integer, intent(inout), dimension(2) :: sid
+   integer, intent(in) :: tag
+   integer, intent(inout) :: sid
    ! local data
    character(len=32), save :: sname = 'push_beam3d'
 

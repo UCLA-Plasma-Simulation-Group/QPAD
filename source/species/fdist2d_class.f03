@@ -200,7 +200,7 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   endif
 
   ! calculate the maximum particles number allowed in this partition
-  xtra = 1.5
+  xtra = 2.0
   npmax_min = this%nrp * product(this%ppc) * this%num_theta
   this%npmax = int( npmax_min * xtra )
   if ( input%found( trim(sect_name) // '.npmax' ) ) then

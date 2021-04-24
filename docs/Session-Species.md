@@ -28,6 +28,9 @@ The numbers of macro-particles per cell in polar coordinate system, i.e. (&Delta
 ### **"num_theta"** : integer
 The numbers of cells distributed azimuthally, i.e. &Delta;&phi;=2&pi;/num_theta.
 
+### **"npmax"** : integer, optional
+The maximum particle number allowed for each partition. When not set the code will try to determine this value automatically. The default value is twice of the minimum buffer size required to initialize the particles, i.e., ppc(1) * ppc(2) * num_theta * (cell # in this partition) * 2.0. If for some reason the number of particles on each node exceeds the supplied value the code will attempt to reallocate the buffer to accommodate the extra particles. However, frequent buffer reallocation will severely impact the performance, which one should avoid. Warnings of buffer reallocation will be printed out so one can see how frequently this process is happening. It is recommended to manually set this parameter to better balance the memory usage and performance.
+
 ### **"q"** : real
 The charge for each plasma particle. E.g., it is -1.0 for an electron.
 
