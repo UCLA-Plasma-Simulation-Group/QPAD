@@ -1905,7 +1905,7 @@ subroutine pipesend_part2d(this, tag, id)
   enddo
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_ISEND(this%pbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
+  call mpi_isend(this%pbuf, int(this%npp*this%part_dim), p_dtype_real, des, tag, &
     comm_world(), id, ierr)
 
   ! check for errors
@@ -1942,25 +1942,27 @@ subroutine piperecv_part2d(this, tag)
   endif
 
   ! probe for incoming message
-  call MPI_PROBE( src, tag, comm_world(), stat, ierr )
-  call MPI_GET_COUNT( stat, p_dtype_real, recv_cnt, ierr )
+  call mpi_probe( src, tag, comm_world(), stat, ierr )
+  call mpi_get_count( stat, p_dtype_real, recv_cnt, ierr )
   recv_cnt = recv_cnt / this%part_dim
 
   ! check if the receiving buffer needs to be reallocated
   if ( recv_cnt > recv_buf_size ) then
-    call write_stdout( 'Resizing 2D particle pipeline receiving buffer!' )
+    call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
+          &particle pipeline receiving buffer!', only_root = .false. )
     deallocate( recv_buf )
     recv_buf_size = int( recv_cnt * 1.5 )
     allocate( recv_buf( this%part_dim, recv_buf_size ) )
   endif
 
   ! NOTE: npp*xdim might be larger than MAX_INT32
-  call MPI_RECV( recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
+  call mpi_recv( recv_buf, int( this%part_dim * recv_buf_size ), p_dtype_real, &
     src, tag, comm_world(), MPI_STATUS_IGNORE, ierr )
 
   ! check if the particle buffer needs to be reallocated
   if ( recv_cnt > this%npmax ) then
-    call write_stdout( 'Resizing 2D particle buffer!' )
+    call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
+          &particle buffer!', only_root = .false. )
     call this%realloc( ratio = 1.5 )
   endif
 

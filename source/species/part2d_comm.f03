@@ -176,15 +176,15 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ! inform the destination process the size of message
-      call mpi_isend( send_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), &
-        iter_max+1, world, touch_id(1), ierr )
+      ! call mpi_isend( send_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), &
+      !   iter_max+1, world, touch_id(1), ierr )
 
       ssize = send_cnt(p_iwd) * part_dim
       call mpi_isend( send_buf_lower, ssize, p_dtype_real, pid(p_iwd), &
         iter, world, sid(1), ierr )
       
     else
-      touch_id(1) = MPI_REQUEST_NULL
+      ! touch_id(1) = MPI_REQUEST_NULL
       sid(1)      = MPI_REQUEST_NULL
     endif
     
@@ -192,15 +192,15 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_owd) ) then
 
       ! inform the destination process the size of message
-      call mpi_isend( send_cnt(p_owd), 1, p_dtype_int, pid(p_owd), &
-        iter_max+1, world, touch_id(2), ierr )
+      ! call mpi_isend( send_cnt(p_owd), 1, p_dtype_int, pid(p_owd), &
+      !   iter_max+1, world, touch_id(2), ierr )
 
       ssize = send_cnt(p_owd) * part_dim
       call mpi_isend( send_buf_upper, ssize, p_dtype_real, pid(p_owd), &
         iter, world, sid(2), ierr )
 
     else
-      touch_id(2) = MPI_REQUEST_NULL
+      ! touch_id(2) = MPI_REQUEST_NULL
       sid(2)      = MPI_REQUEST_NULL
     endif
 
@@ -208,12 +208,16 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_owd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      call mpi_recv( recv_cnt(p_owd), 1, p_dtype_int, pid(p_owd), iter_max+1, &
-        world, istat, ierr )
+      ! call mpi_recv( recv_cnt(p_owd), 1, p_dtype_int, pid(p_owd), iter_max+1, &
+      !   world, istat, ierr )
+      call mpi_probe( pid(p_owd), iter, world, istat, ierr )
+      call mpi_get_count( istat, p_dtype_real, recv_cnt(p_owd), ierr )
+      recv_cnt(p_owd) = recv_cnt(p_owd) / part_dim
+
       rsize = size( recv_buf_upper )
       if ( recv_cnt(p_owd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
-          &particle MPI receiving buffer!', only_root = .false. )
+          &particle upper MPI receiving buffer!', only_root = .false. )
         rsize = int( recv_cnt(p_owd) * 1.5 ) * part_dim
         deallocate( recv_buf_upper )
         allocate( recv_buf_upper( rsize ) )
@@ -229,12 +233,16 @@ subroutine move_part2d_comm( part )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), iter_max+1, &
-        world, istat, ierr )
+      ! call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), iter_max+1, &
+      !   world, istat, ierr )
+      call mpi_probe( pid(p_iwd), iter, world, istat, ierr )
+      call mpi_get_count( istat, p_dtype_real, recv_cnt(p_iwd), ierr )
+      recv_cnt(p_iwd) = recv_cnt(p_iwd) / part_dim
+
       rsize = size( recv_buf_lower )
       if ( recv_cnt(p_iwd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 2D &
-          &particle MPI receiving buffer!', only_root = .false. )
+          &particle lower MPI receiving buffer!', only_root = .false. )
         rsize = int( recv_cnt(p_iwd) * 1.5 ) * part_dim
         deallocate( recv_buf_lower )
         allocate( recv_buf_lower( rsize ) )
@@ -247,14 +255,14 @@ subroutine move_part2d_comm( part )
     endif
 
     ! wait sending finish
-    call mpi_wait( touch_id(1), istat, ierr )
-    call mpi_wait( touch_id(2), istat, ierr )
-    call mpi_wait( sid(1), istat, ierr ); send_cnt(p_iwd) = 0
-    call mpi_wait( sid(2), istat, ierr ); send_cnt(p_owd) = 0
+    ! call mpi_wait( touch_id(1), istat, ierr )
+    ! call mpi_wait( touch_id(2), istat, ierr )
+    call mpi_wait( sid(1), MPI_STATUS_IGNORE, ierr ); send_cnt(p_iwd) = 0
+    call mpi_wait( sid(2), MPI_STATUS_IGNORE, ierr ); send_cnt(p_owd) = 0
 
     ! wait receiving finish
-    call mpi_wait( rid(2), istat, ierr )
-    call mpi_wait( rid(1), istat, ierr )
+    call mpi_wait( rid(2), MPI_STATUS_IGNORE, ierr )
+    call mpi_wait( rid(1), MPI_STATUS_IGNORE, ierr )
 
     ! unpack particles in inward/outward receive buffer
     call unpack_relay_particles( part )
