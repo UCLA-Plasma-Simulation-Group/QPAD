@@ -10,6 +10,8 @@ use part3d_class
 
 implicit none
 
+private
+
 save
 
 ! direction indicators
@@ -45,6 +47,9 @@ integer :: dim_max = 7
 
 ! current buffer size, same for send and receive buffers
 integer :: buf_size = 0
+
+! increment for buffer reallocation
+real, parameter :: p_buf_incr = 1.2
 
 ! self and neighbor processor id
 integer, dimension(0:4) :: pid
@@ -154,12 +159,12 @@ subroutine move_part3d_comm( part, tag, id )
   implicit none
 
   class( part3d ), intent(inout) :: part
-  integer, intent(in), dimension(2) :: tag
-  integer, intent(inout), dimension(2) :: id
+  integer, intent(in) :: tag
+  integer, intent(inout) :: id
 
   integer :: bsize, rsize, ssize, ierr, part_dim, iter, loc_grp, world
   integer, dimension(MPI_STATUS_SIZE) :: istat
-  integer, dimension(2) :: sid, rid, touch_id
+  integer, dimension(2) :: sid, rid
   integer, dimension(4) :: scnt_max
 
   character(len=18), save :: sname = 'move_part3d_comm'
@@ -188,53 +193,35 @@ subroutine move_part3d_comm( part, tag, id )
 
     ! send inward
     if ( .not. phys_bnd(p_iwd) ) then
-      ! ssize = send_cnt(p_iwd) * part_dim
-      ! call mpi_isend( send_buf_lower, ssize, p_dtype_real, pid(p_iwd), &
-      !   iter, world, sid(1), ierr )
-
-      ! inform the destination process the size of message
-      call mpi_isend( send_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), &
-        iter_max+1, world, touch_id(1), ierr )
-
       ssize = send_cnt(p_iwd) * part_dim
       call mpi_isend( send_buf_lower, ssize, p_dtype_real, pid(p_iwd), &
         iter, world, sid(1), ierr )
-
     else
-      touch_id(1) = MPI_REQUEST_NULL
-      sid(1)      = MPI_REQUEST_NULL
+      sid(1) = MPI_REQUEST_NULL
     endif
     
     ! send outward
     if ( .not. phys_bnd(p_owd) ) then
-      ! ssize = send_cnt(p_owd) * part_dim
-      ! call mpi_isend( send_buf_upper, ssize, p_dtype_real, pid(p_owd), &
-      !   iter, world, sid(2), ierr )
-
-      ! inform the destination process the size of message
-      call mpi_isend( send_cnt(p_owd), 1, p_dtype_int, pid(p_owd), &
-        iter_max+1, world, touch_id(2), ierr )
-
       ssize = send_cnt(p_owd) * part_dim
       call mpi_isend( send_buf_upper, ssize, p_dtype_real, pid(p_owd), &
         iter, world, sid(2), ierr )
-
     else
-      touch_id(2) = MPI_REQUEST_NULL
-      sid(2)      = MPI_REQUEST_NULL
+      sid(2) = MPI_REQUEST_NULL
     endif
 
     ! receive from outward and unpack particles
     if ( .not. phys_bnd(p_owd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      call mpi_recv( recv_cnt(p_owd), 1, p_dtype_int, pid(p_owd), iter_max+1, &
-        world, istat, ierr )
+      call mpi_probe( pid(p_owd), iter, world, istat, ierr )
+      call mpi_get_count( istat, p_dtype_real, recv_cnt(p_owd), ierr )
+      recv_cnt(p_owd) = recv_cnt(p_owd) / part_dim
+
       rsize = size( recv_buf_upper )
       if ( recv_cnt(p_owd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI receiving buffer!', only_root = .false. )
-        rsize = int( recv_cnt(p_owd) * 1.2 ) * part_dim
+        rsize = int( recv_cnt(p_owd) * p_buf_incr ) * part_dim
         deallocate( recv_buf_upper )
         allocate( recv_buf_upper( rsize ) )
       endif
@@ -250,13 +237,15 @@ subroutine move_part3d_comm( part, tag, id )
     if ( .not. phys_bnd(p_iwd) ) then
 
       ! get the message size and resize receiving buffer if necessary
-      call mpi_recv( recv_cnt(p_iwd), 1, p_dtype_int, pid(p_iwd), iter_max+1, &
-        world, istat, ierr )
+      call mpi_probe( pid(p_iwd), iter, world, istat, ierr )
+      call mpi_get_count( istat, p_dtype_real, recv_cnt(p_iwd), ierr )
+      recv_cnt(p_iwd) = recv_cnt(p_iwd) / part_dim
+
       rsize = size( recv_buf_lower )
       if ( recv_cnt(p_iwd) > rsize / part_dim ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI receiving buffer!', only_root = .false. )
-        rsize = int( recv_cnt(p_iwd) * 1.5 ) * part_dim
+        rsize = int( recv_cnt(p_iwd) * p_buf_incr ) * part_dim
         deallocate( recv_buf_lower )
         allocate( recv_buf_lower( rsize ) )
       endif
@@ -268,30 +257,12 @@ subroutine move_part3d_comm( part, tag, id )
     endif
 
     ! wait sending finish
-    call mpi_wait( touch_id(1), istat, ierr )
-    call mpi_wait( touch_id(2), istat, ierr )
-    call mpi_wait( sid(1), istat, ierr ); send_cnt(p_iwd) = 0
-    call mpi_wait( sid(2), istat, ierr ); send_cnt(p_owd) = 0
+    call mpi_wait( sid(1), MPI_STATUS_IGNORE, ierr ); send_cnt(p_iwd) = 0
+    call mpi_wait( sid(2), MPI_STATUS_IGNORE, ierr ); send_cnt(p_owd) = 0
 
     ! wait receiving finish
-    call mpi_wait( rid(1), istat, ierr )
-    ! call mpi_get_count( istat, p_dtype_real, rsize, ierr )
-    ! recv_cnt(p_iwd) = rsize / part_dim
-    call mpi_wait( rid(2), istat, ierr )
-    ! call mpi_get_count( istat, p_dtype_real, rsize, ierr )
-    ! recv_cnt(p_owd) = rsize / part_dim
-
-    ! unpack particles in inward receive buffer
-    ! if ( .not. phys_bnd(p_iwd) ) then
-    !   call unpack_relay_particles( part, redge, recv_buf_lower, recv_cnt(p_iwd), p_iwd, &
-    !     send_buf_upper, send_cnt(p_owd), p_owd )
-    ! endif
-
-    ! ! unpack particles in outward receive buffer
-    ! if ( .not. phys_bnd(p_owd) ) then
-    !   call unpack_relay_particles( part, redge, recv_buf_upper, recv_cnt(p_owd), p_owd, &
-    !     send_buf_lower, send_cnt(p_iwd), p_iwd )
-    ! endif
+    call mpi_wait( rid(1), MPI_STATUS_IGNORE, ierr )
+    call mpi_wait( rid(2), MPI_STATUS_IGNORE, ierr )
 
     ! unpack particles in inward/outward receive buffer
     call unpack_relay_particles( part, buf_type = 'local' )
@@ -309,25 +280,21 @@ subroutine move_part3d_comm( part, tag, id )
   if ( .not. phys_bnd(p_bwd) ) then
 
     ! get the message size and resize receiving buffer if necessary
-    call mpi_recv( recv_cnt(p_bwd), 1, p_dtype_int, pid(p_bwd), tag(1), &
-      world, istat, ierr )
+    call mpi_probe( pid(p_bwd), tag, world, istat, ierr )
+    call mpi_get_count( istat, p_dtype_real, recv_cnt(p_bwd), ierr )
+    recv_cnt(p_bwd) = recv_cnt(p_bwd) / part_dim
+
     rsize = size( recv_buf_lower )
     if ( recv_cnt(p_bwd) > rsize / part_dim ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
         &particle pipeline receiving buffer!', only_root = .false. )
-      rsize = int( recv_cnt(p_fwd) * 1.2 ) * part_dim
+      rsize = int( recv_cnt(p_fwd) * p_buf_incr ) * part_dim
       deallocate( recv_buf_lower )
       allocate( recv_buf_lower( rsize ) )
     endif
 
     call mpi_recv( recv_buf_lower, rsize, p_dtype_real, pid(p_bwd), &
-      tag(2), world, istat, ierr )
-
-    ! call mpi_get_count( istat, p_dtype_real, rsize, ierr )
-    ! recv_cnt(p_bwd) = rsize / part_dim
-
-    ! call unpack_relay_particles( part, zedge, recv_buf_lower, recv_cnt(p_bwd), p_bwd, &
-    !   part%pbuff, send_cnt(p_fwd), p_fwd )
+      tag, world, istat, ierr )
 
     call unpack_relay_particles( part, buf_type = 'pipeline' )
 
@@ -337,16 +304,9 @@ subroutine move_part3d_comm( part, tag, id )
   ! send particles to forward node (pipeline communication)
   if ( .not. phys_bnd(p_fwd) ) then
 
-    ! call pack_particles( part, zedge, part%pbuff, ihole, send_cnt(p_fwd), p_fwd )
     call pack_particles( part, buf_type = 'pipeline' )
-
-    ! inform the destination process the size of message
-    call mpi_isend( send_cnt(p_fwd), 1, p_dtype_int, pid(p_fwd), &
-      tag(1), world, id(1), ierr )
-
     ssize = send_cnt(p_fwd) * part_dim
-    call mpi_isend( part%pbuff, ssize, p_dtype_real, pid(p_fwd), &
-      tag(2), world, id(2), ierr )
+    call mpi_isend( part%pbuff, ssize, p_dtype_real, pid(p_fwd), tag, world, id, ierr )
 
   else
     id = MPI_REQUEST_NULL
@@ -368,16 +328,12 @@ subroutine unpack_relay_particles( part, buf_type )
   implicit none
 
   class(part3d), intent(inout) :: part
-  ! real, intent(in), dimension(2) :: edge
-  ! real, intent(in), dimension(:) :: rbuf
-  ! real, intent(inout), dimension(:) :: sbuf
-  ! integer, intent(inout) :: scnt, rcnt
-  ! integer, intent(in) :: src, des
   character(*), intent(in) :: buf_type
 
   integer :: i, j, npp, part_dim, stay_cnt, go_cnt, stride
   integer, dimension(2) :: sbuf_cnt
   real, dimension(3) :: x
+  real :: ratio
 
   npp      = part%npp
   part_dim = part%part_dim
@@ -385,10 +341,11 @@ subroutine unpack_relay_particles( part, buf_type )
   sbuf_cnt(p_upper) = size( send_buf_upper ) / part_dim
 
   ! if all the received particles stay in this partition, check particle buffer size
-  if ( npp + sum(recv_cnt) > part%npmax ) then
+  ratio = real( npp + sum(recv_cnt) ) / part%npmax
+  if ( ratio > 1.0 ) then
     call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
       &particle buffer!', only_root = .false. )
-    call part%realloc( ratio = 1.2, buf_type = 'particle' )
+    call part%realloc( ratio = ratio * p_buf_incr, buf_type = 'particle' )
   endif
 
   select case ( buf_type )
@@ -400,7 +357,7 @@ subroutine unpack_relay_particles( part, buf_type )
     if ( recv_cnt(p_iwd) + send_cnt(p_owd) > sbuf_cnt(p_upper) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
         &particle sending buffer!', only_root = .false. )
-      sbuf_cnt(p_upper) = int( sbuf_cnt(p_upper) * 1.2 )
+      sbuf_cnt(p_upper) = ( recv_cnt(p_iwd) + send_cnt(p_owd) ) * p_buf_incr
       deallocate( send_buf_upper )
       allocate( send_buf_upper( sbuf_cnt(p_upper) * part_dim ) )
     endif
@@ -410,7 +367,7 @@ subroutine unpack_relay_particles( part, buf_type )
     if ( recv_cnt(p_owd) + send_cnt(p_iwd) > sbuf_cnt(p_lower) ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
         &particle sending buffer!', only_root = .false. )
-      sbuf_cnt(p_lower) = int( sbuf_cnt(p_lower) * 1.2 )
+      sbuf_cnt(p_lower) = ( recv_cnt(p_owd) + send_cnt(p_iwd) ) * p_buf_incr
       deallocate( send_buf_lower )
       allocate( send_buf_lower( sbuf_cnt(p_lower) * part_dim ) )
     endif
@@ -533,13 +490,11 @@ subroutine unpack_relay_particles( part, buf_type )
 
     ! if all the particles in the lower receiving buffer go to the forward partition,
     ! check the upper sending buffer size
-    if ( recv_cnt(p_bwd) + send_cnt(p_fwd) > part%nbmax ) then
+    ratio = real( recv_cnt(p_bwd) + send_cnt(p_fwd) ) / part%nbmax
+    if ( ratio > 1.0 ) then
       call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
         &particle sending buffer!', only_root = .false. )
-      ! sbuf_cnt(p_upper) = int( sbuf_cnt(p_upper) * 1.2 )
-      ! deallocate( send_buf_upper )
-      ! allocate( send_buf_upper( sbuf_cnt(p_upper) * part_dim ) )
-      call part%realloc( ratio = 1.2, buf_type = 'pipeline' )
+      call part%realloc( ratio = ratio * p_buf_incr, buf_type = 'pipeline' )
     endif
 
     stay_cnt = 0; go_cnt = 0
@@ -611,16 +566,12 @@ subroutine pack_particles( part, buf_type )
   implicit none
 
   class(part3d), intent(inout) :: part
-  ! real, intent(in), dimension(2) :: edge
-  ! real, intent(inout), dimension(:) :: sbuf
-  ! integer(kind=LG), intent(inout), dimension(:) :: ihole
-  ! integer, intent(inout) :: scnt
-  ! integer, intent(in) :: des
   character(*), intent(in) :: buf_type
 
   integer :: i, npp, go_cnt, part_dim, buf_size, stride, ihole_cnt
   integer, dimension(2) :: sbuf_cnt
   real, dimension(3) :: x
+  real :: ratio
 
   npp               = part%npp
   part_dim          = part%part_dim
@@ -686,7 +637,7 @@ subroutine pack_particles( part, buf_type )
       if ( send_cnt(p_iwd) >= sbuf_cnt(p_lower) ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI sending buffer!', only_root = .false. )
-        sbuf_cnt(p_lower) = int( sbuf_cnt(p_lower) * 1.2 )
+        sbuf_cnt(p_lower) = send_cnt(p_iwd) * p_buf_incr
         allocate( tmp_real( sbuf_cnt(p_lower) * part_dim ) )
         tmp_real = 0.0
         tmp_real( 1:size(send_buf_lower) ) = send_buf_lower
@@ -697,7 +648,7 @@ subroutine pack_particles( part, buf_type )
       if ( send_cnt(p_owd) >= sbuf_cnt(p_upper) ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI sending buffer!', only_root = .false. )
-        sbuf_cnt(p_upper) = int( sbuf_cnt(p_upper) * 1.2 )
+        sbuf_cnt(p_upper) = send_cnt(p_owd) * p_buf_incr
         allocate( tmp_real( sbuf_cnt(p_upper) * part_dim ) )
         tmp_real = 0.0
         tmp_real( 1:size(send_buf_upper) ) = send_buf_upper
@@ -708,7 +659,7 @@ subroutine pack_particles( part, buf_type )
       if ( go_cnt >= ihole_cnt ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI buffer!', only_root = .false. )
-        ihole_cnt = int( ihole_cnt * 1.2 )
+        ihole_cnt = go_cnt * p_buf_incr
         allocate( tmp_int( ihole_cnt ) )
         tmp_int = 0
         tmp_int( 1:size(ihole) ) = ihole
@@ -755,22 +706,18 @@ subroutine pack_particles( part, buf_type )
       endif
 
       ! check upper sending buffer size
-      if ( send_cnt(p_fwd) >= part%nbmax ) then
+      ratio = real( send_cnt(p_fwd) ) / part%nbmax
+      if ( ratio > 1.0 ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI sending buffer!', only_root = .false. )
-        ! sbuf_cnt(p_lower) = int( sbuf_cnt(p_lower) * 1.2 )
-        ! allocate( tmp_real( sbuf_cnt(p_lower) * part_dim ) )
-        ! tmp_real = 0.0
-        ! tmp_real( 1:size(send_buf_lower) ) = send_buf_lower
-        ! call move_alloc( tmp_real, send_buf_lower )
-        call part%realloc( ratio = 1.2, buf_type = 'pipeline' )
+        call part%realloc( ratio = ratio * p_buf_incr, buf_type = 'pipeline' )
       endif
 
       ! check ihole array size
       if ( go_cnt >= ihole_cnt ) then
         call write_stdout( '[process ' // num2str(id_proc()) // ']: Resizing 3D &
           &particle MPI buffer!', only_root = .false. )
-        ihole_cnt = int( ihole_cnt * 1.2 )
+        ihole_cnt = go_cnt * p_buf_incr
         allocate( tmp_int( ihole_cnt ) )
         tmp_int = 0
         tmp_int( 1:size(ihole) ) = ihole
