@@ -60,14 +60,14 @@ subroutine alloc_beam3d_tmplt( this )
 
 end subroutine alloc_beam3d_tmplt
 
-subroutine push_beam3d_tmplt(this,ef,bf,rtag,stag,sid)
+subroutine push_beam3d_tmplt( this, ef, bf, tag, sid )
 
    implicit none
 
    class(beam3d_tmplt), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
-   integer, intent(in) :: rtag, stag
+   integer, intent(in) :: tag
    integer, intent(inout) :: sid
    ! local data
    class(part3d), pointer :: part_ptr
@@ -86,7 +86,7 @@ subroutine push_beam3d_tmplt(this,ef,bf,rtag,stag,sid)
    end select
 
    call this%part%update_bound()
-   call move_part3d_comm( this%part, rtag, stag, sid )
+   call move_part3d_comm( this%part, tag, sid )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

@@ -275,7 +275,7 @@ subroutine solve_field_djdxi( this, acu, amu )
         udcu_re(2,i) = uacu_re(2,i) - idrh * ( uamu_re(2,i+1) - uamu_re(2,i-1) ) - ir * uamu_re(2,i)
       enddo
 
-      ! on axis
+      ! calculate the first cell
       if ( idproc == 0 ) then
         udcu_re(1,1) = 0.0
         udcu_re(2,1) = 0.0
@@ -308,6 +308,7 @@ subroutine solve_field_djdxi( this, acu, amu )
       udcu_im(2,i) = uacu_im(2,i) - idrh * ( uamu_im(2,i+1) - uamu_im(2,i-1) ) - ir * uamu_im(2,i) - mode * ir * uamu_re(3,i)
     enddo
 
+    ! calculate the first cell
     if ( idproc == 0 ) then
       if ( mode == 1 ) then
         udcu_re(1,1) = uacu_re(1,1) - 2.0 * idr * uamu_re(1,2) + mode * idr * uamu_im(2,2)
@@ -330,8 +331,15 @@ subroutine solve_field_djdxi( this, acu, amu )
           udcu_im(2,2) = uacu_im(2,2) - idr * ( uamu_im(2,3) - uamu_im(2,2) ) - ir * uamu_im(2,2) - mode * ir * uamu_re(3,2)
         endif
       endif
+    else
+      ir = idr / real(noff)
+      udcu_re(1,1) = uacu_re(1,1) - idrh * ( uamu_re(1,2) - uamu_re(1,0) ) - ir * uamu_re(1,1) + mode * ir * uamu_im(2,1)
+      udcu_re(2,1) = uacu_re(2,1) - idrh * ( uamu_re(2,2) - uamu_re(2,0) ) - ir * uamu_re(2,1) + mode * ir * uamu_im(3,1)
+      udcu_im(1,1) = uacu_im(1,1) - idrh * ( uamu_im(1,2) - uamu_im(1,0) ) - ir * uamu_im(1,1) - mode * ir * uamu_re(2,1)
+      udcu_im(2,1) = uacu_im(2,1) - idrh * ( uamu_im(2,2) - uamu_im(2,0) ) - ir * uamu_im(2,1) - mode * ir * uamu_re(3,1)
     endif
 
+    ! outer boundary
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
       udcu_re(1,nrp) = uacu_re(1,nrp) + idrh * ( 4.0 * uamu_re(1,nrp-1) - &

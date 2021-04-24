@@ -108,6 +108,21 @@ subroutine init_simulation(this, input, opts)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  ! initialize pseudo-random number sequence
+  call input%get( 'simulation.random_seed', rnd_seed )
+  if ( rnd_seed == 0 ) then
+    ! OS generated seed
+    call write_stdout( 'Using OS-generated seeds for pseudo-random numbers.' )
+    call random_seed()
+  else
+    ! user specified seeds
+    call write_stdout( 'Using user-specified seeds for pseudo-random numbers.' )
+    call random_seed( size=num_seeds )
+    allocate( seed(num_seeds) )
+    seed = rnd_seed
+    call random_seed( put=seed )
+  endif
+
   this%dr  = opts%get_dr()
   this%dxi = opts%get_dxi()
   this%nstep2d = opts%get_ndp(2)
@@ -131,7 +146,6 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.nneutrals', this%nneutrals )
   call input%get( 'simulation.max_mode', this%max_mode )
-  call input%get( 'simulation.random_seed', rnd_seed )
 
   call this%fields%new( input, opts )
   call this%beams%new( input, opts )
@@ -150,19 +164,6 @@ subroutine init_simulation(this, input, opts)
   this%id_neut  = MPI_REQUEST_NULL
   this%id_beam  = MPI_REQUEST_NULL
   this%id_bq    = MPI_REQUEST_NULL
-
-  ! initialize pseudo-random number sequence
-  if ( rnd_seed == 0 ) then
-    ! OS generated seed
-    call random_seed()
-  else
-    ! user specified seeds
-    call random_seed( size=num_seeds )
-    allocate( seed(num_seeds) )
-    seed = rnd_seed
-    call random_seed( put=seed )
-    deallocate( seed )
-  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -291,7 +292,6 @@ subroutine run_simulation( this )
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
-    cu    = 0.0
     acu   = 0.0
     amu   = 0.0
 
@@ -304,6 +304,7 @@ subroutine run_simulation( this )
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
       enddo
+
       do k = 1, this%nneutrals
         call neut(k)%qdp( q_spe )
         call neut(k)%ion_deposit( q_spe )
@@ -414,7 +415,7 @@ subroutine run_simulation( this )
     do k = 1, this%nbeams
       this%tag_beam(k) = ntag()
       call mpi_wait( this%id_beam(k), istat, ierr )
-      call beam(k)%push( e, b, this%tag_beam(k), this%tag_beam(k), this%id_beam(k) )
+      call beam(k)%push( e, b, this%tag_beam(k), this%id_beam(k) )
     enddo
 
     call this%diag%run( this%tstep, this%dt )

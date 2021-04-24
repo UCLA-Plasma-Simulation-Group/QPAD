@@ -16,7 +16,7 @@ integer, save :: class_monitor = 0
 integer, save :: fid_err
 integer, dimension(4), save :: itime
 double precision, save :: dtime
-logical, save :: is_master
+logical, save :: is_root
 
 ! variables for timing
 integer, parameter :: p_max_event = 128
@@ -83,20 +83,28 @@ subroutine init_stdout( idproc )
   integer, intent(in) :: idproc
 
   if ( idproc == 0 ) then
-    is_master = .true.
+    is_root = .true.
   else
-    is_master = .false.
+    is_root = .false.
   endif
 
 end subroutine init_stdout
 
-subroutine write_stdout( msg )
+subroutine write_stdout( msg, only_root )
 
   implicit none
 
   character(len=*), intent(in) :: msg
+  logical, intent(in), optional :: only_root
 
-  if ( is_master ) then
+  logical :: only_root_
+
+  only_root_ = .true.
+  if ( present(only_root) ) only_root_ = only_root
+
+  if ( only_root_ ) then
+    if ( is_root ) write( *, * ) trim(adjustl(msg))
+  else
     write( *, * ) trim(adjustl(msg))
   endif
 
@@ -147,11 +155,8 @@ subroutine write_err( estr )
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
   
   call mpi_initialized( flag, ierr )
-  if ( flag ) then
-    call mpi_finalize( ierr )
-  else
-    stop
-  endif
+  if ( flag ) call mpi_finalize( ierr )
+  stop
 
 end subroutine write_err
 

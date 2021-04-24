@@ -5,7 +5,10 @@
 
 # Fortran compiler configuration
 FC = ftn -O3
-FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -fcheck=all
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+
+# Compiler options for debug
+# FC_OPTS += -fcheck=all
 
 # C compiler configuration
 CC = cc

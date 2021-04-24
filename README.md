@@ -11,7 +11,12 @@ If you clone this repository, we ask that you __please contact__ Fei Li (lifei11
 
 # Documentation
 
-* [Wiki Home](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki)
+<!-- * [Wiki Home](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki)
 * [Installation](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki/Install-QPAD)
 * [Input file](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki/Input-File-Overview)
-* [Developer Guide](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki/Developer-Guide) 
+* [Developer Guide](https://github.com/UCLA-Plasma-Simulation-Group/QPAD/wiki/Developer-Guide) -->
+
+* [Wiki Home](./docs/README.md)
+* [Installation](./docs/Install-QPAD.md)
+* [Input file](./docs/Input-File-Overview.md)
+* [Developer Guide](./docs/Developer-Guide.md) 

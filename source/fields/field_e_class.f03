@@ -84,7 +84,7 @@ subroutine init_field_e( this, opts, max_mode, part_shape, boundary, entity )
   case ( p_ps_linear )
 
     gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/2, 1/)
+    gc_num(:,2) = (/0, 1/)
 
   case ( p_ps_quadratic )
 
