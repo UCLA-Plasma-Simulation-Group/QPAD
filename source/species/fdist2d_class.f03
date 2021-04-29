@@ -24,6 +24,8 @@ type :: fdist2d
   integer :: num_theta
   ! Maximum number of particles in this partition
   integer :: npmax
+  ! Frequency (number of 2D steps) of performing 2D particle sorting
+  integer :: sort_freq
   real :: dr
   ! Maximum effective time step for subcycling pusher
   real :: dt_eff_max
@@ -197,6 +199,11 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
   this%neutralized = .true.
   if ( input%found( trim(sect_name) // '.neutralized' ) ) then
     call input%get( trim(sect_name) // '.neutralized', this%neutralized )
+  endif
+
+  this%sort_freq = 0
+  if ( input%found( trim(sect_name) // '.sort_freq' ) ) then
+    call input%get( trim(sect_name) // '.sort_freq', this%sort_freq )
   endif
 
   ! calculate the maximum particles number allowed in this partition

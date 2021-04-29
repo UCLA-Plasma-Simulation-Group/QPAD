@@ -3,6 +3,7 @@ module part2d_class
 use param
 use sysutil_module
 use parallel_module
+use sort_module
 use options_class
 use field_class
 use ufield_class
@@ -74,6 +75,7 @@ type part2d
    procedure :: piperecv                 => piperecv_part2d
    procedure :: wr                       => writehdf5_part2d
    procedure :: realloc                  => realloc_part2d
+   procedure :: sort                     => sort_part2d
 
 end type
 
@@ -84,6 +86,8 @@ integer, parameter :: cls_level = 2
 
 real, dimension(:), allocatable :: recv_buf
 integer :: recv_buf_size = 0
+
+integer, dimension(:), allocatable :: sort_idx
 
 integer, parameter :: p_max_subcyc = 1024
 real, parameter :: p_buf_incr = 1.5
@@ -2017,5 +2021,91 @@ subroutine writehdf5_part2d(this,file)
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine writehdf5_part2d
+
+subroutine sort_part2d( this, nrp, noff )
+
+  implicit none
+  class(part2d), intent(inout) :: this
+  integer, intent(in) :: nrp, noff
+
+  ! local data
+  integer :: i
+  integer, dimension(:), allocatable :: ix
+  real :: idr, pos
+  character(len=18), save :: sname = 'sort_part2d'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'sort 2D particles' )
+
+  if ( .not. allocated(sort_idx) ) allocate( sort_idx(this%npmax) )
+  if ( this%npmax > size(sort_idx) ) then
+    deallocate(sort_idx)
+    allocate( sort_idx(this%npmax) )
+  endif
+
+  allocate( ix(this%npp) )
+  ix = 0
+
+  idr = 1.0 / this%dr
+  ! calculate the grid index of particles
+  do i = 1, this%npp
+    pos = sqrt( this%x(1,i)**2 + this%x(2,i)**2 ) * idr
+    ix(i) = floor(pos) - noff + 1
+  enddo
+
+  ! DEBUG CODE
+  ! print *, "min(ix) = ", minval(ix), ", max(ix) = ", maxval(ix), ", nrp = ", nrp
+
+  ! generate the sorted indices
+  call generate_sort_idx_1d( ix, sort_idx, int(this%npp, kind=4), nrp )
+
+  ! rearrange the particle position
+  this%pbuf(1:this%npp) = this%x( 1, 1:this%npp )
+  do i = 1, this%npp
+    this%x( 1, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%x( 2, 1:this%npp )
+  do i = 1, this%npp
+    this%x( 2, sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle momentum
+  this%pbuf(1:this%npp) = this%p( 1, 1:this%npp )
+  do i = 1, this%npp
+    this%p( 1, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%p( 2, 1:this%npp )
+  do i = 1, this%npp
+    this%p( 2, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%p( 3, 1:this%npp )
+  do i = 1, this%npp
+    this%p( 3, sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle gamma
+  this%pbuf(1:this%npp) = this%gamma( 1:this%npp )
+  do i = 1, this%npp
+    this%gamma( sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle charge
+  this%pbuf(1:this%npp) = this%q( 1:this%npp )
+  do i = 1, this%npp
+    this%q( sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle 1 + psi
+  this%pbuf(1:this%npp) = this%psi( 1:this%npp )
+  do i = 1, this%npp
+    this%psi( sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  deallocate( ix )
+
+  call stop_tprof( 'sort 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+    
+end subroutine sort_part2d
 
 end module part2d_class

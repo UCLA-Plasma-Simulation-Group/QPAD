@@ -41,7 +41,7 @@ type simulation
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, nneutrals, tstep
+  integer :: iter, nstep3d, nstep2d, start2d, start3d, nbeams, nspecies, nneutrals, tstep
   integer :: ndump, max_mode
 
   ! pipeline parameters
@@ -126,6 +126,7 @@ subroutine init_simulation(this, input, opts)
   this%dr  = opts%get_dr()
   this%dxi = opts%get_dxi()
   this%nstep2d = opts%get_ndp(2)
+  this%start2d = opts%get_noff(2) + 1
 
   call input%get( 'simulation.n0', n0 )
   call input%get( 'simulation.time', time )
@@ -370,12 +371,14 @@ subroutine run_simulation( this )
       ! advance species particles
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
+        call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
       ! ionize and advance particles of neutrals
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
+        ! TODO: add sorting
       enddo
 
       call e%copy_slice( j, p_copy_1to2 )

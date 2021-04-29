@@ -46,6 +46,7 @@ type species2d
    procedure :: wrq   => writeq_species2d
    procedure :: cbq   => cbq_species2d
    ! procedure :: extpsi => extpsi_species2d
+   procedure :: sort  => sort_species2d
 
 end type
 
@@ -382,5 +383,30 @@ subroutine cbq_species2d(this,pos)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine cbq_species2d
+
+subroutine sort_species2d( this, step2d )
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   integer, intent(in) :: step2d
+   ! local data
+   integer :: sort_freq, nrp, noff
+   character(len=18), save :: sname = 'sort_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   sort_freq = this%pf%sort_freq
+   nrp       = this%q%rf_re(0)%get_ndp(1)
+   noff      = this%q%rf_re(0)%get_noff(1)
+
+   if ( sort_freq == 0 ) return
+   if ( mod(step2d, sort_freq) == 0 ) then
+      call this%part%sort( nrp, noff )
+   endif
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine sort_species2d
 
 end module species2d_class
