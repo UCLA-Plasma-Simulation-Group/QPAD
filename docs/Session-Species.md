@@ -16,7 +16,7 @@ The "hollow-channel" defines plasma channel that has a uniform distribution betw
 - **"channel_rmax"**: real -- The outer channel radius.
 - **"channel_depth"**: real -- The channel density difference between the inner and outer radii.
 
-The available options for the transverse profile type include "uniform" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
+The available options for the longitudinal profile type include "uniform" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
 
 The "piecewise-linear" defines a piecewise linear function according to which the plasma density will be updated for each 3D time step. The following parameters are needed:
 - **"piecewise_s"**: real array(\*) -- The points in time of the piecewise linear function. They must be a monotonically increasing array.
