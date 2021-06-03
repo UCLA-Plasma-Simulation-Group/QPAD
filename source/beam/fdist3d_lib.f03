@@ -33,8 +33,8 @@ subroutine beam_dist000(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist000"
    integer(kind=LG) :: i, np, npt
-   real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
-   real :: borderlz, borderz, r0, sigmar0, trunc = 5.0
+   real :: tempx,tempy,tempr,tempxx,tempyy,tempz,tvtx,tvty,tvtz
+   real :: borderlz, borderz, sigmar0, trunc = 5.0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -44,9 +44,6 @@ subroutine beam_dist000(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 
    i = 1
 
-   x2 = 2.0 * x0
-   y2 = 2.0 * y0
-   r0 = sqrt(x0**2+y0**2)
    sigmar0 = sqrt(sigx**2+sigy**2)
    borderlz = max((z0-trunc*sigz),zmin)
    borderz = min((z0+trunc*sigz),zmax)
@@ -96,8 +93,8 @@ subroutine beam_dist000(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       i = i + 1
       if (lquiet) then
          if (npt < npmax) then
-            tempx = x2 - tempx + 2.0*tempxx
-            tempy = y2 - tempy + 2.0*tempyy
+            tempx = 2.0 * x0 - tempx + 2.0*tempxx
+            tempy = 2.0 * y0 - tempy + 2.0*tempyy
             tempr = sqrt(tempx**2+tempy**2)
             if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
             &(tempz >= edges(3)) .and. (tempz < edges(4))) then
@@ -141,7 +138,7 @@ subroutine beam_dist001(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist001"
    integer(kind=LG) :: i, np, npt
-   real :: tempr,tempth,tempx,tempy,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
+   real :: tempr,tempth,tempx,tempy,tempxx,tempyy,tempz,tvtx,tvty,tvtz
    real :: borderlz, borderz, qm_amp, sigr, trunc = 5.0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -152,8 +149,6 @@ subroutine beam_dist001(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 
    i = 1
 
-   x2 = 2.0 * x0
-   y2 = 2.0 * y0
    borderlz = max((z0-trunc*sigz),zmin)
    borderz  = min((z0+trunc*sigz),zmax)
    np = npr*npth*npz
@@ -211,8 +206,8 @@ subroutine beam_dist001(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       i = i + 1
       if (lquiet) then
          if (npt < npmax) then
-            tempx = x2 - tempx + 2.0*tempxx
-            tempy = y2 - tempy + 2.0*tempyy
+            tempx = 2.0 * x0 - tempx + 2.0*tempxx
+            tempy = 2.0 * y0 - tempy + 2.0*tempyy
             tempr = sqrt(tempx**2+tempy**2)
             if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
                 (tempz >= edges(3)) .and. (tempz < edges(4))) then
@@ -258,8 +253,8 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 ! local data
    character(len=20), save :: sname = "beam_dist002"
    integer(kind=LG) :: i, np, npt
-   real :: tempx,tempy,tempr,tempxx,tempyy,x2,y2,tempz,tvtx,tvty,tvtz
-   real :: tag, r0, sigmar0, trunc = 5.0
+   real :: tempx,tempy,tempr,tempxx,tempyy,tempz,tvtx,tvty,tvtz
+   real :: tag, sigmar0, trunc = 5.0
    integer :: nz, j
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -270,9 +265,6 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 
    i = 1
 
-   x2 = 2.0 * x0
-   y2 = 2.0 * y0
-   r0 = sqrt(x0**2+y0**2)
    sigmar0 = sqrt(sigx**2+sigy**2)
    np = npx*npy*npz
 
@@ -328,8 +320,8 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
       i = i + 1
       if (lquiet) then
          if (npt < npmax) then
-            tempx = x2 - tempx + 2.0*tempxx
-            tempy = y2 - tempy + 2.0*tempyy
+            tempx = 2.0 * x0 - tempx + 2.0*tempxx
+            tempy = 2.0 * y0 - tempy + 2.0*tempyy
             tempr = sqrt(tempx**2+tempy**2)
             if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
             &(tempz >= edges(3)) .and. (tempz < edges(4))) then
