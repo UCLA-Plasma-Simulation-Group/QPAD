@@ -17,7 +17,7 @@ implicit none
 private
 
 public :: fdist3d, fdist3d_wrap
-public :: fdist3d_000, fdist3d_001, fdist3d_002, fdist3d_100, fdist3d_101
+public :: fdist3d_000, fdist3d_001, fdist3d_002, fdist3d_003, fdist3d_100, fdist3d_101
 
 type, abstract :: fdist3d
 
@@ -135,6 +135,25 @@ type, extends(fdist3d) :: fdist3d_002
    procedure, private :: dist3d => dist3d_002
 
 end type fdist3d_002
+
+!
+type, extends(fdist3d) :: fdist3d_003
+! Twiss parameters and longitudinal gaussian (the same particle charge)
+   private
+
+   integer :: npx, npy, npz
+   real :: qm, alphax,alphay,betax,betay,sigz,rmax,zmin,zmax
+   real :: bcx, bcy, bcz, emitnx, emitny, sigvz
+   real :: gamma,np
+   logical :: quiet
+
+   contains
+
+   procedure, private :: init_fdist3d => init_fdist3d_003
+   procedure, private :: deposit_fdist3d => deposit_fdist3d_003
+   procedure, private :: dist3d => dist3d_003
+
+end type fdist3d_003
 
 type, extends(fdist3d) :: fdist3d_100
 ! External particle imported from OSIRIS
@@ -375,32 +394,21 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp,s)
 ! edges(3) = lower boundary in z of particle partition
 ! edges(4) = upper boundary in z of particle partition
    ! real, dimension(:,:), pointer :: pt => null()
-   integer :: npx, npy, npz, i
-   real :: vtx, vty, vtz, vdx, vdy, vdz,dr,dz
-   real :: sigx, sigy, sigz, x0, y0, z0, rmax, zmin, zmax
+   integer :: i
+   real :: dr,dz
    real, dimension(3) :: cx, cy
    real, dimension(4) :: edges
    integer(kind=LG) :: nps, npmax
-   logical :: lquiet = .false.
    integer :: ierr
    character(len=18), save :: sname = 'dist3d_000'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    ierr = 0; nps = 1
-   npx = this%npx; npy = this%npy; npz = this%npz
    ! pt => part3d
-   vtx = this%sigvx; vty = this%sigvy; vtz = this%sigvz
-   vdx = 0.0; vdy = 0.0; vdz = this%gamma
-   sigx = this%sigx; sigy = this%sigy; sigz = this%sigz
-   x0 = this%bcx; y0 = this%bcy; z0 = this%bcz
    cx = (/this%cx1,this%cx2,this%cx3/); cy = (/this%cy1,this%cy2,this%cy3/)
-   lquiet = this%quiet
    npmax = size(x,2)
-   dr = this%dx; dz= this%dz
-   rmax = this%rmax
-   zmax = this%zmax
-   zmin = this%zmin
+   dr = this%dx; dz= this%dz 
    if (noff(1) == 0) then
       edges(1) = 0.0
       edges(2) = edges(1) + ndp(1) * dr
@@ -408,12 +416,12 @@ subroutine dist3d_000(this,x,p,q,npp,noff,ndp,s)
       edges(1) = noff(1) * dr
       edges(2) = edges(1) + ndp(1) * dr
    end if
-   edges(3) = noff(2)*dz + zmin
+   edges(3) = noff(2)*dz + this%zmin
    edges(4) = edges(3) + ndp(2)*dz
 
-   call beam_dist000(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,vtx,vty,vtz,vdx,vdy,&
-   &vdz,npx,npy,npz,rmax,zmin,zmax,npmax,sigx,sigy,sigz,&
-   &x0,y0,z0,cx,cy,lquiet,ierr)
+   call beam_dist000(x,p,q,this%qm,edges,npp,this%dx,this%dz,nps,this%sigvx,this%sigvy,this%sigvz,0.0,0.0,&
+   &this%gamma,this%npx,this%npy,this%npz,this%rmax,this%zmin,this%zmax,npmax,this%sigx,this%sigy,this%sigz,&
+   &this%bcx,this%bcy,this%bcz,cx,cy,this%quiet,ierr)
 
    if (present(s)) then
       do i = 1, npp
@@ -959,6 +967,212 @@ subroutine deposit_fdist3d_002(this,q)
    end do
 
 end subroutine deposit_fdist3d_002
+
+subroutine init_fdist3d_003(this,input,i)
+
+   implicit none
+
+   class(fdist3d_003), intent(inout) :: this
+   type(input_json), intent(inout) :: input
+   integer, intent(in) :: i
+! local data
+   integer :: npf,npx,npy,npz,npmax
+   real :: qm,sigx,sigy,sigz,bcx,bcy,bcz,sigvz
+   real, dimension(2) :: alpha, beta, emitn
+   real :: gamma,np
+   logical :: quiet, evol
+   real :: min, max, cwp, n0
+   real :: dr, dz
+   integer :: nr, nz, num_modes
+   character(len=20) :: sn,s1
+   character(len=18), save :: sname = 'init_fdist3d_003:'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   write (sn,'(I3.3)') i
+   s1 = 'beam('//trim(sn)//')'
+   call input%get('simulation.n0',n0)
+   call input%get('simulation.grid(1)',nr)
+   call input%get('simulation.grid(2)',nz)
+   call input%get('simulation.max_mode',num_modes)
+   cwp=5.32150254*1e9/sqrt(n0)
+   call input%get('simulation.box.r(1)',min)
+   call input%get('simulation.box.r(2)',max)
+   call input%get(trim(s1)//'.center(1)',bcx)
+   dr=(max-min)/real(nr)
+   this%rmax = max
+   call input%get(trim(s1)//'.center(2)',bcy)
+   call input%get('simulation.box.z(1)',min)
+   call input%get('simulation.box.z(2)',max)
+   call input%get(trim(s1)//'.center(3)',bcz)
+   bcz = bcz -min
+   dz=(max-min)/real(nz)
+   this%z0 = min
+   this%zmin = 0.0
+   this%zmax = max-min
+   call input%get(trim(s1)//'.profile',npf)
+   call input%get(trim(s1)//'.np(1)',npx)
+   call input%get(trim(s1)//'.np(2)',npy)
+   call input%get(trim(s1)//'.np(3)',npz)
+   call input%get(trim(s1)//'.q',qm)
+   call input%get(trim(s1)//'.alpha(1)',alpha(1))
+   call input%get(trim(s1)//'.alpha(2)',alpha(2))
+   call input%get(trim(s1)//'.beta(1)',beta(1))
+   call input%get(trim(s1)//'.beta(2)',beta(2))
+   call input%get(trim(s1)//'.emittance(1)',emitn(1))
+   call input%get(trim(s1)//'.emittance(2)',emitn(2))
+   call input%get(trim(s1)//'.sigmaz',sigz)
+   call input%get(trim(s1)//'.sigma_vz',sigvz)
+   call input%get(trim(s1)//'.quiet_start',quiet)
+   call input%get(trim(s1)//'.gamma',gamma)
+   call input%get(trim(s1)//'.peak_density',np)
+   call input%get(trim(s1)//'.npmax',npmax)
+   call input%get(trim(s1)//'.evolution',evol)
+   this%npf = npf
+   this%dx = dr
+   this%dz = dz
+   this%npx = npx
+   this%npy = npy
+   this%npz = npz
+   this%npmax = npmax
+   sigx = sqrt(beta(1)*emitn(1)/gamma)
+   sigy = sqrt(beta(2)*emitn(2)/gamma)
+   qm = qm/abs(qm)*np*(2*pi)**1.5*sigx*sigy*sigz
+   qm = qm/dr/dz/dr/(2.0*pi)
+   qm = qm/npx
+   qm = qm/npy
+   qm = qm/npz
+   this%qm = qm
+   this%bcx = bcx
+   this%bcy = bcy
+   this%bcz = bcz
+   this%sigz = sigz
+   this%sigvz = sigvz
+   this%alphax = alpha(1)
+   this%alphay = alpha(2)
+   this%betax = beta(1)
+   this%betay = beta(2)
+   this%emitnx = emitn(1)
+   this%emitny = emitn(2)
+   this%gamma = gamma
+   this%np = np
+   this%quiet = quiet
+   this%evol = evol
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine init_fdist3d_003
+
+subroutine dist3d_003(this,x,p,q,npp,noff,ndp,s)
+
+   implicit none
+
+   class(fdist3d_003), intent(inout) :: this
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:,:), intent(inout), optional :: s
+   real, dimension(:), intent(inout) :: q
+   integer(kind=LG), intent(inout) :: npp
+   integer, intent(in), dimension(2) :: noff, ndp
+! local data1
+! edges(1) = lower boundary in y of particle partition
+! edges(2) = upper boundary in y of particle partition
+! edges(3) = lower boundary in z of particle partition
+! edges(4) = upper boundary in z of particle partition
+   ! real, dimension(:,:), pointer :: pt => null()
+   integer :: i
+   real :: dr,dz
+   real, dimension(4) :: edges
+   integer(kind=LG) :: nps, npmax
+   integer :: ierr
+   character(len=18), save :: sname = 'dist3d_003'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   ierr = 0; nps = 1
+   ! pt => part3d
+   npmax = size(x,2)
+   dr = this%dx; dz= this%dz 
+   if (noff(1) == 0) then
+      edges(1) = 0.0
+      edges(2) = edges(1) + ndp(1) * dr
+   else
+      edges(1) = noff(1) * dr
+      edges(2) = edges(1) + ndp(1) * dr
+   end if
+   edges(3) = noff(2)*dz + this%zmin
+   edges(4) = edges(3) + ndp(2)*dz
+
+   call beam_dist003(x,p,q,this%qm,edges,npp,dr,dz,nps,&
+&this%alphax,this%alphay,this%betax,this%betay,this%emitnx,this%emitny,this%sigvz,this%gamma,&
+&this%npx,this%npy,this%npz,this%rmax,this%zmin,this%zmax,npmax,&
+&this%sigz,this%bcx,this%bcy,this%bcz,this%quiet,ierr)
+
+   if (present(s)) then
+      do i = 1, npp
+         s(1,i) = 0.0
+         s(2,i) = 0.0
+         s(3,i) = 1.0
+      enddo
+   endif
+
+   if (ierr /= 0) then
+      write (erstr,*) 'beam_dist003 error'
+      call write_err(cls_name//sname//erstr)
+   endif
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine dist3d_003
+
+subroutine deposit_fdist3d_003(this,q)
+
+   implicit none
+
+   class(fdist3d_003), intent(inout) :: this
+   class(field), intent(inout) :: q
+! local data
+   class(ufield), dimension(:), pointer :: q_re => null(), q_im => null()
+   real, dimension(:,:,:), pointer :: q0 => null()
+   real :: r, z, dr, dz
+   integer :: i, j, noff1, noff2, n1p, n2p
+   real :: np, sigx, sigy, sigz, sigx2, sigz2
+   real :: bcz
+
+   q_im => q%get_rf_im()
+   q_re => q%get_rf_re()
+   noff1 = q_re(0)%get_noff(1)
+   noff2 = q_re(0)%get_noff(2)
+   n1p = q_re(0)%get_ndp(1)
+   n2p = q_re(0)%get_ndp(2)
+   dr = this%dx
+   dz = this%dz
+
+   q0 => q_re(0)%get_f2()
+   if (abs(this%qm) < 1.0e-6 ) then
+      np = 0.0
+   else
+      np = this%np*this%qm/abs(this%qm)
+   end if
+   sigx = sqrt(this%betax * this%emitnx / this%gamma)
+   sigy = sqrt(this%betay * this%emitny / this%gamma) 
+   if ( sigx /= sigy ) then
+      call write_err( 'Non-evolving beam deposit only supports round beam ( sigma(1) == sigma(2) ) initialization.' )
+   endif
+   sigz = this%sigz
+   bcz = this%bcz
+   sigx2 = 0.5/sigx**2
+   sigz2 = 0.5/sigz**2
+
+   do i = 1, n1p
+      r = (i + noff1 - 1.0) * dr
+      do j = 1, n2p+1
+         z = (j + noff2) * dz - bcz
+         q0(1,i,j) = np*exp(-r**2*sigx2-z**2*sigz2)
+      end do
+   end do
+
+end subroutine deposit_fdist3d_003
+
 
 subroutine init_fdist3d_100(this,input,i)
 

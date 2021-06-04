@@ -34,7 +34,7 @@ subroutine beam_dist000(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    character(len=20), save :: sname = "beam_dist000"
    integer(kind=LG) :: i, np, npt
    real :: tempx,tempy,tempr,tempxx,tempyy,tempz,tvtx,tvty,tvtz
-   real :: borderlz, borderz, sigmar0, trunc = 5.0
+   real :: borderlz, borderz, trunc = 5.0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -43,8 +43,7 @@ subroutine beam_dist000(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    npt = 1
 
    i = 1
-
-   sigmar0 = sqrt(sigx**2+sigy**2)
+   write(*,*) z0
    borderlz = max((z0-trunc*sigz),zmin)
    borderz = min((z0+trunc*sigz),zmax)
    np = npx*npy*npz
@@ -254,7 +253,7 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    character(len=20), save :: sname = "beam_dist002"
    integer(kind=LG) :: i, np, npt
    real :: tempx,tempy,tempr,tempxx,tempyy,tempz,tvtx,tvty,tvtz
-   real :: tag, sigmar0, trunc = 5.0
+   real :: tag, trunc = 5.0
    integer :: nz, j
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -265,7 +264,6 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
 
    i = 1
 
-   sigmar0 = sqrt(sigx**2+sigy**2)
    np = npx*npy*npz
 
    nz = size(zf)
@@ -344,5 +342,119 @@ subroutine beam_dist002(x,p,q,qm,edges,npp,dr,dz,nps,vtx,vty,vtz,vdx,&
    call write_dbg(cls_name, sname, cls_level, 'ends')
    return
 end subroutine beam_dist002
+
+
+subroutine beam_dist003(x,p,q,qm,edges,npp,dr,dz,nps,&
+&alphax,alphay,betax,betay,emitnx,emitny,vtz,gamma,&
+&npx,npy,npz,rmax,zmin,zmax,npmax,&
+&sigz,x0,y0,z0,lquiet,ierr)
+
+   implicit none
+
+   integer, intent(in) :: npx,npy,npz
+   integer, intent(inout) :: ierr
+   integer(kind=LG), intent(inout) :: npp
+   integer(kind=LG), intent(in) :: npmax,nps
+   real, intent(in) :: dr,dz,qm,alphax,alphay,betax,betay,emitnx,emitny,sigz,x0,y0,z0
+   real, intent(in) :: vtz,gamma,rmax,zmin,zmax
+   ! real, dimension(:,:), intent(inout) :: part
+   real, dimension(:,:), intent(inout) :: x, p
+   real, dimension(:), intent(inout) :: q
+   real, dimension(4), intent(in) :: edges
+   logical, intent(in) :: lquiet
+! local data
+   character(len=20), save :: sname = "beam_dist003"
+   integer(kind=LG) :: i, np, npt
+   real :: tempx,tempy,tempr,tempz,tvtx,tvty,tvtz
+   real :: sigx, sigy, vtx, vty
+   real :: borderlz, borderz, trunc = 5.0
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   ierr = 0
+
+   npt = 1
+
+   i = 1
+
+   sigx = sqrt(betax*emitnx/gamma)
+   sigy = sqrt(betay*emitny/gamma)
+   vtx = emitnx/sigx
+   vty = emitny/sigy
+
+   borderlz = max((z0-trunc*sigz),zmin)
+   borderz = min((z0+trunc*sigz),zmax)
+   np = npx*npy*npz
+
+   do
+      if (i > np) exit
+      do
+         tempz = z0+sigz*ranorm()
+         if (tempz < borderz .and. tempz > borderlz) then
+            exit
+         end if
+      end do
+
+      do
+         tempx = ranorm()
+         tempy = ranorm()
+         if ((tempx**2+tempy**2) > trunc**2) then
+            cycle
+         end if
+         tempx = x0 + sigx*tempx 
+         tempy = y0 + sigy*tempy
+         tempr = sqrt(tempx**2+tempy**2)
+         exit
+      end do
+      tvtx = vtx*ranorm()
+      tvty = vty*ranorm()
+      tvtz = vtz*ranorm() + gamma
+
+      tvtx = tvtx - gamma*alphax/betax*(tempx-x0)
+      tvty = tvty - gamma*alphay/betay*(tempy-y0)
+
+      tvtz = sqrt(tvtz*tvtz-1-tvtx*tvtx-tvty*tvty)
+      if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+      &(tempz >= edges(3)) .and. (tempz < edges(4))) then
+         if (npt < npmax) then
+            x(1,npt) = tempx
+            x(2,npt) = tempy
+            x(3,npt) = tempz
+            p(1,npt) = tvtx
+            p(2,npt) = tvty
+            p(3,npt) = tvtz
+            q(npt) = qm
+            npt = npt + 1
+         else
+            ierr = ierr + 1
+         end if
+      end if
+      i = i + 1
+      if (lquiet) then
+         if (npt < npmax) then
+            tempx = 2.0 * x0 - tempx
+            tempy = 2.0 * y0 - tempy
+            tempr = sqrt(tempx**2+tempy**2)
+            if ((tempr >= edges(1)) .and. (tempr < edges(2)) .and.&
+            &(tempz >= edges(3)) .and. (tempz < edges(4))) then
+               x(1,npt) = tempx
+               x(2,npt) = tempy
+               x(3,npt) = tempz
+               p(1,npt) = -tvtx
+               p(2,npt) = -tvty
+               p(3,npt) =  tvtz
+               q(npt) = qm
+               npt = npt + 1
+            end if
+         else
+            ierr = ierr + 1
+         end if
+         i = i + 1
+      end if
+   enddo
+   npp = npt - 1
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+   return
+end subroutine beam_dist003
 
 end module fdist3d_lib
