@@ -2053,9 +2053,6 @@ subroutine sort_part2d( this, nrp, noff )
     ix(i) = floor(pos) - noff + 1
   enddo
 
-  ! DEBUG CODE
-  ! print *, "min(ix) = ", minval(ix), ", max(ix) = ", maxval(ix), ", nrp = ", nrp
-
   ! generate the sorted indices
   call generate_sort_idx_1d( ix, sort_idx, int(this%npp, kind=4), nrp )
 

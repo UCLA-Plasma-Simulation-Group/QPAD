@@ -45,7 +45,6 @@ type species2d
    procedure :: wr    => writehdf5_species2d
    procedure :: wrq   => writeq_species2d
    procedure :: cbq   => cbq_species2d
-   ! procedure :: extpsi => extpsi_species2d
    procedure :: sort  => sort_species2d
 
 end type
@@ -54,8 +53,6 @@ save
 
 character(len=10) :: cls_name = 'species2d'
 integer, parameter :: cls_level = 2
-
-integer, dimension(4), save :: itime
 
 contains
 
@@ -153,11 +150,6 @@ subroutine end_species2d(this)
    if ( allocated( this%qn ) ) call this%qn%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-   ! DEBUG CODE
-   close( unit=100 )
-   close( unit=101 )
-   close( unit=102 )
-
 end subroutine end_species2d
 
 subroutine renew_species2d(this,s)
@@ -202,25 +194,10 @@ subroutine qdp_species2d(this,q)
    ! local data
    character(len=18), save :: sname = 'qdp_species2d'
 
-   ! DEBUG CODE
-   logical, save :: first_entry = .true.
-   real :: t_start, t_end
-
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   ! DEBUG CODE
-   if ( first_entry ) then
-      first_entry = .false.
-      open( unit=100, file='q_timing.log', form='formatted', status='replace' )
-   endif
-
    this%q = 0.0
-   ! DEBUG CODE
-   call dtimer( t_start, itime, 1 )
    call this%part%qdeposit(this%q)
-   call dtimer( t_end, itime, 1 )
-   write( 100, '(A, F12.9)' ) 'dt = ', t_end - t_start
-
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
@@ -241,31 +218,17 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
    class(field_djdxi), intent(inout) :: dcu
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
-! local data
+   ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
-   ! DEBUG CODE
-   logical, save :: first_entry = .true.
-   real :: t_start, t_end
-
    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   ! DEBUG CODE
-   if ( first_entry ) then
-      first_entry = .false.
-      open( unit=101, file='amj_timing.log', form='formatted', status='replace' )
-   endif
 
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
    select case ( this%push_type )
       case ( p_push2_robust )
-         ! DEBUG CODE
-         call dtimer( t_start, itime, 1 )
          call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
-         call dtimer( t_end, itime, 1 )
-         write( 101, '(A, F12.9)' ) 'dt = ', t_end - t_start
       case ( p_push2_clamp )
          call this%part%amjdeposit_clamp( ef, bf, this%cu, this%amu, this%dcu )
       case ( p_push2_robust_subcyc )
@@ -299,24 +262,12 @@ subroutine push_species2d(this,ef,bf)
    class(field_b), intent(in) :: bf
    ! local data
    character(len=18), save :: sname = 'push_species2d'
-   ! DEBUG CODE
-   logical, save :: first_entry = .true.
-   real :: t_start, t_end
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   ! DEBUG CODE
-   if ( first_entry ) then
-      first_entry = .false.
-      open( unit=102, file='push_timing.log', form='formatted', status='replace' )
-   endif
-
    select case ( this%push_type )
       case ( p_push2_robust )
-         call dtimer( t_start, itime, 1 )
          call this%part%push_robust( ef, bf )
-         call dtimer( t_end, itime, 1 )
-         write( 102, '(A, F12.9)' ) 'dt = ', t_end - t_start
       case ( p_push2_clamp )
          call this%part%push_clamp( ef, bf )
       case ( p_push2_robust_subcyc )
@@ -329,25 +280,6 @@ subroutine push_species2d(this,ef,bf)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_species2d
-
-! subroutine extpsi_species2d(this,psi)
-
-!    implicit none
-
-!    class(species2d), intent(inout) :: this
-!    class(field_psi), intent(in) :: psi
-! ! local data
-!    character(len=18), save :: sname = 'extpsi_species2d'
-
-!    call write_dbg(cls_name, sname, cls_level, 'starts')
-!    call start_tprof( 'extract psi' )
-
-!    call this%part%extract_psi(psi)
-
-!    call stop_tprof( 'extract psi' )
-!    call write_dbg(cls_name, sname, cls_level, 'ends')
-
-! end subroutine extpsi_species2d
 
 subroutine psend_species2d(this, tag, id)
 
