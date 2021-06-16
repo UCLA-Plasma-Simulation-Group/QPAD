@@ -4,7 +4,6 @@ use parallel_module
 use options_class
 use input_class
 use iso_c_binding
-! use part3d_class
 use fdist3d_class
 use fdist3d_std_lib
 use random
@@ -23,6 +22,9 @@ type, extends(fdist3d) :: fdist3d_std
 
   ! Number of particles per (virtual) cell
   integer, dimension(3) :: ppc
+
+  ! Initialization geometry
+  integer :: geom
 
   ! Number of particles in the azimuthal direction
   integer :: num_theta
@@ -88,6 +90,8 @@ end interface
 character(len=32), save :: cls_name = 'fdist3d_std'
 integer, save :: cls_level = 2
 
+integer, parameter :: p_geom_cart = 1, p_geom_cyl = 2
+
 public :: fdist3d_std
 
 contains
@@ -105,7 +109,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   integer :: npmax_tmp
   integer(kind=LG) :: npmax_min
   character(len=20) :: sect_name
-  character(len=:), allocatable :: prof_name
+  character(len=:), allocatable :: read_str
   character(len=18), save :: sname = 'init_fdist3d_std'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -123,8 +127,8 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   ! call input%get( 'simulation.max_mode', this%max_mode )
 
   ! read and set profile types
-  call input%get( trim(sect_name) // '.profile(1)', prof_name )
-  select case ( trim(prof_name) )
+  call input%get( trim(sect_name) // '.profile(1)', read_str )
+  select case ( trim(read_str) )
 
     case ( 'uniform' )
       this%prof_type(1) = p_prof_uniform
@@ -136,14 +140,19 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof1    => set_prof_gaussian
       this%get_den1     => get_den_gaussian
 
+    case ( 'piecewise-linear' )
+      this%prof_type(1) = p_prof_pw_linear
+      this%set_prof1    => set_prof_pw_linear
+      this%get_den1     => get_den_pw_linear
+
     case default
       call write_err( 'Invalid density profile in direction 1! Currently available &
-        &include "gaussian".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
-  call input%get( trim(sect_name) // '.profile(2)', prof_name )
-  select case ( trim(prof_name) )
+  call input%get( trim(sect_name) // '.profile(2)', read_str )
+  select case ( trim(read_str) )
 
     case ( 'uniform' )
       this%prof_type(2) = p_prof_uniform
@@ -155,14 +164,19 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof2    => set_prof_gaussian
       this%get_den2     => get_den_gaussian
 
+    case ( 'piecewise-linear' )
+      this%prof_type(2) = p_prof_pw_linear
+      this%set_prof2    => set_prof_pw_linear
+      this%get_den2     => get_den_pw_linear
+
     case default
       call write_err( 'Invalid density profile in direction 2! Currently available &
-        &include "gaussian".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
-  call input%get( trim(sect_name) // '.profile(3)', prof_name )
-  select case ( trim(prof_name) )
+  call input%get( trim(sect_name) // '.profile(3)', read_str )
+  select case ( trim(read_str) )
 
     case ( 'uniform' )
       this%prof_type(3) = p_prof_uniform
@@ -174,9 +188,14 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof3    => set_prof_gaussian
       this%get_den3     => get_den_gaussian
 
+    case ( 'piecewise-linear' )
+      this%prof_type(3) = p_prof_pw_linear
+      this%set_prof3    => set_prof_pw_linear
+      this%get_den3     => get_den_pw_linear
+
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
-        &include "gaussian".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
@@ -202,6 +221,17 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   call input%get( trim(sect_name) // '.range3(1)', this%range(p_lower, 3) )
   call input%get( trim(sect_name) // '.range3(2)', this%range(p_upper, 3) )
   this%range(:, 3) = this%range(:, 3) - this%z0
+
+  this%geom = p_geom_cart
+  if ( input%found( trim(sect_name) // '.geometry' ) ) then
+    call input%get( trim(sect_name) // '.geometry', read_str )
+    select case ( trim(read_str) )
+    case ( 'cartesian' )
+      this%geom = p_geom_cart
+    case ( 'cylindrical' )
+      this%geom = p_geom_cyl
+    end select
+  endif
 
   this%evol = .true.
   if ( input%found( trim(sect_name) // '.evolution' ) ) then
@@ -233,6 +263,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
   endif
 
+  ! TODO: buffer reallocation needs to be implemented here
   ! calculate the maximum particles number allowed in this partition
   xtra = 2.0
   npmax_min = this%nrp * this%nzp * product(this%ppc) * this%num_theta
@@ -312,9 +343,16 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
             do i1 = 1, this%ppc(1)
               rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff_r)
 
-              x_tmp(1) = rn * dr * cos(theta)
-              x_tmp(2) = rn * dr * sin(theta)
-              x_tmp(3) = zn * dz
+              select case ( this%geom )
+              case ( p_geom_cart )
+                x_tmp(1) = rn * dr * cos(theta)
+                x_tmp(2) = rn * dr * sin(theta)
+                x_tmp(3) = zn * dz
+              case ( p_geom_cyl )
+                x_tmp(1) = rn * dr
+                x_tmp(2) = theta
+                x_tmp(3) = zn * dz
+              end select
 
               ! check if the particle to be injected is within the range
               if ( x_tmp(1) < this%range(p_lower,1) .or. x_tmp(1) > this%range(p_upper,1) ) cycle
@@ -330,14 +368,23 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
 
               ipart = ipart + 1
 
-              x(1,ipart) = x_tmp(1)
-              x(2,ipart) = x_tmp(2)
-              x(3,ipart) = x_tmp(3)
+              select case ( this%geom )
+              case ( p_geom_cart )
+                x(1,ipart) = x_tmp(1)
+                x(2,ipart) = x_tmp(2)
+                x(3,ipart) = x_tmp(3)
+              case ( p_geom_cyl )
+                x(1,ipart) = x_tmp(1) * cos(x_tmp(2))
+                x(2,ipart) = x_tmp(1) * sin(x_tmp(2))
+                x(3,ipart) = x_tmp(3)
+              end select
 
+              ! momentum initialization uses Cartesian geometry
               p(1,ipart) = this%uth(1) * ranorm()
               p(2,ipart) = this%uth(2) * ranorm()
               p(3,ipart) = this%uth(3) * ranorm() + this%gamma
               p(3,ipart) = sqrt( p(3,ipart)**2 - p(1,ipart)**2 - p(2,ipart)**2 - 1 )
+
 
               q(ipart) = rn * den_loc * coef
 
@@ -369,6 +416,7 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
       p(2,ipart+i) = -p(2,i)
       p(3,ipart+i) =  p(3,i)
 
+      q(i) = 0.5 * q(i)
       q(ipart+i) = q(i)
 
       ! spin initialization has not yet implemented

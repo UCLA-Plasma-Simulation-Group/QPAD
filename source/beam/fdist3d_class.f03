@@ -13,7 +13,7 @@ private
 public :: fdist3d
 public :: p_pf3d_std
 
-integer, parameter :: p_pf3d_std = 1
+integer, parameter :: p_pf3d_std = 1, p_pf3d_rnd = 2, p_pf3d_file = 3
 
 type, abstract :: fdist3d
 
