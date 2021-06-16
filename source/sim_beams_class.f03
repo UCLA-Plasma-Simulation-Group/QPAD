@@ -23,7 +23,7 @@ type sim_beams
   ! private
 
   class( beam3d ), dimension(:), pointer :: beam => null()
-  type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
+  ! type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
 
   integer :: num_beams
 
@@ -40,12 +40,13 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine alloc_sim_beams( this, input )
+subroutine alloc_sim_beams( this, input, opts )
 
   implicit none
 
   class( sim_beams ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   integer :: i
   character(len=18), save :: sname = 'alloc_sim_beams'
@@ -59,7 +60,7 @@ subroutine alloc_sim_beams( this, input )
   endif
 
   do i = 1, this%num_beams
-    call this%beam(i)%alloc()
+    call this%beam(i)%alloc( input, opts, i )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -114,75 +115,78 @@ subroutine init_sim_beams( this, input, opts )
   call input%get( 'simulation.smooth_order', sm_ord )
 
   ! allocate( this%beam(n), this%pf(n) )
-  allocate( this%pf( this%num_beams ) )
+  ! allocate( this%pf( this%num_beams ) )
 
   ! initialize beam profile for each beam
-  do i = 1, this%num_beams
+  ! do i = 1, this%num_beams
 
-    call input%get( 'beam('//num2str(i)//').profile', npf )
-    select case ( npf )
-      case (0)
-        allocate( fdist3d_000 :: this%pf(i)%p )
-        call this%pf(i)%p%new( input, i )
-      case (1)
-        allocate( fdist3d_001 :: this%pf(i)%p )
-        call this%pf(i)%p%new( input, i )
-      case (2)
-        allocate( fdist3d_002 :: this%pf(i)%p )
-        call this%pf(i)%p%new( input, i )
-      case (100)
-        allocate( fdist3d_100 :: this%pf(i)%p )
-        call this%pf(i)%p%new( input, i )
-      case (101)
-        allocate( fdist3d_101 :: this%pf(i)%p )
-        call this%pf(i)%p%new( input, i )
-  ! Add new distributions right above this line
-      case default
-        call write_err( 'Invalid beam profile!' )
-    end select
+  !   call input%get( 'beam('//num2str(i)//').profile', npf )
+  !   select case ( npf )
+  !     case (0)
+  !       allocate( fdist3d_000 :: this%pf(i)%p )
+  !       call this%pf(i)%p%new( input, i )
+  !     case (1)
+  !       allocate( fdist3d_001 :: this%pf(i)%p )
+  !       call this%pf(i)%p%new( input, i )
+  !     case (2)
+  !       allocate( fdist3d_002 :: this%pf(i)%p )
+  !       call this%pf(i)%p%new( input, i )
+  !     case (100)
+  !       allocate( fdist3d_100 :: this%pf(i)%p )
+  !       call this%pf(i)%p%new( input, i )
+  !     case (101)
+  !       allocate( fdist3d_101 :: this%pf(i)%p )
+  !       call this%pf(i)%p%new( input, i )
+  ! ! Add new distributions right above this line
+  !     case default
+  !       call write_err( 'Invalid beam profile!' )
+  !   end select
 
-  enddo
+  ! enddo
 
   ! initialize beam particle manager
   do i = 1, this%num_beams
     part_dim = p_x_dim + p_p_dim + 1
-    call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
-    if ( has_spin ) part_dim = part_dim + p_s_dim
-    call set_part3d_comm( part_dim, this%pf(i)%p%getnpmax() )
+    ! call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
+    ! if ( has_spin ) part_dim = part_dim + p_s_dim
+    ! call set_part3d_comm( part_dim, this%pf(i)%p%getnpmax() )
+    if ( this%beam(i)%pf%has_spin ) part_dim = part_dim + p_s_dim
+    call set_part3d_comm( part_dim, this%beam(i)%pf%npmax )
   enddo
   call init_part3d_comm( opts )
 
   ! initialize beams
   do i = 1, this%num_beams
 
-    call input%get( 'beam('//num2str(i)//').q', qm )
-    call input%get( 'beam('//num2str(i)//').m', qbm )
-    qbm = qm/qbm
+    ! call input%get( 'beam('//num2str(i)//').q', qm )
+    ! call input%get( 'beam('//num2str(i)//').m', qbm )
+    ! qbm = qm/qbm
 
-    push_type = p_push3_reduced
-    call input%get( 'beam('//num2str(i)//').push_type', str )
-    select case ( trim(str) )
-    case ( 'reduced' )
-      push_type = p_push3_reduced
-    case ( 'boris' )
-      push_type = p_push3_boris
-    case default
-      call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
-    end select
+    ! push_type = p_push3_reduced
+    ! call input%get( 'beam('//num2str(i)//').push_type', str )
+    ! select case ( trim(str) )
+    ! case ( 'reduced' )
+    !   push_type = p_push3_reduced
+    ! case ( 'boris' )
+    !   push_type = p_push3_boris
+    ! case default
+    !   call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
+    ! end select
 
-    call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
-    if (has_spin) then
-      call input%get( 'beam('//num2str(i)//').anom_mag_moment', amm )
-    endif
+    ! call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
+    ! if (has_spin) then
+      ! call input%get( 'beam('//num2str(i)//').anom_mag_moment', amm )
+    ! endif
 
-    call this%beam(i)%new( opts, max_mode, ps, this%pf(i)%p, &
-      qbm, dt, push_type, sm_type, sm_ord, has_spin, amm )
+    ! call this%beam(i)%new( opts, max_mode, ps, this%pf(i)%p, &
+    !   qbm, dt, push_type, sm_type, sm_ord, has_spin, amm )
+    call this%beam(i)%new( input, opts, max_mode, ps, dt, sm_type, sm_ord, i )
 
     if ( read_rst ) then
       call input%get( 'simulation.restart_timestep', rst_timestep )
       call file_rst%new(&
-        filename = './RST/Beam'//num2str(i,2)//'/',&
-        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6),&
+        filename = './RST/Beam'//num2str(i,2)//'/', &
+        dataname = 'RST-beam'//num2str(i,2)//'-'//num2str(id_proc(),6), &
         n = rst_timestep)
       call this%beam(i)%rrst(file_rst)
     endif

@@ -4,10 +4,11 @@ use parallel_module
 use options_class
 use input_class
 use iso_c_binding
-use part3d_class
+! use part3d_class
 use fdist3d_class
 use fdist3d_std_lib
 use random
+use sysutil_module
 
 implicit none
 
@@ -15,7 +16,7 @@ private
 
 type, extends(fdist3d) :: fdist3d_std
 
-  private
+  ! private
 
   ! Density profiles in perpendicular and longitudinal directions
   integer, dimension(p_x_dim) :: prof_type
@@ -34,6 +35,9 @@ type, extends(fdist3d) :: fdist3d_std
 
   ! Thermal velocity
   real, dimension(p_p_dim) :: uth
+
+  ! Gamma
+  real :: gamma
 
   ! Parameter list of the density profile
   real, dimension(:), pointer :: prof_pars1 => null()
@@ -55,9 +59,9 @@ type, extends(fdist3d) :: fdist3d_std
 
   contains
 
-  procedure :: init_fdist3d   => init_fdist3d_std
-  procedure :: end_fdist3d    => end_fdist3d_std
-  procedure :: inject_fdist3d => inject_fdist3d_std
+  procedure :: new => init_fdist3d_std
+  procedure :: del => end_fdist3d_std
+  procedure :: inject => inject_fdist3d_std
 
 end type fdist3d_std
 
@@ -67,7 +71,7 @@ interface
     real, intent(in) :: x
     real, intent(in), dimension(:), pointer :: prof_pars
     real, intent(out) :: den_value
-  end subroutine get_den_lon_intf
+  end subroutine get_den_intf
 end interface
 
 interface
@@ -98,7 +102,8 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   integer, intent(in) :: sect_id
 
   real :: xtra
-  integer :: npmax_min
+  integer :: npmax_tmp
+  integer(kind=LG) :: npmax_min
   character(len=20) :: sect_name
   character(len=:), allocatable :: prof_name
   character(len=18), save :: sname = 'init_fdist3d_std'
@@ -189,6 +194,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   call input%get( trim(sect_name) // '.m', this%qbm )
   this%qbm = this%qm / this%qbm
   call input%get( trim(sect_name) // '.density', this%density )
+  call input%get( trim(sect_name) // '.gamma', this%gamma )
   call input%get( trim(sect_name) // '.range1(1)', this%range(p_lower, 1) )
   call input%get( trim(sect_name) // '.range1(2)', this%range(p_upper, 1) )
   call input%get( trim(sect_name) // '.range2(1)', this%range(p_lower, 2) )
@@ -210,7 +216,9 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   this%has_spin = .false.
   if ( input%found( trim(sect_name) // '.has_spin' ) ) then
     call input%get( trim(sect_name) // '.has_spin', this%has_spin )
-    call input%get( trim(sect_name) // '.anom_mag_moment', this%amm )
+    if ( this%has_spin ) then
+      call input%get( trim(sect_name) // '.anom_mag_moment', this%amm )
+    endif
   endif
 
   this%den_min = 1.0d-10
@@ -233,12 +241,13 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     call write_stdout( 'The number of particles will be doubled for quiet-start &
       &initialization in "standard" beam profile type.' )
   endif
-  this%npmax = int( npmax_min * xtra )
+  this%npmax = int( npmax_min * xtra, kind=LG )
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
-    call input%get( trim(sect_name) // '.npmax', this%npmax )
-    if ( this%npmax < npmax_min ) then
-      call write_err( 'npmax is too small to initialize the 3D particles.' )
-    endif
+    call input%get( trim(sect_name) // '.npmax', npmax_tmp )
+    this%npmax = int( npmax_tmp, kind=LG )
+    ! if ( this%npmax < npmax_min ) then
+    !   call write_err( 'npmax is too small to initialize the 3D particles.' )
+    ! endif
   endif
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -288,7 +297,7 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
   dtheta  = 2.0 * pi / n_theta
   ppc_tot = product( this%ppc )
 
-  call this%get_den_lon( s, this%prof_pars_lon, den_lon )
+  ! call this%get_den_lon( s, this%prof_pars_lon, den_lon )
   coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
   ipart = 0
@@ -327,7 +336,8 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
 
               p(1,ipart) = this%uth(1) * ranorm()
               p(2,ipart) = this%uth(2) * ranorm()
-              p(3,ipart) = this%uth(3) * ranorm()
+              p(3,ipart) = this%uth(3) * ranorm() + this%gamma
+              p(3,ipart) = sqrt( p(3,ipart)**2 - p(1,ipart)**2 - p(2,ipart)**2 - 1 )
 
               q(ipart) = rn * den_loc * coef
 
@@ -346,6 +356,7 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
     enddo
   enddo
 
+  ! if using quiet start. Note that the quiet start will double the total particle number
   if ( this%quiet ) then
 
     do i = 1, ipart

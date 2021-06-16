@@ -66,12 +66,13 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine alloc_simulation( this, input )
+subroutine alloc_simulation( this, input, opts )
 
   implicit none
 
   class( simulation ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'alloc_simulation'
 
@@ -84,7 +85,7 @@ subroutine alloc_simulation( this, input )
 
   call this%fields%alloc( input )
   call this%plasma%alloc( input )
-  call this%beams%alloc( input )
+  call this%beams%alloc( input, opts )
   call this%diag%alloc( input )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

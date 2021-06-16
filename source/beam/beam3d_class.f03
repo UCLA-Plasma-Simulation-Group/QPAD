@@ -62,12 +62,17 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine alloc_beam3d( this )
+subroutine alloc_beam3d( this, input, opts, beam_id )
 
   implicit none
 
   class(beam3d), intent(inout) :: this
+  type(input_json), intent(inout) :: input
+  type(options), intent(in) :: opts
+  integer, intent(in) :: beam_id
   ! local data
+  character(len=:), allocatable :: read_str
+  character(len=20) :: sect_name
   character(len=32), save :: sname = 'alloc_beam3d'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -76,20 +81,52 @@ subroutine alloc_beam3d( this )
     allocate( part3d :: this%part )
   endif
 
-   call write_dbg( cls_name, sname, cls_level, 'ends' )
+  ! read beam profile type
+  sect_name = 'beam(' // num2str(beam_id) // ')'
+  this%pf_type = p_pf3d_std
+  if ( input%found( trim(sect_name) // '.profile_type' ) ) then
+    call input%get( trim(sect_name) // '.profile_type', read_str )
+    select case ( trim(read_str) )
+    case ( 'standard' )
+      this%pf_type = p_pf3d_std
+    ! case ( 'random' )
+    !   this%pf_type = p_pf3d_rnd
+    ! case ( 'file' )
+    !   this%pf_type = p_pf3d_file
+    case default
+      call write_err( 'Invalid beam profile type!' )
+    end select
+  endif
+
+  ! initialize beam profile
+  select case ( this%pf_type )
+  case ( p_pf3d_std )
+    allocate( fdist3d_std :: this%pf )
+    ! call this%pf%new( input, beam_id )
+  ! case ( p_pf3d_rnd )
+  !   allocate( fdist3d_rnd :: this%pf )
+  ! case ( p_pf3d_file )
+  !   allocate( fdist3d_file :: this%pf )
+  end select
+
+  ! initialize beam profile. Note the initialization must be called in the allocation
+  ! subroutine before initializing the particle manager.
+  call this%pf%new( input, opts, beam_id )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine alloc_beam3d
 
 subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
-  smooth_type, smooth_order, sect_id )
+  smooth_type, smooth_order, beam_id )
 
   implicit none
 
   class(beam3d), intent(inout) :: this
-  type(input_json), intent(in) :: input
+  type(input_json), intent(inout) :: input
   type(options), intent(in) :: opts
   real, intent(in) :: dt
-  integer, intent(in) :: part_shape, max_mode, sect_id
+  integer, intent(in) :: part_shape, max_mode, beam_id
   integer, intent(in) :: smooth_type, smooth_order
   ! local data
   integer :: ierr, id
@@ -100,46 +137,30 @@ subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  sect_name = 'beam(' // num2str(sect_id) // ')'
-
-  ! read beam profile type
-  this%pf_type = p_pf3d_std
-  if ( input%found( trim(sect_name) // '.profile_type' ) ) then
-    call input%get( trim(sect_name) // '.profile_type', read_str )
-    select case ( trim(read_str) )
-    case ( 'standard' )
-      this%pf_type = p_pf3d_std
-    case default
-      call write_err( 'Invalid beam profile type!' )
-    end select
-  endif
-
-  ! initialize beam profile
-  select case ( this%pf_type )
-  case ( p_pf3d_std )
-    allocate( fdist3d_std :: this%pf )
-    call this%pf%new( input, sect_id )
-  end select
+  sect_name = 'beam(' // num2str(beam_id) // ')'
 
   ! read particle pusher type
   this%push_type = p_push3_reduced
   if ( input%found( trim(sect_name) // '.push_type' ) ) then
     call input%get( trim(sect_name) // '.push_type', read_str )
-    select case ( trim(str) )
+    select case ( trim(read_str) )
     case ( 'reduced' )
-      push_type = p_push3_reduced
+      this%push_type = p_push3_reduced
     case ( 'boris' )
-      push_type = p_push3_boris
+      this%push_type = p_push3_boris
     case default
       call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
     end select
   endif
 
-  this%evol = pf%evol
+  this%evol = this%pf%evol
 
+  ! initialize charge field
   allocate( this%q )
   call this%q%new( opts, max_mode, part_shape, smooth_type, smooth_order )
-  call this%part%new( opts, pf, dt )
+
+  ! initialize particles
+  call this%part%new( opts, this%pf, dt )
   call move_part3d_comm( this%part, 1, id )
   call mpi_wait( id, istat, ierr )
 
@@ -180,7 +201,8 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
   call this%q%as(0.0)
 
   if (.not. this%evol) then
-    call this%pf%dp(this%q)
+    ! TODO: free streaming or non-evolving beam
+    ! call this%pf%dp(this%q)
     call this%q%copy_gc_f2()
   else
     if ( id_stage() > 0 ) call this%q%pipe_recv( tag, 'forward', 'inner', 'add' )

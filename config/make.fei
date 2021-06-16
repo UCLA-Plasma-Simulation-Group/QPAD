@@ -18,8 +18,8 @@ FPP = gcc-8 -C -E -cpp
 # PYTHON = python 
 
 # Select modules to be compiled
-# DISABLE_TEMPLATE = true
-# DISABLE_POPAS = true
+DISABLE_TEMPLATE = true
+DISABLE_POPAS = true
 
 # Linker configuration
 LINKER = mpif90

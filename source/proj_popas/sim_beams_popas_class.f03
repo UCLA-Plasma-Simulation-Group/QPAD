@@ -25,12 +25,13 @@ integer, save :: cls_level = 2
 
 contains
 
-subroutine alloc_sim_beams_popas( this, input )
+subroutine alloc_sim_beams_popas( this, input, opts )
 
   implicit none
 
   class( sim_beams_popas ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   integer :: i
   character(len=32), save :: sname = 'alloc_sim_beams_popas'
@@ -43,7 +44,7 @@ subroutine alloc_sim_beams_popas( this, input )
     allocate( beam3d_popas :: this%beam( this%num_beams ) )
   endif
 
-  call this%sim_beams%alloc( input )
+  call this%sim_beams%alloc( input, opts )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
