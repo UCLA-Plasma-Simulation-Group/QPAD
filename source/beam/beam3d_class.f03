@@ -89,8 +89,8 @@ subroutine alloc_beam3d( this, input, opts, beam_id )
     select case ( trim(read_str) )
     case ( 'standard' )
       this%pf_type = p_pf3d_std
-    ! case ( 'random' )
-    !   this%pf_type = p_pf3d_rnd
+    case ( 'random' )
+      this%pf_type = p_pf3d_rnd
     ! case ( 'file' )
     !   this%pf_type = p_pf3d_file
     case default
@@ -102,9 +102,8 @@ subroutine alloc_beam3d( this, input, opts, beam_id )
   select case ( this%pf_type )
   case ( p_pf3d_std )
     allocate( fdist3d_std :: this%pf )
-    ! call this%pf%new( input, beam_id )
-  ! case ( p_pf3d_rnd )
-  !   allocate( fdist3d_rnd :: this%pf )
+  case ( p_pf3d_rnd )
+    allocate( fdist3d_rnd :: this%pf )
   ! case ( p_pf3d_file )
   !   allocate( fdist3d_file :: this%pf )
   end select
