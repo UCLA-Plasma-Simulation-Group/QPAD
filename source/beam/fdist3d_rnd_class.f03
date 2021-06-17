@@ -5,7 +5,7 @@ use options_class
 use input_class
 use iso_c_binding
 use fdist3d_class
-use fdist3d_std_lib
+use fdist3d_rnd_lib
 use random
 use sysutil_module
 
@@ -26,7 +26,7 @@ type, extends(fdist3d) :: fdist3d_rnd
   ! Initialization geometry
   integer :: geom
 
-  ! Total charge in the unit of ???
+  ! Total charge in the unit of (e*n_p*w_p^-3*c^3)
   real :: tot_charge
 
   ! Thermal velocity
@@ -83,17 +83,15 @@ end interface
 character(len=32), save :: cls_name = 'fdist3d_rnd'
 integer, save :: cls_level = 2
 
-integer, parameter :: p_geom_cart = 1, p_geom_cyl = 2
-
 public :: fdist3d_rnd
 
 contains
 
-subroutine init_fdist3d_std( this, input, opts, sect_id )
+subroutine init_fdist3d_rnd( this, input, opts, sect_id )
 
   implicit none
 
-  class( fdist3d_std ), intent(inout) :: this
+  class( fdist3d_rnd ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
   type( options ), intent(in) :: opts
   integer, intent(in) :: sect_id
@@ -103,7 +101,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   integer(kind=LG) :: npmax_min
   character(len=20) :: sect_name
   character(len=:), allocatable :: read_str
-  character(len=18), save :: sname = 'init_fdist3d_std'
+  character(len=18), save :: sname = 'init_fdist3d_rnd'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -117,7 +115,6 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   this%dz     = opts%get_dxi()
 
   sect_name = 'beam(' // num2str(sect_id) // ')'
-  ! call input%get( 'simulation.max_mode', this%max_mode )
 
   ! read and set profile types
   call input%get( trim(sect_name) // '.profile(1)', read_str )
@@ -126,17 +123,17 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     case ( 'uniform' )
       this%prof_type(1) = p_prof_uniform
       this%set_prof1    => set_prof_uniform
-      this%get_den1     => get_den_uniform
+      this%get_rndpos1  => get_rndpos_uniform
 
     case ( 'gaussian' )
       this%prof_type(1) = p_prof_gaussian
       this%set_prof1    => set_prof_gaussian
-      this%get_den1     => get_den_gaussian
+      this%get_rndpos1  => get_rndpos_gaussian
 
     case ( 'piecewise-linear' )
       this%prof_type(1) = p_prof_pw_linear
       this%set_prof1    => set_prof_pw_linear
-      this%get_den1     => get_den_pw_linear
+      this%get_rndpos1  => get_rndpos_pw_linear
 
     case default
       call write_err( 'Invalid density profile in direction 1! Currently available &
@@ -150,17 +147,17 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     case ( 'uniform' )
       this%prof_type(2) = p_prof_uniform
       this%set_prof2    => set_prof_uniform
-      this%get_den2     => get_den_uniform
+      this%get_rndpos2  => get_rndpos_uniform
 
     case ( 'gaussian' )
       this%prof_type(2) = p_prof_gaussian
       this%set_prof2    => set_prof_gaussian
-      this%get_den2     => get_den_gaussian
+      this%get_rndpos2  => get_rndpos_gaussian
 
     case ( 'piecewise-linear' )
       this%prof_type(2) = p_prof_pw_linear
       this%set_prof2    => set_prof_pw_linear
-      this%get_den2     => get_den_pw_linear
+      this%get_rndpos2  => get_rndpos_pw_linear
 
     case default
       call write_err( 'Invalid density profile in direction 2! Currently available &
@@ -174,17 +171,17 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     case ( 'uniform' )
       this%prof_type(3) = p_prof_uniform
       this%set_prof3    => set_prof_uniform
-      this%get_den3     => get_den_uniform
+      this%get_rndpos3  => get_rndpos_uniform
 
     case ( 'gaussian' )
       this%prof_type(3) = p_prof_gaussian
       this%set_prof3    => set_prof_gaussian
-      this%get_den3     => get_den_gaussian
+      this%get_rndpos3  => get_rndpos_gaussian
 
     case ( 'piecewise-linear' )
       this%prof_type(3) = p_prof_pw_linear
       this%set_prof3    => set_prof_pw_linear
-      this%get_den3     => get_den_pw_linear
+      this%get_rndpos3  => get_rndpos_pw_linear
 
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
@@ -198,14 +195,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   call this%set_prof3( input, trim(sect_name), 3, this%prof_pars3 )
 
   call input%get( 'simulation.box.z(1)', this%z0 )
-  call input%get( trim(sect_name) // '.ppc(1)', this%ppc(1) )
-  call input%get( trim(sect_name) // '.ppc(2)', this%ppc(2) )
-  call input%get( trim(sect_name) // '.ppc(3)', this%ppc(3) )
-  call input%get( trim(sect_name) // '.num_theta', this%num_theta )
+  call input%get( trim(sect_name) // '.total_num', this%tot_num )
+  call input%get( trim(sect_name) // '.total_charge', this%tot_charge )
   call input%get( trim(sect_name) // '.q', this%qm )
   call input%get( trim(sect_name) // '.m', this%qbm )
   this%qbm = this%qm / this%qbm
-  call input%get( trim(sect_name) // '.density', this%density )
   call input%get( trim(sect_name) // '.gamma', this%gamma )
   call input%get( trim(sect_name) // '.range1(1)', this%range(p_lower, 1) )
   call input%get( trim(sect_name) // '.range1(2)', this%range(p_upper, 1) )
@@ -244,11 +238,6 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     endif
   endif
 
-  this%den_min = 1.0d-10
-  if ( input%found( trim(sect_name) // '.den_min' ) ) then
-    call input%get( trim(sect_name) // '.den_min', this%den_min )
-  endif
-
   this%uth = 0.0
   if ( input%found( trim(sect_name) // '.uth' ) ) then
     call input%get( trim(sect_name) // '.uth(1)', this%uth(1) )
@@ -259,7 +248,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   ! TODO: buffer reallocation needs to be implemented here
   ! calculate the maximum particles number allowed in this partition
   xtra = 2.0
-  npmax_min = this%nrp * this%nzp * product(this%ppc) * this%num_theta
+  npmax_min = this%tot_num
   if ( this%quiet ) then
     npmax_min = npmax_min * 2
     call write_stdout( 'The number of particles will be doubled for quiet-start &
@@ -276,14 +265,14 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine init_fdist3d_std
+end subroutine init_fdist3d_rnd
 
-subroutine end_fdist3d_std( this )
+subroutine end_fdist3d_rnd( this )
 
   implicit none
 
-  class( fdist3d_std ), intent(inout) :: this
-  character(len=18), save :: sname = 'end_fdist3d_std'
+  class( fdist3d_rnd ), intent(inout) :: this
+  character(len=18), save :: sname = 'end_fdist3d_rnd'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   if ( associated(this%prof_pars1) ) deallocate( this%prof_pars1 )
@@ -291,109 +280,94 @@ subroutine end_fdist3d_std( this )
   if ( associated(this%prof_pars3) ) deallocate( this%prof_pars3 )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine end_fdist3d_std
+end subroutine end_fdist3d_rnd
 
-subroutine inject_fdist3d_std( this, x, p, s, q, npp )
+subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
 
   implicit none
 
-  class( fdist3d_std ), intent(inout) :: this
+  class( fdist3d_rnd ), intent(inout) :: this
   real, intent(inout), dimension(:,:) :: x, p, s
   real, intent(inout), dimension(:) :: q
   integer(kind=LG), intent(inout) :: npp
 
-  integer :: i, j, k, i1, i2, i3, ppc_tot, n_theta, nrp, nzp, noff_r, noff_z
+  integer :: i
   integer(kind=LG) :: ipart
-  real :: dr, dz, dtheta, rn, zn, theta, coef, den_loc
-  real, dimension(3) :: den_val
+  real :: q_per_part, r_tmp
   real, dimension(3) :: x_tmp
-  character(len=18), save :: sname = 'inject_fdist3d_std'
+  real, dimension(2) :: edge_r, edge_z
+  character(len=18), save :: sname = 'inject_fdist3d_rnd'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp     = this%nrp
-  nzp     = this%nzp
-  noff_r  = this%noff_r
-  noff_z  = this%noff_z
-  n_theta = this%num_theta
-  dr      = this%dr
-  dz      = this%dz
-  dtheta  = 2.0 * pi / n_theta
-  ppc_tot = product( this%ppc )
-
-  ! call this%get_den_lon( s, this%prof_pars_lon, den_lon )
-  coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
+  edge_r(p_lower) = this%noff_r * this%dr
+  edge_z(p_lower) = this%noff_z * this%dz
+  edge_r(p_upper) = edge_r(p_lower) + this%nrp * this%dr
+  edge_z(p_upper) = edge_z(p_lower) + this%nzp * this%dz
+  q_per_part = sign(1.0, this%qm) * this%tot_charge / ( 2*pi * this%tot_num * this%dr * this%dz )
 
   ipart = 0
-  do k = 1, nzp
-    do j = 1, n_theta
-      do i = 1, nrp
-        
-        do i3 = 1, this%ppc(3)
-          zn = (i3 - 0.5) / this%ppc(3) + real(k - 1 + noff_z)
-          do i2 = 1, this%ppc(2)
-            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.5 ) * dtheta
-            do i1 = 1, this%ppc(1)
-              rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff_r)
+  do i = 1, this%tot_num
 
-              select case ( this%geom )
-              case ( p_geom_cart )
-                x_tmp(1) = rn * dr * cos(theta)
-                x_tmp(2) = rn * dr * sin(theta)
-                x_tmp(3) = zn * dz
-              case ( p_geom_cyl )
-                x_tmp(1) = rn * dr
-                x_tmp(2) = theta
-                x_tmp(3) = zn * dz
-              end select
+    ! generate particles until they are located within the range.
+    ! Note that if a particle is generated beyond the physical boundary, it will
+    ! not be handled here but dropped later by the particle manager.
+    do
 
-              ! check if the particle to be injected is within the range
-              if ( x_tmp(1) < this%range(p_lower,1) .or. x_tmp(1) > this%range(p_upper,1) ) cycle
-              if ( x_tmp(2) < this%range(p_lower,2) .or. x_tmp(2) > this%range(p_upper,2) ) cycle
-              if ( x_tmp(3) < this%range(p_lower,3) .or. x_tmp(3) > this%range(p_upper,3) ) cycle
+      ! generate transverse position and check if it is inside the initialization range.
+      call this%get_rndpos1( this%prof_pars1, x_tmp(1) )
+      if ( x_tmp(1) < this%range(p_lower,1) .or. x_tmp(1) >= this%range(p_upper,1) ) cycle
+      call this%get_rndpos2( this%prof_pars2, x_tmp(2) )
+      if ( x_tmp(2) < this%range(p_lower,2) .or. x_tmp(2) >= this%range(p_upper,2) ) cycle
 
-              call this%get_den1( x_tmp(1), this%prof_pars1, den_val(1) )
-              call this%get_den2( x_tmp(2), this%prof_pars2, den_val(2) )
-              call this%get_den3( x_tmp(3), this%prof_pars3, den_val(3) )
-              den_loc = product(den_val) * this%density
+      ! check if it is inside this partition
+      select case ( this%geom )
+      case ( p_geom_cart )
+        r_tmp = sqrt( x_tmp(1) * x_tmp(1) + x_tmp(2) * x_tmp(2) )
+      case ( p_geom_cyl )
+        r_tmp = x_tmp(1)
+      end select
+      if ( r_tmp < edge_r(p_lower) .or. r_tmp >= edge_r(p_upper) ) cycle
 
-              if ( den_loc < this%den_min ) cycle
+      ! generate longitudinal position and check if it is inside the initialization range.
+      call this%get_rndpos3( this%prof_pars3, x_tmp(3) )
+      if ( x_tmp(3) < this%range(p_lower,3) .or. x_tmp(3) >= this%range(p_upper,3) ) cycle
 
-              ipart = ipart + 1
+      ! check if it is inside this partition
+      if ( x_tmp(3) < edge_z(p_lower) .or. x_tmp(3) >= edge_z(p_upper) ) cycle
 
-              select case ( this%geom )
-              case ( p_geom_cart )
-                x(1,ipart) = x_tmp(1)
-                x(2,ipart) = x_tmp(2)
-                x(3,ipart) = x_tmp(3)
-              case ( p_geom_cyl )
-                x(1,ipart) = x_tmp(1) * cos(x_tmp(2))
-                x(2,ipart) = x_tmp(1) * sin(x_tmp(2))
-                x(3,ipart) = x_tmp(3)
-              end select
+      exit
 
-              ! momentum initialization uses Cartesian geometry
-              p(1,ipart) = this%uth(1) * ranorm()
-              p(2,ipart) = this%uth(2) * ranorm()
-              p(3,ipart) = this%uth(3) * ranorm() + this%gamma
-              p(3,ipart) = sqrt( p(3,ipart)**2 - p(1,ipart)**2 - p(2,ipart)**2 - 1 )
-
-
-              q(ipart) = rn * den_loc * coef
-
-              ! spin initialization has not yet implemented
-              if ( this%has_spin ) then
-                s(1,ipart) = 0.0
-                s(2,ipart) = 0.0
-                s(3,ipart) = 1.0
-              endif
-              
-            enddo  
-          enddo
-        enddo
-
-      enddo
     enddo
+
+    ipart = ipart + 1
+
+    select case ( this%geom )
+    case ( p_geom_cart )
+      x(1, ipart) = x_tmp(1)
+      x(2, ipart) = x_tmp(2)
+      x(3, ipart) = x_tmp(3)
+    case ( p_geom_cyl )
+      x(1, ipart) = x_tmp(1) * cos(x_tmp(2))
+      x(2, ipart) = x_tmp(1) * sin(x_tmp(2))
+      x(3, ipart) = x_tmp(3)
+    end select
+
+    ! momentum initialization uses Cartesian geometry
+    p(1, ipart) = this%uth(1) * ranorm()
+    p(2, ipart) = this%uth(2) * ranorm()
+    p(3, ipart) = this%uth(3) * ranorm() + this%gamma
+    p(3, ipart) = sqrt( p(3, ipart)**2 - p(1, ipart)**2 - p(2, ipart)**2 - 1 )
+
+    q(ipart) = q_per_part * r_tmp / this%dr
+
+    ! spin initialization has not yet implemented
+    if ( this%has_spin ) then
+      s(1, ipart) = 0.0
+      s(2, ipart) = 0.0
+      s(3, ipart) = 1.0
+    endif
+
   enddo
 
   ! if using quiet start. Note that the quiet start will double the total particle number
@@ -401,13 +375,13 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
 
     do i = 1, ipart
 
-      x(1,ipart+i) = -x(1,i)
-      x(2,ipart+i) = -x(2,i)
-      x(3,ipart+i) =  x(3,i)
+      x(1, ipart+i) = -x(1,i)
+      x(2, ipart+i) = -x(2,i)
+      x(3, ipart+i) =  x(3,i)
 
-      p(1,ipart+i) = -p(1,i)
-      p(2,ipart+i) = -p(2,i)
-      p(3,ipart+i) =  p(3,i)
+      p(1, ipart+i) = -p(1,i)
+      p(2, ipart+i) = -p(2,i)
+      p(3, ipart+i) =  p(3,i)
 
       q(i) = 0.5 * q(i)
       q(ipart+i) = q(i)
@@ -428,6 +402,6 @@ subroutine inject_fdist3d_std( this, x, p, s, q, npp )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine inject_fdist3d_std
+end subroutine inject_fdist3d_rnd
 
-end module fdist3d_std_class
+end module fdist3d_rnd_class

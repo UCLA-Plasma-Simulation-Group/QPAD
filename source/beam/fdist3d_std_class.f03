@@ -90,8 +90,6 @@ end interface
 character(len=32), save :: cls_name = 'fdist3d_std'
 integer, save :: cls_level = 2
 
-integer, parameter :: p_geom_cart = 1, p_geom_cyl = 2
-
 public :: fdist3d_std
 
 contains
@@ -124,7 +122,6 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   this%dz     = opts%get_dxi()
 
   sect_name = 'beam(' // num2str(sect_id) // ')'
-  ! call input%get( 'simulation.max_mode', this%max_mode )
 
   ! read and set profile types
   call input%get( trim(sect_name) // '.profile(1)', read_str )

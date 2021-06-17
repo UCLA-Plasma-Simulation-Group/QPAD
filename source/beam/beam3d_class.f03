@@ -16,6 +16,7 @@ use mpi
 
 use fdist3d_class
 use fdist3d_std_class
+use fdist3d_rnd_class
 
 implicit none
 

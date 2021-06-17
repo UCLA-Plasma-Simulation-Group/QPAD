@@ -101,6 +101,12 @@ subroutine set_prof_pw_linear( input, sect_name, dim, prof_pars )
   len_x = size(x)
   allocate( prof_pars( 2 * len_x ) )
 
+  do i = 2, len_x
+    if ( x(i) <= x(i-1) ) then
+      call write_err( 'Position array must be monotonically increasing!' )
+    endif
+  enddo
+
   do i = 1, len_x
     prof_pars(i) = x(i)
     prof_pars(len_x+i) = fx(i)
@@ -135,10 +141,6 @@ subroutine get_den_pw_linear( x, prof_pars, den_value )
   endif
 
   do i = 2, len_x
-    if ( x_array(i) <= x_array(i-1) ) then
-      call write_err( 'Position array must be monotonically increasing!' )
-    endif
-
     if ( x <= x_array(i) ) then
       den_value = fx_array(i-1) + ( fx_array(i) - fx_array(i-1) ) / &
         ( x_array(i) - x_array(i-1) ) * ( x - x_array(i-1) )
