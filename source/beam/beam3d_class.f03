@@ -17,6 +17,7 @@ use mpi
 use fdist3d_class
 use fdist3d_std_class
 use fdist3d_rnd_class
+use fdist3d_file_class
 
 implicit none
 
@@ -88,25 +89,25 @@ subroutine alloc_beam3d( this, input, opts, beam_id )
   if ( input%found( trim(sect_name) // '.profile_type' ) ) then
     call input%get( trim(sect_name) // '.profile_type', read_str )
     select case ( trim(read_str) )
-    case ( 'standard' )
-      this%pf_type = p_pf3d_std
-    case ( 'random' )
-      this%pf_type = p_pf3d_rnd
-    ! case ( 'file' )
-    !   this%pf_type = p_pf3d_file
-    case default
-      call write_err( 'Invalid beam profile type!' )
+      case ( 'standard' )
+        this%pf_type = p_pf3d_std
+      case ( 'random' )
+        this%pf_type = p_pf3d_rnd
+      case ( 'file' )
+        this%pf_type = p_pf3d_file
+      case default
+        call write_err( 'Invalid beam profile type!' )
     end select
   endif
 
   ! initialize beam profile
   select case ( this%pf_type )
-  case ( p_pf3d_std )
-    allocate( fdist3d_std :: this%pf )
-  case ( p_pf3d_rnd )
-    allocate( fdist3d_rnd :: this%pf )
-  ! case ( p_pf3d_file )
-  !   allocate( fdist3d_file :: this%pf )
+    case ( p_pf3d_std )
+      allocate( fdist3d_std :: this%pf )
+    case ( p_pf3d_rnd )
+      allocate( fdist3d_rnd :: this%pf )
+    case ( p_pf3d_file )
+      allocate( fdist3d_file :: this%pf )
   end select
 
   ! initialize beam profile. Note the initialization must be called in the allocation
