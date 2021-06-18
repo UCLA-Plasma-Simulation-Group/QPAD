@@ -153,6 +153,8 @@ subroutine write_err( estr )
 
   call dtimer( dtime, itime, 1 )
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
+  write( *, * ) 'Fatal error occurs! Please enter the "ELOG" folder and type the &
+            &command "tail --lines=1 *" to check the last line of each log file.'
   
   call mpi_initialized( flag, ierr )
   if ( flag ) call mpi_finalize( ierr )
