@@ -252,7 +252,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
   if ( this%quiet ) then
     npmax_min = npmax_min * 2
     call write_stdout( 'The number of particles will be doubled for quiet-start &
-      &initialization in "standard" beam profile type.' )
+      &initialization.' )
   endif
   this%npmax = int( npmax_min * xtra, kind=LG )
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
