@@ -304,7 +304,11 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
   edge_z(p_lower) = this%noff_z * this%dz
   edge_r(p_upper) = edge_r(p_lower) + this%nrp * this%dr
   edge_z(p_upper) = edge_z(p_lower) + this%nzp * this%dz
-  q_per_part = sign(1.0, this%qm) * this%tot_charge / ( 2*pi * this%tot_num * this%dr * this%dz )
+
+  q_per_part = sign(1.0, this%qm) * this%tot_charge / ( 2.0 * pi * this%tot_num * this%dr**2 * this%dz )
+  if ( this%geom == p_geom_cyl ) then
+    q_per_part = q_per_part * 0.5 * pi**2
+  endif
 
   ipart = 0
   do i = 1, this%tot_num
@@ -347,10 +351,12 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
       x(1, ipart) = x_tmp(1)
       x(2, ipart) = x_tmp(2)
       x(3, ipart) = x_tmp(3)
+      q(ipart) = q_per_part
     case ( p_geom_cyl )
       x(1, ipart) = x_tmp(1) * cos(x_tmp(2))
       x(2, ipart) = x_tmp(1) * sin(x_tmp(2))
       x(3, ipart) = x_tmp(3)
+      q(ipart) = q_per_part * r_tmp
     end select
 
     ! momentum initialization uses Cartesian geometry
@@ -358,8 +364,6 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
     p(2, ipart) = this%uth(2) * ranorm()
     p(3, ipart) = this%uth(3) * ranorm() + this%gamma
     p(3, ipart) = sqrt( p(3, ipart)**2 - p(1, ipart)**2 - p(2, ipart)**2 - 1 )
-
-    q(ipart) = q_per_part * r_tmp / this%dr
 
     ! spin initialization has not yet implemented
     if ( this%has_spin ) then

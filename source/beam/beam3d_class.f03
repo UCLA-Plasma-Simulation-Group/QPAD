@@ -200,19 +200,12 @@ subroutine qdeposit_beam3d(this,q,tag,sid)
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
   call this%q%as(0.0)
-
-  if (.not. this%evol) then
-    ! TODO: free streaming or non-evolving beam
-    ! call this%pf%dp(this%q)
-    call this%q%copy_gc_f2()
-  else
-    if ( id_stage() > 0 ) call this%q%pipe_recv( tag, 'forward', 'inner', 'add' )
-    call MPI_WAIT(sid, istat, ierr)
-    call this%part%qdeposit(this%q)
-    call this%q%acopy_gc_f2()
-    call this%q%copy_gc_f2()
-    call this%q%pipe_send( tag, sid, 'forward', 'guard' )
-  endif
+  if ( id_stage() > 0 ) call this%q%pipe_recv( tag, 'forward', 'inner', 'add' )
+  call MPI_WAIT(sid, istat, ierr)
+  call this%part%qdeposit(this%q)
+  call this%q%acopy_gc_f2()
+  call this%q%copy_gc_f2()
+  call this%q%pipe_send( tag, sid, 'forward', 'guard' )
 
   call add_f2( this%q, q )
 
