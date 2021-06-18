@@ -2,6 +2,7 @@ module sysutil_module
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
+use parallel_module
 
 implicit none
 
@@ -105,7 +106,7 @@ subroutine write_stdout( msg, only_root )
   if ( only_root_ ) then
     if ( is_root ) write( *, * ) trim(adjustl(msg))
   else
-    write( *, * ) trim(adjustl(msg))
+    write( *, * ) '[proc ' // num2str(id_proc()) // '] ' // trim(adjustl(msg))
   endif
 
 end subroutine write_stdout

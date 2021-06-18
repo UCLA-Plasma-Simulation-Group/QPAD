@@ -161,7 +161,14 @@ subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
   call this%q%new( opts, max_mode, part_shape, smooth_type, smooth_order )
 
   ! initialize particles
-  call this%part%new( opts, this%pf, dt )
+  if ( this%pf%has_spin ) then
+    call this%part%new( opts, this%pf%npmax, dt, this%pf%z0, this%pf%qbm, this%pf%amm )
+  else
+    call this%part%new( opts, this%pf%npmax, dt, this%pf%z0, this%pf%qbm )
+  endif
+
+  ! inject particles
+  call this%pf%inject( this%part )
   call move_part3d_comm( this%part, 1, id )
   call mpi_wait( id, istat, ierr )
 

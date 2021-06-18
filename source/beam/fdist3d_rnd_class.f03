@@ -6,6 +6,7 @@ use input_class
 use iso_c_binding
 use fdist3d_class
 use fdist3d_rnd_lib
+use part3d_class
 use random
 use sysutil_module
 
@@ -98,7 +99,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
 
   real :: xtra
   integer :: npmax_tmp
-  integer(kind=LG) :: npmax_min
+  integer(kind=LG) :: npmax_guess
   character(len=20) :: sect_name
   character(len=:), allocatable :: read_str
   character(len=18), save :: sname = 'init_fdist3d_rnd'
@@ -245,22 +246,29 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
   endif
 
-  ! TODO: buffer reallocation needs to be implemented here
-  ! calculate the maximum particles number allowed in this partition
-  xtra = 2.0
-  npmax_min = this%tot_num
-  if ( this%quiet ) then
-    npmax_min = npmax_min * 2
-    call write_stdout( 'The number of particles will be doubled for quiet-start &
-      &initialization.' )
-  endif
-  this%npmax = int( npmax_min * xtra, kind=LG )
+  ! if npmax is not given, guess a value for npmax
+  xtra = 1.5
+  ! this guess value must be smaller than the practical value, so the buffer reallocation
+  ! will be invoked. Need a more smarter estimation algorithm.
+  npmax_guess = this%tot_num / num_procs()
+  this%npmax = int( npmax_guess * xtra, kind=LG )
+  
+  ! if npmax is given, set it as the maximum of the given value and p_npmax_min
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
     call input%get( trim(sect_name) // '.npmax', npmax_tmp )
     this%npmax = int( npmax_tmp, kind=LG )
-    ! if ( this%npmax < npmax_min ) then
-    !   call write_err( 'npmax is too small to initialize the 3D particles.' )
-    ! endif
+    if ( this%npmax < p_npmax_min ) then
+      call write_wrn( 'The npmax may be too small for the initialization. It has &
+        &been automatically changed to ' // num2str(p_npmax_min) // '.' )
+      this%npmax = int( p_npmax_min, kind=LG )
+    endif
+  endif
+
+  ! if using quiet start, double the buffer
+  if ( this%quiet ) then
+    this%npmax = this%npmax * 2
+    call write_stdout( 'The number of particles will be doubled for quiet-start &
+      &initialization.' )
   endif
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -282,18 +290,20 @@ subroutine end_fdist3d_rnd( this )
 
 end subroutine end_fdist3d_rnd
 
-subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
+! subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
+subroutine inject_fdist3d_rnd( this, part )
 
   implicit none
 
   class( fdist3d_rnd ), intent(inout) :: this
-  real, intent(inout), dimension(:,:) :: x, p, s
-  real, intent(inout), dimension(:) :: q
-  integer(kind=LG), intent(inout) :: npp
+  class( part3d ), intent(inout) :: part
+  ! real, intent(inout), dimension(:,:) :: x, p, s
+  ! real, intent(inout), dimension(:) :: q
+  ! integer(kind=LG), intent(inout) :: npp
 
   integer :: i
-  integer(kind=LG) :: ipart
-  real :: q_per_part, r_tmp
+  integer(kind=LG) :: ip
+  real :: q_per_part, r_tmp, ratio
   real, dimension(3) :: x_tmp
   real, dimension(2) :: edge_r, edge_z
   character(len=18), save :: sname = 'inject_fdist3d_rnd'
@@ -310,7 +320,6 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
     q_per_part = q_per_part * 0.5 * pi**2
   endif
 
-  ipart = 0
   do i = 1, this%tot_num
 
     ! generate particles until they are located within the range.
@@ -344,32 +353,38 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
 
     enddo
 
-    ipart = ipart + 1
+    ! check if needs to reallocate the particle buffer
+    if ( part%npp >= part%npmax ) then
+      call part%realloc( ratio = p_buf_incr, buf_type = 'particle' )
+    endif
+
+    part%npp = part%npp + 1
+    ip = part%npp
 
     select case ( this%geom )
     case ( p_geom_cart )
-      x(1, ipart) = x_tmp(1)
-      x(2, ipart) = x_tmp(2)
-      x(3, ipart) = x_tmp(3)
-      q(ipart) = q_per_part
+      part%x(1, ip) = x_tmp(1)
+      part%x(2, ip) = x_tmp(2)
+      part%x(3, ip) = x_tmp(3)
+      part%q(ip) = q_per_part
     case ( p_geom_cyl )
-      x(1, ipart) = x_tmp(1) * cos(x_tmp(2))
-      x(2, ipart) = x_tmp(1) * sin(x_tmp(2))
-      x(3, ipart) = x_tmp(3)
-      q(ipart) = q_per_part * r_tmp
+      part%x(1, ip) = x_tmp(1) * cos(x_tmp(2))
+      part%x(2, ip) = x_tmp(1) * sin(x_tmp(2))
+      part%x(3, ip) = x_tmp(3)
+      part%q(ip) = q_per_part * r_tmp
     end select
 
     ! momentum initialization uses Cartesian geometry
-    p(1, ipart) = this%uth(1) * ranorm()
-    p(2, ipart) = this%uth(2) * ranorm()
-    p(3, ipart) = this%uth(3) * ranorm() + this%gamma
-    p(3, ipart) = sqrt( p(3, ipart)**2 - p(1, ipart)**2 - p(2, ipart)**2 - 1 )
+    part%p(1, ip) = this%uth(1) * ranorm()
+    part%p(2, ip) = this%uth(2) * ranorm()
+    part%p(3, ip) = this%uth(3) * ranorm() + this%gamma
+    part%p(3, ip) = sqrt( part%p(3, ip)**2 - part%p(1, ip)**2 - part%p(2, ip)**2 - 1 )
 
     ! spin initialization has not yet implemented
     if ( this%has_spin ) then
-      s(1, ipart) = 0.0
-      s(2, ipart) = 0.0
-      s(3, ipart) = 1.0
+      part%s(1, ip) = 0.0
+      part%s(2, ip) = 0.0
+      part%s(3, ip) = 1.0
     endif
 
   enddo
@@ -377,32 +392,35 @@ subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
   ! if using quiet start. Note that the quiet start will double the total particle number
   if ( this%quiet ) then
 
-    do i = 1, ipart
+    if ( part%npp * 2 > part%npmax ) then
+      ratio = real(part%npp * 2) / part%npmax
+      call part%realloc( ratio = p_buf_incr * ratio, buf_type = 'particle' )
+    endif
 
-      x(1, ipart+i) = -x(1,i)
-      x(2, ipart+i) = -x(2,i)
-      x(3, ipart+i) =  x(3,i)
+    do i = 1, ip
 
-      p(1, ipart+i) = -p(1,i)
-      p(2, ipart+i) = -p(2,i)
-      p(3, ipart+i) =  p(3,i)
+      part%x(1, ip+i) = -part%x(1,i)
+      part%x(2, ip+i) = -part%x(2,i)
+      part%x(3, ip+i) =  part%x(3,i)
 
-      q(i) = 0.5 * q(i)
-      q(ipart+i) = q(i)
+      part%p(1, ip+i) = -part%p(1,i)
+      part%p(2, ip+i) = -part%p(2,i)
+      part%p(3, ip+i) =  part%p(3,i)
+
+      part%q(i) = 0.5 * part%q(i)
+      part%q(ip+i) = part%q(i)
 
       ! spin initialization has not yet implemented
       if ( this%has_spin ) then
-        s(1,ipart+i) = 0.0
-        s(2,ipart+i) = 0.0
-        s(3,ipart+i) = 1.0
+        part%s(1,ip+i) = 0.0
+        part%s(2,ip+i) = 0.0
+        part%s(3,ip+i) = 1.0
       endif
 
     enddo
-    ipart = ipart * 2
+    part%npp = part%npp * 2
 
   endif
-
-  npp = ipart
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

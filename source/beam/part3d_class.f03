@@ -6,7 +6,6 @@ use parallel_module
 use options_class
 use field_class
 use ufield_class
-use fdist3d_class
 use hdf5io_class
 use mpi
 use interpolation
@@ -27,6 +26,8 @@ type part3d
   ! cell sizes & time step
   real :: dt, dr, dz
 
+  ! lower boundary of the simulation box, used for shifting the longitudinal
+  ! particle positions
   real :: z0
 
   ! nbmax = size of buffer for passing particles between processors
@@ -91,28 +92,37 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine init_part3d( this, opts, pf, dt )
+! subroutine init_part3d( this, opts, pf, dt )
+subroutine init_part3d( this, opts, npmax, dt, z0, qbm, amm )
 
   implicit none
 
   class(part3d), intent(inout) :: this
   type(options), intent(in) :: opts
-  class(fdist3d), intent(inout) :: pf
-  real, intent(in) :: dt
+  integer(kind=LG), intent(in) :: npmax
+  real, intent(in) :: dt, z0, qbm
+  real, intent(in), optional :: amm
   ! local data
   character(len=18), save :: sname = 'init_part3d'
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  this%has_spin = pf%has_spin
-  this%amm      = pf%amm
-  this%qbm      = pf%qbm
+  this%qbm      = qbm
   this%dt       = dt
-  this%npmax    = pf%npmax
-  this%dr       = pf%dr
-  this%dz       = pf%dz
+  this%npmax    = npmax
+  this%dr       = opts%get_dr()
+  this%dz       = opts%get_dxi()
   this%part_dim = p_x_dim + p_p_dim + 1
-  if ( this%has_spin ) this%part_dim = this%part_dim + p_s_dim
+  this%z0       = z0
+
+  this%has_spin = .false.
+  if ( present(amm) ) then
+    this%has_spin = .true.
+    this%amm = amm
+    this%part_dim = this%part_dim + p_s_dim
+  endif
+
+  ! if ( this%has_spin ) this%part_dim = this%part_dim + p_s_dim
 
   this%edge(1) = opts%get_nd(1) * this%dr
   this%edge(2) = opts%get_nd(2) * this%dz
@@ -120,8 +130,7 @@ subroutine init_part3d( this, opts, pf, dt )
   ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
   this%nbmax = int( 0.1*this%npmax, kind=LG )
   this%npp = 0
-  this%z0 = pf%z0
-
+  
   allocate( this%x( p_x_dim, this%npmax ) )
   allocate( this%p( p_p_dim, this%npmax ) )
   allocate( this%q( this%npmax ) )
@@ -131,15 +140,10 @@ subroutine init_part3d( this, opts, pf, dt )
 
   allocate( this%pbuff( this%part_dim * this%nbmax ) )
 
-  ! initialize particle coordinates according to profile
-  ! if ( this%has_spin ) then
-  !   call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
-  !      opts%get_ndp(), this%s )
-  ! else
-  !   call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
-  !      opts%get_ndp() )
-  ! endif
-  call pf%inject( this%x, this%p, this%s, this%q, this%npp )
+  ! inject particle coordinates according to profile
+  ! call pf%inject( this%x, this%p, this%s, this%q, this%npp )
+
+  ! note that the particle injection has been moved to the parent class.
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -175,6 +179,9 @@ subroutine realloc_part3d( this, ratio, buf_type )
 
   case ( 'particle' )
 
+    call write_stdout( 'Resizing beam particle buffer: ' // num2str(int(this%npmax)) //&
+      ' -> ' // num2str(int( this%npmax * ratio )), only_root=.false. )
+
     this%npmax = int( this%npmax * ratio )
 
     allocate( this%tmp2( p_x_dim, this%npmax ) )
@@ -200,6 +207,9 @@ subroutine realloc_part3d( this, ratio, buf_type )
     endif
 
   case ( 'pipeline' )
+
+    call write_stdout( 'Resizing beam pipeline buffer: ' // num2str(int(this%nbmax)) //&
+      ' -> ' // num2str(int( this%nbmax * ratio )), only_root=.false. )
 
     this%nbmax = int( this%nbmax * ratio )
 

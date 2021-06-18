@@ -3,6 +3,7 @@ module fdist3d_class
 use parallel_module
 use options_class
 use input_class
+use part3d_class
 use iso_c_binding
 use param
 
@@ -14,6 +15,8 @@ public :: fdist3d
 
 integer, parameter, public :: p_pf3d_std = 1, p_pf3d_rnd = 2, p_pf3d_file = 3
 integer, parameter, public :: p_geom_cart = 1, p_geom_cyl = 2
+integer, parameter, public :: p_npmax_min = 65536
+real, parameter, public :: p_buf_incr = 1.2
 
 type, abstract :: fdist3d
 
@@ -69,13 +72,14 @@ subroutine end_fdist3d_intf( this )
   class( fdist3d ), intent(inout) :: this
 end subroutine end_fdist3d_intf
 
-subroutine inject_fdist3d_intf( this, x, p, s, q, npp )
-  import fdist3d, LG
+subroutine inject_fdist3d_intf( this, part )
+  import fdist3d, part3d
   implicit none
   class( fdist3d ), intent(inout) :: this
-  real, intent(inout), dimension(:,:) :: x, p, s
-  real, intent(inout), dimension(:) :: q
-  integer(kind=LG), intent(inout) :: npp
+  class( part3d ), intent(inout) :: part
+  ! real, intent(inout), dimension(:,:) :: x, p, s
+  ! real, intent(inout), dimension(:) :: q
+  ! integer(kind=LG), intent(inout) :: npp
 end subroutine inject_fdist3d_intf
 
 end interface

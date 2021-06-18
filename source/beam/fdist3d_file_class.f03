@@ -5,6 +5,7 @@ use options_class
 use input_class
 use iso_c_binding
 use fdist3d_class
+use part3d_class
 use sysutil_module
 use param
 use hdf5
@@ -59,7 +60,7 @@ subroutine init_fdist3d_file( this, input, opts, sect_id )
 
   real :: xtra
   integer :: npmax_tmp
-  integer(kind=LG) :: npmax_min
+  integer(kind=LG) :: npmax_guess
   character(len=20) :: sect_name
   character(len=:), allocatable :: read_str
   character(len=18), save :: sname = 'init_fdist3d_file'
@@ -106,11 +107,7 @@ subroutine init_fdist3d_file( this, input, opts, sect_id )
     call input%get( trim(sect_name) // '.evolution', this%evol )
   endif
 
-  this%quiet = .true.
-  ! if ( input%found( trim(sect_name) // '.quiet_start' ) ) then
-    ! call input%get( trim(sect_name) // '.quiet_start', this%quiet )
-  ! endif
-
+  this%quiet = .false.
   this%has_spin = .false.
   if ( input%found( trim(sect_name) // '.has_spin' ) ) then
     call input%get( trim(sect_name) // '.has_spin', this%has_spin )
@@ -119,26 +116,23 @@ subroutine init_fdist3d_file( this, input, opts, sect_id )
     endif
   endif
 
-  ! TODO: buffer reallocation needs to be implemented here
-  ! calculate the maximum particles number allowed in this partition
-  ! xtra = 2.0
-  ! npmax_min = this%nrp * this%nzp * product(this%ppc) * this%num_theta
-  ! if ( this%quiet ) then
-  !   npmax_min = npmax_min * 2
-  !   call write_stdout( 'The number of particles will be doubled for quiet-start &
-  !     &initialization in "standard" beam profile type.' )
-  ! endif
-  ! this%npmax = int( npmax_min * xtra, kind=LG )
-  ! if ( input%found( trim(sect_name) // '.npmax' ) ) then
-  !   call input%get( trim(sect_name) // '.npmax', npmax_tmp )
-  !   this%npmax = int( npmax_tmp, kind=LG )
-  !   ! if ( this%npmax < npmax_min ) then
-  !   !   call write_err( 'npmax is too small to initialize the 3D particles.' )
-  !   ! endif
-  ! endif
-
-  call input%get( trim(sect_name) // '.npmax', npmax_tmp )
-  this%npmax = int( npmax_tmp, kind=LG )
+  ! if npmax is not given, guess a value for npmax
+  xtra = 1.5
+  ! this guess value must be smaller than the practical value, so the buffer reallocation
+  ! will be invoked. Need a more smarter estimation algorithm.
+  npmax_guess = p_npmax_min
+  this%npmax = int( npmax_guess * xtra, kind=LG )
+  
+  ! if npmax is given, set it as the maximum of the given value and p_npmax_min
+  if ( input%found( trim(sect_name) // '.npmax' ) ) then
+    call input%get( trim(sect_name) // '.npmax', npmax_tmp )
+    this%npmax = int( npmax_tmp, kind=LG )
+    if ( this%npmax < p_npmax_min ) then
+      call write_wrn( 'The npmax may be too small for the initialization. It has &
+        &been automatically changed to ' // num2str(p_npmax_min) // '.' )
+      this%npmax = int( p_npmax_min, kind=LG )
+    endif
+  endif
 
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -157,22 +151,24 @@ subroutine end_fdist3d_file( this )
 
 end subroutine end_fdist3d_file
 
-subroutine inject_fdist3d_file( this, x, p, s, q, npp )
+! subroutine inject_fdist3d_file( this, x, p, s, q, npp )
+subroutine inject_fdist3d_file( this, part )
 
   use iso_c_binding
   implicit none
 
   class( fdist3d_file ), intent(inout) :: this
-  real, intent(inout), dimension(:,:) :: x, p, s
-  real, intent(inout), dimension(:) :: q
-  integer(kind=LG), intent(inout) :: npp
+  class( part3d ), intent(inout) :: part
+  ! real, intent(inout), dimension(:,:) :: x, p, s
+  ! real, intent(inout), dimension(:) :: q
+  ! integer(kind=LG), intent(inout) :: npp
   ! local
-  real :: rbuf
+  real :: rbuf, ratio
   real, dimension(:,:), allocatable :: xbuf, pbuf, sbuf
   real, dimension(:), allocatable :: qbuf
   real, dimension(2) :: edge_r, edge_z
   integer :: i, ierr
-  integer(kind=LG) :: pp, ptrcur
+  integer(kind=LG) :: ip, ptrcur
   integer, parameter :: BLOCK_SIZE = 65536
   integer, parameter :: real_kind_8 = kind(1.0d0)
   integer(hsize_t), dimension(2) :: dims, maxdims, chunk_size, offset
@@ -227,7 +223,6 @@ subroutine inject_fdist3d_file( this, x, p, s, q, npp )
     call h5dopen_f( grp_id, 's3', sdset_id(3), ierr )
   endif
 
-  pp = 0
   offset = 0
   chunk_size = (/0, 1/)
   do ptrcur = 1, dims(1), BLOCK_SIZE
@@ -241,8 +236,13 @@ subroutine inject_fdist3d_file( this, x, p, s, q, npp )
       chunk_size(1) = BLOCK_SIZE
     endif
 
-    if ( pp + chunk_size(1) > this%npmax ) then
-      call write_err('Insufficient memory allocated. "npmax" is too small.')
+    ! if ( pp + chunk_size(1) > part%npmax ) then
+    !   call write_err('Insufficient memory allocated. "npmax" is too small.')
+    ! endif
+
+    if ( part%npp + chunk_size(1) > part%npmax ) then
+      ratio = real(part%npp + chunk_size(1)) / part%npmax
+      call part%realloc( ratio = p_buf_incr * ratio, buf_type = 'particle' )
     endif
 
     ! read chunk from datasets x1, x2, x3
@@ -301,18 +301,20 @@ subroutine inject_fdist3d_file( this, x, p, s, q, npp )
        rbuf = sqrt( xbuf(i,1)**2 + xbuf(i,2)**2 )
        if ( rbuf >= edge_r(p_lower) .and. rbuf < edge_r(p_upper) .and. &
             xbuf(i,3) >= edge_z(p_lower) .and. xbuf(i,3) < edge_z(p_upper) ) then
-          pp = pp + 1
-          x(1,pp) = xbuf(i,1)
-          x(2,pp) = xbuf(i,2)
-          x(3,pp) = xbuf(i,3)
-          p(1,pp) = pbuf(i,1)
-          p(2,pp) = pbuf(i,2)
-          p(3,pp) = pbuf(i,3)
-          q(pp) = qbuf(i) * this%qconv_fac
+          ! pp = pp + 1
+          part%npp = part%npp + 1
+          ip = part%npp
+          part%x(1,ip) = xbuf(i,1)
+          part%x(2,ip) = xbuf(i,2)
+          part%x(3,ip) = xbuf(i,3)
+          part%p(1,ip) = pbuf(i,1)
+          part%p(2,ip) = pbuf(i,2)
+          part%p(3,ip) = pbuf(i,3)
+          part%q(ip) = qbuf(i) * this%qconv_fac
           if ( this%has_spin ) then
-             s(1,pp) = sbuf(i,1)
-             s(2,pp) = sbuf(i,2)
-             s(3,pp) = sbuf(i,3)
+             part%s(1,ip) = sbuf(i,1)
+             part%s(2,ip) = sbuf(i,2)
+             part%s(3,ip) = sbuf(i,3)
           endif
        endif
 
@@ -322,7 +324,7 @@ subroutine inject_fdist3d_file( this, x, p, s, q, npp )
 
   enddo
 
-  npp = pp
+  ! part%npp = pp
 
   call h5sclose_f( mspace_id, ierr )
   call h5dclose_f( xdset_id(1), ierr )

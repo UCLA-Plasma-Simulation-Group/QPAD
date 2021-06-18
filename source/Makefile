@@ -29,7 +29,8 @@ include $(configfile)
 # If AUTO_MAKE_DEPEND is TRUE, the source files below can be listed in
 # arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
-src = dtimer.c param.f03 sysutil_module.f03 parallel_module.f03 debug_tool.f03
+src = dtimer.c param.f03 parallel_module.f03 debug_tool.f03
+src += sysutil_module.f03
 src += sort_module.f03
 src += hdf5io_class.f03
 src += interpolation.f03 random.f03
