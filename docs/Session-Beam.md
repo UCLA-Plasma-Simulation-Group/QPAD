@@ -184,3 +184,94 @@ Every type of diagnostics must be provided as a session. The parameters of each 
 - **"name"** : string array(\*)-- Available options include "charge_cyl_m" for dumping beam charge density, and "raw" for dumping beam particle raw data.
 - **"ndump"** : integer -- For ndump = i, the code will dump the data every i time steps. If i = 0, the code will not dump the data.
 - **"psample"** : integer -- Only needed by "raw" diagnostic. For "psample" = i, the code will dump one particle raw data from every i particles.
+
+## Examples
+
+The following example shows the initialization of a beam with Gaussian transverse profile and a sawtooth longitudinal profile using the cylindrical geometry.
+
+```json
+"beam" :
+[
+    {
+    "profile_type" : "standard",
+    "geometry" : "cylindrical",
+    "profile" : ["gaussian", "uniform", "piecewise-linear"],
+    "evolution" : true,
+    "push_type" : "reduced",
+    "has_spin" : false,
+    "ppc" : [2, 2, 2],
+    "num_theta" : 16,
+    "npmax" : 20000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "density" : 4.0,
+    "quiet_start" : true,
+    "gauss_center" : [0.0, 0.0, "none"],
+    "gauss_sigma" : [0.25, 0.5, "none"],
+    "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
+    "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
+    "range1" : [0, 1.25],
+    "range2" : [0, 6.283185307179586],
+    "range3" : [-2.5, 2.5],
+    "uth" : [0.0, 0.0, 0.0],
+    "den_min" : 1e-10,
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    }
+],
+```
+
+This can also be realized by using the Cartesian geometry.
+
+```json
+"beam" :
+[
+    {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "piecewise-linear"],
+    "evolution" : true,
+    "push_type" : "reduced",
+    "has_spin" : false,
+    "ppc" : [2, 2, 2],
+    "num_theta" : 16,
+    "npmax" : 20000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "density" : 4.0,
+    "quiet_start" : true,
+    "gauss_center" : [0.0, 0.0, "none"],
+    "gauss_sigma" : [0.25, 0.25, "none"],
+    "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
+    "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
+    "range1" : [-1.25, 1.25],
+    "range2" : [-1.25, 1.25],
+    "range3" : [-2.5, 2.5],
+    "uth" : [0.0, 0.0, 0.0],
+    "den_min" : 1e-10,
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    }
+]
+```
