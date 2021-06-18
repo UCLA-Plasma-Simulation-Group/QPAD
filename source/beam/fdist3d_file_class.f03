@@ -122,7 +122,7 @@ subroutine init_fdist3d_file( this, input, opts, sect_id )
   ! will be invoked. Need a more smarter estimation algorithm.
   npmax_guess = p_npmax_min
   this%npmax = int( npmax_guess * xtra, kind=LG )
-  
+
   ! if npmax is given, set it as the maximum of the given value and p_npmax_min
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
     call input%get( trim(sect_name) // '.npmax', npmax_tmp )
@@ -151,7 +151,6 @@ subroutine end_fdist3d_file( this )
 
 end subroutine end_fdist3d_file
 
-! subroutine inject_fdist3d_file( this, x, p, s, q, npp )
 subroutine inject_fdist3d_file( this, part )
 
   use iso_c_binding
@@ -159,9 +158,6 @@ subroutine inject_fdist3d_file( this, part )
 
   class( fdist3d_file ), intent(inout) :: this
   class( part3d ), intent(inout) :: part
-  ! real, intent(inout), dimension(:,:) :: x, p, s
-  ! real, intent(inout), dimension(:) :: q
-  ! integer(kind=LG), intent(inout) :: npp
   ! local
   real :: rbuf, ratio
   real, dimension(:,:), allocatable :: xbuf, pbuf, sbuf
@@ -235,10 +231,6 @@ subroutine inject_fdist3d_file( this, part )
     else
       chunk_size(1) = BLOCK_SIZE
     endif
-
-    ! if ( pp + chunk_size(1) > part%npmax ) then
-    !   call write_err('Insufficient memory allocated. "npmax" is too small.')
-    ! endif
 
     if ( part%npp + chunk_size(1) > part%npmax ) then
       ratio = real(part%npp + chunk_size(1)) / part%npmax
@@ -323,8 +315,6 @@ subroutine inject_fdist3d_file( this, part )
     offset(1) = offset(1) + chunk_size(1)
 
   enddo
-
-  ! part%npp = pp
 
   call h5sclose_f( mspace_id, ierr )
   call h5dclose_f( xdset_id(1), ierr )

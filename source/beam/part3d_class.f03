@@ -92,7 +92,6 @@ integer, parameter :: cls_level = 2
 
 contains
 
-! subroutine init_part3d( this, opts, pf, dt )
 subroutine init_part3d( this, opts, npmax, dt, z0, qbm, amm )
 
   implicit none
@@ -122,12 +121,9 @@ subroutine init_part3d( this, opts, npmax, dt, z0, qbm, amm )
     this%part_dim = this%part_dim + p_s_dim
   endif
 
-  ! if ( this%has_spin ) this%part_dim = this%part_dim + p_s_dim
-
   this%edge(1) = opts%get_nd(1) * this%dr
   this%edge(2) = opts%get_nd(2) * this%dz
 
-  ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
   this%nbmax = int( 0.1*this%npmax, kind=LG )
   this%npp = 0
   

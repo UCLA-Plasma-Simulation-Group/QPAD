@@ -77,9 +77,6 @@ subroutine inject_fdist3d_intf( this, part )
   implicit none
   class( fdist3d ), intent(inout) :: this
   class( part3d ), intent(inout) :: part
-  ! real, intent(inout), dimension(:,:) :: x, p, s
-  ! real, intent(inout), dimension(:) :: q
-  ! integer(kind=LG), intent(inout) :: npp
 end subroutine inject_fdist3d_intf
 
 end interface

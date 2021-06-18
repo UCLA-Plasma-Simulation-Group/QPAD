@@ -78,9 +78,9 @@ subroutine init_sim_beams( this, input, opts )
   ! local data
   character(len=18), save :: sname = 'init_sim_beams'
   integer :: i, part_dim
-  real :: qm, qbm, dt, amm = 0.0
-  logical :: read_rst, has_spin
-  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode, npf, push_type
+  real :: dt
+  logical :: read_rst
+  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode
   type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
 
@@ -97,7 +97,8 @@ subroutine init_sim_beams( this, input, opts )
   case ( 'linear' )
     ps = p_ps_linear
   case default
-    call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
+    call write_err( 'Invalid interpolation type! Only "linear" are supported &
+      &currently.' )
   end select
 
   ! read smooth parameters
@@ -110,46 +111,14 @@ subroutine init_sim_beams( this, input, opts )
   case ( 'compensated' )
     sm_type = p_smooth_compensated
   case default
-    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are supported currently.' )
+    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are &
+      &supported currently.' )
   end select
   call input%get( 'simulation.smooth_order', sm_ord )
-
-  ! allocate( this%beam(n), this%pf(n) )
-  ! allocate( this%pf( this%num_beams ) )
-
-  ! initialize beam profile for each beam
-  ! do i = 1, this%num_beams
-
-  !   call input%get( 'beam('//num2str(i)//').profile', npf )
-  !   select case ( npf )
-  !     case (0)
-  !       allocate( fdist3d_000 :: this%pf(i)%p )
-  !       call this%pf(i)%p%new( input, i )
-  !     case (1)
-  !       allocate( fdist3d_001 :: this%pf(i)%p )
-  !       call this%pf(i)%p%new( input, i )
-  !     case (2)
-  !       allocate( fdist3d_002 :: this%pf(i)%p )
-  !       call this%pf(i)%p%new( input, i )
-  !     case (100)
-  !       allocate( fdist3d_100 :: this%pf(i)%p )
-  !       call this%pf(i)%p%new( input, i )
-  !     case (101)
-  !       allocate( fdist3d_101 :: this%pf(i)%p )
-  !       call this%pf(i)%p%new( input, i )
-  ! ! Add new distributions right above this line
-  !     case default
-  !       call write_err( 'Invalid beam profile!' )
-  !   end select
-
-  ! enddo
 
   ! initialize beam particle manager
   do i = 1, this%num_beams
     part_dim = p_x_dim + p_p_dim + 1
-    ! call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
-    ! if ( has_spin ) part_dim = part_dim + p_s_dim
-    ! call set_part3d_comm( part_dim, this%pf(i)%p%getnpmax() )
     if ( this%beam(i)%pf%has_spin ) part_dim = part_dim + p_s_dim
     call set_part3d_comm( part_dim, this%beam(i)%pf%npmax )
   enddo
@@ -158,28 +127,6 @@ subroutine init_sim_beams( this, input, opts )
   ! initialize beams
   do i = 1, this%num_beams
 
-    ! call input%get( 'beam('//num2str(i)//').q', qm )
-    ! call input%get( 'beam('//num2str(i)//').m', qbm )
-    ! qbm = qm/qbm
-
-    ! push_type = p_push3_reduced
-    ! call input%get( 'beam('//num2str(i)//').push_type', str )
-    ! select case ( trim(str) )
-    ! case ( 'reduced' )
-    !   push_type = p_push3_reduced
-    ! case ( 'boris' )
-    !   push_type = p_push3_boris
-    ! case default
-    !   call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
-    ! end select
-
-    ! call input%get( 'beam('//num2str(i)//').has_spin', has_spin )
-    ! if (has_spin) then
-      ! call input%get( 'beam('//num2str(i)//').anom_mag_moment', amm )
-    ! endif
-
-    ! call this%beam(i)%new( opts, max_mode, ps, this%pf(i)%p, &
-    !   qbm, dt, push_type, sm_type, sm_ord, has_spin, amm )
     call this%beam(i)%new( input, opts, max_mode, ps, dt, sm_type, sm_ord, i )
 
     if ( read_rst ) then

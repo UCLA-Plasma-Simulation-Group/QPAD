@@ -265,7 +265,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   xtra = 1.5
   npmax_guess = this%nrp * this%nzp * product(this%ppc) * this%num_theta
   this%npmax = int( npmax_guess * xtra, kind=LG )
-  
+
   ! if npmax is given, set it as the maximum of the given value and p_npmax_min
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
     call input%get( trim(sect_name) // '.npmax', npmax_tmp )
@@ -303,16 +303,12 @@ subroutine end_fdist3d_std( this )
 
 end subroutine end_fdist3d_std
 
-! subroutine inject_fdist3d_std( this, x, p, s, q, npp )
 subroutine inject_fdist3d_std( this, part )
 
   implicit none
 
   class( fdist3d_std ), intent(inout) :: this
   class( part3d ), intent(inout) :: part
-  ! real, intent(inout), dimension(:,:) :: x, p, s
-  ! real, intent(inout), dimension(:) :: q
-  ! integer(kind=LG), intent(inout) :: npp
 
   integer :: i, j, k, i1, i2, i3, ppc_tot, n_theta, nrp, nzp, noff_r, noff_z
   integer(kind=LG) :: ip
@@ -332,9 +328,7 @@ subroutine inject_fdist3d_std( this, part )
   dz      = this%dz
   dtheta  = 2.0 * pi / n_theta
   ppc_tot = product( this%ppc )
-
-  ! call this%get_den_lon( s, this%prof_pars_lon, den_lon )
-  coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
+  coef    = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
   do k = 1, nzp
     do j = 1, n_theta

@@ -252,7 +252,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
   ! will be invoked. Need a more smarter estimation algorithm.
   npmax_guess = this%tot_num / num_procs()
   this%npmax = int( npmax_guess * xtra, kind=LG )
-  
+
   ! if npmax is given, set it as the maximum of the given value and p_npmax_min
   if ( input%found( trim(sect_name) // '.npmax' ) ) then
     call input%get( trim(sect_name) // '.npmax', npmax_tmp )
@@ -290,16 +290,12 @@ subroutine end_fdist3d_rnd( this )
 
 end subroutine end_fdist3d_rnd
 
-! subroutine inject_fdist3d_rnd( this, x, p, s, q, npp )
 subroutine inject_fdist3d_rnd( this, part )
 
   implicit none
 
   class( fdist3d_rnd ), intent(inout) :: this
   class( part3d ), intent(inout) :: part
-  ! real, intent(inout), dimension(:,:) :: x, p, s
-  ! real, intent(inout), dimension(:) :: q
-  ! integer(kind=LG), intent(inout) :: npp
 
   integer :: i
   integer(kind=LG) :: ip
