@@ -104,6 +104,12 @@ The total number of particles of the entire beam.
 ### **"total_charge"** : real
 The total charge of the beam in the unit of en<sub>p</sub>c<sup>3</sup>&omega;<sub>p</sub><sup>-3</sup>.
 
+For simple beam density profiles, it is easy to connect the total charge with the peak density. Taking the tri-Gaussian profile for example, the total charge Q=(2&pi;)<sup>3/2</sup>&sigma;<sub>x</sub>&sigma;<sub>y</sub>&sigma;<sub>z</sub>. However, for arbitrary beam profiles it is usually difficult to exactly know the total charge from the peak density, or vice versa. In some special situations where one only knows the peak density but needs to use "random" initialization, a useful trick to know the total charge is:
+
+- First, set arbitrary total charge with sufficient number of macro-particles and run the simulation one time step to obtain the initial beam density distribution.
+- Second, read the peak density from the datasets. Since the number of particles is large enough to suppress the statistic fluctuation in the peak density, the reading should be very accurate. 
+- Third, scale the total charge according to the desired and reading values of the peak density (the total charge is proportional to the peak density).
+
 ### **"npmax"** : integer, optional
 The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation. (_The buffer reallocation has not yet been implemented, so currently `npmax` needs to be manually set._)
 
