@@ -35,7 +35,7 @@ Type of particle pusher. The available options are "reduced" and "boris". The fo
 The numbers of particles per "virtual" cell in the cylindrical coordinate, i.e. (&Delta;r, &Delta;&phi; &Delta;z). Note it is not affected by the choice of `geometry`.
 
 ### **"npmax"** : integer, optional
-The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation. (_The buffer reallocation has not yet been implemented, so currently `npmax` needs to be manually set._)
+The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation.
 
 ### **"den_min"**: real, optional
 It specifies the minimum density for injecting particles. Particles are only injected when the specified density is above this threshold. The default value is 1.0d-10.
@@ -111,7 +111,7 @@ For simple beam density profiles, it is easy to connect the total charge with th
 - Third, scale the total charge according to the desired and reading values of the peak density (the total charge is proportional to the peak density).
 
 ### **"npmax"** : integer, optional
-The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation. (_The buffer reallocation has not yet been implemented, so currently `npmax` needs to be manually set._)
+The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation.
 
 ### **"range1"**, **"range2"**, **"range3"**: real array(2)
 The three arrays specifies the lower and upper boundaries in 1-, 2- and 3-direction within which the particles are injected. The particles beyond this region will not be initialized.
@@ -158,7 +158,7 @@ If it is true, the code will update the momentum of beam particles every time st
 Type of particle pusher. The available options are "reduced" and "boris". The former is a reduced pusher in which the beam particles are assumed to travel at the speed of light. The latter is the standard full Boris algorithm but is less efficient than the reduced pusher. The default value is "reduced".
 
 ### **"npmax"** : integer, optional
-The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation. (_The buffer reallocation has not yet been implemented, so currently `npmax` needs to be manually set._)
+The number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If `npmax` is not large enough during the initialization, the program will automatically resize the particle buffers. However, it is still recommended to manually set `npmax` to avoid the buffer reallocation which may severely slow down the simulation.
 
 ### **"has_spin"** : logical, optional
 Switch of spin dynamics. When this parameter is true, extra coordinates of spin (s<sub>x</sub>, s<sub>y</sub>, s<sub>z</sub>) will be added to each macroparticles. Currently, the spin distribution can only be initialized through importing external particles, i.e., `profile_type` is "file". For other beam source types, this parameter must be set as "false". The default value is "false".

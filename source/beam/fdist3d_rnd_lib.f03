@@ -2,7 +2,7 @@ module fdist3d_rnd_lib
 
 use input_class
 use sysutil_module
-use random
+use math_module
 
 implicit none
 

@@ -7,7 +7,7 @@ use iso_c_binding
 use fdist3d_class
 use fdist3d_std_lib
 use part3d_class
-use random
+use math_module
 use sysutil_module
 
 implicit none
@@ -41,6 +41,12 @@ type, extends(fdist3d) :: fdist3d_std
 
   ! Gamma
   real :: gamma
+
+  ! Twiss parameter alpha, beta in x and y directions
+  real, dimension(2) :: alpha, beta, ctr
+
+  ! Transverse position offset (as a function of xi)
+  real, dimension(:), allocatable :: perp_offset_x, perp_offset_y
 
   ! Parameter list of the density profile
   real, dimension(:), pointer :: prof_pars1 => null()
@@ -261,6 +267,37 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
   endif
 
+  this%alpha = 0.0
+  if ( input%found( trim(sect_name) // '.alpha' ) ) then
+    if ( this%prof_type(1) == p_prof_gaussian .and. this%geom == p_geom_cart ) then
+      call input%get( trim(sect_name) // '.alpha(1)', this%alpha(1) )
+      call input%get( trim(sect_name) // '.gauss_center(1)', this%ctr(1) )
+      call input%get( trim(sect_name) // '.gauss_sigma(1)', this%beta(1) )
+      this%beta(1) = this%gamma * this%beta(1) / this%uth(1)
+    else
+      call write_err( 'Twiss parameter alpha is only available for Gaussian &
+        &profile in the Cartesian geometry.' )
+    endif
+    if ( this%prof_type(2) == p_prof_gaussian .and. this%geom == p_geom_cart ) then
+      call input%get( trim(sect_name) // '.alpha(2)', this%alpha(2) )
+      call input%get( trim(sect_name) // '.gauss_center(2)', this%ctr(2) )
+      call input%get( trim(sect_name) // '.gauss_sigma(2)', this%beta(2) )
+      this%beta(2) = this%gamma * this%beta(2) / this%uth(2)
+    else
+      call write_err( 'Twiss parameter alpha is only available for Gaussian &
+        &profile in the Cartesian geometry.' )
+    endif
+  endif
+
+  if ( input%found( trim(sect_name) // '.perp_offset_x' ) ) then
+    call input%get( trim(sect_name) // '.perp_offset_x', this%perp_offset_x )
+    this%perp_offset_x(1) = this%perp_offset_x(1) - this%z0
+  endif
+  if ( input%found( trim(sect_name) // '.perp_offset_y' ) ) then
+    call input%get( trim(sect_name) // '.perp_offset_y', this%perp_offset_y )
+    this%perp_offset_y(1) = this%perp_offset_y(1) - this%z0
+  endif
+
   ! if npmax is not given, guess a value for npmax
   xtra = 1.5
   npmax_guess = this%nrp * this%nzp * product(this%ppc) * this%num_theta
@@ -312,7 +349,7 @@ subroutine inject_fdist3d_std( this, part )
 
   integer :: i, j, k, i1, i2, i3, ppc_tot, n_theta, nrp, nzp, noff_r, noff_z
   integer(kind=LG) :: ip
-  real :: dr, dz, dtheta, rn, zn, theta, coef, den_loc, ratio
+  real :: dr, dz, dtheta, rn, zn, theta, coef, den_loc, ratio, offset
   real, dimension(3) :: den_val
   real, dimension(3) :: x_tmp
   character(len=18), save :: sname = 'inject_fdist3d_std'
@@ -438,6 +475,34 @@ subroutine inject_fdist3d_std( this, part )
     enddo
     part%npp = part%npp * 2
 
+  endif
+
+  ! use Twiss parameter to initialize the tilt phase-space ellipse
+  if ( this%alpha(1) /= 0.0 ) then
+    coef = this%gamma * this%alpha(1) / this%beta(1)
+    do i = 1, part%npp
+      part%p(1,i) = part%p(1,i) - coef * ( part%x(1,i) - this%ctr(1) )
+    enddo
+  endif
+  if ( this%alpha(2) /= 0.0 ) then
+    coef = this%gamma * this%alpha(2) / this%beta(2)
+    do i = 1, part%npp
+      part%p(2,i) = part%p(2,i) - coef * ( part%x(2,i) - this%ctr(2) )
+    enddo
+  endif
+
+  ! offset the beam particles according to xi
+  if ( allocated(this%perp_offset_x) ) then
+    do i = 1, part%npp
+      offset = eval_polynomial( part%x(3,i), this%perp_offset_x(1), this%perp_offset_x(2:) )
+      part%x(1,i) =  part%x(1,i) + offset
+    enddo
+  endif
+  if ( allocated(this%perp_offset_y) ) then
+    do i = 1, part%npp
+      offset = eval_polynomial( part%x(3,i), this%perp_offset_y(1), this%perp_offset_y(2:) )
+      part%x(2,i) =  part%x(2,i) + offset
+    enddo
   endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

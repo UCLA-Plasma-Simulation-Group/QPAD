@@ -7,7 +7,7 @@ use input_class
 use param
 use sysutil_module
 use fdist2d_lib
-use random
+use math_module
 
 implicit none
 
