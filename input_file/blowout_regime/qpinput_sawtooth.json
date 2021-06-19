@@ -1,11 +1,11 @@
 {
-"simulation" : !note
+"simulation" :
 {
-    "nodes" : [1,1], 
-    "grid" : [512,512],
+    "nodes" : [2, 2], 
+    "grid" : [250, 500],
     "box" : {
-        "r" : [0.0,12.0],
-        "z" : [0,10.0]},
+        "r" : [0.0, 5.0],
+        "z" : [-5.0, 5.0]},
     "field_boundary" : "open",
     "max_mode" : 1,
     "interpolation" : "linear",
@@ -27,25 +27,32 @@
     "random_seed" : 10,
     "algorithm" : "standard"
 },
+
 "beam" :
 [
     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "piecewise-linear"],
     "evolution" : true,
-    "profile" : 1,
     "push_type" : "reduced",
     "has_spin" : false,
-    "np" : [128,32,256],
-    "npmax" : 10000000,
+    "ppc" : [2, 2, 2],
+    "num_theta" : 16,
+    "npmax" : 1000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "peak_density" : 4.0,
+    "density" : 4.0,
     "quiet_start" : true,
-    "center" : [0.0,0.0,2.5],
-    "sigma" : [0.25,0.25,0.5],
-    "sigma_v" : [0.0,0.0,0.0],
-    "centroid_x" : [0.0,0.0,0.0],
-    "centroid_y" : [0.0,0.0,0.0],
+    "gauss_center" : [0.0, 0.0, "--"],
+    "gauss_sigma" : [0.25, 0.25, "--"],
+    "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
+    "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
+    "range1" : [-1.25, 1.25],
+    "range2" : [-1.25, 1.25],
+    "range3" : [-2.5, 2.5],
+    "uth" : [5.0, 5.0, 0.0],
+    "den_min" : 1e-10,
     "diag" :
     [
         {
