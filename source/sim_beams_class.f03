@@ -23,7 +23,6 @@ type sim_beams
   ! private
 
   class( beam3d ), dimension(:), pointer :: beam => null()
-  ! type( fdist3d_wrap ), dimension(:), pointer :: pf => null()
 
   integer :: num_beams
 
