@@ -64,6 +64,12 @@ The switch of initializing the beam particles using the "quiet start" method. If
 ### **"uth"** : real array(3)
 The thermal proper velocity in x-, y- and z-direction (note it is not affected by `geometry`.). The thermal distribution is subject to Gaussian distribution. This is usually used to set the initial rms beam divergence. The default value is 0.
 
+### **"alpha"** : real array(2)
+The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly.
+
+### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*)
+These two parameters are used to set the transverse position offset in x- and y-directions as a function of &xi;. Taking `perp_offset_x` for example, its format looks like "[&xi;<sub>0</sub>, P<sub>0</sub>, P<sub>1</sub>, ...]" where &xi;<sub>0</sub> is the reference position and P<sub>i</sub> are the coefficients of a polynomial. The transverse offset is given by &Delta;x=P<sub>0</sub>+P<sub>1</sub>(&xi;-&xi;<sub>0</sub>)+P<sub>2</sub>(&xi;-&xi;<sub>0</sub>)<sup>2</sup>+... . The configuration in y-direction is analogous.
+
 ### **"diag"** : session array(\*), optional
 Every type of diagnostics must be provided as a session. The parameters of each session include:
 
@@ -133,6 +139,12 @@ The switch of initializing the beam particles using the "quiet start" method. If
 
 ### **"uth"** : real array(3)
 The thermal proper velocity in x-, y- and z-direction (note it is not affected by `geometry`.). The thermal distribution is subject to Gaussian distribution. This is usually used to set the initial rms beam divergence. The default value is 0.
+
+### **"alpha"** : real array(2)
+The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly.
+
+### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*)
+These two parameters are used to set the transverse position offset in x- and y-directions as a function of &xi;. Taking `perp_offset_x` for example, its format looks like "[&xi;<sub>0</sub>, P<sub>0</sub>, P<sub>1</sub>, ...]" where &xi;<sub>0</sub> is the reference position and P<sub>i</sub> are the coefficients of a polynomial. The transverse offset is given by &Delta;x=P<sub>0</sub>+P<sub>1</sub>(&xi;-&xi;<sub>0</sub>)+P<sub>2</sub>(&xi;-&xi;<sub>0</sub>)<sup>2</sup>+... . The configuration in y-direction is analogous.
 
 ### **"diag"** : session array(\*), optional
 Every type of diagnostics must be provided as a session. The parameters of each session include:

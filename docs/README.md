@@ -13,6 +13,9 @@
 
 ## Change log
 
+**Update on 06/18/2021**
+- Added new parameters "alpha", "perp_offset_x" and "perp_offset_y" in the "beam" session. See the manual for details.
+
 **Update on 06/17/2021**
 - Rewrote the "beam" session. See the manual for details.
 
