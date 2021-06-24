@@ -137,7 +137,10 @@ subroutine get_den_pw_linear( x, prof_pars, den_value )
 
   ! check boundaries
   if ( x < x_array(1) .or. x > x_array(len_x) ) then
-    call write_err( 'Density profile at current position is undefined!' )
+    call write_wrn( 'Density profile at current position is undefined! Set zero &
+      &charge for this particle.' )
+    den_value = 0.0
+    return
   endif
 
   do i = 2, len_x
