@@ -188,7 +188,7 @@ The rest mass for each beam particle. E.g. it is 1.0 for an electron and 1836.15
 The Cartesian coordinates (x, y, &xi;) of the beam center.
 
 ### **"file_center"** : real array(3)
-The Cartesian coordinates (x, y, &xi;) of beam center in the HDF5 file.
+The Cartesian coordinates (x, y, z) of beam center in the HDF5 file.
 
 ### **"length_conv_fac"** : real, optional
 The scaling factor of the quantities with a length dimension. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density. With this parameter configured, the beam size will be stretched by `length_conv_fac` times. The default value is 1.0.
