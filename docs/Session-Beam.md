@@ -225,8 +225,8 @@ The following example shows the initialization of a beam with Gaussian transvers
     "gamma" : 20000,
     "density" : 4.0,
     "quiet_start" : true,
-    "gauss_center" : [0.0, 0.0, "none"],
-    "gauss_sigma" : [0.25, 0.5, "none"],
+    "gauss_center" : [0.0, "none", "none"],
+    "gauss_sigma" : [0.25, "none", "none"],
     "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
     "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
     "range1" : [0, 1.25],
@@ -256,6 +256,7 @@ This can also be realized by using the Cartesian geometry.
 "beam" :
 [
     {
+    "profile_type" : "standard",
     "geometry" : "cartesian",
     "profile" : ["gaussian", "gaussian", "piecewise-linear"],
     "evolution" : true,
