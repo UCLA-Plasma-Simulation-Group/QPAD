@@ -61,13 +61,13 @@ The global multiplication factor for the density profile. Regardless of which pr
 ### **"quiet_start"** : logical, optional
 The switch of initializing the beam particles using the "quiet start" method. If it is turned on, a set of image particles will be added to suppress the statistic noise. Note that with this function on, the total particle number will be doubled. The default value is "false".
 
-### **"uth"** : real array(3)
+### **"uth"** : real array(3), optional
 The thermal proper velocity in x-, y- and z-direction (note it is not affected by `geometry`.). The thermal distribution is subject to Gaussian distribution. This is usually used to set the initial rms beam divergence. The default value is 0.
 
-### **"alpha"** : real array(2)
-The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly.
+### **"alpha"** : real array(2), optional
+The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly. The default value is 0.
 
-### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*)
+### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*), optional
 These two parameters are used to set the transverse position offset in x- and y-directions as a function of &xi;. Taking `perp_offset_x` for example, its format looks like "[&xi;<sub>0</sub>, P<sub>0</sub>, P<sub>1</sub>, ...]" where &xi;<sub>0</sub> is the reference position and P<sub>i</sub> are the coefficients of a polynomial. The transverse offset is given by &Delta;x=P<sub>0</sub>+P<sub>1</sub>(&xi;-&xi;<sub>0</sub>)+P<sub>2</sub>(&xi;-&xi;<sub>0</sub>)<sup>2</sup>+... . The configuration in y-direction is analogous.
 
 ### **"diag"** : session array(\*), optional
@@ -137,13 +137,13 @@ The Lorentz factor for the average energy of the particle beam.
 ### **"quiet_start"** : logical, optional
 The switch of initializing the beam particles using the "quiet start" method. If it is turned on, a set of image particles will be added to suppress the statistic noise. Note that with this function on, the total particle number will be doubled. The default value is "false".
 
-### **"uth"** : real array(3)
+### **"uth"** : real array(3), optional
 The thermal proper velocity in x-, y- and z-direction (note it is not affected by `geometry`.). The thermal distribution is subject to Gaussian distribution. This is usually used to set the initial rms beam divergence. The default value is 0.
 
-### **"alpha"** : real array(2)
-The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly.
+### **"alpha"** : real array(2), optional
+The Twiss parameter &alpha; in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is ONLY available for `geometry`="cartesian" and Gaussian profile in x- and/or y-directions. The Twiss parameter &beta; and the emittance will be automatically calculated from `gauss_sigma`, `gamma` and `uth`, so only &alpha; needs to be given explicitly. The default value is 0.
 
-### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*)
+### **"perp_offset_x"**, **"perp_offset_y"** : real array(\*), optional
 These two parameters are used to set the transverse position offset in x- and y-directions as a function of &xi;. Taking `perp_offset_x` for example, its format looks like "[&xi;<sub>0</sub>, P<sub>0</sub>, P<sub>1</sub>, ...]" where &xi;<sub>0</sub> is the reference position and P<sub>i</sub> are the coefficients of a polynomial. The transverse offset is given by &Delta;x=P<sub>0</sub>+P<sub>1</sub>(&xi;-&xi;<sub>0</sub>)+P<sub>2</sub>(&xi;-&xi;<sub>0</sub>)<sup>2</sup>+... . The configuration in y-direction is analogous.
 
 ### **"diag"** : session array(\*), optional
@@ -194,7 +194,7 @@ The Cartesian coordinates (x, y, z) of beam center in the HDF5 file.
 The scaling factor of the quantities with a length dimension. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density. With this parameter configured, the beam size will be stretched by `length_conv_fac` times. The default value is 1.0.
 
 ### **"charge_conv_fac"** : real, optional
-The scaling factor of the charge per particle. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density, or when the beam defined in the HDF5 file is extracted from other simulation (e.g. OSIRIS) with different cell volume. With this parameter configured, the charge per particle will be multiplied by `charge_conv_fac` The default value is 1.0.
+The scaling factor of the charge per particle. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density, or when the beam defined in the HDF5 file is extracted from other simulation (e.g. OSIRIS) with different cell volume. With this parameter configured, the charge per particle will be multiplied by `charge_conv_fac`. The default value is 1.0.
 
 ### **"diag"** : session array(\*), optional
 Every type of diagnostics must be provided as a session. The parameters of each session include:
