@@ -221,6 +221,7 @@ subroutine inject_fdist3d_file( this, part )
 
   offset = 0
   chunk_size = (/0, 1/)
+  ip = 0; part%npp = 0
   do ptrcur = 1, dims(1), BLOCK_SIZE
 
     ! check if last copy of table and set np

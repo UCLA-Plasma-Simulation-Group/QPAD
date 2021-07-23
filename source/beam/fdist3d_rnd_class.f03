@@ -353,38 +353,33 @@ subroutine inject_fdist3d_rnd( this, part )
     q_per_part = q_per_part * 0.5 * pi**2
   endif
 
+  ip = 0; part%npp = 0
   do i = 1, this%tot_num
 
     ! generate particles until they are located within the range.
     ! Note that if a particle is generated beyond the physical boundary, it will
     ! not be handled here but dropped later by the particle manager.
     do
-
       ! generate transverse position and check if it is inside the initialization range.
       call this%get_rndpos1( this%prof_pars1, x_tmp(1) )
       if ( x_tmp(1) < this%range(p_lower,1) .or. x_tmp(1) >= this%range(p_upper,1) ) cycle
       call this%get_rndpos2( this%prof_pars2, x_tmp(2) )
       if ( x_tmp(2) < this%range(p_lower,2) .or. x_tmp(2) >= this%range(p_upper,2) ) cycle
-
-      ! check if it is inside this partition
-      select case ( this%geom )
-      case ( p_geom_cart )
-        r_tmp = sqrt( x_tmp(1) * x_tmp(1) + x_tmp(2) * x_tmp(2) )
-      case ( p_geom_cyl )
-        r_tmp = x_tmp(1)
-      end select
-      if ( r_tmp < edge_r(p_lower) .or. r_tmp >= edge_r(p_upper) ) cycle
-
-      ! generate longitudinal position and check if it is inside the initialization range.
       call this%get_rndpos3( this%prof_pars3, x_tmp(3) )
       if ( x_tmp(3) < this%range(p_lower,3) .or. x_tmp(3) >= this%range(p_upper,3) ) cycle
 
-      ! check if it is inside this partition
-      if ( x_tmp(3) < edge_z(p_lower) .or. x_tmp(3) >= edge_z(p_upper) ) cycle
-
       exit
-
     enddo
+
+    ! check if it is inside this partition
+    select case ( this%geom )
+    case ( p_geom_cart )
+      r_tmp = sqrt( x_tmp(1) * x_tmp(1) + x_tmp(2) * x_tmp(2) )
+    case ( p_geom_cyl )
+      r_tmp = x_tmp(1)
+    end select
+    if ( r_tmp < edge_r(p_lower) .or. r_tmp >= edge_r(p_upper) ) cycle
+    if ( x_tmp(3) < edge_z(p_lower) .or. x_tmp(3) >= edge_z(p_upper) ) cycle
 
     ! check if needs to reallocate the particle buffer
     if ( part%npp >= part%npmax ) then

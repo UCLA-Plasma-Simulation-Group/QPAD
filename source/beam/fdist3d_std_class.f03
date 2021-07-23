@@ -367,6 +367,7 @@ subroutine inject_fdist3d_std( this, part )
   ppc_tot = product( this%ppc )
   coef    = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
+  ip = 0; part%npp = 0
   do k = 1, nzp
     do j = 1, n_theta
       do i = 1, nrp
