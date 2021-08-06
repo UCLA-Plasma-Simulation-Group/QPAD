@@ -4,6 +4,8 @@ use sysutil_module
 use beam3d_class
 use part3d_popas_class
 use part3d_class
+use options_class
+use input_class
 
 implicit none
 
@@ -33,19 +35,23 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine alloc_beam3d_popas( this )
+subroutine alloc_beam3d_popas( this, input, opts, beam_id )
 
-   implicit none
+  implicit none
 
-   class( beam3d_popas ), intent(inout) :: this
-   ! local data
-   character(len=32), save :: sname = 'alloc_beam3d_popas'
+  class( beam3d_popas ), intent(inout) :: this
+  type(input_json), intent(inout) :: input
+  type(options), intent(in) :: opts
+  integer, intent(in) :: beam_id
+  ! local data
+  character(len=32), save :: sname = 'alloc_beam3d_popas'
 
-   call write_dbg( cls_name, sname, cls_level, 'starts' )
-   if ( .not. associated( this%part ) ) then
-      allocate( part3d_popas :: this%part )
-   endif
-   call write_dbg( cls_name, sname, cls_level, 'ends' )
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  if ( .not. associated( this%part ) ) then
+     allocate( part3d_popas :: this%part )
+  endif
+  call this%beam3d%alloc( input, opts, beam_id )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine alloc_beam3d_popas
 

@@ -1,11 +1,11 @@
 {
 "simulation" : !note
 {
-    "nodes" : [1,2], 
-    "grid" : [512,1024],
+    "nodes" : [1, 2], 
+    "grid" : [500, 1000],
     "box" : {
-        "r" : [0.0,6.0],
-        "z" : [0,12.0]},
+        "r" : [0.0, 5.0],
+        "z" : [0.0, 10.0]},
     "field_boundary" : "open",
     "max_mode" : 1,
     "interpolation" : "linear",
@@ -31,22 +31,26 @@
 "beam" :
 [
     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
     "evolution" : true,
-    "profile" : 1,
     "push_type" : "reduced",
     "has_spin" : false,
-    "np" : [256,64,256],
-    "npmax" : 10000000,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 2000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "peak_density" : 10.0,
+    "density" : 4.0,
     "quiet_start" : true,
-    "center" : [0.0,0.0,2.5],
-    "sigma" : [0.25,0.25,0.5],
-    "sigma_v" : [0.0,0.0,0.0],
-    "centroid_x" : [0.0,0.0,0.0],
-    "centroid_y" : [0.0,0.0,0.0],
+    "gauss_center" : [0.0, 0.0, 2.5],
+    "gauss_sigma" : [0.25, 0.25, 0.5],
+    "range1" : [-1.25, 1.25],
+    "range2" : [-1.25, 1.25],
+    "range3" : [0.0, 5.0],
+    "uth" : [5.0, 5.0, 0.0],
+    "den_min" : 1e-10,
     "diag" :
     [
         {

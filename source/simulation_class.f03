@@ -66,12 +66,13 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine alloc_simulation( this, input )
+subroutine alloc_simulation( this, input, opts )
 
   implicit none
 
   class( simulation ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'alloc_simulation'
 
@@ -84,7 +85,7 @@ subroutine alloc_simulation( this, input )
 
   call this%fields%alloc( input )
   call this%plasma%alloc( input )
-  call this%beams%alloc( input )
+  call this%beams%alloc( input, opts )
   call this%diag%alloc( input )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -107,6 +108,8 @@ subroutine init_simulation(this, input, opts)
   integer, dimension(:), allocatable :: seed
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call write_stdout( 'Initializing simulation...' )
 
   ! initialize pseudo-random number sequence
   call input%get( 'simulation.random_seed', rnd_seed )
@@ -148,12 +151,19 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nneutrals', this%nneutrals )
   call input%get( 'simulation.max_mode', this%max_mode )
 
+  call write_stdout( 'Initializing fields...' )
   call this%fields%new( input, opts )
+
+  call write_stdout( 'Initializing beams...' )
   call this%beams%new( input, opts )
+
+  call write_stdout( 'Initializing plasma...' )
   call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
+  call write_stdout( 'Initializing diagnostics...' )
   call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
 
+  call write_stdout( 'Initializing pipeline...' )
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
@@ -182,6 +192,7 @@ subroutine end_simulation(this)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  call write_stdout( 'Terminating simulation...' )
   call this%fields%del()
   call this%beams%del()
   call this%plasma%del()
@@ -239,6 +250,7 @@ subroutine run_simulation( this )
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
+  call write_stdout( 'Starting simulation...' )
   if ( this%start3d == 1 ) then
 
     call q_beam%as(0.0)
