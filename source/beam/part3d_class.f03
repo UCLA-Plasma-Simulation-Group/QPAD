@@ -6,7 +6,6 @@ use parallel_module
 use options_class
 use field_class
 use ufield_class
-use fdist3d_class
 use hdf5io_class
 use mpi
 use interpolation
@@ -19,56 +18,70 @@ public :: part3d
 
 type part3d
 
-   ! private
+  ! private
 
-! qbm = particle charge/mass ratio
-! dt = time interval between successive calculations
+  ! particle charge/mass ratio
+  real :: qbm
 
-   real :: qbm, dt, dr, dz
-   real :: z0
-   ! nbmax = size of buffer for passing particles between processors
-   ! npp = number of particles in current partition
-   ! npmax = maximum number of particles in each partition
-   integer(kind=LG) :: npmax, nbmax, npp
-   integer :: part_dim ! dimension of particle coordinates
-   ! particle buffer for particle manager
-   real, dimension(:), allocatable :: pbuff
-   ! array for particle position
-   real, dimension(:,:), allocatable :: x
-   ! array for particle momenta
-   real, dimension(:,:), allocatable :: p
-   ! array for particle charge
-   real, dimension(:), allocatable :: q
-   ! array for particle spin
-   real, dimension(:,:), allocatable :: s
-   ! particle upper boundaries
-   real, dimension(2) :: edge
+  ! cell sizes & time step
+  real :: dt, dr, dz
 
-   logical :: has_spin = .false.
+  ! lower boundary of the simulation box, used for shifting the longitudinal
+  ! particle positions
+  real :: z0
 
-   ! anomalous magnet moment for spin push
-   real :: anom_mag_moment
+  ! nbmax = size of buffer for passing particles between processors
+  ! npp = number of particles in current partition
+  ! npmax = maximum number of particles in each partition
+  integer(kind=LG) :: npmax, nbmax, npp
 
-   ! temporary arrays used for buffer reallocation
-   real, private, dimension(:), allocatable :: tmp1
-   real, private, dimension(:,:), allocatable :: tmp2
+  ! dimension of particle coordinates
+  integer :: part_dim
 
-   contains
+  ! particle buffer for particle manager
+  real, dimension(:), allocatable :: pbuff
 
-   procedure :: new          => init_part3d
-   procedure :: del          => end_part3d
-   procedure :: qdeposit     => qdeposit_part3d
-   procedure :: push_boris   => push_boris_part3d
-   procedure :: push_reduced => push_reduced_part3d
-   procedure :: update_bound => update_bound_part3d
-   procedure :: push_spin    => push_spin_part3d
-   procedure :: realloc      => realloc_part3d
+  ! array for particle position
+  real, dimension(:,:), allocatable :: x
 
-   procedure :: wr   => writehdf5_part3d
-   procedure :: wrst => writerst_part3d
-   procedure :: rrst => readrst_part3d
+  ! array for particle momenta
+  real, dimension(:,:), allocatable :: p
 
-   procedure :: getnpp
+  ! array for particle charge
+  real, dimension(:), allocatable :: q
+
+  ! array for particle spin
+  real, dimension(:,:), allocatable :: s
+
+  ! particle upper boundaries (the lower boundaries start from zero)
+  real, dimension(2) :: edge
+
+  ! if enable spin dynamics
+  logical :: has_spin = .false.
+
+  ! anomalous magnet moment for spin push
+  real :: amm
+
+  ! temporary arrays used for buffer reallocation
+  real, private, dimension(:), allocatable :: tmp1
+  real, private, dimension(:,:), allocatable :: tmp2
+
+  contains
+
+  procedure :: new          => init_part3d
+  procedure :: del          => end_part3d
+  procedure :: qdeposit     => qdeposit_part3d
+  procedure :: push_boris   => push_boris_part3d
+  procedure :: push_reduced => push_reduced_part3d
+  procedure :: update_bound => update_bound_part3d
+  procedure :: push_spin    => push_spin_part3d
+  procedure :: realloc      => realloc_part3d
+
+  procedure :: wr   => writehdf5_part3d
+  procedure :: wrst => writerst_part3d
+  procedure :: rrst => readrst_part3d
+
+  procedure :: getnpp
 
 end type
 
@@ -79,80 +92,70 @@ integer, parameter :: cls_level = 2
 
 contains
 
-subroutine init_part3d(this,opts,pf,qbm,dt,has_spin,amm)
+subroutine init_part3d( this, opts, npmax, dt, z0, qbm, amm )
 
-   implicit none
+  implicit none
 
-   class(part3d), intent(inout) :: this
-   type(options), intent(in) :: opts
-   class(fdist3d), intent(inout) :: pf
-   real, intent(in) :: qbm, dt
-   logical, intent(in) :: has_spin
-   real, intent(in) :: amm
-! local data
-   character(len=18), save :: sname = 'init_part3d'
-   integer :: npmax, nbmax
+  class(part3d), intent(inout) :: this
+  type(options), intent(in) :: opts
+  integer(kind=LG), intent(in) :: npmax
+  real, intent(in) :: dt, z0, qbm
+  real, intent(in), optional :: amm
+  ! local data
+  character(len=18), save :: sname = 'init_part3d'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
+  call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   this%has_spin = has_spin
-   this%anom_mag_moment = amm
+  this%qbm      = qbm
+  this%dt       = dt
+  this%npmax    = npmax
+  this%dr       = opts%get_dr()
+  this%dz       = opts%get_dxi()
+  this%part_dim = p_x_dim + p_p_dim + 1
+  this%z0       = z0
 
-   this%qbm = qbm
-   this%dt = dt
-   this%part_dim = p_x_dim + p_p_dim + 1
-   if ( this%has_spin ) this%part_dim = this%part_dim + p_s_dim
-   npmax = pf%getnpmax()
-   this%dr = pf%getdx()
-   this%dz = pf%getdz()
-   this%npmax = npmax
+  this%has_spin = .false.
+  if ( present(amm) ) then
+    this%has_spin = .true.
+    this%amm = amm
+    this%part_dim = this%part_dim + p_s_dim
+  endif
 
-   this%edge(1) = opts%get_nd(1) * this%dr
-   this%edge(2) = opts%get_nd(2) * this%dz
+  this%edge(1) = opts%get_nd(1) * this%dr
+  this%edge(2) = opts%get_nd(2) * this%dz
 
-   ! *TODO* nbmax needs to be dynamically changed, otherwise it has the risk to overflow
-   nbmax = int(0.1*this%npmax)
-   this%nbmax = nbmax
-   this%npp = 0
-   this%z0 = pf%getz0()
+  this%nbmax = int( 0.1*this%npmax, kind=LG )
+  this%npp = 0
+  
+  allocate( this%x( p_x_dim, this%npmax ) )
+  allocate( this%p( p_p_dim, this%npmax ) )
+  allocate( this%q( this%npmax ) )
+  if ( this%has_spin ) then
+    allocate( this%s( p_s_dim, this%npmax ) )
+  endif
 
-   allocate( this%x( p_x_dim, npmax ) )
-   allocate( this%p( p_p_dim, npmax ) )
-   allocate( this%q( npmax ) )
-   if ( this%has_spin ) then
-      allocate( this%s( p_s_dim, npmax ) )
-   endif
+  allocate( this%pbuff( this%part_dim * this%nbmax ) )
 
-   allocate( this%pbuff( this%part_dim * nbmax ) )
+  ! inject particle coordinates according to profile
+  ! call pf%inject( this%x, this%p, this%s, this%q, this%npp )
 
-   ! initialize particle coordinates according to profile
-   if ( this%has_spin ) then
-      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
-         opts%get_ndp(), this%s )
-   else
-      call pf%dist( this%x, this%p, this%q, this%npp, opts%get_noff(), &
-         opts%get_ndp() )
-   endif
+  ! note that the particle injection has been moved to the parent class.
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine init_part3d
 
 subroutine end_part3d(this)
 
-   implicit none
+  implicit none
 
-   class(part3d), intent(inout) :: this
-   character(len=18), save :: sname = 'end_part3d'
+  class(part3d), intent(inout) :: this
+  character(len=18), save :: sname = 'end_part3d'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-
-   deallocate( this%x, this%p, this%q, this%pbuff )
-   if ( this%has_spin ) then
-      deallocate( this%s )
-   endif
-
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  deallocate( this%x, this%p, this%q, this%pbuff )
+  if ( this%has_spin ) deallocate( this%s )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine end_part3d
 
@@ -171,6 +174,9 @@ subroutine realloc_part3d( this, ratio, buf_type )
   select case ( trim(buf_type) )
 
   case ( 'particle' )
+
+    call write_stdout( 'Resizing beam particle buffer: ' // num2str(int(this%npmax)) //&
+      ' -> ' // num2str(int( this%npmax * ratio )), only_root=.false. )
 
     this%npmax = int( this%npmax * ratio )
 
@@ -197,6 +203,9 @@ subroutine realloc_part3d( this, ratio, buf_type )
     endif
 
   case ( 'pipeline' )
+
+    call write_stdout( 'Resizing beam pipeline buffer: ' // num2str(int(this%nbmax)) //&
+      ' -> ' // num2str(int( this%nbmax * ratio )), only_root=.false. )
 
     this%nbmax = int( this%nbmax * ratio )
 
@@ -584,7 +593,7 @@ subroutine push_spin_part3d( this, ep, bp, p_old, gam, ptrcur, np )
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   a = this%anom_mag_moment
+   a = this%amm
 
    pp = ptrcur
    do i = 1, np
@@ -799,17 +808,17 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    class(hdf5file), intent(in) :: file
    integer, intent(in) :: dspl, rtag, stag
    integer, intent(inout) :: id
-! local data
+  ! local data
    character(len=18), save :: sname = 'writehdf5_part3d'
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
-      &this%z0,rtag,stag,id,ierr, this%s)
+      call pwpart_pipe(file,this%x, this%p, this%q, this%npp, dspl, &
+        this%z0, rtag, stag, id, ierr, this%s)
    else
-      call pwpart_pipe(file,this%x, this%p, this%q,this%npp,dspl,&
-      &this%z0,rtag,stag,id,ierr)
+      call pwpart_pipe(file,this%x, this%p, this%q, this%npp, dspl, &
+        this%z0, rtag, stag, id, ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -821,7 +830,7 @@ subroutine writerst_part3d(this,file)
 
    class(part3d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
-! local data
+  ! local data
    character(len=18), save :: sname = 'writerst_part3d'
    integer :: ierr = 0
 
@@ -841,15 +850,15 @@ subroutine readrst_part3d(this,file)
 
    class(part3d), intent(inout) :: this
    class(hdf5file), intent(in) :: file
-! local data
+  ! local data
    character(len=18), save :: sname = 'readrst_part3d'
    integer :: ierr = 0
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
-      call rpart(file,this%x, this%p, this%q,this%npp,ierr, this%s)
+      call rpart(file,this%x, this%p, this%q, this%npp, ierr, this%s)
    else
-      call rpart(file,this%x, this%p, this%q,this%npp,ierr)
+      call rpart(file,this%x, this%p, this%q, this%npp, ierr)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

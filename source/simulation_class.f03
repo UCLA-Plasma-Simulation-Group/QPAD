@@ -41,7 +41,7 @@ type simulation
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start3d, nbeams, nspecies, nneutrals, tstep
+  integer :: iter, nstep3d, nstep2d, start2d, start3d, nbeams, nspecies, nneutrals, tstep
   integer :: ndump, max_mode
 
   ! pipeline parameters
@@ -66,12 +66,13 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine alloc_simulation( this, input )
+subroutine alloc_simulation( this, input, opts )
 
   implicit none
 
   class( simulation ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'alloc_simulation'
 
@@ -84,7 +85,7 @@ subroutine alloc_simulation( this, input )
 
   call this%fields%alloc( input )
   call this%plasma%alloc( input )
-  call this%beams%alloc( input )
+  call this%beams%alloc( input, opts )
   call this%diag%alloc( input )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -108,6 +109,8 @@ subroutine init_simulation(this, input, opts)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  call write_stdout( 'Initializing simulation...' )
+
   ! initialize pseudo-random number sequence
   call input%get( 'simulation.random_seed', rnd_seed )
   if ( rnd_seed == 0 ) then
@@ -126,6 +129,7 @@ subroutine init_simulation(this, input, opts)
   this%dr  = opts%get_dr()
   this%dxi = opts%get_dxi()
   this%nstep2d = opts%get_ndp(2)
+  this%start2d = opts%get_noff(2) + 1
 
   call input%get( 'simulation.n0', n0 )
   call input%get( 'simulation.time', time )
@@ -147,12 +151,19 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nneutrals', this%nneutrals )
   call input%get( 'simulation.max_mode', this%max_mode )
 
+  call write_stdout( 'Initializing fields...' )
   call this%fields%new( input, opts )
+
+  call write_stdout( 'Initializing beams...' )
   call this%beams%new( input, opts )
+
+  call write_stdout( 'Initializing plasma...' )
   call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
+  call write_stdout( 'Initializing diagnostics...' )
   call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
 
+  call write_stdout( 'Initializing pipeline...' )
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
@@ -181,6 +192,7 @@ subroutine end_simulation(this)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  call write_stdout( 'Terminating simulation...' )
   call this%fields%del()
   call this%beams%del()
   call this%plasma%del()
@@ -238,6 +250,7 @@ subroutine run_simulation( this )
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
+  call write_stdout( 'Starting simulation...' )
   if ( this%start3d == 1 ) then
 
     call q_beam%as(0.0)
@@ -370,12 +383,14 @@ subroutine run_simulation( this )
       ! advance species particles
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
+        call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
       ! ionize and advance particles of neutrals
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
+        ! TODO: add sorting
       enddo
 
       call e%copy_slice( j, p_copy_1to2 )

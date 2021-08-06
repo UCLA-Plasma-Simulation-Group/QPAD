@@ -5,6 +5,7 @@ use input_class
 use sim_beams_popas_class
 use diagnostics_popas_class
 use sysutil_module
+use options_class
 
 implicit none
 
@@ -32,12 +33,13 @@ integer, save :: cls_level = 1
 
 contains
 
-subroutine alloc_simulation_popas( this, input )
+subroutine alloc_simulation_popas( this, input, opts )
 
   implicit none
 
   class( simulation_popas ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
   ! local data
   character(len=18), save :: sname = 'alloc_simulation_popas'
 
@@ -51,7 +53,7 @@ subroutine alloc_simulation_popas( this, input )
     allocate( sim_diag_popas :: this%diag )
   endif
 
-  call this%simulation%alloc( input )
+  call this%simulation%alloc( input, opts )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

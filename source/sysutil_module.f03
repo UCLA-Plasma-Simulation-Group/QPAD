@@ -2,6 +2,7 @@ module sysutil_module
 
 ! use, intrinsic :: iso_fortran_env
 use mpi
+use parallel_module
 
 implicit none
 
@@ -105,7 +106,7 @@ subroutine write_stdout( msg, only_root )
   if ( only_root_ ) then
     if ( is_root ) write( *, * ) trim(adjustl(msg))
   else
-    write( *, * ) trim(adjustl(msg))
+    write( *, * ) '[proc ' // num2str(id_proc()) // '] ' // trim(adjustl(msg))
   endif
 
 end subroutine write_stdout
@@ -153,6 +154,8 @@ subroutine write_err( estr )
 
   call dtimer( dtime, itime, 1 )
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
+  write( *, * ) 'Fatal error occurs! Please enter the "ELOG" folder and type the &
+            &command "tail --lines=1 *" to check the last line of each log file.'
   
   call mpi_initialized( flag, ierr )
   if ( flag ) call mpi_finalize( ierr )
@@ -298,6 +301,7 @@ subroutine init_tprof( enable_timing )
   call add_tprof( 'deposit 2D particles' )
   call add_tprof( 'push 2D particles' )
   call add_tprof( 'move 2D particles' )
+  call add_tprof( 'sort 2D particles' )
   call add_tprof( 'deposit 3D particles' )
   call add_tprof( 'push 3D particles' )
   call add_tprof( 'move 3D particles' )

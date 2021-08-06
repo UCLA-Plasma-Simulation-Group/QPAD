@@ -1,11 +1,11 @@
 {
 "simulation" : !note
 {
-    "nodes" : [1,1], 
-    "grid" : [256,438],
+    "nodes" : [1, 4], 
+    "grid" : [256, 438],
     "box" : {
-        "r" : [0.0,9.395847],
-        "z" : [0,9.6]},
+        "r" : [0.0, 9.395847],
+        "z" : [0.0, 9.6]},
     "field_boundary" : "open",
     "max_mode" : 2,
     "interpolation" : "linear",
@@ -31,22 +31,26 @@
 "beam" :
 [
     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
     "evolution" : true,
-    "profile" : 1,
     "push_type" : "reduced",
     "has_spin" : false,
-    "np" : [128,16,512],
-    "npmax" : 10000000,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 2000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "peak_density" : 93.4633388357,
+    "density" : 93.4633,
     "quiet_start" : true,
-    "center" : [0.0,0.0,3.0066710513952833],
-    "sigma" : [0.1370828,0.1370828,0.479789533],
-    "sigma_v" : [13.70828,13.70828,0.0],
-    "centroid_x" : [0.0,0.0,0.0],
-    "centroid_y" : [0.0,0.0,0.0],
+    "gauss_center" : [0.0, 0.0, 3.0067],
+    "gauss_sigma" : [0.1371, 0.1371, 0.4798],
+    "range1" : [-0.6854, 0.6854],
+    "range2" : [-0.6854, 0.6854],
+    "range3" : [0.6077, 5.4056],
+    "uth" : [13.7083, 13.7083, 0.0],
+    "den_min" : 1e-10,
     "diag" :
     [
         {
@@ -55,29 +59,32 @@
         },
         {
         "name" : ["raw"],
-        "ndump" : 0,
+        "ndump" : 1,
         "psample" : 10
         }
     ]    
     },
     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
     "evolution" : true,
-    "profile" : 1,
     "push_type" : "reduced",
     "has_spin" : false,
-    "np" : [128,16,256],
-    "npmax" : 4200000,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 2000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "peak_density" : 56.0780033,
+    "density" : 56.0780,
     "quiet_start" : true,
-    "center" : [0.037583388,0.0,8.644179273],
-    "center" : [0.0,0.0,8.644179273],
-    "sigma" : [0.1370828,0.1370828,0.239894766513201],
-    "sigma_v" : [13.70828,13.70828,0.0],
-    "centroid_x" : [0.0,0.0,0.0],
-    "centroid_y" : [0.0,0.0,0.0],
+    "gauss_center" : [0.0376, 0.0, 8.6442],
+    "gauss_sigma" : [0.1371, 0.1371, 0.2399],
+    "range1" : [-0.6854, 0.6854],
+    "range2" : [-0.6854, 0.6854],
+    "range3" : [7.4447, 9.8437],
+    "uth" : [13.7083, 13.7083, 0.0],
+    "den_min" : 1e-10,
     "diag" :
     [
         {

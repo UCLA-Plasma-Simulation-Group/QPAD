@@ -34,7 +34,7 @@ call opts%new( input_file )
 
 sim => create_simulation( opts )
 
-call sim%alloc( input_file )
+call sim%alloc( input_file, opts )
 call sim%new( input_file, opts )
 call sim%run()
 call sim%del()
