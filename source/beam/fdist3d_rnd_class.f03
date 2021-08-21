@@ -137,6 +137,11 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%set_prof1    => set_prof_gaussian
       this%get_rndpos1  => get_rndpos_gaussian
 
+    case ( 'parabolic' )
+      this%prof_type(1) = p_prof_parabolic
+      this%set_prof1    => set_prof_parabolic
+      this%get_rndpos1  => get_rndpos_parabolic
+
     case ( 'piecewise-linear' )
       this%prof_type(1) = p_prof_pw_linear
       this%set_prof1    => set_prof_pw_linear
@@ -161,6 +166,11 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%set_prof2    => set_prof_gaussian
       this%get_rndpos2  => get_rndpos_gaussian
 
+    case ( 'parabolic' )
+      this%prof_type(2) = p_prof_parabolic
+      this%set_prof2    => set_prof_parabolic
+      this%get_rndpos2  => get_rndpos_parabolic
+
     case ( 'piecewise-linear' )
       this%prof_type(2) = p_prof_pw_linear
       this%set_prof2    => set_prof_pw_linear
@@ -184,6 +194,11 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%prof_type(3) = p_prof_gaussian
       this%set_prof3    => set_prof_gaussian
       this%get_rndpos3  => get_rndpos_gaussian
+
+    case ( 'parabolic' )
+      this%prof_type(3) = p_prof_parabolic
+      this%set_prof3    => set_prof_parabolic
+      this%get_rndpos3  => get_rndpos_parabolic
 
     case ( 'piecewise-linear' )
       this%prof_type(3) = p_prof_pw_linear

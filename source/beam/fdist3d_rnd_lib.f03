@@ -10,6 +10,7 @@ private
 
 public :: set_prof_uniform, get_rndpos_uniform
 public :: set_prof_gaussian, get_rndpos_gaussian
+public :: set_prof_parabolic, get_rndpos_parabolic
 public :: set_prof_pw_linear, get_rndpos_pw_linear
 
 contains
@@ -95,6 +96,68 @@ subroutine get_rndpos_gaussian( prof_pars, pos )
   pos   = ranorm() * sigma + mu
 
 end subroutine get_rndpos_gaussian
+
+! ------------------------------------------------------------------------------
+! PARABOLIC PROFILES
+! ------------------------------------------------------------------------------
+
+subroutine set_prof_parabolic( input, sect_name, dim, prof_pars )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  integer, intent(in) :: dim
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  ! local
+  real :: z0
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  allocate( prof_pars(2) )
+
+  call input%get( trim(sect_name) // '.parabolic_center(' // num2str(dim) // ')', prof_pars(1) )
+  call input%get( trim(sect_name) // '.parabolic_radius(' // num2str(dim) // ')', prof_pars(2) )
+  if ( dim == 3 ) then
+    call input%get( 'simulation.box.z(1)', z0 )
+    prof_pars(1) = prof_pars(1) - z0
+  endif
+
+end subroutine set_prof_parabolic
+
+subroutine get_rndpos_parabolic( prof_pars, pos )
+  implicit none
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: pos
+
+  real :: r0, x0, x, f, df, c0, c1, c2, c3
+
+  x0 = prof_pars(1)  
+  r0 = prof_pars(2)
+  
+  ! use Newton-Raphson method
+  x = 0.0
+  f = 1.0
+  call random_number( c0 )
+  c0 = 4.0 * r0**3 * c0
+
+  do while ( f > 1.0e-9 )
+
+    c1 = x + r0
+    c2 = x - r0
+    c3 = c2 - r0
+
+    ! evaluate f(x) and f'(x)
+    f = c1 * c1 * c3 + c0
+    df = 3.0 * c1 * c2
+
+    ! update position
+    x = x - f / df
+
+  enddo
+
+  pos = x0 + x
+
+end subroutine get_rndpos_parabolic
 
 ! ------------------------------------------------------------------------------
 ! PIECEWISE LINEAR PROFILES
