@@ -9,6 +9,8 @@ private
 
 public :: set_prof_uniform, get_den_uniform
 public :: set_prof_gaussian, get_den_gaussian
+public :: set_prof_parabolic, get_den_parabolic
+public :: set_prof_rational, get_den_rational
 public :: set_prof_pw_linear, get_den_pw_linear
 
 contains
@@ -76,6 +78,119 @@ subroutine get_den_gaussian( x, prof_pars, den_value )
   den_value = exp( -0.5 * ( (x-mu)/sigma )**2 )
 
 end subroutine get_den_gaussian
+
+! ------------------------------------------------------------------------------
+! PARABOLIC PROFILES
+! ------------------------------------------------------------------------------
+
+subroutine set_prof_parabolic( input, sect_name, dim, prof_pars )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  integer, intent(in) :: dim
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  ! local
+  real :: z0
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  allocate( prof_pars(2) )
+
+  call input%get( trim(sect_name) // '.parabolic_center(' // num2str(dim) // ')', prof_pars(1) )
+  call input%get( trim(sect_name) // '.parabolic_radius(' // num2str(dim) // ')', prof_pars(2) )
+  if ( dim == 3 ) then
+    call input%get( 'simulation.box.z(1)', z0 )
+    prof_pars(1) = prof_pars(1) - z0
+  endif
+
+end subroutine set_prof_parabolic
+
+subroutine get_den_parabolic( x, prof_pars, den_value )
+  implicit none
+  real, intent(in) :: x
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: den_value
+
+  real :: x0, r0, tmp
+
+  x0 = prof_pars(1)  
+  r0 = prof_pars(2)
+
+  den_value = 0.0
+  tmp = (x-x0)**2 / (r0*r0)
+  if ( tmp < 1.0 ) den_value = 1.0 - tmp
+
+end subroutine get_den_parabolic
+
+! ------------------------------------------------------------------------------
+! RATIONAL PROFILES
+! ------------------------------------------------------------------------------
+
+subroutine set_prof_rational( input, sect_name, dim, prof_pars )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  integer, intent(in) :: dim
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  ! local
+  integer :: len_pn, len_pd, i
+  real, dimension(:), allocatable :: pn, pd
+  real :: z0, p_x0
+
+  call input%get( trim(sect_name) // '.poly_numerator' // num2str(dim), pn )
+  call input%get( trim(sect_name) // '.poly_denominator' // num2str(dim), pd )
+  call input%get( trim(sect_name) // '.poly_x0(' // num2str(dim) // ')', p_x0 )
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  len_pn = size( pn )
+  len_pd = size( pd )
+  allocate( prof_pars( len_pn + len_pd + 3 ) )
+
+  prof_pars(1) = p_x0
+  prof_pars(2) = real(len_pn)
+  prof_pars(3) = real(len_pd)
+  prof_pars(4:len_pn+3) = pn
+  prof_pars(len_pn+4:len_pn+len_pd+3) = pd
+  if ( dim == 3 ) then
+    call input%get( 'simulation.box.z(1)', z0 )
+    prof_pars(1) = prof_pars(1) - z0
+  endif
+
+  deallocate( pn, pd )
+
+end subroutine set_prof_rational
+
+subroutine get_den_rational( x, prof_pars, den_value )
+  implicit none
+  real, intent(in) :: x
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: den_value
+
+  integer :: len_pn, len_pd, i
+  real, dimension(:), pointer :: pn => null(), pd => null()
+  real :: p_x0, pn_val, pd_val
+
+  p_x0 = prof_pars(1)
+  len_pn = int( prof_pars(2) )
+  len_pd = int( prof_pars(3) )
+  pn => prof_pars(4:len_pn+3)
+  pd => prof_pars(len_pn+4:len_pn+len_pd+3)
+
+  pn_val = 0.0
+  do i = 1, len_pn
+    pn_val = pn_val + pn(i) * ( x - p_x0 )**(i-1)
+  enddo
+  pd_val = 0.0
+  do i = 1, len_pd
+    pd_val = pd_val + pd(i) * ( x - p_x0 )**(i-1)
+  enddo
+
+  den_value = pn_val / pd_val
+
+end subroutine get_den_rational
 
 ! ------------------------------------------------------------------------------
 ! PIECEWISE LINEAR PROFILES

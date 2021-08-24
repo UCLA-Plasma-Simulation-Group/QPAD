@@ -145,7 +145,9 @@ integer, parameter :: p_prof_uniform = 0, &
                       p_prof_pw_linear = 1, &
                       p_prof_gaussian = 2, &
                       p_prof_para_chl = 3, &
-                      p_prof_hllw_chl = 4
+                      p_prof_hllw_chl = 4, &
+                      p_prof_parabolic = 5, &
+                      p_prof_rational = 6
 
 ! ================================================================
 ! others
