@@ -181,11 +181,11 @@ subroutine get_den_rational( x, prof_pars, den_value )
 
   pn_val = 0.0
   do i = 1, len_pn
-    pn_val = pn_val + pn(i) * ( x - p_x0 )**(len_pn-1)
+    pn_val = pn_val + pn(i) * ( x - p_x0 )**(i-1)
   enddo
   pd_val = 0.0
   do i = 1, len_pd
-    pd_val = pd_val + pd(i) * ( x - p_x0 )**(len_pd-1)
+    pd_val = pd_val + pd(i) * ( x - p_x0 )**(i-1)
   enddo
 
   den_value = pn_val / pd_val
