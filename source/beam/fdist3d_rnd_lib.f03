@@ -129,33 +129,14 @@ subroutine get_rndpos_parabolic( prof_pars, pos )
   real, intent(in), dimension(:), pointer :: prof_pars
   real, intent(out) :: pos
 
-  real :: r0, x0, x, f, df, c0, c1, c2, c3
+  real :: r0, x0, x, f, dice
 
   x0 = prof_pars(1)  
   r0 = prof_pars(2)
-  
-  ! use Newton-Raphson method
-  x = 0.0
-  f = 1.0
-  call random_number( c0 )
-  c0 = 4.0 * r0**3 * c0
+  call random_number( dice )
 
-  do while ( f > 1.0e-9 )
-
-    c1 = x + r0
-    c2 = x - r0
-    c3 = c2 - r0
-
-    ! evaluate f(x) and f'(x)
-    f = c1 * c1 * c3 + c0
-    df = 3.0 * c1 * c2
-
-    ! update position
-    x = x - f / df
-
-  enddo
-
-  pos = x0 + x
+  x = 2.0 * cos( (pi + acos(2.0*dice-1.0)) / 3.0 )
+  pos = x0 + x * r0
 
 end subroutine get_rndpos_parabolic
 
