@@ -405,7 +405,7 @@ subroutine inject_fdist3d_std( this, part )
         do i3 = 1, this%ppc(3)
           zn = (i3 - 0.5) / this%ppc(3) + real(k - 1 + noff_z)
           do i2 = 1, this%ppc(2)
-            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.5 ) * dtheta
+            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1 ) * dtheta
             do i1 = 1, this%ppc(1)
               rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff_r)
 
