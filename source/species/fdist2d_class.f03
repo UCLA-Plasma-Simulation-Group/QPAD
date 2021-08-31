@@ -272,7 +272,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
         
         do i2 = 1, this%ppc(2)
           
-          theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.5 ) * dtheta
+          theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
 
           x_tmp(1) = rn * dr * cos(theta)
           x_tmp(2) = rn * dr * sin(theta)
