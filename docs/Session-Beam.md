@@ -15,11 +15,20 @@ The source type of the beam particles. Available options include "standard", "ra
 The geometry used for the particle initialization, including "cartesian" and "cylindrical". The initialization assumes the beam density distribution is variable-separable in three directions, i.e., 1-, 2- and 3-direction. Note that the choice of the value will affect the configuration of some of the following parameters. Setting `geometry` to be "cartesian" means the 1-, 2- and 3-direction become x-, y- and &xi;-direction, or otherwise r-, &phi;- and &xi;-direction if "cylindrical" is selected. The default value is "cartesian".
 
 ### **"profile"** : string array(3)
-The profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include "uniform", "gaussian" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
+The profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
 
 The "gaussian" type defines a Gaussian beam profile, and the following characteristic parameters need to be provided:
 - **"gauss\_center"**: real array(3) -- The centers in 1-, 2- and 3-direction.
 - **"gauss\_sigma"**: real array(3) -- The rms sizes in 1-, 2- and 3-direction.
+
+The "parabolic" type defines a parabolic beam profile like 1-(x-x<sub>0</sub>)<sup>2</sup>/a<sup>2</sup> when |x|<a (a is the radius). The following characteristic parameters need to be provided:
+- **"parabolic\_center"**: real array(3) -- The center x<sub>0</sub> in 1-, 2- and 3-direction.
+- **"parabolic\_radius"**: real array(3) -- The radius a in 1-, 2- and 3-direction.
+
+The "rational" type defines a rational beam profile like (a<sub>0</sub>+a<sub>1</sub>(x-x<sub>0</sub>)+a<sub>2</sub>(x-x<sub>0</sub>)<sup>2</sup>+...)/(b<sub>0</sub>+b<sub>1</sub>(x-x<sub>0</sub>)+b<sub>2</sub>(x-x<sub>0</sub>)<sup>2</sup>+...). The following characteristic parameters need to be provided:
+- **"poly\_numerator1"**, **"poly\_numerator2"**, **"poly\_numerator3"**: real array(\*) -- The arrays of polynomial coeffcients [a<sub>0</sub>,a<sub>1</sub>,a<sub>2</sub>,...] in 1-, 2- and 3-direction respectively.
+- **"poly\_denominator1"**, **"poly\_denominator2"**, **"poly\_denominator3"**: real array(\*) -- The arrays of polynomial coeffcients [b<sub>0</sub>,b<sub>1</sub>,b<sub>2</sub>,...] in 1-, 2- and 3-direction respectively.
+- **"poly\_x0"**: real array(3) -- The center x<sub>0</sub> in 1-, 2- and 3-direction.
 
 The "piecewise-linear" defines a piecewise linear function according to which the beam density will be initialized. The following parameters are needed:
 - **"piecewise\_x1"**, **"piecewise\_x2"**, **"piecewise\_x3"**: real array(\*) -- The arrays of position of the piecewise linear function in 1-, 2- and 3-direction respectively. They must be a monotonically increasing array.
@@ -88,11 +97,15 @@ The source type of the beam particles. Available options include "standard", "ra
 The geometry used for the particle initialization, including "cartesian" and "cylindrical". The initialization assumes the beam density distribution is variable-separable in three directions, i.e., 1-, 2- and 3-direction. Note that the choice of the value will affect the configuration of some of the following parameters. Setting `geometry` to be "cartesian" means the 1-, 2- and 3-direction become x-, y- and &xi;-direction, or otherwise r-, &phi;- and &xi;-direction if "cylindrical" is selected. The default value is "cartesian".
 
 ### **"profile"** : string array(3)
-The profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include "uniform", "gaussian" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
+The profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include "uniform", "gaussian", "parabolic" and "piecewise-linear". The "uniform" option does not need extra parameters while the other types do.
 
 The "gaussian" type defines a Gaussian beam profile, and the following characteristic parameters need to be provided:
 - **"gauss\_center"**: real array(3) -- The centers in 1-, 2- and 3-direction.
 - **"gauss\_sigma"**: real array(3) -- The rms sizes in 1-, 2- and 3-direction.
+
+The "parabolic" type defines a parabolic beam profile like 1-(x-x<sub>0</sub>)<sup>2</sup>/a<sup>2</sup> when |x|<a (a is the radius). The following characteristic parameters need to be provided:
+- **"parabolic\_center"**: real array(3) -- The center x<sub>0</sub> in 1-, 2- and 3-direction.
+- **"parabolic\_radius"**: real array(3) -- The radius a in 1-, 2- and 3-direction.
 
 The "piecewise-linear" defines a piecewise linear function according to which the beam density will be initialized. The following parameters are needed:
 - **"piecewise\_x1"**, **"piecewise\_x2"**, **"piecewise\_x3"**: real array(\*) -- The arrays of position of the piecewise linear function in 1-, 2- and 3-direction respectively. They must be a monotonically increasing array.
