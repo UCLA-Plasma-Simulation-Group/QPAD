@@ -1,4 +1,4 @@
-module laser_pgc_class
+module field_laser_class
 
 use parallel_module
 use options_class
@@ -8,144 +8,115 @@ use ufield_class
 use param
 use sysutil_module
 use mpi
+use fpcr_penta_class
 
 implicit none
 
 private
 
-character(len=20), parameter :: cls_name = "laser_pgc"
+character(len=20), parameter :: cls_name = "field_laser"
 integer, parameter :: cls_level = 3
 
-public :: laser_pgc
+public :: field_laser
 
-type, extends( field ) :: laser_pgc
+type, extends( field ) :: field_laser
 
-  ! TODO: implement laser_solver
-  class( laser_solver ), dimension(:), pointer :: solver_az => null()
+  type( fpcr_penta ), dimension(:), pointer :: pgc_solver => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
   contains
 
-  generic :: solve => solve_field_ez_fast, solve_field_ez, &
-                      solve_field_et, solve_field_et_beam
-  generic :: new => init_field_e
+  generic   :: new   => init_field_laser
+  procedure :: alloc => alloc_field_laser
+  procedure :: del   => end_field_laser
+  procedure :: solve => solve_field_laser
+  procedure, private :: set_rhs
+  procedure, private :: get_solution
+  procedure, private :: init_solver
 
-  procedure :: init_field_e
-  procedure :: alloc => alloc_field_e
-  procedure :: del => end_field_e
-  procedure, private :: set_source_ez
-  procedure, private :: get_solution_ez
-  procedure, private :: solve_field_ez
-  procedure, private :: solve_field_ez_fast ! to be deleted in future
-  procedure, private :: solve_field_et
-  procedure, private :: solve_field_et_beam
-
-end type field_e
+end type field_laser
 
 contains
 
-subroutine alloc_field_e( this, max_mode )
+subroutine alloc_field_laser( this, max_mode )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   integer, intent(in) :: max_mode
 
-  if ( .not. associated( this%solver_ez ) ) then
-    allocate( field_solver :: this%solver_ez(0:max_mode) )
+  if ( .not. associated( this%pgc_solver ) ) then
+    allocate( this%pgc_solver(0:max_mode) )
   endif
 
-end subroutine alloc_field_e
+end subroutine alloc_field_laser
 
-subroutine init_field_e( this, opts, max_mode, part_shape, boundary, entity )
+subroutine init_field_laser( this, opts, max_mode, iter )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   type( options ), intent(in) :: opts
-  integer, intent(in) :: max_mode, part_shape, entity, boundary
+  integer, intent(in) :: max_mode, iter
 
   integer, dimension(2,2) :: gc_num
   integer :: dim, i, nrp
   real :: dr
-  character(len=20), save :: sname = "init_field_e"
+  character(len=20), save :: sname = "init_field_laser"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp = opts%get_ndp(1)
   dr  = opts%get_dr()
 
-  select case ( part_shape )
+  gc_num(:,1) = (/1, 1/)
+  gc_num(:,2) = (/iter, iter/)
 
-  case ( p_ps_linear )
-
-    gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
-
-  case ( p_ps_quadratic )
-
-    call write_err( "Quadratic particle shape not implemented." )
-
-  case default
-
-    call write_err( "Invalid particle shape." )
-
-  end select
-
-  dim = 3
+  dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( opts, dim, max_mode, gc_num, entity )
+  call this%field%new( opts, dim, max_mode, gc_num )
 
   ! initialize solver
-  select case ( entity )
-  case ( p_entity_plasma )
-    do i = 0, max_mode
-      call this%solver_ez(i)%new( opts, i, dr, kind=p_fk_ez, &
-        bnd=boundary, stype=p_hypre_cycred )
-    enddo
-    allocate( this%buf_re(nrp), this%buf_im(nrp) )
-  case ( p_entity_beam )
-    ! do nothing
-  case default
-    call write_err( 'Invalid field entity type.' )
-  end select
+  call this%init_solver()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine init_field_e
+end subroutine init_field_laser
 
-subroutine end_field_e( this )
+subroutine end_field_laser( this )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
 
   integer :: i
-  character(len=20), save :: sname = 'end_field_e'
+  character(len=20), save :: sname = 'end_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( this%entity == p_entity_plasma ) then
-    do i = 0, this%max_mode
-      call this%solver_ez(i)%del()
-    enddo
-    deallocate( this%solver_ez )
-  endif
-
+  do i = 0, this%max_mode
+    call this%pgc_solver(i)%destroy()
+  enddo
+  deallocate( this%pgc_solver )
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
-
   call this%field%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine end_field_e
+end subroutine end_field_laser
+
+subroutine init_solver( this )
+
+  implicit none
+  class( field_laser ), intent(inout) :: this
+end subroutine init_solver
 
 subroutine set_source_ez( this, mode, jay_re, jay_im )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   class( ufield ), intent(in) :: jay_re
   class( ufield ), intent(in), optional :: jay_im
   integer, intent(in) :: mode
@@ -258,7 +229,7 @@ subroutine get_solution_ez( this, mode )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   integer, intent(in) :: mode
 
   integer :: i, nrp
@@ -291,16 +262,16 @@ subroutine get_solution_ez( this, mode )
 
 end subroutine get_solution_ez
 
-subroutine solve_field_ez( this, jay )
+subroutine solve_field_laserz( this, jay )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   class( field_jay ), intent(inout) :: jay
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   integer :: i
-  character(len=20), save :: sname = 'solve_field_ez'
+  character(len=20), save :: sname = 'solve_field_laserz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -327,13 +298,13 @@ subroutine solve_field_ez( this, jay )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_ez
+end subroutine solve_field_laserz
 
-subroutine solve_field_ez_fast( this, psi, idx )
+subroutine solve_field_laserz_fast( this, psi, idx )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   class( field_psi ), intent(in) :: psi
   integer, intent(in) :: idx
 
@@ -345,7 +316,7 @@ subroutine solve_field_ez_fast( this, psi, idx )
   real, dimension(:,:,:), pointer :: psi_f2_re => null(), psi_f2_im => null()
   integer :: i, j, nrp
   real :: idxih, idxi
-  character(len=20), save :: sname = 'solve_field_ez_fast'
+  character(len=20), save :: sname = 'solve_field_laserz_fast'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve ez' )
@@ -403,13 +374,13 @@ subroutine solve_field_ez_fast( this, psi, idx )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_ez_fast
+end subroutine solve_field_laserz_fast
 
-subroutine solve_field_et( this, b, psi )
+subroutine solve_field_lasert( this, b, psi )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   class( field_b ), intent(in) :: b
   class( field_psi ), intent(inout) :: psi
 
@@ -420,7 +391,7 @@ subroutine solve_field_et( this, b, psi )
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
   real :: idr, idrh, ir
-  character(len=20), save :: sname = 'solve_field_et'
+  character(len=20), save :: sname = 'solve_field_lasert'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve plasma et' )
@@ -507,20 +478,20 @@ subroutine solve_field_et( this, b, psi )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_et
+end subroutine solve_field_lasert
 
-subroutine solve_field_et_beam( this, b )
+subroutine solve_field_lasert_beam( this, b )
 
   implicit none
 
-  class( field_e ), intent(inout) :: this
+  class( field_laser ), intent(inout) :: this
   class( field_b ), intent(in) :: b
 
   type( ufield ), dimension(:), pointer :: b_re => null(), b_im => null()
   real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp
-  character(len=20), save :: sname = 'solve_field_et_beam'
+  character(len=20), save :: sname = 'solve_field_lasert_beam'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve beam et' )
@@ -557,6 +528,6 @@ subroutine solve_field_et_beam( this, b )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine solve_field_et_beam
+end subroutine solve_field_lasert_beam
 
 end module laser_pgc_class
