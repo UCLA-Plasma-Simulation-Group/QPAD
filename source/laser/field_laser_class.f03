@@ -202,7 +202,7 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
 end subroutine init_solver
 
-subroutine set_rhs( this, mode,  )
+! subroutine set_rhs( this, mode,  )
 
 subroutine set_source_ez( this, mode, jay_re, jay_im )
 
