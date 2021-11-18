@@ -34,11 +34,13 @@ type :: fpcr_penta
   procedure :: destroy           => destroy_fpcr_penta
   procedure :: solve             => solve_fpcr_penta
   procedure :: set_values_rhs    => set_values_rhs_fpcr_penta
-  procedure :: set_values_matrix => set_values_matrix_fpcr_penta
+  generic   :: set_values_matrix => set_values_matrix_fpcr_penta, set_values_matrix_byrow_fpcr_penta
   procedure :: get_values_x      => get_values_x_fpcr_penta
   procedure :: print_x           => print_x_fpcr_penta
   procedure :: print_rhs         => print_rhs_fpcr_penta
   procedure :: generate_cr_coef  => generate_cr_coef_fpcr_penta
+  procedure, private :: set_values_matrix_fpcr_penta
+  procedure, private :: set_values_matrix_byrow_fpcr_penta
 
 end type fpcr_penta
 
@@ -538,6 +540,35 @@ subroutine set_values_matrix_fpcr_penta( this, a, b, c, d, e )
   endif
 
 end subroutine set_values_matrix_fpcr_penta
+
+subroutine set_values_matrix_byrow_fpcr_penta( this, a, b, c, d, e, i_loc )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(in) :: a, b, c, d, e
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  this%a(i_loc) = a
+  this%b(i_loc) = b
+  this%c(i_loc) = c
+  this%d(i_loc) = d
+  this%e(i_loc) = e
+
+  if ( this%myid == 0 .and. i_loc == 1 ) then
+    this%a(i_loc) = epsilon(1.0)
+    this%b(i_loc) = epsilon(1.0)
+  else if ( this%myid == 0 .and. i_loc == 2 ) then
+    this%a(i_loc) = epsilon(1.0)
+  endif
+  if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local ) then
+    this%e(i_loc) = epsilon(1.0)
+    this%d(i_loc) = epsilon(1.0)
+  else if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local - 1 ) then
+    this%e(i_loc) = epsilon(1.0)
+  endif
+
+end subroutine set_values_matrix_byrow_fpcr_penta
 
 subroutine get_values_x_fpcr_penta( this, x )
 

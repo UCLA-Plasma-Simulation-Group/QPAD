@@ -34,11 +34,13 @@ type :: fpcr_tri
   procedure :: destroy           => destroy_fpcr_tri
   procedure :: solve             => solve_fpcr_tri
   procedure :: set_values_rhs    => set_values_rhs_fpcr_tri
-  procedure :: set_values_matrix => set_values_matrix_fpcr_tri
+  generic   :: set_values_matrix => set_values_matrix_fpcr_tri, set_values_matrix_byrow_fpcr_tri
   procedure :: get_values_x      => get_values_x_fpcr_tri
   procedure :: print_x           => print_x_fpcr_tri
   procedure :: print_rhs         => print_rhs_fpcr_tri
   procedure :: generate_cr_coef  => generate_cr_coef_fpcr_tri
+  procedure, private :: set_values_matrix_fpcr_tri
+  procedure, private :: set_values_matrix_byrow_fpcr_tri
 
 end type fpcr_tri
 
@@ -346,6 +348,22 @@ subroutine set_values_matrix_fpcr_tri( this, a, b, c )
   if ( this%myid == this%num_procs - 1 ) this%c(this%n_local) = 0.0
 
 end subroutine set_values_matrix_fpcr_tri
+
+subroutine set_values_matrix_byrow_fpcr_tri( this, a, b, c, i_loc )
+
+  implicit none
+  class( fpcr_tri ), intent(inout) :: this
+  real, intent(in) :: a, b, c
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  this%a(i_loc) = a
+  this%b(i_loc) = b
+  this%c(i_loc) = c
+  if ( this%myid == 0 .and. i_loc == 1 ) this%a(i_loc) = 0.0
+  if ( this%myid == this%num_procs - 1 .and. i_loc == this%n_local ) this%c(i_loc) = 0.0
+
+end subroutine set_values_matrix_byrow_fpcr_tri
 
 subroutine get_values_x_fpcr_tri( this, x )
 

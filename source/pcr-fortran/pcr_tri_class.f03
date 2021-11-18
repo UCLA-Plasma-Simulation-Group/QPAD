@@ -36,13 +36,15 @@ type :: pcr_tri
   procedure :: destroy           => destroy_pcr_tri
   procedure :: solve             => solve_pcr_tri
   procedure :: set_values_rhs    => set_values_rhs_pcr_tri
-  procedure :: set_values_matrix => set_values_matrix_pcr_tri
+  generic   :: set_values_matrix => set_values_matrix_pcr_tri, set_values_matrix_byrow_pcr_tri
   procedure :: get_values_x      => get_values_x_pcr_tri
   procedure :: print_x           => print_x_pcr_tri
   procedure :: print_rhs         => print_rhs_pcr_tri
   procedure, private :: pack_data      => pack_data_pcr_tri
   procedure, private :: unpack_data    => unpack_data_pcr_tri
   procedure, private :: set_idle_ghost => set_idle_ghost_pcr_tri
+  procedure, private :: set_values_matrix_pcr_tri
+  procedure, private :: set_values_matrix_byrow_pcr_tri
 
 end type pcr_tri
 
@@ -321,6 +323,22 @@ subroutine set_values_matrix_pcr_tri( this, a, b, c )
   if ( this%myid == this%num_procs - 1 ) this%c(this%n_local) = 0.0
 
 end subroutine set_values_matrix_pcr_tri
+
+subroutine set_values_matrix_byrow_pcr_tri( this, a, b, c, i_loc )
+
+  implicit none
+  class( pcr_tri ), intent(inout) :: this
+  real, intent(in) :: a, b, c
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  this%a(i_loc) = a
+  this%b(i_loc) = b
+  this%c(i_loc) = c
+  if ( this%myid == 0 .and. i_loc == 1 ) this%a(i_loc) = 0.0
+  if ( this%myid == this%num_procs - 1 .and. i_loc == this%n_local ) this%c(i_loc) = 0.0
+
+end subroutine set_values_matrix_byrow_pcr_tri
 
 subroutine get_values_x_pcr_tri( this, x )
 

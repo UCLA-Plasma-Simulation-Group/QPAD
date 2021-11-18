@@ -36,13 +36,15 @@ type :: pcr_penta
   procedure :: destroy           => destroy_pcr_penta
   procedure :: solve             => solve_pcr_penta
   procedure :: set_values_rhs    => set_values_rhs_pcr_penta
-  procedure :: set_values_matrix => set_values_matrix_pcr_penta
+  generic   :: set_values_matrix => set_values_matrix_pcr_penta, set_values_matrix_byrow_pcr_penta
   procedure :: get_values_x      => get_values_x_pcr_penta
   procedure :: print_x           => print_x_pcr_penta
   procedure :: print_rhs         => print_rhs_pcr_penta
   procedure, private :: pack_data      => pack_data_pcr_penta
   procedure, private :: unpack_data    => unpack_data_pcr_penta
   procedure, private :: set_idle_ghost => set_idle_ghost_pcr_penta
+  procedure, private :: set_values_matrix_pcr_penta
+  procedure, private :: set_values_matrix_byrow_pcr_penta
 
 end type pcr_penta
 
@@ -407,6 +409,35 @@ subroutine set_values_matrix_pcr_penta( this, a, b, c, d, e )
   endif
 
 end subroutine set_values_matrix_pcr_penta
+
+subroutine set_values_matrix_byrow_pcr_penta( this, a, b, c, d, e, i_loc )
+
+  implicit none
+  class( pcr_penta ), intent(inout) :: this
+  real, intent(in) :: a, b, c, d, e
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  this%a(i_loc) = a
+  this%b(i_loc) = b
+  this%c(i_loc) = c
+  this%d(i_loc) = d
+  this%e(i_loc) = e
+
+  if ( this%myid == 0 .and. i_loc == 1 ) then
+    this%a(i_loc) = epsilon(1.0)
+    this%b(i_loc) = epsilon(1.0)
+  else if ( this%myid == 0 .and. i_loc == 2 ) then
+    this%a(i_loc) = epsilon(1.0)
+  endif
+  if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local ) then
+    this%e(i_loc) = epsilon(1.0)
+    this%d(i_loc) = epsilon(1.0)
+  else if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local - 1 ) then
+    this%e(i_loc) = epsilon(1.0)
+  endif
+
+end subroutine set_values_matrix_byrow_pcr_penta
 
 subroutine get_values_x_pcr_penta( this, x )
 
