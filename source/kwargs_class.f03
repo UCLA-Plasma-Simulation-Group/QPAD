@@ -355,7 +355,7 @@ subroutine kw_list_finalizer( this )
   implicit none
   type(kw_list), intent(inout) :: this
   this%num_kw_arg = 0
-  if ( associated(this%head) ) nullify(this%head)
+  if ( associated(this%head) ) deallocate(this%head)
 end subroutine kw_list_finalizer
 
 end module kwargs_class
