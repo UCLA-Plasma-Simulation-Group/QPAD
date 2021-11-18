@@ -24,6 +24,12 @@ type, extends( field ) :: field_laser
   type( fpcr_penta ), dimension(:), pointer :: pgc_solver => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
+  ! central laser frequency
+  real :: k0 = 10
+
+  ! iteration times
+  integer :: iter = 2
+
   contains
 
   generic   :: new   => init_field_laser
@@ -51,23 +57,31 @@ subroutine alloc_field_laser( this, max_mode )
 
 end subroutine alloc_field_laser
 
-subroutine init_field_laser( this, opts, max_mode, iter )
+subroutine init_field_laser( this, opts, max_mode, k0, iter )
 
   implicit none
 
   class( field_laser ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, iter
+  real, intent(in) :: k0
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp
-  real :: dr
+  integer :: dim, i, nrp, nr, noff
+  real :: dr, dt, dz
   character(len=20), save :: sname = "init_field_laser"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp = opts%get_ndp(1)
+  nr  = opts%get_nd(1)
+  noff= opts%get_noff(1)
   dr  = opts%get_dr()
+  dz  = opts%get_dxi()
+  dt  = opts%get_dt()
+
+  this%k0 = k0
+  this%iter = iter
 
   gc_num(:,1) = (/1, 1/)
   gc_num(:,2) = (/iter, iter/)
@@ -77,7 +91,7 @@ subroutine init_field_laser( this, opts, max_mode, iter )
   call this%field%new( opts, dim, max_mode, gc_num )
 
   ! initialize solver
-  call this%init_solver()
+  call this%init_solver( nr, nrp, noff, this%k0, ds, dr, dz )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -106,11 +120,89 @@ subroutine end_field_laser( this )
 
 end subroutine end_field_laser
 
-subroutine init_solver( this )
+subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
   implicit none
   class( field_laser ), intent(inout) :: this
+  integer, intent(in) :: nr, nrp, noff
+  real, intent(in) :: k0, ds, dr, dz
+
+  integer :: ierr, m, i, j, local_size
+  real :: a, b, c, d, e
+
+  local_size = 2 * nrp
+
+  do m = 0, this%max_mode
+    call this%pgc_solver(m)%create( 2*nr, comm_loc(), ierr )
+
+    ! set matrix element
+    do i = 1, local_size, 2
+
+      j = (noff + i + 1) / 2 - 1
+      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      b = 0.0
+      c = 0.5 * ds
+      d = -k0 * dr**2
+      e = -0.25 * ds * ( 1.0 + 0.5 / j )
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i )
+
+      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      b = k0 * dr**2
+      c = 0.5 * ds
+      d = 0.0
+      e = -0.25 * ds * ( 1.0 + 0.5 / j )
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i+1 )
+
+    enddo
+
+    ! set the axial boundary condition
+    if (myid == 0) then
+
+      a = 0.0
+      b = epsilon(1.0)
+      c = ds
+      d = -k0 * dr**2
+      e = -ds
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
+
+      a = epsilon(1.0)
+      b = k0 * dr**2
+      c = ds
+      d = 0.0
+      e = -ds
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
+
+    endif
+
+    ! set the outter boundary condition
+    if (myid == num_procs-1) then
+
+      j = nr - 1
+
+      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      b = 0.0
+      c = 0.5 * ds
+      d = -k0 * dr**2
+      e = 0.0
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size-1 )
+
+      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      b = k0 * dr**2
+      c = 0.5 * ds
+      d = 0.0
+      e = 0.0
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size )
+
+    endif
+
+    ! generate cyclic reduction coefficients
+    call this%pgc_solver(m)%generate_cr_coef()
+
+  enddo
+
 end subroutine init_solver
+
+subroutine set_rhs( this, mode,  )
 
 subroutine set_source_ez( this, mode, jay_re, jay_im )
 

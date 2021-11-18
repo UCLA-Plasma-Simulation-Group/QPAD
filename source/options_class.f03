@@ -21,7 +21,7 @@ type :: options
   integer, dimension(2) :: nd ! number of global grid points
   integer, dimension(2) :: ndp ! number of local grid points
   integer, dimension(2) :: noff ! grid index offset
-  real :: dr, dxi
+  real :: dr, dxi, dt
   integer, public :: algorithm
 
 contains
@@ -88,6 +88,8 @@ subroutine init_options( this, input_file )
   call input_file%get( 'simulation.box.z(1)', min_val )
   call input_file%get( 'simulation.box.z(2)', max_val )
   this%dxi = ( max_val - min_val ) / nz
+
+  call input_file%get( 'simulation.dt', this%dt )
 
   ! the un-evenly distributed grid points among processors are accounted for
   local_size   = nr / num_procs_loc()
@@ -195,25 +197,24 @@ function get_noff_dim( this, dim )
 end function get_noff_dim
 
 function get_dr( this )
-
   implicit none
-
   class( options ), intent(in) :: this
   real :: get_dr
-
   get_dr = this%dr
-
 end function get_dr
 
 function get_dxi( this )
-
   implicit none
-
   class( options ), intent(in) :: this
   real :: get_dxi
-
   get_dxi = this%dxi
-
 end function get_dxi
+
+function get_dt( this )
+  implicit none
+  class( options ), intent(in) :: this
+  real :: get_dt
+  get_dt = this%dt
+end function get_dt
 
 end module options_class
