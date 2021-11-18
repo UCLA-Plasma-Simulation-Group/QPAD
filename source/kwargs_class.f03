@@ -1,4 +1,4 @@
-module keyword_args_class
+module kwargs_class
 
 implicit none
 
@@ -74,7 +74,7 @@ subroutine get_key_kw_arg( this, key, ierr )
 
   implicit none
   class( kw_arg ), intent(in) :: this
-  character(len=*), intent(out) :: key
+  character(*), intent(out) :: key
   integer, intent(out) :: ierr
 
   if ( allocated( this%key ) ) then
@@ -206,123 +206,148 @@ subroutine append_kw_list( this, key, value )
 
 end subroutine append_kw_list
 
-subroutine get_real_kw_list( this, key, value )
+subroutine get_real_kw_list( this, key, value, err )
 
   implicit none
   class( kw_list ), intent(in) :: this
   character(len=*), intent(in) :: key
   real, intent(out) :: value
+  integer, intent(out), optional :: err
 
   character(len=KEY_MAX_LEN) :: key_tmp
   type( kw_arg ), pointer :: current => null()
-  integer :: ierr
+  integer :: ierr, err_tmp
 
   current => this%head
   do while ( associated(current) )
     call current%get_key( key_tmp, ierr )
     if ( trim(key_tmp) == trim(key) ) then
       call current%get_value( value, ierr )
-      exit
+      err_tmp = ierr
+      current => null()
+      return
     endif
     current => current%next
   enddo
+  err_tmp = 3
   current => null()
+  if ( present(err) ) err = err_tmp
 
 end subroutine get_real_kw_list
 
-subroutine get_integer_kw_list( this, key, value )
+subroutine get_integer_kw_list( this, key, value, err )
 
   implicit none
   class( kw_list ), intent(in) :: this
   character(len=*), intent(in) :: key
   integer, intent(out) :: value
-  integer :: ierr
+  integer, intent(out), optional :: err
 
   character(len=KEY_MAX_LEN) :: key_tmp
   type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
 
   current => this%head
   do while ( associated(current) )
     call current%get_key( key_tmp, ierr )
     if ( trim(key_tmp) == trim(key) ) then
       call current%get_value( value, ierr )
-      exit
+      err_tmp = ierr
+      current => null()
+      return
     endif
     current => current%next
   enddo
+  err_tmp = 3
   current => null()
+  if ( present(err) ) err = err_tmp
 
 end subroutine get_integer_kw_list
 
-subroutine get_logical_kw_list( this, key, value )
+subroutine get_logical_kw_list( this, key, value, err )
 
   implicit none
   class( kw_list ), intent(in) :: this
   character(len=*), intent(in) :: key
   logical, intent(out) :: value
+  integer, intent(out), optional :: err
 
-  character(len=KEY_MAX_LEN), allocatable :: key_tmp
+  character(len=KEY_MAX_LEN) :: key_tmp
   type( kw_arg ), pointer :: current => null()
-  integer :: ierr
+  integer :: ierr, err_tmp
 
   current => this%head
   do while ( associated(current) )
     call current%get_key( key_tmp, ierr )
     if ( trim(key_tmp) == trim(key) ) then
       call current%get_value( value, ierr )
-      exit
+      err_tmp = ierr
+      current => null()
+      return
     endif
     current => current%next
   enddo
+  err_tmp = 3
   current => null()
+  if ( present(err) ) err = err_tmp
 
 end subroutine get_logical_kw_list
 
-subroutine get_complex_kw_list( this, key, value )
+subroutine get_complex_kw_list( this, key, value, err )
 
   implicit none
   class( kw_list ), intent(in) :: this
   character(len=*), intent(in) :: key
   complex, intent(out) :: value
+  integer, intent(out), optional :: err
 
   character(len=KEY_MAX_LEN) :: key_tmp
   type( kw_arg ), pointer :: current => null()
-  integer :: ierr
+  integer :: ierr, err_tmp
 
   current => this%head
   do while ( associated(current) )
     call current%get_key( key_tmp, ierr )
     if ( trim(key_tmp) == trim(key) ) then
       call current%get_value( value, ierr )
-      exit
+      err_tmp = ierr
+      current => null()
+      return
     endif
     current => current%next
   enddo
+  err_tmp = 3
   current => null()
+  if ( present(err) ) err = err_tmp
 
 end subroutine get_complex_kw_list
 
-subroutine get_character_kw_list( this, key, value )
+subroutine get_character_kw_list( this, key, value, err )
 
   implicit none
   class( kw_list ), intent(in) :: this
   character(len=*), intent(in) :: key
   character(*), intent(out) :: value
+  integer, intent(out), optional :: err
 
   character(len=KEY_MAX_LEN) :: key_tmp
   type( kw_arg ), pointer :: current => null()
-  integer :: ierr
+  integer :: ierr, err_tmp
 
   current => this%head
   do while ( associated(current) )
     call current%get_key( key_tmp, ierr )
     if ( trim(key_tmp) == trim(key) ) then
       call current%get_value( value, ierr )
-      exit
+      err_tmp = ierr
+      current => null()
+      return
     endif
     current => current%next
   enddo
+  err_tmp = 3
   current => null()
+  if ( present(err) ) err = err_tmp
 
 end subroutine get_character_kw_list
 
@@ -333,4 +358,4 @@ subroutine kw_list_finalizer( this )
   if ( associated(this%head) ) nullify(this%head)
 end subroutine kw_list_finalizer
 
-end module keyword_args_class
+end module kwargs_class
