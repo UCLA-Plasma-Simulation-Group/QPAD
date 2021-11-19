@@ -47,7 +47,7 @@ include species/Makefile
 include beam/Makefile
 # laser code
 include laser/Makefile
-src += sim_fields_class.f03 sim_beams_class.f03 sim_plasma_class.f03
+src += sim_fields_class.f03 sim_beams_class.f03 sim_plasma_class.f03 sim_lasers_class.f03
 src += diagnostics_class.f03
 src += simulation_class.f03
 # template project code

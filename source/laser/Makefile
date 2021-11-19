@@ -1,7 +1,7 @@
 # This is meant to be included by the parent Makefile
 
 src += field_complex_class.f03
-src += field_laser.f03
+src += field_laser_class.f03
 
 # Add local path to vpath
 vpath %.f03 laser

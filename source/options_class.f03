@@ -32,7 +32,7 @@ contains
 
   procedure :: new => init_options
   procedure :: del => end_options
-  procedure :: get_dr, get_dxi
+  procedure :: get_dr, get_dxi, get_dt
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: get_nd_all, get_nd_dim
   procedure, private :: get_ndp_all, get_ndp_dim

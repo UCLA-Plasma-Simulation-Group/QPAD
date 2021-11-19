@@ -33,12 +33,21 @@ type :: fpcr_penta
   procedure :: create            => create_fpcr_penta
   procedure :: destroy           => destroy_fpcr_penta
   procedure :: solve             => solve_fpcr_penta
-  procedure :: set_values_rhs    => set_values_rhs_fpcr_penta
-  procedure :: set_values_matrix => set_values_matrix_fpcr_penta
-  procedure :: get_values_x      => get_values_x_fpcr_penta
+  generic   :: set_values_rhs    => set_values_rhs_fpcr_penta, set_values_rhs_byrow_fpcr_penta
+  generic   :: set_values_matrix => set_values_matrix_fpcr_penta, set_values_matrix_byrow_fpcr_penta
+  generic   :: get_values_matrix => get_values_matrix_fpcr_penta, get_values_matrix_byrow_fpcr_penta
+  generic   :: get_values_x      => get_values_x_fpcr_penta, get_values_x_byrow_fpcr_penta
   procedure :: print_x           => print_x_fpcr_penta
   procedure :: print_rhs         => print_rhs_fpcr_penta
   procedure :: generate_cr_coef  => generate_cr_coef_fpcr_penta
+  procedure, private :: set_values_rhs_fpcr_penta
+  procedure, private :: set_values_rhs_byrow_fpcr_penta
+  procedure, private :: set_values_matrix_fpcr_penta
+  procedure, private :: set_values_matrix_byrow_fpcr_penta
+  procedure, private :: get_values_matrix_fpcr_penta
+  procedure, private :: get_values_matrix_byrow_fpcr_penta
+  procedure, private :: get_values_x_fpcr_penta
+  procedure, private :: get_values_x_byrow_fpcr_penta
 
 end type fpcr_penta
 
@@ -511,6 +520,16 @@ subroutine set_values_rhs_fpcr_penta( this, rhs )
 
 end subroutine set_values_rhs_fpcr_penta
 
+subroutine set_values_rhs_byrow_fpcr_penta( this, rhs, i_loc )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(in) :: rhs
+  integer, intent(in) :: i_loc
+  this%rhs(i_loc) = rhs
+  
+end subroutine set_values_rhs_byrow_fpcr_penta
+
 subroutine set_values_matrix_fpcr_penta( this, a, b, c, d, e )
 
   implicit none
@@ -539,6 +558,68 @@ subroutine set_values_matrix_fpcr_penta( this, a, b, c, d, e )
 
 end subroutine set_values_matrix_fpcr_penta
 
+subroutine set_values_matrix_byrow_fpcr_penta( this, a, b, c, d, e, i_loc )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(in) :: a, b, c, d, e
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  this%a(i_loc) = a
+  this%b(i_loc) = b
+  this%c(i_loc) = c
+  this%d(i_loc) = d
+  this%e(i_loc) = e
+
+  if ( this%myid == 0 .and. i_loc == 1 ) then
+    this%a(i_loc) = epsilon(1.0)
+    this%b(i_loc) = epsilon(1.0)
+  else if ( this%myid == 0 .and. i_loc == 2 ) then
+    this%a(i_loc) = epsilon(1.0)
+  endif
+  if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local ) then
+    this%e(i_loc) = epsilon(1.0)
+    this%d(i_loc) = epsilon(1.0)
+  else if ( this%myid == this%num_procs-1 .and. i_loc == this%n_local - 1 ) then
+    this%e(i_loc) = epsilon(1.0)
+  endif
+
+end subroutine set_values_matrix_byrow_fpcr_penta
+
+subroutine get_values_matrix_fpcr_penta( this, a, b, c, d, e )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(out), dimension(:) :: a, b, c, d, e
+  integer :: i
+
+  do i = 1, this%n_local
+    a(i) = this%a(i)
+    b(i) = this%b(i)
+    c(i) = this%c(i)
+    d(i) = this%d(i)
+    e(i) = this%e(i)
+  enddo
+
+end subroutine get_values_matrix_fpcr_penta
+
+subroutine get_values_matrix_byrow_fpcr_penta( this, a, b, c, d, e, i_loc )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(out) :: a, b, c, d, e
+  integer, intent(in) :: i_loc
+  integer :: i
+
+  a = this%a(i_loc)
+  b = this%b(i_loc)
+  c = this%c(i_loc)
+  d = this%d(i_loc)
+  e = this%e(i_loc)
+
+end subroutine get_values_matrix_byrow_fpcr_penta
+
 subroutine get_values_x_fpcr_penta( this, x )
 
   implicit none
@@ -551,6 +632,16 @@ subroutine get_values_x_fpcr_penta( this, x )
   enddo
 
 end subroutine get_values_x_fpcr_penta
+
+subroutine get_values_x_byrow_fpcr_penta( this, x, i_loc )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  real, intent(out) :: x
+  integer, intent(in) :: i_loc
+  x = this%x(i_loc)
+
+end subroutine get_values_x_byrow_fpcr_penta
 
 subroutine print_x_fpcr_penta( this, filename )
 
