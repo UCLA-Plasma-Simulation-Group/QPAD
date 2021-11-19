@@ -6,6 +6,7 @@ use hdf5io_class
 use sim_fields_class
 use sim_beams_class
 use sim_plasma_class
+use sim_lasers_class
 use field_class
 use beam3d_class
 use species2d_class
@@ -74,6 +75,7 @@ type sim_diag
   procedure, private :: init_diag_beams
   procedure, private :: init_diag_plasma
   procedure, private :: init_diag_fields
+  procedure, private :: init_diag_lasers
   procedure, private :: init_diag_rst
 
 end type sim_diag
@@ -591,6 +593,80 @@ subroutine init_diag_fields( this, input, opts, fields )
   enddo ! end of j
 
 end subroutine init_diag_fields
+
+subroutine init_diag_lasers( this, input, opts, lasers )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_lasers ), intent(inout), target :: lasers
+  ! local data
+  integer :: max_mode, ndump, dim, nlasers
+  integer :: i, j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=32) :: sn1, sn2, sn3, sn4
+  character(len=:), allocatable :: ss
+  class(*), pointer :: obj => null()
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.nlasers', nlasers )
+
+  do i = 1, nlasers
+    call input%info( 'laser(' // num2str(i) // ').diag', n_children=m )
+    do j = 1, m
+      call input%get( 'laser.diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'laser.diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'laser.diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'a_re_cyl_m' )
+            sn1 = 'A_re'
+            sn2 = 'a_re'
+            sn3 = 'm_ec^2/e'
+            sn4 = 'Re(a)'
+            dim = 1
+            obj => lasers%laser(i)
+          case ( 'a_im_cyl_m' )
+            sn1 = 'A_im'
+            sn2 = 'a_im'
+            sn3 = 'm_ec^2/e'
+            sn4 = 'Im(a)'
+            dim = 1
+            obj => lasers%laser(i)
+          end select
+          call this%add_diag( &
+            obj       = obj, &
+            max_mode  = max_mode, &
+            dump_freq = ndump, &
+            dim       = dim, &
+            type_label= trim(ss), &
+            filename  = './Lasers'//num2str(i)//'/'//trim(sn1)//'/', &
+            dataname  = trim(sn2), &
+            timeunit  = '1 / \omega_p', &
+            dt        = dt, &
+            axisname  = (/'r  ', '\xi', '   '/), &
+            axislabel = (/'r  ', '\xi', '   '/), &
+            axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+            axismax   = (/rmax, zmax, 0.0/), &
+            axismin   = (/rmin, zmin, 0.0/), &
+            units     = trim(sn3), &
+            label     = trim(sn4), &
+            rank      = 2 )
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
+
+end subroutine init_diag_lasers
 
 subroutine init_diag_rst( this, input, beams )
 

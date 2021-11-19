@@ -85,8 +85,8 @@ subroutine init_sim_lasers( this, input, opts )
   gc_num(:,2) = (/1, 1/)
 
   do i = 1, this%num_lasers
-    call input%get( 'laser' // num2str(i) // '.iteration', iter )
-    call input%get( 'laser' // num2str(i) // '.k0', k0 )
+    call input%get( 'laser(' // num2str(i) // ').iteration', iter )
+    call input%get( 'laser(' // num2str(i) // ').k0', k0 )
     call kwargs%set( 'iter', iter )
     call kwargs%set( 'k0', k0 )
     call this%laser(i)%new( opts, 1, max_mode, gc_num, only_f1=.false., kwargs=kwargs )
