@@ -25,6 +25,16 @@ type :: kw_arg
   procedure, private :: get_value_logical_kw_arg
   procedure, private :: get_value_complex_kw_arg
   procedure, private :: get_value_character_kw_arg
+  generic :: set_value => set_value_real_kw_arg, &
+                          set_value_integer_kw_arg, &
+                          set_value_logical_kw_arg, &
+                          set_value_complex_kw_arg, &
+                          set_value_character_kw_arg
+  procedure, private :: set_value_real_kw_arg
+  procedure, private :: set_value_integer_kw_arg
+  procedure, private :: set_value_logical_kw_arg
+  procedure, private :: set_value_complex_kw_arg
+  procedure, private :: set_value_character_kw_arg
   final :: kw_arg_finalizer
 end type kw_arg
 
@@ -44,6 +54,16 @@ type :: kw_list
   procedure, private :: get_complex_kw_list
   procedure, private :: get_logical_kw_list
   procedure, private :: get_character_kw_list
+  generic   :: set => set_real_kw_list, &
+                      set_integer_kw_list, &
+                      set_complex_kw_list, &
+                      set_logical_kw_list, &
+                      set_character_kw_list
+  procedure, private :: set_real_kw_list
+  procedure, private :: set_integer_kw_list
+  procedure, private :: set_complex_kw_list
+  procedure, private :: set_logical_kw_list
+  procedure, private :: set_character_kw_list
   final :: kw_list_finalizer
 end type kw_list
 
@@ -187,6 +207,108 @@ subroutine get_value_character_kw_arg( this, value, ierr )
   endif
 
 end subroutine get_value_character_kw_arg
+
+subroutine set_value_real_kw_arg( this, value, ierr )
+
+  implicit none
+  class( kw_arg ), intent(inout) :: this
+  real, intent(in) :: value
+  integer, intent(out) :: ierr
+
+  if ( allocated( this%value ) ) then
+    select type ( val => this%value )
+      type is (real)
+        val = value
+        ierr = 0
+      class default
+        ierr = 1
+    end select
+  else
+    ierr = 2
+  endif
+
+end subroutine set_value_real_kw_arg
+
+subroutine set_value_integer_kw_arg( this, value, ierr )
+
+  implicit none
+  class( kw_arg ), intent(inout) :: this
+  integer, intent(in) :: value
+  integer, intent(out) :: ierr
+
+  if ( allocated( this%value ) ) then
+    select type ( val => this%value )
+      type is (integer)
+        val = value
+        ierr = 0
+      class default
+        ierr = 1
+    end select
+  else
+    ierr = 2
+  endif
+
+end subroutine set_value_integer_kw_arg
+
+subroutine set_value_logical_kw_arg( this, value, ierr )
+  implicit none
+  class( kw_arg ), intent(inout) :: this
+  logical, intent(in) :: value
+  integer, intent(out) :: ierr
+
+  if ( allocated( this%value ) ) then
+    select type ( val => this%value )
+      type is (logical)
+        val = value
+        ierr = 0
+      class default
+        ierr = 1
+    end select
+  else
+    ierr = 2
+  endif
+
+end subroutine set_value_logical_kw_arg
+
+subroutine set_value_complex_kw_arg( this, value, ierr )
+  implicit none
+  class( kw_arg ), intent(inout) :: this
+  complex, intent(in) :: value
+  integer, intent(out) :: ierr
+
+  if ( allocated( this%value ) ) then
+    select type ( val => this%value )
+      type is (complex)
+        val = value
+        ierr = 0
+      class default
+        ierr = 1
+    end select
+  else
+    ierr = 2
+  endif
+
+end subroutine set_value_complex_kw_arg
+
+subroutine set_value_character_kw_arg( this, value, ierr )
+  implicit none
+  class( kw_arg ), intent(inout) :: this
+  character(*), intent(in) :: value
+  integer, intent(out) :: ierr
+
+  if ( allocated( this%value ) ) then
+    select type ( val => this%value )
+      type is (character(*))
+        val = value
+        ierr = 0
+      class default
+        ierr = 1
+    end select
+  else
+    ierr = 2
+  endif
+
+end subroutine set_value_character_kw_arg
 
 subroutine append_kw_list( this, key, value )
 
@@ -350,6 +472,151 @@ subroutine get_character_kw_list( this, key, value, err )
   if ( present(err) ) err = err_tmp
 
 end subroutine get_character_kw_list
+
+subroutine set_real_kw_list( this, key, value, err )
+
+  implicit none
+  class( kw_list ), intent(in) :: this
+  character(len=*), intent(in) :: key
+  real, intent(in) :: value
+  integer, intent(out), optional :: err
+
+  character(len=KEY_MAX_LEN) :: key_tmp
+  type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
+
+  current => this%head
+  do while ( associated(current) )
+    call current%get_key( key_tmp, ierr )
+    if ( trim(key_tmp) == trim(key) ) then
+      call current%set_value( value, ierr )
+      err_tmp = ierr
+      current => null()
+      return
+    endif
+    current => current%next
+  enddo
+  err_tmp = 3
+  current => null()
+  if ( present(err) ) err = err_tmp
+
+end subroutine set_real_kw_list
+
+subroutine set_integer_kw_list( this, key, value, err )
+
+  implicit none
+  class( kw_list ), intent(in) :: this
+  character(len=*), intent(in) :: key
+  integer, intent(in) :: value
+  integer, intent(out), optional :: err
+
+  character(len=KEY_MAX_LEN) :: key_tmp
+  type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
+
+  current => this%head
+  do while ( associated(current) )
+    call current%get_key( key_tmp, ierr )
+    if ( trim(key_tmp) == trim(key) ) then
+      call current%set_value( value, ierr )
+      err_tmp = ierr
+      current => null()
+      return
+    endif
+    current => current%next
+  enddo
+  err_tmp = 3
+  current => null()
+  if ( present(err) ) err = err_tmp
+
+end subroutine set_integer_kw_list
+
+subroutine set_logical_kw_list( this, key, value, err )
+
+  implicit none
+  class( kw_list ), intent(in) :: this
+  character(len=*), intent(in) :: key
+  logical, intent(in) :: value
+  integer, intent(out), optional :: err
+
+  character(len=KEY_MAX_LEN) :: key_tmp
+  type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
+
+  current => this%head
+  do while ( associated(current) )
+    call current%get_key( key_tmp, ierr )
+    if ( trim(key_tmp) == trim(key) ) then
+      call current%set_value( value, ierr )
+      err_tmp = ierr
+      current => null()
+      return
+    endif
+    current => current%next
+  enddo
+  err_tmp = 3
+  current => null()
+  if ( present(err) ) err = err_tmp
+
+end subroutine set_logical_kw_list
+
+subroutine set_complex_kw_list( this, key, value, err )
+
+  implicit none
+  class( kw_list ), intent(in) :: this
+  character(len=*), intent(in) :: key
+  complex, intent(in) :: value
+  integer, intent(out), optional :: err
+
+  character(len=KEY_MAX_LEN) :: key_tmp
+  type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
+
+  current => this%head
+  do while ( associated(current) )
+    call current%get_key( key_tmp, ierr )
+    if ( trim(key_tmp) == trim(key) ) then
+      call current%set_value( value, ierr )
+      err_tmp = ierr
+      current => null()
+      return
+    endif
+    current => current%next
+  enddo
+  err_tmp = 3
+  current => null()
+  if ( present(err) ) err = err_tmp
+
+end subroutine set_complex_kw_list
+
+subroutine set_character_kw_list( this, key, value, err )
+
+  implicit none
+  class( kw_list ), intent(in) :: this
+  character(len=*), intent(in) :: key
+  character(*), intent(in) :: value
+  integer, intent(out), optional :: err
+
+  character(len=KEY_MAX_LEN) :: key_tmp
+  type( kw_arg ), pointer :: current => null()
+  integer :: ierr, err_tmp
+
+  current => this%head
+  do while ( associated(current) )
+    call current%get_key( key_tmp, ierr )
+    if ( trim(key_tmp) == trim(key) ) then
+      call current%set_value( value, ierr )
+      err_tmp = ierr
+      current => null()
+      return
+    endif
+    current => current%next
+  enddo
+  err_tmp = 3
+  current => null()
+  if ( present(err) ) err = err_tmp
+
+end subroutine set_character_kw_list
 
 subroutine kw_list_finalizer( this )
   implicit none
