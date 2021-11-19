@@ -60,7 +60,7 @@ type :: field_complex
 
   real, public :: dr, dz
   integer, public :: max_mode, dim
-  integer, dimension(2,2) :: gc_num
+  integer, dimension(2,2), public :: gc_num
   real, dimension(:,:,:), allocatable :: psend_buf, precv_buf
 
   contains
