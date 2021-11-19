@@ -2,10 +2,10 @@ module field_laser_class
 
 use parallel_module
 use options_class
-use field_class
-use field_solver_class
+use field_complex_class
 use ufield_class
 use param
+use kwargs_class
 use sysutil_module
 use mpi
 use fpcr_penta_class
@@ -14,29 +14,36 @@ implicit none
 
 private
 
-character(len=20), parameter :: cls_name = "field_laser"
+character(len=32), parameter :: cls_name = "field_laser"
 integer, parameter :: cls_level = 3
 
 public :: field_laser
 
-type, extends( field ) :: field_laser
+type, extends( field_complex ) :: field_laser
+
+  private
 
   type( fpcr_penta ), dimension(:), pointer :: pgc_solver => null()
   real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
+  class( ufield ), dimension(:), pointer, public :: sr_re => null()
+  class( ufield ), dimension(:), pointer, public :: sr_im => null()
+  class( ufield ), dimension(:), pointer, public :: si_re => null()
+  class( ufield ), dimension(:), pointer, public :: si_im => null()
+
   ! central laser frequency
-  real :: k0 = 10
+  real, public :: k0 = 10
 
   ! iteration times
-  integer :: iter = 2
+  integer, public :: iter = 2
 
   contains
 
-  generic   :: new   => init_field_laser
+  procedure :: new   => init_field_laser
   procedure :: alloc => alloc_field_laser
   procedure :: del   => end_field_laser
   procedure :: solve => solve_field_laser
-  procedure, private :: set_rhs
+  procedure :: set_rhs => set_rhs_field_laser
   procedure, private :: get_solution
   procedure, private :: init_solver
 
@@ -57,19 +64,19 @@ subroutine alloc_field_laser( this, max_mode )
 
 end subroutine alloc_field_laser
 
-subroutine init_field_laser( this, opts, max_mode, k0, iter )
+subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs )
 
   implicit none
-
   class( field_laser ), intent(inout) :: this
   type( options ), intent(in) :: opts
-  integer, intent(in) :: max_mode, iter
-  real, intent(in) :: k0
+  integer, intent(in) :: dim, max_mode
+  integer, intent(in) :: gc_num
+  logical, intent(in), optional :: only_f1
+  type( kw_list ), intent(in), optional :: kwargs
 
-  integer, dimension(2,2) :: gc_num
-  integer :: dim, i, nrp, nr, noff
+  integer :: i, nrp, nr, noff
   real :: dr, dt, dz
-  character(len=20), save :: sname = "init_field_laser"
+  character(len=32), save :: sname = "init_field_laser"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -80,15 +87,24 @@ subroutine init_field_laser( this, opts, max_mode, k0, iter )
   dz  = opts%get_dxi()
   dt  = opts%get_dt()
 
-  this%k0 = k0
-  this%iter = iter
+  call kwargs%get( 'k0', this%k0 )
+  call kwargs%get( 'iter', this%iter )
 
-  gc_num(:,1) = (/1, 1/)
-  gc_num(:,2) = (/iter, iter/)
+  ! initialize the rhs
+  allocate( this%sr_re(0:max_mode) )
+  allocate( this%si_re(0:max_mode) )
+  allocate( this%sr_im(max_mode) )
+  allocate( this%si_im(max_mode) )
+  do i = 0, max_mode
+    call this%sr_re(i)%new( opts, dim, i, gc_num, has_2d=.true. )
+    call this%si_re(i)%new( opts, dim, i, gc_num, has_2d=.true. )
+    if (i==0) cycle
+    call this%sr_im(i)%new( opts, dim, i, gc_num, has_2d=.true. )
+    call this%si_im(i)%new( opts, dim, i, gc_num, has_2d=.true. )
+  enddo
 
-  dim = 1
   ! call initialization routine of the parent class
-  call this%field%new( opts, dim, max_mode, gc_num )
+  call this%field_complex%new( opts, dim, max_mode, gc_num )
 
   ! initialize solver
   call this%init_solver( nr, nrp, noff, this%k0, ds, dr, dz )
@@ -100,21 +116,26 @@ end subroutine init_field_laser
 subroutine end_field_laser( this )
 
   implicit none
-
   class( field_laser ), intent(inout) :: this
 
   integer :: i
-  character(len=20), save :: sname = 'end_field_laser'
+  character(len=32), save :: sname = 'end_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do i = 0, this%max_mode
     call this%pgc_solver(i)%destroy()
+    call this%rhsr_re(i)%del()
+    call this%rhsi_re(i)%del()
+    if ( i == 0 ) cycle
+    call this%rhsr_im(i)%del()
+    call this%rhsi_im(i)%del()
   enddo
   deallocate( this%pgc_solver )
+  deallocate( this%rhsr_re, this%rhsr_im, this%rhsi_re, this%rhsi_im )
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
-  call this%field%del()
+  call this%field_complex%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -128,27 +149,30 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
   real, intent(in) :: k0, ds, dr, dz
 
   integer :: ierr, m, i, j, local_size
-  real :: a, b, c, d, e
+  real :: a, b, c, d, e, m2, j2
 
   local_size = 2 * nrp
 
   do m = 0, this%max_mode
     call this%pgc_solver(m)%create( 2*nr, comm_loc(), ierr )
 
+    m2 = m * m
     ! set matrix element
     do i = 1, local_size, 2
 
       j = (noff + i + 1) / 2 - 1
+      j2 = j * j
+
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = 0.0
-      c = 0.5 * ds
+      c = 0.25 * ds * ( 2.0 + m2 / j2 )
       d = -k0 * dr**2
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i )
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
-      c = 0.5 * ds
+      c = 0.25 * ds * ( 2.0 + m2 / j2 )
       d = 0.0
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i+1 )
@@ -158,19 +182,57 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
     ! set the axial boundary condition
     if (myid == 0) then
 
-      a = 0.0
-      b = epsilon(1.0)
-      c = ds
-      d = -k0 * dr**2
-      e = -ds
-      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
+      if ( m == 0 ) then
 
-      a = epsilon(1.0)
-      b = k0 * dr**2
-      c = ds
-      d = 0.0
-      e = -ds
-      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
+        a = 0.0
+        b = epsilon(1.0)
+        c = ds
+        d = -k0 * dr**2
+        e = -ds
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
+
+        a = epsilon(1.0)
+        b = k0 * dr**2
+        c = ds
+        d = 0.0
+        e = -ds
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
+
+      else
+
+        ! matrix elements of row 1 and 2 are given arbitrarily to make sure the matrix
+        ! is not singular.
+        a = 0.0
+        b = epsilon(1.0)
+        c = 1.0
+        d = 0.0
+        e = 0.0
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
+
+        a = epsilon(1.0)
+        b = 0.0
+        c = 1.0
+        d = 0.0
+        e = 0.0
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
+
+        ! first matrix elements of row 3 and 4 are given zeros indicating the
+        ! on-axis values are zeros
+        a = 0.0
+        b = 0.0
+        c = 0.25 * ds * ( 2.0 + m2 )
+        d = -k0 * dr**2
+        e = -0.375 * ds
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 3 )
+
+        a = 0.0
+        b = k0 * dr**2
+        c = 0.25 * ds * ( 2.0 + m2 )
+        d = 0.0
+        e = -0.375 * ds
+        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 4 )
+
+      endif
 
     endif
 
@@ -178,17 +240,18 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
     if (myid == num_procs-1) then
 
       j = nr - 1
+      j2 = j * j
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = 0.0
-      c = 0.5 * ds
+      c = 0.25 * ds * ( 2.0 + m2 / j2 )
       d = -k0 * dr**2
       e = 0.0
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size-1 )
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
-      c = 0.5 * ds
+      c = 0.25 * ds * ( 2.0 + m2 / j2 )
       d = 0.0
       e = 0.0
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size )
@@ -202,7 +265,22 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
 end subroutine init_solver
 
-! subroutine set_rhs( this, mode,  )
+! subroutine set_rhs_field_laser( this, chi )
+subroutine set_rhs_field_laser( this )
+
+  implicit none
+  class( field_laser ), intent(inout) :: this
+
+  integer :: m, i, j
+  real :: a, b, c, d, e
+
+  do m = 0, this%max_mode
+  this%cfr_re(m)%f2(1, i,j)
+
+
+  enddo
+
+end subroutine set_rhs_field_laser
 
 subroutine set_source_ez( this, mode, jay_re, jay_im )
 
@@ -216,7 +294,7 @@ subroutine set_source_ez( this, mode, jay_re, jay_im )
   integer :: i, nrp, noff, idproc, nvp, ierr, i1, i2
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real :: idrh, idr, dr, dr2, ir, div
-  character(len=20), save :: sname = 'set_source_ez'
+  character(len=32), save :: sname = 'set_source_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve ez' )
@@ -326,7 +404,7 @@ subroutine get_solution_ez( this, mode )
 
   integer :: i, nrp
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
-  character(len=20), save :: sname = 'get_solution_ez'
+  character(len=32), save :: sname = 'get_solution_ez'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve ez' )
@@ -363,7 +441,7 @@ subroutine solve_field_laserz( this, jay )
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   integer :: i
-  character(len=20), save :: sname = 'solve_field_laserz'
+  character(len=32), save :: sname = 'solve_field_laserz'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -408,7 +486,7 @@ subroutine solve_field_laserz_fast( this, psi, idx )
   real, dimension(:,:,:), pointer :: psi_f2_re => null(), psi_f2_im => null()
   integer :: i, j, nrp
   real :: idxih, idxi
-  character(len=20), save :: sname = 'solve_field_laserz_fast'
+  character(len=32), save :: sname = 'solve_field_laserz_fast'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve ez' )
@@ -483,7 +561,7 @@ subroutine solve_field_lasert( this, b, psi )
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp, noff, idproc, nvp
   real :: idr, idrh, ir
-  character(len=20), save :: sname = 'solve_field_lasert'
+  character(len=32), save :: sname = 'solve_field_lasert'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve plasma et' )
@@ -583,7 +661,7 @@ subroutine solve_field_lasert_beam( this, b )
   real, dimension(:,:), pointer :: ub_re => null(), ub_im => null()
   real, dimension(:,:), pointer :: ue_re => null(), ue_im => null()
   integer :: mode, i, nrp
-  character(len=20), save :: sname = 'solve_field_lasert_beam'
+  character(len=32), save :: sname = 'solve_field_lasert_beam'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
   call start_tprof( 'solve beam et' )
@@ -622,4 +700,4 @@ subroutine solve_field_lasert_beam( this, b )
 
 end subroutine solve_field_lasert_beam
 
-end module laser_pgc_class
+end module field_laser_class
