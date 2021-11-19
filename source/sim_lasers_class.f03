@@ -73,10 +73,12 @@ subroutine init_sim_lasers( this, input, opts )
   integer, dimension(2,2) :: gc_num
   real :: k0 
   type( kw_list ) :: kwargs
+  logical :: read_rst
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.read_restart', read_rst )
   call kwargs%append( 'iter', 0 )
   call kwargs%append( 'k0', 10.0 )
 
@@ -85,11 +87,17 @@ subroutine init_sim_lasers( this, input, opts )
   gc_num(:,2) = (/1, 1/)
 
   do i = 1, this%num_lasers
-    call input%get( 'laser' // num2str(i) // '.iteration', iter )
-    call input%get( 'laser' // num2str(i) // '.k0', k0 )
+
+    call input%get( 'laser(' // num2str(i) // ').iteration', iter )
+    call input%get( 'laser(' // num2str(i) // ').k0', k0 )
     call kwargs%set( 'iter', iter )
     call kwargs%set( 'k0', k0 )
     call this%laser(i)%new( opts, 1, max_mode, gc_num, only_f1=.false., kwargs=kwargs )
+
+    if ( read_rst ) then
+      call write_err( 'Restarting is currently not available for laser field.' )
+    endif
+
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
