@@ -6,6 +6,7 @@ use ufield_class
 use kwargs_class
 use input_class
 use options_class
+use profile_laser_lib
 
 implicit none
 private
@@ -32,6 +33,9 @@ type, public :: profile_laser
   ! Global intensity
   real :: a0
 
+  ! central frequency
+  real :: k0
+
   ! Parameter list of the intensity profiles in 1, 2, 3 directions
   type( kw_list ) :: prof_perp_pars, prof_lon_pars
 
@@ -52,10 +56,10 @@ type, public :: profile_laser
 end type profile_laser
 
 interface
-  subroutine get_prof_perp_intf( r, z, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+  subroutine get_prof_perp_intf( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
     import kw_list
     implicit none
-    real, intent(in) :: r, z
+    real, intent(in) :: r, z, k0
     type(kw_list), intent(in) :: prof_pars
     integer, intent(in) :: mode
     real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -131,7 +135,7 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   select case ( trim(read_str) )
 
     case ( 'sin2' )
-      this%prof_type(1)  = p_prof_laser_sin2
+      this%prof_type(2)  = p_prof_laser_sin2
       this%set_prof_lon => set_prof_lon_sin2
       this%get_prof_lon => get_prof_lon_sin2
 
@@ -146,6 +150,7 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
 
   call input%get( trim(sect_name) // '.a0', this%a0 )
+  call input%get( trim(sect_name) // '.k0', this%k0 )
   call input%get( 'simulation.box.z(1)', this%z0 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -183,7 +188,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       z = ( this%noff_z + j - 1 ) * this%dz + this%z0
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
-        call this%get_prof_perp( r, z, this%prof_perp_pars, m, arr, ari, air, aii )
+        call this%get_prof_perp( r, z, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         call this%get_prof_lon( z, this%prof_lon_pars, env )
         env = env * this%a0
         ar_re(m)%f2( 1, i, j ) = env * arr

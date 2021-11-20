@@ -2,6 +2,7 @@
 
 src += field_complex_class.f03
 src += field_laser_class.f03
+src += profile_laser_lib.f03
 src += profile_laser_class.f03
 
 # Add local path to vpath
