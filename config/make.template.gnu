@@ -45,7 +45,7 @@ CC = gcc
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-FPP = gcc -C -E -cpp
+FPP = gcc -C -P -E -cpp
 
 # ------------------------------------------------------------------------------
 # Configure the modules that will NOT be installed

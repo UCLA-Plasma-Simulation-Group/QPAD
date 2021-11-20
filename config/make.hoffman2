@@ -7,7 +7,7 @@ CC = mpiicc
 CC_OPTS = -O3 -fopenmp -std=c99
 
 # Preprocessor configuration
-FPP = gcc -C -E -cpp
+FPP = gcc -C -P -E -cpp
 
 # Python 2.x configuration. Used for automatically generate compile rules
 PYTHON = python 
