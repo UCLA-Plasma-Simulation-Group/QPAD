@@ -139,7 +139,7 @@ integer, parameter :: p_neut_H  = 1, &
                       p_neut_Yb = 70
 
 ! ================================================================
-! parameters for profile
+! parameters for beam/species profile
 ! ================================================================
 integer, parameter :: p_prof_uniform = 0, &
                       p_prof_pw_linear = 1, &
