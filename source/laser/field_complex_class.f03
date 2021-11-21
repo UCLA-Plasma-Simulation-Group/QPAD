@@ -1,6 +1,7 @@
 module field_complex_class
 
 use parallel_module
+use input_class
 use options_class
 use ufield_class
 use ufield_smooth_class
@@ -103,12 +104,14 @@ contains
 ! =====================================================================
 ! Class field implementation
 ! =====================================================================
-subroutine alloc_field_complex( this, max_mode )
+subroutine alloc_field_complex( this, input, opts, id )
 
   implicit none
 
   class( field_complex ), intent(inout) :: this
-  integer, intent(in) :: max_mode
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: id
 
   ! placeholder, do nothing
 

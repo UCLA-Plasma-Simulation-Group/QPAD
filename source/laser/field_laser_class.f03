@@ -2,6 +2,7 @@ module field_laser_class
 
 use parallel_module
 use options_class
+use input_class
 use field_complex_class
 use ufield_class
 use param
@@ -9,6 +10,7 @@ use kwargs_class
 use sysutil_module
 use mpi
 use fpcr_penta_class
+use profile_laser_class
 
 implicit none
 
@@ -40,7 +42,10 @@ type, extends( field_complex ) :: field_laser
   real, public :: k0 = 10
 
   ! iteration times
-  integer, public :: iter = 2
+  integer, public :: iter = 1
+
+  ! intensity profile
+  class( profile_laser ), allocatable :: profile
 
   contains
 
@@ -55,16 +60,25 @@ end type field_laser
 
 contains
 
-subroutine alloc_field_laser( this, max_mode )
+subroutine alloc_field_laser( this, input, opts, id )
 
   implicit none
 
   class( field_laser ), intent(inout) :: this
-  integer, intent(in) :: max_mode
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  integer, intent(in) :: id
 
+  integer :: max_mode
+
+  call input%get( 'simulation.max_mode', max_mode )
   if ( .not. associated( this%pgc_solver ) ) then
     allocate( this%pgc_solver(0:max_mode) )
   endif
+
+  ! initialize profile
+  allocate( this%profile )
+  call this%profile%new( input, opts, id )
 
 end subroutine alloc_field_laser
 
@@ -80,6 +94,8 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
 
   integer :: i, nrp, nr, noff
   real :: dr, dt, dz
+  integer :: id, ierr
+  integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = "init_field_laser"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -99,6 +115,10 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   allocate( this%si_re(0:max_mode) )
   allocate( this%sr_im(max_mode) )
   allocate( this%si_im(max_mode) )
+  allocate( this%axir_re(0:max_mode) )
+  allocate( this%axii_re(0:max_mode) )
+  allocate( this%axir_im(max_mode) )
+  allocate( this%axii_im(max_mode) )
   do i = 0, max_mode
     call this%sr_re(i)%new( opts, dim, i, gc_num, has_2d=.true. )
     call this%si_re(i)%new( opts, dim, i, gc_num, has_2d=.true. )
@@ -116,6 +136,14 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
 
   ! initialize solver
   call this%init_solver( nr, nrp, noff, this%k0, dt, dr, dz )
+
+  ! launch laser  
+  call this%profile%launch( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )
+  call this%copy_gc_f2()
+  call this%pipe_send_f2( 1, id, 'forward', 'guard' )
+  call mpi_wait( id, istat, ierr )
+  call this%pipe_send_f2( 1, id, 'backward', 'guard' )
+  call mpi_wait( id, istat, ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -135,12 +163,17 @@ subroutine end_field_laser( this )
     call this%pgc_solver(i)%destroy()
     call this%sr_re(i)%del()
     call this%si_re(i)%del()
+    call this%axir_re(i)%del()
+    call this%axii_re(i)%del()
     if ( i == 0 ) cycle
     call this%sr_im(i)%del()
     call this%si_im(i)%del()
+    call this%axir_im(i)%del()
+    call this%axii_im(i)%del()
   enddo
   deallocate( this%pgc_solver )
   deallocate( this%sr_re, this%sr_im, this%si_re, this%si_im )
+  deallocate( this%axir_re, this%axir_im, this%axii_re, this%axii_im )
   if ( associated( this%buf_re ) ) deallocate( this%buf_re )
   if ( associated( this%buf_im ) ) deallocate( this%buf_im )
   call this%field_complex%del()

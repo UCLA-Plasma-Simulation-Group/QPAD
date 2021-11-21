@@ -5,6 +5,7 @@ use options_class
 use sim_fields_class
 use sim_beams_class
 use sim_plasma_class
+use sim_lasers_class
 use diagnostics_class
 use field_class
 use field_psi_class
@@ -38,10 +39,12 @@ type simulation
   class( sim_fields ), pointer :: fields => null()
   class( sim_plasma ), pointer :: plasma => null()
   class( sim_beams ),  pointer :: beams  => null()
+  class( sim_lasers ), pointer :: lasers  => null()
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start2d, start3d, nbeams, nspecies, nneutrals, tstep
+  integer :: iter, nstep3d, nstep2d, start2d, start3d, tstep
+  integer :: nbeams, nspecies, nneutrals, nlasers
   integer :: ndump, max_mode
 
   ! pipeline parameters
@@ -49,6 +52,7 @@ type simulation
   integer, dimension(:), allocatable :: tag_spe, id_spe
   integer, dimension(:,:), allocatable :: tag_neut, id_neut
   integer, dimension(:), allocatable :: tag_beam, id_beam
+  integer, dimension(:), allocatable :: tag_laser, id_laser
   integer, dimension(:), allocatable :: tag_bq, id_bq
   integer, dimension(:), allocatable :: tag_diag, id_diag
 
@@ -78,14 +82,16 @@ subroutine alloc_simulation( this, input, opts )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( .not. associated( this%fields ) )  allocate( sim_fields :: this%fields )
+  if ( .not. associated( this%fields ) ) allocate( sim_fields :: this%fields )
   if ( .not. associated( this%plasma ) ) allocate( sim_plasma :: this%plasma )
-  if ( .not. associated( this%beams ) )   allocate( sim_beams :: this%beams )
-  if ( .not. associated( this%diag ) )    allocate( sim_diag :: this%diag )
+  if ( .not. associated( this%beams ) )  allocate( sim_beams :: this%beams )
+  if ( .not. associated( this%lasers ) ) allocate( sim_lasers :: this%lasers )
+  if ( .not. associated( this%diag ) )   allocate( sim_diag :: this%diag )
 
   call this%fields%alloc( input )
   call this%plasma%alloc( input )
   call this%beams%alloc( input, opts )
+  call this%lasers%alloc( input, opts )
   call this%diag%alloc( input )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -149,6 +155,7 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nbeams', this%nbeams )
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.nneutrals', this%nneutrals )
+  call input%get( 'simulation.nlasers', this%nlasers )
   call input%get( 'simulation.max_mode', this%max_mode )
 
   call write_stdout( 'Initializing fields...' )
@@ -157,15 +164,19 @@ subroutine init_simulation(this, input, opts)
   call write_stdout( 'Initializing beams...' )
   call this%beams%new( input, opts )
 
+  call write_stdout( 'Initializing lasers...' )
+  call this%lasers%new( input, opts )
+
   call write_stdout( 'Initializing plasma...' )
   call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
   call write_stdout( 'Initializing diagnostics...' )
-  call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
+  call this%diag%new( input, opts, this%fields, this%beams, this%plasma, this%lasers )
 
   call write_stdout( 'Initializing pipeline...' )
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
+  allocate( this%tag_laser(this%nlasers), this%id_laser(this%nlasers) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
   allocate( this%tag_neut(4, this%nneutrals), this%id_neut(4, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
@@ -195,6 +206,7 @@ subroutine end_simulation(this)
   call write_stdout( 'Terminating simulation...' )
   call this%fields%del()
   call this%beams%del()
+  call this%lasers%del()
   call this%plasma%del()
   call this%diag%del()
 

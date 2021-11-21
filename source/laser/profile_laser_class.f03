@@ -181,7 +181,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  max_mode = size(ar_re)
+  max_mode = size(ar_im)
   do m = 0, max_mode
     do j = 1, this%nzp
       ! note that here "z" refers to xi = t - z
