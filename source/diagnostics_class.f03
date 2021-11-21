@@ -616,7 +616,6 @@ subroutine init_diag_lasers( this, input, opts, lasers )
   character(len=:), allocatable :: ss
   class(*), pointer :: obj => null()
 
-  print *, "in init_diag_lasers"
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
@@ -643,7 +642,6 @@ subroutine init_diag_lasers( this, input, opts, lasers )
             dim = 1
             obj => lasers%laser(i)
           end select
-          print *, "add laser diagnositics"
           call this%add_diag( &
             obj       = obj, &
             dtype     = 'complex', &

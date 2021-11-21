@@ -8,11 +8,13 @@ use sim_plasma_class
 use sim_lasers_class
 use diagnostics_class
 use field_class
+use field_complex_class
 use field_psi_class
 use field_vpot_class
 use field_b_class
 use field_e_class
 use field_src_class
+use field_laser_class
 use beam3d_class
 use species2d_class
 use neutral_class
@@ -234,6 +236,7 @@ subroutine run_simulation( this )
   type(field_rho), pointer :: q_spe, q_beam
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
+  type(field_laser), dimension(:), pointer :: laser
   type(species2d), dimension(:), pointer :: spe
   type(neutral), dimension(:), pointer :: neut
 
@@ -257,6 +260,7 @@ subroutine run_simulation( this )
   acu    => this%fields%acu
 
   beam => this%beams%beam
+  laser => this%lasers%laser
   spe  => this%plasma%spe
   neut => this%plasma%neut
 
@@ -335,6 +339,10 @@ subroutine run_simulation( this )
         call neut(k)%ion_deposit( q_spe )
       enddo
 
+      do k = 1, this%nlasers
+        call laser(k)%set_rhs()
+      enddo
+
       call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
       call b_spe%solve( cu )
@@ -349,9 +357,14 @@ subroutine run_simulation( this )
         amu = 0.0
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, cu, amu, acu )
+          ! call spe(k)%deposit_chi
         enddo
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
+          ! call spe(k)%deposit_chi
+        enddo
+        do k = 1, this%nlasers
+          call laser(k)%solve( j )
         enddo
 
         call dcu%solve( acu, amu )
@@ -395,6 +408,7 @@ subroutine run_simulation( this )
       ! advance species particles
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
+        ! call spe(k)%push( e, b, a_laser )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
@@ -402,6 +416,7 @@ subroutine run_simulation( this )
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
+        ! call neut(k)%push( e, b, a_laser )
         ! TODO: add sorting
       enddo
 
@@ -410,6 +425,11 @@ subroutine run_simulation( this )
       call psi%copy_slice( j, p_copy_1to2 )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
+
+      ! laser solver directly put solutions onto the 2D grid
+      ! do k = 1, this%nlasers
+      !   call laser(k)%copy_slice( j, p_copy_1to2 )
+      ! enddo
 
       ! send the first slice of E and B field back to the last stage for 3D 
       ! particle push

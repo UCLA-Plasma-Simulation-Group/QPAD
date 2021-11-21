@@ -140,9 +140,9 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   ! launch laser  
   call this%profile%launch( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )
   call this%copy_gc_f2()
-  call this%pipe_send_f2( 1, id, 'forward', 'guard' )
+  call this%pipe_send( 1, id, 'forward', 'guard' )
   call mpi_wait( id, istat, ierr )
-  call this%pipe_send_f2( 1, id, 'backward', 'guard' )
+  call this%pipe_send( 1, id, 'backward', 'guard' )
   call mpi_wait( id, istat, ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
