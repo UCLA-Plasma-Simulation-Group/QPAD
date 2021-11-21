@@ -607,7 +607,7 @@ subroutine init_diag_lasers( this, input, opts, lasers )
   class( sim_diag ), intent(inout) :: this
   type( input_json ), intent(inout) :: input
   type( options ), intent(in) :: opts
-  class( sim_lasers ), intent(inout), target :: lasers
+  class( sim_lasers ), intent(in), target :: lasers
   ! local data
   integer :: max_mode, ndump, dim, nlasers
   integer :: i, j, k, m, n
@@ -627,12 +627,12 @@ subroutine init_diag_lasers( this, input, opts, lasers )
   do i = 1, nlasers
     call input%info( 'laser(' // num2str(i) // ').diag', n_children=m )
     do j = 1, m
-      call input%get( 'laser.diag'//'('//num2str(j)//').ndump', ndump )
+      call input%get( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').ndump', ndump )
       if ( ndump > 0 ) then
-        call input%info( 'laser.diag'//'('//num2str(j)//').name', n_children=n )
+        call input%info( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').name', n_children=n )
         do k = 1, n
           if ( allocated(ss) ) deallocate(ss)
-          call input%get( 'laser.diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          call input%get( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
           select case ( trim(ss) )
           case ( 'a_cyl_m' )
             sn1 = 'A_laser'
@@ -691,7 +691,7 @@ subroutine init_diag_rst( this, input, beams )
 
 end subroutine init_diag_rst
 
-subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
+subroutine init_sim_diag( this, input, opts, fields, beams, plasma, lasers )
 
   implicit none
 
@@ -701,6 +701,7 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
   class( sim_fields ), intent(inout) :: fields
   class( sim_beams ), intent(in) :: beams
   class( sim_plasma ), intent(in) :: plasma
+  class( sim_lasers ), intent(in) :: lasers
 
   ! local data
   integer :: ierr
@@ -724,6 +725,9 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
 
   ! initialize field diagnostics
   call this%init_diag_fields( input, opts, fields )
+
+  ! initialize lasers diagnostics
+  call this%init_diag_lasers( input, opts, lasers )
 
   ! initialize restart file diagnostics
   if (rst) then

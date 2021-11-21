@@ -5,13 +5,16 @@ use options_class
 use sim_fields_class
 use sim_beams_class
 use sim_plasma_class
+use sim_lasers_class
 use diagnostics_class
 use field_class
+use field_complex_class
 use field_psi_class
 use field_vpot_class
 use field_b_class
 use field_e_class
 use field_src_class
+use field_laser_class
 use beam3d_class
 use species2d_class
 use neutral_class
@@ -38,10 +41,12 @@ type simulation
   class( sim_fields ), pointer :: fields => null()
   class( sim_plasma ), pointer :: plasma => null()
   class( sim_beams ),  pointer :: beams  => null()
+  class( sim_lasers ), pointer :: lasers  => null()
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start2d, start3d, nbeams, nspecies, nneutrals, tstep
+  integer :: iter, nstep3d, nstep2d, start2d, start3d, tstep
+  integer :: nbeams, nspecies, nneutrals, nlasers
   integer :: ndump, max_mode
 
   ! pipeline parameters
@@ -49,6 +54,7 @@ type simulation
   integer, dimension(:), allocatable :: tag_spe, id_spe
   integer, dimension(:,:), allocatable :: tag_neut, id_neut
   integer, dimension(:), allocatable :: tag_beam, id_beam
+  integer, dimension(:), allocatable :: tag_laser, id_laser
   integer, dimension(:), allocatable :: tag_bq, id_bq
   integer, dimension(:), allocatable :: tag_diag, id_diag
 
@@ -78,14 +84,16 @@ subroutine alloc_simulation( this, input, opts )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  if ( .not. associated( this%fields ) )  allocate( sim_fields :: this%fields )
+  if ( .not. associated( this%fields ) ) allocate( sim_fields :: this%fields )
   if ( .not. associated( this%plasma ) ) allocate( sim_plasma :: this%plasma )
-  if ( .not. associated( this%beams ) )   allocate( sim_beams :: this%beams )
-  if ( .not. associated( this%diag ) )    allocate( sim_diag :: this%diag )
+  if ( .not. associated( this%beams ) )  allocate( sim_beams :: this%beams )
+  if ( .not. associated( this%lasers ) ) allocate( sim_lasers :: this%lasers )
+  if ( .not. associated( this%diag ) )   allocate( sim_diag :: this%diag )
 
   call this%fields%alloc( input )
   call this%plasma%alloc( input )
   call this%beams%alloc( input, opts )
+  call this%lasers%alloc( input, opts )
   call this%diag%alloc( input )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -149,6 +157,7 @@ subroutine init_simulation(this, input, opts)
   call input%get( 'simulation.nbeams', this%nbeams )
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.nneutrals', this%nneutrals )
+  call input%get( 'simulation.nlasers', this%nlasers )
   call input%get( 'simulation.max_mode', this%max_mode )
 
   call write_stdout( 'Initializing fields...' )
@@ -157,15 +166,19 @@ subroutine init_simulation(this, input, opts)
   call write_stdout( 'Initializing beams...' )
   call this%beams%new( input, opts )
 
+  call write_stdout( 'Initializing lasers...' )
+  call this%lasers%new( input, opts )
+
   call write_stdout( 'Initializing plasma...' )
   call this%plasma%new( input, opts, (this%start3d-1)*dt )
 
   call write_stdout( 'Initializing diagnostics...' )
-  call this%diag%new( input, opts, this%fields, this%beams, this%plasma )
+  call this%diag%new( input, opts, this%fields, this%beams, this%plasma, this%lasers )
 
   call write_stdout( 'Initializing pipeline...' )
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
+  allocate( this%tag_laser(this%nlasers), this%id_laser(this%nlasers) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
   allocate( this%tag_neut(4, this%nneutrals), this%id_neut(4, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
@@ -195,6 +208,7 @@ subroutine end_simulation(this)
   call write_stdout( 'Terminating simulation...' )
   call this%fields%del()
   call this%beams%del()
+  call this%lasers%del()
   call this%plasma%del()
   call this%diag%del()
 
@@ -222,6 +236,7 @@ subroutine run_simulation( this )
   type(field_rho), pointer :: q_spe, q_beam
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
+  type(field_laser), dimension(:), pointer :: laser
   type(species2d), dimension(:), pointer :: spe
   type(neutral), dimension(:), pointer :: neut
 
@@ -245,6 +260,7 @@ subroutine run_simulation( this )
   acu    => this%fields%acu
 
   beam => this%beams%beam
+  laser => this%lasers%laser
   spe  => this%plasma%spe
   neut => this%plasma%neut
 
@@ -301,6 +317,11 @@ subroutine run_simulation( this )
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
 
+    ! set source terms for laser envelope equation
+    do k = 1, this%nlasers
+      call laser(k)%set_rhs()
+    enddo
+
     b     = 0.0
     e     = 0.0
     e_spe = 0.0
@@ -337,9 +358,14 @@ subroutine run_simulation( this )
         amu = 0.0
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, cu, amu, acu )
+          ! call spe(k)%deposit_chi
         enddo
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
+          ! call spe(k)%deposit_chi
+        enddo
+        do k = 1, this%nlasers
+          call laser(k)%solve( j )
         enddo
 
         call dcu%solve( acu, amu )
@@ -383,6 +409,7 @@ subroutine run_simulation( this )
       ! advance species particles
       do k = 1, this%nspecies
         call spe(k)%push( e, b )
+        ! call spe(k)%push( e, b, a_laser )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
@@ -390,6 +417,7 @@ subroutine run_simulation( this )
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
+        ! call neut(k)%push( e, b, a_laser )
         ! TODO: add sorting
       enddo
 
@@ -398,6 +426,11 @@ subroutine run_simulation( this )
       call psi%copy_slice( j, p_copy_1to2 )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
+
+      ! laser solver directly put solutions onto the 2D grid
+      ! do k = 1, this%nlasers
+      !   call laser(k)%copy_slice( j, p_copy_1to2 )
+      ! enddo
 
       ! send the first slice of E and B field back to the last stage for 3D 
       ! particle push
