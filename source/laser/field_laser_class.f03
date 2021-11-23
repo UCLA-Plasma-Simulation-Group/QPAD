@@ -196,6 +196,12 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
   nvp = num_procs_loc()
   idproc = id_proc_loc()
 
+  ! DEBUG
+  print *, "k0 = ", k0
+  print *, "dr = ", dr
+  print *, "ds = ", ds
+
+
   do m = 0, this%max_mode
     call this%pgc_solver(m)%create( 2*nr, comm_loc(), ierr )
 
@@ -203,7 +209,7 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
     ! set matrix element
     do i = 1, local_size, 2
 
-      j = (noff + i + 1) / 2 - 1
+      j = (i + 1) / 2 - 1 + noff
       j2 = j * j
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
@@ -212,6 +218,7 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       d = -k0 * dr**2
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i )
+      ! print *, a, b, c, d, e
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
@@ -219,6 +226,7 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       d = 0.0
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i+1 )
+      ! print *, a, b, c, d, e
 
     enddo
 
@@ -301,10 +309,15 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
     endif
 
+    ! DEBUG
+    call this%pgc_solver(m)%print_matrix( 'matrix' )
     ! generate cyclic reduction coefficients
     call this%pgc_solver(m)%generate_cr_coef()
 
   enddo
+
+  ! DEBUG
+  ! call this%pgc_solver(0)%print_matrix( 'matrix' )
 
 end subroutine init_solver
 

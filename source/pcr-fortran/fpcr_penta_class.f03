@@ -39,6 +39,7 @@ type :: fpcr_penta
   generic   :: get_values_x      => get_values_x_fpcr_penta, get_values_x_byrow_fpcr_penta
   procedure :: print_x           => print_x_fpcr_penta
   procedure :: print_rhs         => print_rhs_fpcr_penta
+  procedure :: print_matrix      => print_matrix_fpcr_penta
   procedure :: generate_cr_coef  => generate_cr_coef_fpcr_penta
   procedure, private :: set_values_rhs_fpcr_penta
   procedure, private :: set_values_rhs_byrow_fpcr_penta
@@ -678,6 +679,24 @@ subroutine print_rhs_fpcr_penta( this, filename )
   enddo
 
 end subroutine print_rhs_fpcr_penta
+
+subroutine print_matrix_fpcr_penta( this, filename )
+
+  implicit none
+  class( fpcr_penta ), intent(inout) :: this
+  character(len=*), intent(in) :: filename
+  integer :: unit, i
+  character(len=128) :: fstr
+
+  write( fstr, '(I0.4)' ) this%myid
+  fstr = trim(filename) // '.' // trim(fstr)
+  unit = 2
+  open( unit, file=trim(fstr) )
+  do i = 1, this%n_local
+    write( unit, '(5ES30.15)' ) this%a(i), this%b(i), this%c(i), this%d(i), this%e(i)
+  enddo
+
+end subroutine print_matrix_fpcr_penta
 
 function log2(x)
   implicit none
