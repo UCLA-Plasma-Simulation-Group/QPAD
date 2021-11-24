@@ -41,6 +41,9 @@ type, extends( field_complex ) :: field_laser
   ! central laser frequency
   real, public :: k0 = 10
 
+  ! 3D time step
+  real :: ds
+
   ! iteration times
   integer, public :: iter = 1
 
@@ -93,7 +96,7 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   type( kw_list ), intent(in), optional :: kwargs
 
   integer :: i, nrp, nr, noff
-  real :: dr, dt, dz
+  real :: dr, dz
   integer :: id, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = "init_field_laser"
@@ -105,7 +108,7 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   noff= opts%get_noff(1)
   dr  = opts%get_dr()
   dz  = opts%get_dxi()
-  dt  = opts%get_dt()
+  this%ds = opts%get_dt()
 
   call kwargs%get( 'k0', this%k0 )
   call kwargs%get( 'iter', this%iter )
@@ -135,7 +138,7 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   call this%field_complex%new( opts, dim, max_mode, gc_num )
 
   ! initialize solver
-  call this%init_solver( nr, nrp, noff, this%k0, dt, dr, dz )
+  call this%init_solver( nr, nrp, noff, this%k0, this%ds, dr, dz )
 
   ! launch laser  
   call this%profile%launch( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )
@@ -196,12 +199,6 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
   nvp = num_procs_loc()
   idproc = id_proc_loc()
 
-  ! DEBUG
-  print *, "k0 = ", k0
-  print *, "dr = ", dr
-  print *, "ds = ", ds
-
-
   do m = 0, this%max_mode
     call this%pgc_solver(m)%create( 2*nr, comm_loc(), ierr )
 
@@ -218,7 +215,6 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       d = -k0 * dr**2
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i )
-      ! print *, a, b, c, d, e
 
       a = -0.25 * ds * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
@@ -226,7 +222,6 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       d = 0.0
       e = -0.25 * ds * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i+1 )
-      ! print *, a, b, c, d, e
 
     enddo
 
@@ -309,15 +304,10 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
     endif
 
-    ! DEBUG
-    call this%pgc_solver(m)%print_matrix( 'matrix' )
     ! generate cyclic reduction coefficients
     call this%pgc_solver(m)%generate_cr_coef()
 
   enddo
-
-  ! DEBUG
-  ! call this%pgc_solver(0)%print_matrix( 'matrix' )
 
 end subroutine init_solver
 
@@ -327,32 +317,74 @@ subroutine set_rhs_field_laser( this )
   implicit none
   class( field_laser ), intent(inout) :: this
 
-  integer :: m, i, j, nrp, nzp
-  real :: a1, b1, c1, d1, e1
-  real :: a2, b2, c2, d2, e2
-  real :: dr2_idzh
+  integer :: m, i, j, k, nrp, nzp, noff
+  integer :: nvp, idproc
+  real :: beta_m, beta_p, alpha, kappa
+  real :: dr2_idzh, ds_qtr, m2, ik
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
 
   nrp    = this%cfr_re(0)%get_ndp(1)
   nzp    = this%cfr_re(0)%get_ndp(2)
+  noff   = this%cfr_re(0)%get_noff(1)
   dr2_idzh = 0.5 * this%dr**2 / this%dz
+  kappa  = this%k0 * this%dr**2
+  ds_qtr = 0.25 * this%ds
+  idproc = id_proc_loc()
+  nvp    = num_procs_loc()
   
   ! mode = 0
   ar_re => this%cfr_re(0)%get_f2()
   ai_re => this%cfi_re(0)%get_f2()
   do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
-    do i = 1, nrp
-      call this%pgc_solver(0)%get_values_matrix( a1, b1, c1, d1, e1, 2*i-1 )
-      call this%pgc_solver(0)%get_values_matrix( a2, b2, c2, d2, e2, 2*i )
 
-      this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) )
-      this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) )
-      
-      this%sr_re(0)%f2(1,i,j) = this%sr_re(0)%f2(1,i,j) + d1 * ai_re(1,i,j) &
-                              - a1 * ar_re(1,i-1,j) - c1 * ar_re(1,i,j) - e1 * ar_re(1,i+1,j)
-      this%si_re(0)%f2(1,i,j) = this%si_re(0)%f2(1,i,j) + b2 * ar_re(1,i,j) &
-                              - a2 * ai_re(1,i-1,j) - c2 * ai_re(1,i,j) - e2 * ai_re(1,i+1,j)                              
+    ! calculate the inner cells
+    do i = 2, nrp - 1
+      ik = 1.0 / (i + noff - 1)
+      beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+      beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+      alpha = -ds_qtr * 2.0
+      this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                              + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+      this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                              + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)                              
     enddo
+
+    ! calculate the first cell
+    if ( idproc == 0 ) then
+      i = 1
+      beta_m = 0.0
+      beta_p = this%ds
+      alpha = -this%ds
+    else
+      i = 1
+      ik = 1.0 / noff
+      beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+      beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+      alpha = -ds_qtr * 2.0
+    endif
+    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                              + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                              + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
+
+    ! calculate the last cell
+    if ( idproc == nvp - 1 ) then
+      i = nrp
+      ik = 1.0 / (i + noff - 1)
+      beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+      beta_p = 0.0
+      alpha = -ds_qtr * 2.0
+    else
+      i = nrp
+      ik = 1.0 / (i + noff - 1)
+      beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+      beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+      alpha = -ds_qtr * 2.0
+    endif
+    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                              + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                              + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
   enddo
 
   ! mode > 0
@@ -362,26 +394,71 @@ subroutine set_rhs_field_laser( this )
     ai_re => this%cfi_re(m)%get_f2()
     ar_im => this%cfr_im(m)%get_f2()
     ai_im => this%cfi_im(m)%get_f2()
+    m2 = m * m
 
+    ! calculate the inner cells
     do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
-      do i = 1, nrp
-        call this%pgc_solver(m)%get_values_matrix( a1, b1, c1, d1, e1, 2*i-1 )
-        call this%pgc_solver(m)%get_values_matrix( a2, b2, c2, d2, e2, 2*i )
+      do i = 2, nrp - 1
+        ik = 1.0 / (i + noff - 1)
+        beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+        beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+        alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
 
-        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) )
-        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) )
-        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) )
-        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) )
-
-        this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) + d1 * ai_re(1,i,j) &
-                                - a1 * ar_re(1,i-1,j) - c1 * ar_re(1,i,j) - e1 * ar_re(1,i+1,j)
-        this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + d1 * ai_im(1,i,j) &
-                                - a1 * ar_im(1,i-1,j) - c1 * ar_im(1,i,j) - e1 * ar_im(1,i+1,j)
-        this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) + b2 * ar_re(1,i,j) &
-                                - a2 * ai_re(1,i-1,j) - c2 * ai_re(1,i,j) - e2 * ai_re(1,i+1,j)
-        this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + b2 * ar_im(1,i,j) &
-                                - a2 * ai_im(1,i-1,j) - c2 * ai_im(1,i,j) - e2 * ai_im(1,i+1,j)
+        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                                + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+                                + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
+        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                                + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
+        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+                                + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
       enddo
+
+      ! calculate the first cell
+      if ( idproc == 0 ) then
+        this%sr_re(m)%f2(1,i,j) = 0.0
+        this%sr_im(m)%f2(1,i,j) = 0.0
+        this%si_re(m)%f2(1,i,j) = 0.0
+        this%si_im(m)%f2(1,i,j) = 0.0
+      else
+        i = 1
+        ik = 1.0 / noff
+        beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+        beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+        alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
+
+        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                                + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+                                + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
+        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                                + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
+        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+                                + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
+      endif
+
+      ! calculate the last cell
+      if ( idproc == nvp - 1 ) then
+        i = nrp
+        ik = 1.0 / (noff + i - 1)
+        beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+        beta_p = 0.0
+        alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
+      else
+        i = nrp
+        ik = 1.0 / (noff + i - 1)
+        beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
+        beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
+        alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
+      endif
+      this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+                              + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+      this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+                              + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
+      this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+                              + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
+      this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+                              + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
     enddo
   enddo
 
