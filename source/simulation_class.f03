@@ -54,7 +54,7 @@ type simulation
   integer, dimension(:), allocatable :: tag_spe, id_spe
   integer, dimension(:,:), allocatable :: tag_neut, id_neut
   integer, dimension(:), allocatable :: tag_beam, id_beam
-  integer, dimension(:), allocatable :: tag_laser, id_laser
+  integer, dimension(:,:), allocatable :: tag_laser, id_laser
   integer, dimension(:), allocatable :: tag_bq, id_bq
   integer, dimension(:), allocatable :: tag_diag, id_diag
 
@@ -178,7 +178,7 @@ subroutine init_simulation(this, input, opts)
   call write_stdout( 'Initializing pipeline...' )
   allocate( this%tag_field(p_max_tag_num), this%id_field(p_max_tag_num) )
   allocate( this%tag_beam(this%nbeams), this%id_beam(this%nbeams) )
-  allocate( this%tag_laser(this%nlasers), this%id_laser(this%nlasers) )
+  allocate( this%tag_laser(2, this%nlasers), this%id_laser(2, this%nlasers) )
   allocate( this%tag_spe(this%nspecies), this%id_spe(this%nspecies) )
   allocate( this%tag_neut(4, this%nneutrals), this%id_neut(4, this%nneutrals) )
   allocate( this%tag_bq(this%nbeams), this%id_bq(this%nbeams) )
@@ -320,10 +320,8 @@ subroutine run_simulation( this )
 
     ! pipeline data transfer for lasers
     do k = 1, this%nlasers
-      this%tag_laser(k) = ntag()
-      print *, "stage ", id_stage(), ' is receiving data with tag ', this%tag_laser(k)
-      call laser(k)%pipe_recv( this%tag_laser(k), 'forward', 'guard', 'replace' )
-      print *, "stage ", id_stage(), ' is receiving data with tag ', this%tag_laser(k), '. DONE'
+      this%tag_laser(1,k) = ntag()
+      call laser(k)%pipe_recv( this%tag_laser(1,k), 'forward', 'guard', 'replace' )
     enddo
 
     ! set source terms for laser envelope equation
@@ -413,6 +411,12 @@ subroutine run_simulation( this )
         call cu%pipe_send( this%tag_field(1), this%id_field(1), 'forward' )
         call mpi_wait( this%id_field(4), istat, ierr )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
+
+        ! pipeline for lasers
+        do k = 1, this%nlasers
+          call mpi_wait( this%id_laser(1,k), istat, ierr )
+          call laser(k)%pipe_send( this%tag_laser(1,k), this%id_laser(1,k), 'forward', 'inner' )
+        enddo
       endif
 
       ! advance species particles
@@ -450,6 +454,11 @@ subroutine run_simulation( this )
         call mpi_wait( this%id_field(3), istat, ierr )
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
+        do k = 1, this%nlasers
+          call mpi_wait( this%id_laser(2,k), istat, ierr )
+          this%tag_laser(2,k) = ntag()
+          call laser(k)%pipe_send( this%tag_laser(2,k), this%id_laser(2,k), 'backward', 'inner' )
+        enddo
       endif
 
     enddo ! 2d loop
@@ -465,21 +474,12 @@ subroutine run_simulation( this )
     enddo
 
     ! pipeline for E and B fields
-    print *, "stage ", id_stage(), ' is receiving b field'
     call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )
-    print *, "stage ", id_stage(), ' is receiving b field. DONE'
-    print *, "stage ", id_stage(), ' is receiving e field'
     call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
-    print *, "stage ", id_stage(), ' is receiving b field. DONE'
 
-    ! pipeline for lasers
+    ! pipeline for backward transfered data
     do k = 1, this%nlasers
-      print *, "stage ", id_stage(), ' is wait sending'
-      call mpi_wait( this%id_laser(k), istat, ierr )
-      print *, "stage ", id_stage(), ' is wait sending. DONE'
-      print *, "stage ", id_stage(), ' is sending data with tag ', this%tag_laser(k)
-      call laser(k)%pipe_send( this%tag_laser(k), this%id_laser(k), 'forward', 'inner' )
-      print *, "stage ", id_stage(), ' is sending data with tag ', this%tag_laser(k), '. DONE'
+      call laser(k)%pipe_recv( this%tag_laser(2,k), 'backward', 'guard', 'replace' )
     enddo
 
     ! pipeline for beams

@@ -155,10 +155,11 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   call this%pipe_recv( 1, 'backward', 'guard', 'replace' )
   call mpi_wait( id, istat, ierr )
 
-  if ( id_stage() == 1 ) then
-    this%cfr_re(0)%f2 = 0.0
-    this%cfi_re(0)%f2 = 0.0
-  endif
+  ! DEBUG
+  ! if ( id_stage() == 1 ) then
+    ! this%cfr_re(0)%f2 = 0.0
+    ! this%cfi_re(0)%f2 = 0.0
+  ! endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -549,8 +550,8 @@ subroutine solve_field_laser( this, i_slice )
         this%axii_re(m)%f1(1,i) = dr2_idzh * ( this%cfi_re(m)%f2(1,i,i_slice+2) - this%cfi_re(m)%f2(1,i,i_slice) )
       enddo
     else
-      this%axir_re(m)%f1(1,i) = 0.0
-      this%axii_re(m)%f1(1,i) = 0.0
+      this%axir_re(m)%f1 = 0.0
+      this%axii_re(m)%f1 = 0.0
     endif
 
     ! get solution
@@ -578,8 +579,8 @@ subroutine solve_field_laser( this, i_slice )
         this%axii_im(m)%f1(1,i) = dr2_idzh * ( this%cfi_im(m)%f2(1,i,i_slice+2) - this%cfi_im(m)%f2(1,i,i_slice) )
       enddo
     else
-      this%axir_im(m)%f1(1,i) = 0.0
-      this%axii_im(m)%f1(1,i) = 0.0
+      this%axir_im(m)%f1 = 0.0
+      this%axii_im(m)%f1 = 0.0
     endif
 
     ! get solution
