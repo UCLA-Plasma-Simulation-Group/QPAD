@@ -187,6 +187,7 @@ subroutine init_simulation(this, input, opts)
   this%id_spe   = MPI_REQUEST_NULL
   this%id_neut  = MPI_REQUEST_NULL
   this%id_beam  = MPI_REQUEST_NULL
+  this%id_laser = MPI_REQUEST_NULL
   this%id_bq    = MPI_REQUEST_NULL
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -316,6 +317,14 @@ subroutine run_simulation( this )
     call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
+
+    ! pipeline data transfer for lasers
+    do k = 1, this%nlasers
+      this%tag_laser(k) = ntag()
+      print *, "stage ", id_stage(), ' is receiving data with tag ', this%tag_laser(k)
+      call laser(k)%pipe_recv( this%tag_laser(k), 'forward', 'guard', 'replace' )
+      print *, "stage ", id_stage(), ' is receiving data with tag ', this%tag_laser(k), '. DONE'
+    enddo
 
     ! set source terms for laser envelope equation
     do k = 1, this%nlasers
@@ -456,8 +465,22 @@ subroutine run_simulation( this )
     enddo
 
     ! pipeline for E and B fields
+    print *, "stage ", id_stage(), ' is receiving b field'
     call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )
+    print *, "stage ", id_stage(), ' is receiving b field. DONE'
+    print *, "stage ", id_stage(), ' is receiving e field'
     call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
+    print *, "stage ", id_stage(), ' is receiving b field. DONE'
+
+    ! pipeline for lasers
+    do k = 1, this%nlasers
+      print *, "stage ", id_stage(), ' is wait sending'
+      call mpi_wait( this%id_laser(k), istat, ierr )
+      print *, "stage ", id_stage(), ' is wait sending. DONE'
+      print *, "stage ", id_stage(), ' is sending data with tag ', this%tag_laser(k)
+      call laser(k)%pipe_send( this%tag_laser(k), this%id_laser(k), 'forward', 'inner' )
+      print *, "stage ", id_stage(), ' is sending data with tag ', this%tag_laser(k), '. DONE'
+    enddo
 
     ! pipeline for beams
     do k = 1, this%nbeams

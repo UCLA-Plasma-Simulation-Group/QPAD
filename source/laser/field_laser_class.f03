@@ -73,6 +73,9 @@ subroutine alloc_field_laser( this, input, opts, id )
   integer, intent(in) :: id
 
   integer :: max_mode
+  character(len=32), save :: sname = 'alloc_field_laser'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   call input%get( 'simulation.max_mode', max_mode )
   if ( .not. associated( this%pgc_solver ) ) then
@@ -82,6 +85,8 @@ subroutine alloc_field_laser( this, input, opts, id )
   ! initialize profile
   allocate( this%profile )
   call this%profile%new( input, opts, id )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine alloc_field_laser
 
@@ -143,10 +148,17 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   ! launch laser  
   call this%profile%launch( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )
   call this%copy_gc_f2()
-  call this%pipe_send( 1, id, 'forward', 'guard' )
+  call this%pipe_send( 1, id, 'forward', 'inner' )
+  call this%pipe_recv( 1, 'forward', 'guard', 'replace' )
   call mpi_wait( id, istat, ierr )
-  call this%pipe_send( 1, id, 'backward', 'guard' )
+  call this%pipe_send( 1, id, 'backward', 'inner' )
+  call this%pipe_recv( 1, 'backward', 'guard', 'replace' )
   call mpi_wait( id, istat, ierr )
+
+  if ( id_stage() == 1 ) then
+    this%cfr_re(0)%f2 = 0.0
+    this%cfi_re(0)%f2 = 0.0
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -194,6 +206,9 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
   integer :: ierr, m, i, j, local_size, idproc, nvp
   real :: a, b, c, d, e, m2, j2
+  character(len=32), save :: sname = 'init_solver'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   local_size = 2 * nrp
   nvp = num_procs_loc()
@@ -309,6 +324,8 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
   enddo
 
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
 end subroutine init_solver
 
 ! subroutine set_rhs_field_laser( this, chi )
@@ -322,6 +339,9 @@ subroutine set_rhs_field_laser( this )
   real :: beta_m, beta_p, alpha, kappa
   real :: dr2_idzh, ds_qtr, m2, ik
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
+  character(len=32), save :: sname = 'set_rhs_field_laser'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp    = this%cfr_re(0)%get_ndp(1)
   nzp    = this%cfr_re(0)%get_ndp(2)
@@ -462,6 +482,8 @@ subroutine set_rhs_field_laser( this )
     enddo
   enddo
 
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
 end subroutine set_rhs_field_laser
 
 ! subroutine solve_field_laser( this, chi, i_slice )
@@ -473,6 +495,9 @@ subroutine solve_field_laser( this, i_slice )
 
   integer :: m, i, j, nrp, nzp
   real :: dr2_idzh, rhs
+  character(len=32), save :: sname = 'solve_field_laser'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   nrp    = this%cfr_re(0)%get_ndp(1)
   nzp    = this%cfr_re(0)%get_ndp(2)
@@ -566,6 +591,8 @@ subroutine solve_field_laser( this, i_slice )
   enddo
     
   call this%copy_gc_f2()
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_laser
 
