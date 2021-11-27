@@ -8,6 +8,7 @@ use fdist2d_class
 use field_psi_class
 use field_e_class
 use field_b_class
+use field_laser_class
 use field_src_class
 use field_class
 use part2d_class
@@ -253,13 +254,14 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine push_species2d(this,ef,bf)
+subroutine push_species2d( this, ef, bf, af )
 
    implicit none
 
    class(species2d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
+   class(field_laser), intent(in) :: af
    ! local data
    character(len=18), save :: sname = 'push_species2d'
 
@@ -272,6 +274,8 @@ subroutine push_species2d(this,ef,bf)
          call this%part%push_clamp( ef, bf )
       case ( p_push2_robust_subcyc )
          call this%part%push_robust_subcyc( ef, bf )
+      case ( p_push2_robust_pgc )
+         call this%part%push_robust_pgc( ef, bf, af )
    end select
 
    call this%part%update_bound()

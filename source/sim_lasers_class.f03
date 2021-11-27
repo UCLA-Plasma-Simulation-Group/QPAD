@@ -17,6 +17,7 @@ public :: sim_lasers
 type, public :: sim_lasers
   
   class( field_laser ), dimension(:), pointer :: laser => null()
+  class( field_laser ), pointer :: laser_all => null()
   integer :: num_lasers
 
   contains
@@ -49,6 +50,10 @@ subroutine alloc_sim_lasers( this, input, opts )
 
   if ( .not. associated( this%laser ) ) then
     allocate( field_laser :: this%laser( this%num_lasers ) )
+  endif
+
+  if ( .not. associated( this%laser_all ) ) then
+    allocate( field_laser :: this%laser_all )
   endif
 
   do i = 1, this%num_lasers
@@ -100,6 +105,8 @@ subroutine init_sim_lasers( this, input, opts )
 
   enddo
 
+  call this%laser_all%new_aux( opts, 1, max_mode, gc_num, only_f1=.true. )
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_sim_lasers
@@ -116,6 +123,7 @@ subroutine end_sim_lasers( this )
   do i = 1, this%num_lasers
     call this%laser(i)%del()
   enddo
+  call this%laser_all%del_aux()
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine end_sim_lasers

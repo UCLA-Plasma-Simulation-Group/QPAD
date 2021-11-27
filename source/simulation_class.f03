@@ -236,6 +236,7 @@ subroutine run_simulation( this )
   type(field_jay), pointer :: cu, amu
   type(field_rho), pointer :: q_spe, q_beam
   type(field_djdxi), pointer :: dcu, acu
+  type(field_laser), pointer :: laser_all
   type(beam3d), dimension(:), pointer :: beam
   type(field_laser), dimension(:), pointer :: laser
   type(species2d), dimension(:), pointer :: spe
@@ -260,10 +261,11 @@ subroutine run_simulation( this )
   dcu    => this%fields%dcu
   acu    => this%fields%acu
 
-  beam => this%beams%beam
-  laser => this%lasers%laser
-  spe  => this%plasma%spe
-  neut => this%plasma%neut
+  beam      => this%beams%beam
+  laser     => this%lasers%laser
+  laser_all => this%lasers%laser_all
+  spe       => this%plasma%spe
+  neut      => this%plasma%neut
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
@@ -419,10 +421,18 @@ subroutine run_simulation( this )
         enddo
       endif
 
+      ! gather lasers' field
+      call laser_all%zero( only_f1=.true. )
+      do k = 1, this%nlasers
+        call laser(k)%copy_slice( j, p_copy_2to1 )
+        call laser(k)%set_grad()
+        call laser_all%gather( laser(k) )
+      enddo
+
       ! advance species particles
       do k = 1, this%nspecies
-        call spe(k)%push( e, b )
-        ! call spe(k)%push( e, b, a_laser )
+        ! call spe(k)%push( e, b )
+        call spe(k)%push( e, b, laser_all )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
@@ -430,7 +440,7 @@ subroutine run_simulation( this )
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
-        ! call neut(k)%push( e, b, a_laser )
+        ! call neut(k)%push( e, b, laser_all )
         ! TODO: add sorting
       enddo
 

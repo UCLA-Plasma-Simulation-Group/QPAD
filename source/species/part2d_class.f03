@@ -6,6 +6,7 @@ use parallel_module
 use sort_module
 use options_class
 use field_class
+use field_laser_class
 use ufield_class
 use fdist2d_class
 use hdf5io_class
@@ -67,6 +68,7 @@ type part2d
    procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
    procedure :: push_robust              => push_robust_part2d
+   procedure :: push_robust_pgc          => push_robust_pgc_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
    procedure :: update_bound             => update_bound_part2d
@@ -1381,6 +1383,93 @@ subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, e
 
 end subroutine interp_emf_part2d
 
+subroutine interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, ar_grad_re, ar_grad_im, &
+  ai_grad_re, ai_grad_im, max_mode, x, dr, apr, api, apr_grad, api_grad, np, ptrcur, geom )
+
+   implicit none
+
+   type(ufield), dimension(:), pointer, intent(in) :: ar_re, ar_im, ai_re, ai_im
+   type(ufield), dimension(:), pointer, intent(in) :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
+   integer, intent(in) :: max_mode, np, geom
+   real, intent(in) :: dr
+   real, dimension(:,:), intent(in) :: x
+   real, dimension(:), intent(inout) :: apr, api
+   real, dimension(:,:), intent(inout) :: apr_grad, api_grad
+   integer(kind=LG), intent(in) :: ptrcur
+
+   integer :: noff, i, j, nn, m
+   integer(kind=LG) :: pp
+   real :: pos, idr, ph_r, ph_i, cc, ss
+   real, dimension(0:1) :: wt
+   complex :: phase0, phase
+
+   idr = 1.0 / dr
+   noff = ar_re(0)%get_noff(1)
+   apr = 0.0
+   api = 0.0
+   apr_grad = 0.0
+   api_grad = 0.0
+
+   pp = ptrcur
+   do i = 1, np
+      pos = sqrt( x(1,pp)**2 + x(2,pp)**2 ) * idr
+      ! cosine and sine
+      cc = x(1,pp) / pos * idr
+      ss = x(2,pp) / pos * idr
+      phase0 = cmplx( cc, ss )
+
+      ! in-cell position
+      nn  = int( pos )
+      pos = pos - real(nn)
+
+      ! cell index
+      nn = nn - noff + 1
+
+      ! get interpolation weight factor
+      call spline_linear( pos, wt )
+
+      ! interpolate m = 0 mode
+      do j = 0, 1
+        apr(i) = apr(i) + ar_re(0)%f1(1,nn+j) * wt(j)
+        api(i) = api(i) + ai_re(0)%f1(1,nn+j) * wt(j)
+        apr_grad(:,i) = apr_grad(:,i) + ar_grad_re(0)%f1(:,nn+j) * wt(j)
+        api_grad(:,i) = api_grad(:,i) + ai_grad_re(0)%f1(:,nn+j) * wt(j)
+      enddo
+
+      ! interpolate m > 0 modes
+      phase = cmplx( 1.0, 0.0 )
+      do m = 1, max_mode
+         phase = phase * phase0
+         ph_r = 2.0 * real(phase)
+         ph_i = 2.0 * aimag(phase)
+
+         do j = 0, 1
+            apr(i) = apr(i) + ( ar_re(m)%f1(1,nn+j) * ph_r - ar_im(m)%f1(1,nn+j) * ph_i ) * wt(j)
+            api(i) = api(i) + ( ai_re(m)%f1(1,nn+j) * ph_r - ai_im(m)%f1(1,nn+j) * ph_i ) * wt(j)
+            apr_grad(:,i) = apr_grad(:,i) + ( ar_grad_re(m)%f1(:,nn+j) * ph_r - ar_grad_im(m)%f1(:,nn+j) * ph_i ) * wt(j)
+            api_grad(:,i) = api_grad(:,i) + ( ai_grad_re(m)%f1(:,nn+j) * ph_r - ai_grad_im(m)%f1(:,nn+j) * ph_i ) * wt(j)
+         enddo
+      enddo
+
+      ! transform from cylindrical geometry to Cartesian geometry
+      if ( geom == p_cartesian ) then
+        ! ph_r, ph_i are temporary variables here
+        ph_r = apr_grad(1,i) * cc - apr_grad(2,i) * ss
+        ph_i = apr_grad(1,i) * ss + apr_grad(2,i) * cc
+        apr_grad(1,i) = ph_r
+        apr_grad(2,i) = ph_i
+
+        ph_r = api_grad(1,i) * cc - api_grad(2,i) * ss
+        ph_i = api_grad(1,i) * ss + api_grad(2,i) * cc
+        api_grad(1,i) = ph_r
+        api_grad(2,i) = ph_i
+      endif
+
+      pp = pp + 1
+    enddo
+
+end subroutine interp_laser_part2d
+
 subroutine push_robust_part2d( this, ef, bf )
 
   implicit none
@@ -1486,6 +1575,143 @@ subroutine push_robust_part2d( this, ef, bf )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_robust_part2d
+
+subroutine push_robust_pgc_part2d( this, ef, bf, af )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  class(field_laser), intent(in) :: af
+  ! local data
+  character(len=18), save :: sname = 'push_robust_pgc_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+  type(ufield), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
+  type(ufield), dimension(:), pointer :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  real, dimension(p_cache_size) :: apr, api
+  real, dimension(2,p_cache_size) :: apr_grad, api_grad
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+  qtmh = this%qbm * this%dt * 0.5
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  ar_re => af%get_cfr_re()
+  ar_im => af%get_cfr_im()
+  ai_re => af%get_cfi_re()
+  ai_im => af%get_cfi_im()
+
+  ar_grad_re => af%ar_grad_re
+  ar_grad_im => af%ar_grad_im
+  ai_grad_re => af%ai_grad_re
+  ai_grad_im => af%ai_grad_im
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+    call interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, &
+                              ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im, &
+                              max_mode, this%x, this%dr, apr, api, apr_grad, api_grad, np, ptrcur, p_cartesian )
+
+    ! DEBUG
+    ! if ( ptrcur == 1 ) then
+    !   print *, "mean(apr)", sum( apr(1:np) ) / np
+    !   print *, "mean(api)", sum( api(1:np) ) / np
+    !   print *, "mean(apr_grad(1))", sum( apr_grad(1,1:np) ) / np
+    !   print *, "mean(apr_grad(2))", sum( apr_grad(2,1:np) ) / np
+    !   print *, "mean(api_grad(1))", sum( api_grad(1,1:np) ) / np
+    !   print *, "mean(api_grad(2))", sum( api_grad(2,1:np) ) / np
+    ! endif
+
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 &
+            + 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 ) )
+      qtmh1 = qtmh / ( gam - this%p(3,pp) )
+      qtmh2 = qtmh1 * gam
+      ep(:,i) = ep(:,i) * qtmh2
+      qtmh2 = 0.5 * this%qbm * qtmh1
+      ep(1,i) = ep(1,i) - qtmh2 * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
+      ep(2,i) = ep(2,i) - qtmh2 * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+      bp(:,i) = bp(:,i) * qtmh1
+      pp = pp + 1
+    enddo
+
+    ! first half of electric field acceleration
+    pp = ptrcur
+    do i = 1, np
+      utmp(:,i) = this%p(:,pp) + ep(:,i)
+      pp = pp + 1
+    enddo
+
+    ! rotation about magnetic field
+    pp = ptrcur
+    do i = 1, np
+      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
+      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
+      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    do i = 1, np
+      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+      bp(1,i) = bp(1,i) * ostq
+      bp(2,i) = bp(2,i) * ostq
+      bp(3,i) = bp(3,i) * ostq
+    enddo
+
+    pp = ptrcur
+    do i = 1, np
+      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    ! second half of electric field acc.
+    pp = ptrcur
+    do i = 1, np
+      this%p(:,pp) = utmp(:,i) + ep(:,i)
+      pp = pp + 1
+    enddo
+
+    ! advance particle position
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 &
+          + 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 ) )
+      dtc = this%dt / ( gam - this%p(3,pp) )
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_robust_pgc_part2d
 
 subroutine push_robust_subcyc_part2d( this, ef, bf )
 
@@ -1855,29 +2081,6 @@ subroutine update_bound_part2d( this )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine update_bound_part2d
-
-! subroutine extract_psi_part2d(this,psi)
-
-!    implicit none
-
-!    class(part2d), intent(inout) :: this
-!    class(field), intent(in) :: psi
-! ! local data
-!    character(len=18), save :: sname = 'extractpsi'
-!    class(ufield), dimension(:), pointer :: psi_re => null(), psi_im => null()
-
-!    call write_dbg(cls_name, sname, cls_level, 'starts')
-
-!    psi_re => psi%get_rf_re()
-!    psi_im => psi%get_rf_im()
-!    ! call part2d_extractpsi(this%part,this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
-   
-!    call part2d_extractpsi(this%x, this%p, this%gamma, this%q, this%psi,&
-!     this%npp,this%dr,this%qbm,psi_re,psi_im,psi%get_max_mode())
-
-!    call write_dbg(cls_name, sname, cls_level, 'ends')
-
-! end subroutine extract_psi_part2d
 
 subroutine pipesend_part2d(this, tag, id)
 
