@@ -26,7 +26,6 @@ type, extends( field_complex ) :: field_laser
   private
 
   type( fpcr_penta ), dimension(:), pointer :: pgc_solver => null()
-  real, dimension(:), pointer :: buf_re => null(), buf_im => null()
 
   class( ufield ), dimension(:), pointer, public :: sr_re => null()
   class( ufield ), dimension(:), pointer, public :: sr_im => null()
@@ -247,8 +246,6 @@ subroutine end_field_laser( this )
   deallocate( this%sr_re, this%sr_im, this%si_re, this%si_im )
   deallocate( this%axir_re, this%axir_im, this%axii_re, this%axii_im )
   deallocate( this%ar_grad_re, this%ar_grad_im, this%ai_grad_re, this%ai_grad_im )
-  if ( associated( this%buf_re ) ) deallocate( this%buf_re )
-  if ( associated( this%buf_im ) ) deallocate( this%buf_im )
   call this%field_complex%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )

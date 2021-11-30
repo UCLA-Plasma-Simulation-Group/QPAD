@@ -365,16 +365,24 @@ subroutine run_simulation( this )
         cu = 0.0
         acu = 0.0
         amu = 0.0
+
+        ! solve and gather lasers' field
+        call laser_all%zero( only_f1=.true. )
+        do k = 1, this%nlasers
+          call laser(k)%solve( j )
+          call laser(k)%copy_slice( j, p_copy_2to1 )
+          call laser(k)%set_grad()
+          call laser_all%gather( laser(k) )
+        enddo
+
         do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, cu, amu, acu )
+          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
           ! call spe(k)%deposit_chi
         enddo
+
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
           ! call spe(k)%deposit_chi
-        enddo
-        do k = 1, this%nlasers
-          call laser(k)%solve( j )
         enddo
 
         call dcu%solve( acu, amu )
@@ -421,13 +429,13 @@ subroutine run_simulation( this )
         enddo
       endif
 
-      ! gather lasers' field
-      call laser_all%zero( only_f1=.true. )
-      do k = 1, this%nlasers
-        call laser(k)%copy_slice( j, p_copy_2to1 )
-        call laser(k)%set_grad()
-        call laser_all%gather( laser(k) )
-      enddo
+      ! ! gather lasers' field
+      ! call laser_all%zero( only_f1=.true. )
+      ! do k = 1, this%nlasers
+      !   call laser(k)%copy_slice( j, p_copy_2to1 )
+      !   call laser(k)%set_grad()
+      !   call laser_all%gather( laser(k) )
+      ! enddo
 
       ! advance species particles
       do k = 1, this%nspecies
