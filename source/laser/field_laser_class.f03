@@ -3,6 +3,7 @@ module field_laser_class
 use parallel_module
 use options_class
 use input_class
+use field_class
 use field_complex_class
 use ufield_class
 use param
@@ -69,6 +70,8 @@ type, extends( field_complex ) :: field_laser
   procedure, private :: init_solver
 
 end type field_laser
+
+real, dimension(:), allocatable :: tmp_r_re, tmp_r_im, tmp_i_re, tmp_i_im
 
 contains
 
@@ -407,17 +410,18 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
 end subroutine init_solver
 
-! subroutine set_rhs_field_laser( this, chi )
-subroutine set_rhs_field_laser( this )
+subroutine set_rhs_field_laser( this, chi )
 
   implicit none
   class( field_laser ), intent(inout) :: this
+  class( field ), intent(in) :: chi
 
   integer :: m, i, j, k, nrp, nzp, noff
   integer :: nvp, idproc
   real :: beta_m, beta_p, alpha, kappa
   real :: dr2_idzh, ds_qtr, m2, ik
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
+  real, dimension(:,:,:), pointer :: chi_re => null(), chi_im => null()
   character(len=32), save :: sname = 'set_rhs_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -561,6 +565,69 @@ subroutine set_rhs_field_laser( this )
     enddo
   enddo
 
+  ! calculate the contribution from the plasma susceptibility
+  do m = 0, this%max_mode
+    
+    do k = 0, m
+      chi_re => chi%rf_re(k)%get_f2()
+      ar_re  => this%cfr_re(m-k)%get_f2()
+      ai_re  => this%cfi_re(m-k)%get_f2()
+
+      do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+        do i = 1, nrp
+          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ar_re(1,i,j)
+          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ai_re(1,i,j)
+        enddo
+      enddo
+
+      if ( k == 0 .or. k == m ) cycle
+
+      chi_im => chi%rf_im(k)%get_f2()
+      ar_im  => this%cfr_im(m-k)%get_f2()
+      ai_im  => this%cfi_im(m-k)%get_f2()
+
+      do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+        do i = 1, nrp
+          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr * chi_im(1,i,j) * ar_im(1,i,j)
+          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr * chi_im(1,i,j) * ai_im(1,i,j)
+        enddo
+      enddo
+    enddo
+
+    if ( m == 0 ) cycle
+
+    do k = 0, m
+
+      if ( k /= 0 ) then
+        chi_im => chi%rf_im(k)%get_f2()
+        ar_re  => this%cfr_re(m-k)%get_f2()
+        ai_re  => this%cfi_re(m-k)%get_f2()
+
+        do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+          do i = 1, nrp
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr * chi_im(1,i,j) * ar_re(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr * chi_im(1,i,j) * ai_re(1,i,j)
+          enddo
+        enddo
+      endif
+
+      if ( k /= m ) then
+        chi_re => chi%rf_re(k)%get_f2()
+        ar_im  => this%cfr_im(m-k)%get_f2()
+        ai_im  => this%cfi_im(m-k)%get_f2()
+
+        do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+          do i = 1, nrp
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ar_im(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ai_im(1,i,j)
+          enddo
+        enddo
+      endif
+
+    enddo
+
+  enddo
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_rhs_field_laser
@@ -666,15 +733,24 @@ subroutine set_grad_field_laser( this )
 
 end subroutine set_grad_field_laser
 
-! subroutine solve_field_laser( this, chi, i_slice )
-subroutine solve_field_laser( this, i_slice )
+subroutine solve_field_laser( this, chi, i_slice )
 
   implicit none
   class( field_laser ), intent(inout) :: this
+  class( field ), intent(inout) :: chi
   integer, intent(in) :: i_slice
 
-  integer :: m, i, j, nrp, nzp
-  real :: dr2_idzh, rhs
+  integer :: m, k, i, j, nrp, nzp
+  real :: dr2_idzh, ds_qtr, rhs
+  real, dimension(:,:), pointer :: chi_re => null(), chi_im => null()
+  real, dimension(:,:), pointer :: ar_re => null(), ar_im => null()
+  real, dimension(:,:), pointer :: ai_re => null(), ai_im => null()
+  real, dimension(:,:), pointer :: axir_re => null(), axir_im => null()
+  real, dimension(:,:), pointer :: axii_re => null(), axii_im => null()
+  real, dimension(:,:,:), pointer :: ar_re_f2 => null(), ar_im_f2 => null()
+  real, dimension(:,:,:), pointer :: ai_re_f2 => null(), ai_im_f2 => null()
+  real, dimension(:,:,:), pointer :: sr_re_f2 => null(), sr_im_f2 => null()
+  real, dimension(:,:,:), pointer :: si_re_f2 => null(), si_im_f2 => null()
   character(len=32), save :: sname = 'solve_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -682,70 +758,109 @@ subroutine solve_field_laser( this, i_slice )
   nrp    = this%cfr_re(0)%get_ndp(1)
   nzp    = this%cfr_re(0)%get_ndp(2)
   dr2_idzh = 0.5 * this%dr**2 / this%dz
+  ds_qtr = 0.25 * this%ds
+
+  if ( .not. allocated(tmp_r_re) ) then
+    allocate( tmp_r_re(nrp), tmp_r_im(nrp), tmp_i_re(nrp), tmp_i_im(nrp) )
+  endif
+  tmp_r_re = 0.0
+  tmp_r_im = 0.0
+  tmp_i_re = 0.0
+  tmp_i_im = 0.0
 
   ! handle the first slice, calculate the da/dxi for the first slice
   if ( i_slice == 2 - this%gc_num(1,2) ) then
     do m = 0, this%max_mode
+      ar_re_f2 => this%cfr_re(m)%get_f2()
+      ai_re_f2 => this%cfi_re(m)%get_f2()
+      axir_re => this%axir_re(m)%get_f1()
+      axii_re => this%axii_re(m)%get_f1()
       do i = 1, nrp
-        this%axir_re(m)%f1(1,i) = dr2_idzh * ( this%cfr_re(m)%f2(1,i,i_slice+1) - this%cfr_re(m)%f2(1,i,i_slice-1) )
-        this%axii_re(m)%f1(1,i) = dr2_idzh * ( this%cfi_re(m)%f2(1,i,i_slice+1) - this%cfi_re(m)%f2(1,i,i_slice-1) )
+        axir_re(1,i) = dr2_idzh * ( ar_re_f2(1,i,i_slice+1) - ar_re_f2(1,i,i_slice-1) )
+        axii_re(1,i) = dr2_idzh * ( ai_re_f2(1,i,i_slice+1) - ai_re_f2(1,i,i_slice-1) )
       enddo
       if ( m == 0 ) cycle
+      ar_im_f2 => this%cfr_im(m)%get_f2()
+      ai_im_f2 => this%cfi_im(m)%get_f2()
+      axir_im => this%axir_im(m)%get_f1()
+      axii_im => this%axii_im(m)%get_f1()
       do i = 1, nrp
-        this%axir_im(m)%f1(1,i) = dr2_idzh * ( this%cfr_im(m)%f2(1,i,i_slice+1) - this%cfr_im(m)%f2(1,i,i_slice-1) )
-        this%axii_im(m)%f1(1,i) = dr2_idzh * ( this%cfi_im(m)%f2(1,i,i_slice+1) - this%cfi_im(m)%f2(1,i,i_slice-1) )
+        axir_im(1,i) = dr2_idzh * ( ar_im_f2(1,i,i_slice+1) - ar_im_f2(1,i,i_slice-1) )
+        axii_im(1,i) = dr2_idzh * ( ai_im_f2(1,i,i_slice+1) - ai_im_f2(1,i,i_slice-1) )
       enddo
     enddo
   endif
 
-  ! copy slices
-  ! there is no need to copy slice.
-  ! call this%copy_slice( i_slice, p_copy_2to1 )
-  ! do i = 0, this%max_mode
-  !   call this%sr_re(i)%copy_slice( idx, p_copy_2to1 )
-  !   call this%si_re(i)%copy_slice( idx, p_copy_2to1 )
-  !   if ( i == 0 ) cycle
-  !   call this%sr_im(i)%copy_slice( idx, p_copy_2to1 )
-  !   call this%si_im(i)%copy_slice( idx, p_copy_2to1 )
-  ! enddo
-
-  ! set rhs of the PCR solver and solve
+  ! calculate the contribution from the plasma susceptibility
   do m = 0, this%max_mode
+    do k = 0, m
+      chi_re => chi%rf_re(k)%get_f1()
+      ar_re  => this%cfr_re(m-k)%get_f1()
+      ai_re  => this%cfi_re(m-k)%get_f1()
 
-    ! set rhs of PCR
-    do i = 1, nrp
-      rhs = this%sr_re(m)%f2(1,i,i_slice) - this%axir_re(m)%f1(1,i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-      rhs = this%si_re(m)%f2(1,i,i_slice) - this%axii_re(m)%f1(1,i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
-    enddo
-
-    call this%pgc_solver(m)%solve()
-
-    ! calculate the da/dxi at next slice before a is replaced
-    if ( i_slice < nzp + this%gc_num(2,2) - 1 ) then
       do i = 1, nrp
-        this%axir_re(m)%f1(1,i) = dr2_idzh * ( this%cfr_re(m)%f2(1,i,i_slice+2) - this%cfr_re(m)%f2(1,i,i_slice) )
-        this%axii_re(m)%f1(1,i) = dr2_idzh * ( this%cfi_re(m)%f2(1,i,i_slice+2) - this%cfi_re(m)%f2(1,i,i_slice) )
+        tmp_r_re(i) = ds_qtr * chi_re(1,i) * ar_re(1,i)
+        tmp_i_re(i) = ds_qtr * chi_re(1,i) * ai_re(1,i)
       enddo
-    else
-      this%axir_re(m)%f1 = 0.0
-      this%axii_re(m)%f1 = 0.0
-    endif
 
-    ! get solution
-    do i = 1, nrp
-      call this%pgc_solver(m)%get_values_x( this%cfr_re(m)%f2(1,i,i_slice), 2*i-1 )
-      call this%pgc_solver(m)%get_values_x( this%cfi_re(m)%f2(1,i,i_slice), 2*i )
+      if ( k == 0 .or. k == m ) cycle
+
+      chi_im => chi%rf_im(k)%get_f1()
+      ar_im  => this%cfr_im(m-k)%get_f1()
+      ai_im  => this%cfi_im(m-k)%get_f1()
+
+      do i = 1, nrp
+        tmp_r_re(i) = tmp_r_re(i) - ds_qtr * chi_im(1,i) * ar_im(1,i)
+        tmp_i_re(i) = tmp_i_re(i) - ds_qtr * chi_im(1,i) * ai_im(1,i)
+      enddo
     enddo
 
     if ( m == 0 ) cycle
 
+    do k = 0, m
+
+      if ( k /= 0 ) then
+        chi_im => chi%rf_im(k)%get_f1()
+        ar_re  => this%cfr_re(m-k)%get_f1()
+        ai_re  => this%cfi_re(m-k)%get_f1()
+
+        do i = 1, nrp
+          tmp_r_im(i) = tmp_r_im(i) + ds_qtr * chi_im(1,i) * ar_re(1,i)
+          tmp_i_im(i) = tmp_i_im(i) + ds_qtr * chi_im(1,i) * ai_re(1,i)
+        enddo
+      endif
+
+      if ( k /= m ) then
+        chi_re => chi%rf_re(k)%get_f1()
+        ar_im  => this%cfr_im(m-k)%get_f1()
+        ai_im  => this%cfi_im(m-k)%get_f1()
+
+        do i = 1, nrp
+          tmp_r_im(i) = tmp_r_im(i) + ds_qtr * chi_re(1,i) * ar_im(1,i)
+          tmp_i_im(i) = tmp_i_im(i) + ds_qtr * chi_re(1,i) * ai_im(1,i)
+        enddo
+      endif
+
+    enddo
+  enddo
+
+  ! set rhs of the PCR solver and solve
+  do m = 0, this%max_mode
+
+    sr_re_f2 => this%sr_re(m)%get_f2()
+    si_re_f2 => this%si_re(m)%get_f2()
+    ar_re_f2 => this%cfr_re(m)%get_f2()
+    ai_re_f2 => this%cfi_re(m)%get_f2()
+    axir_re  => this%axir_re(m)%get_f1()
+    axii_re  => this%axii_re(m)%get_f1()
+    ar_re    => this%cfr_re(m)%get_f1()
+    ai_re    => this%cfi_re(m)%get_f1()
+
     ! set rhs of PCR
     do i = 1, nrp
-      rhs = this%sr_im(m)%f2(1,i,i_slice) - this%axir_im(m)%f1(1,i)
+      rhs = sr_re_f2(1,i,i_slice) - axir_re(1,i) + tmp_r_re(i)
       call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-      rhs = this%si_im(m)%f2(1,i,i_slice) - this%axii_im(m)%f1(1,i)
+      rhs = si_re_f2(1,i,i_slice) - axii_re(1,i) + tmp_i_re(i)
       call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
     enddo
 
@@ -754,23 +869,61 @@ subroutine solve_field_laser( this, i_slice )
     ! calculate the da/dxi at next slice before a is replaced
     if ( i_slice < nzp + this%gc_num(2,2) - 1 ) then
       do i = 1, nrp
-        this%axir_im(m)%f1(1,i) = dr2_idzh * ( this%cfr_im(m)%f2(1,i,i_slice+2) - this%cfr_im(m)%f2(1,i,i_slice) )
-        this%axii_im(m)%f1(1,i) = dr2_idzh * ( this%cfi_im(m)%f2(1,i,i_slice+2) - this%cfi_im(m)%f2(1,i,i_slice) )
+        axir_re(1,i) = dr2_idzh * ( ar_re_f2(1,i,i_slice+2) - ar_re_f2(1,i,i_slice) )
+        axii_re(1,i) = dr2_idzh * ( ai_re_f2(1,i,i_slice+2) - ai_re_f2(1,i,i_slice) )
       enddo
     else
-      this%axir_im(m)%f1 = 0.0
-      this%axii_im(m)%f1 = 0.0
+      axir_re = 0.0
+      axii_re = 0.0
     endif
 
     ! get solution
     do i = 1, nrp
-      call this%pgc_solver(m)%get_values_x( this%cfr_im(m)%f2(1,i,i_slice), 2*i-1 )
-      call this%pgc_solver(m)%get_values_x( this%cfi_im(m)%f2(1,i,i_slice), 2*i )
+      call this%pgc_solver(m)%get_values_x( ar_re(1,i), 2*i-1 )
+      call this%pgc_solver(m)%get_values_x( ai_re(1,i), 2*i )
+    enddo
+
+    if ( m == 0 ) cycle
+
+    sr_im_f2 => this%sr_im(m)%get_f2()
+    si_im_f2 => this%si_im(m)%get_f2()
+    ar_im_f2 => this%cfr_im(m)%get_f2()
+    ai_im_f2 => this%cfi_im(m)%get_f2()
+    axir_im  => this%axir_im(m)%get_f1()
+    axii_im  => this%axii_im(m)%get_f1()
+    ar_im    => this%cfr_im(m)%get_f1()
+    ai_im    => this%cfi_im(m)%get_f1()
+
+    ! set rhs of PCR
+    do i = 1, nrp
+      rhs = sr_im_f2(1,i,i_slice) - axir_im(1,i) + tmp_r_im(i)
+      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
+      rhs = si_im_f2(1,i,i_slice) - axii_im(1,i) + tmp_i_im(i)
+      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
+    enddo
+
+    call this%pgc_solver(m)%solve()
+
+    ! calculate the da/dxi at next slice before a is replaced
+    if ( i_slice < nzp + this%gc_num(2,2) - 1 ) then
+      do i = 1, nrp
+        axir_im(1,i) = dr2_idzh * ( ar_im_f2(1,i,i_slice+2) - ar_im_f2(1,i,i_slice) )
+        axii_im(1,i) = dr2_idzh * ( ai_im_f2(1,i,i_slice+2) - ai_im_f2(1,i,i_slice) )
+      enddo
+    else
+      axir_im = 0.0
+      axii_im = 0.0
+    endif
+
+    ! get solution
+    do i = 1, nrp
+      call this%pgc_solver(m)%get_values_x( ar_im(1,i), 2*i-1 )
+      call this%pgc_solver(m)%get_values_x( ai_im(1,i), 2*i )
     enddo
 
   enddo
     
-  call this%copy_gc_f2()
+  call this%copy_gc_f1()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
