@@ -139,6 +139,8 @@ subroutine init_sim_plasma( this, input, opts, s )
     select case ( trim(str) )
     case ( 'robust' )
       push_type = p_push2_robust
+    case ( 'robust_pgc' )
+      push_type = p_push2_robust_pgc
     case ( 'clamp' )
       push_type = p_push2_clamp
     case ( 'robust-subcycling' )

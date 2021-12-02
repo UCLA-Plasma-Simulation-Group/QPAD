@@ -41,12 +41,12 @@ src += options_class.f03
 include pcr-fortran/Makefile
 # fields code
 include fields/Makefile
+# laser code
+include laser/Makefile
 # species code
 include species/Makefile
 # beam code
 include beam/Makefile
-# laser code
-include laser/Makefile
 src += sim_fields_class.f03 sim_beams_class.f03 sim_plasma_class.f03 sim_lasers_class.f03
 src += diagnostics_class.f03
 src += simulation_class.f03

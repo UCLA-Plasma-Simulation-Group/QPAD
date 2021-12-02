@@ -955,10 +955,7 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   select case ( this%push_type )
     case ( p_push2_robust )
       call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu )
-    case ( p_push2_clamp )
-      call this%part%amjdeposit_clamp( e, b, this%cu, this%amu, this%dcu )
-    case ( p_push2_robust_subcyc )
-      call this%part%amjdeposit_robust_subcyc( e, b, this%cu, this%amu, this%dcu )
+    ! case ( p_push2_robust_pgc )
   end select
   
   call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -993,10 +990,6 @@ subroutine push_neutral( this, e, b )
   select case ( this%push_type )
     case ( p_push2_robust )
       call this%part%push_robust( e, b )
-    case ( p_push2_clamp )
-      call this%part%push_clamp( e, b )
-    case ( p_push2_robust_subcyc )
-      call this%part%push_robust_subcyc( e, b )
   end select
 
   call this%part%update_bound()

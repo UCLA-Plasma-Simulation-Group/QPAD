@@ -229,17 +229,19 @@ subroutine run_simulation( this )
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation'
 
-  type(field_psi), pointer :: psi
-  type(field_vpot), pointer :: vpot
-  type(field_e), pointer :: e_spe, e_beam, e
-  type(field_b), pointer :: b_spe, b_beam, b
-  type(field_jay), pointer :: cu, amu
-  type(field_rho), pointer :: q_spe, q_beam
-  type(field_djdxi), pointer :: dcu, acu
-  type(beam3d), dimension(:), pointer :: beam
-  type(field_laser), dimension(:), pointer :: laser
-  type(species2d), dimension(:), pointer :: spe
-  type(neutral), dimension(:), pointer :: neut
+  class(field_psi), pointer :: psi
+  class(field_vpot), pointer :: vpot
+  class(field_e), pointer :: e_spe, e_beam, e
+  class(field_b), pointer :: b_spe, b_beam, b
+  class(field), pointer :: chi
+  class(field_jay), pointer :: cu, amu
+  class(field_rho), pointer :: q_spe, q_beam
+  class(field_djdxi), pointer :: dcu, acu
+  class(field_laser), pointer :: laser_all
+  class(beam3d), dimension(:), pointer :: beam
+  class(field_laser), dimension(:), pointer :: laser
+  class(species2d), dimension(:), pointer :: spe
+  class(neutral), dimension(:), pointer :: neut
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -260,10 +262,12 @@ subroutine run_simulation( this )
   dcu    => this%fields%dcu
   acu    => this%fields%acu
 
-  beam => this%beams%beam
-  laser => this%lasers%laser
-  spe  => this%plasma%spe
-  neut => this%plasma%neut
+  beam      => this%beams%beam
+  laser     => this%lasers%laser
+  laser_all => this%lasers%laser_all
+  chi       => this%lasers%chi
+  spe       => this%plasma%spe
+  neut      => this%plasma%neut
 
   ! deposit beams and do diagnostics to see the initial distribution if it is
   ! a fresh run
@@ -326,7 +330,7 @@ subroutine run_simulation( this )
 
     ! set source terms for laser envelope equation
     do k = 1, this%nlasers
-      call laser(k)%set_rhs()
+      call laser(k)%set_rhs( chi )
     enddo
 
     b     = 0.0
@@ -351,6 +355,8 @@ subroutine run_simulation( this )
         call neut(k)%ion_deposit( q_spe )
       enddo
 
+      call this%lasers%deposit_chi( spe, j )
+
       call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
       call b_spe%solve( cu )
@@ -363,17 +369,27 @@ subroutine run_simulation( this )
         cu = 0.0
         acu = 0.0
         amu = 0.0
+
+        ! solve and gather lasers' field
+        call laser_all%zero( only_f1=.true. )
+        do k = 1, this%nlasers
+          call laser(k)%solve( chi, j )
+          ! call laser(k)%copy_slice( j, p_copy_2to1 )
+          call laser(k)%set_grad()
+          call laser_all%gather( laser(k) )
+        enddo
+
         do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, cu, amu, acu )
+          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
           ! call spe(k)%deposit_chi
         enddo
+
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
           ! call spe(k)%deposit_chi
         enddo
-        do k = 1, this%nlasers
-          call laser(k)%solve( j )
-        enddo
+
+        call this%lasers%deposit_chi( spe, j )
 
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
@@ -389,6 +405,11 @@ subroutine run_simulation( this )
         endif
 
       enddo ! iteration
+
+      do k = 1, this%nlasers
+        call laser(k)%copy_slice( j, p_copy_1to2 )
+      enddo
+      call chi%copy_slice( j, p_copy_1to2 )
 
       call add_f1( b_spe, b_beam, b )
       call e_spe%solve( b_spe, psi )
@@ -419,10 +440,18 @@ subroutine run_simulation( this )
         enddo
       endif
 
+      ! ! gather lasers' field
+      ! call laser_all%zero( only_f1=.true. )
+      ! do k = 1, this%nlasers
+      !   call laser(k)%copy_slice( j, p_copy_2to1 )
+      !   call laser(k)%set_grad()
+      !   call laser_all%gather( laser(k) )
+      ! enddo
+
       ! advance species particles
       do k = 1, this%nspecies
-        call spe(k)%push( e, b )
-        ! call spe(k)%push( e, b, a_laser )
+        ! call spe(k)%push( e, b )
+        call spe(k)%push( e, b, laser_all )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
@@ -430,7 +459,7 @@ subroutine run_simulation( this )
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
         call neut(k)%push( e, b )
-        ! call neut(k)%push( e, b, a_laser )
+        ! call neut(k)%push( e, b, laser_all )
         ! TODO: add sorting
       enddo
 
