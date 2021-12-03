@@ -419,21 +419,22 @@ subroutine set_rhs_field_laser( this, chi )
   integer :: m, i, j, k, nrp, nzp, noff
   integer :: nvp, idproc
   real :: beta_m, beta_p, alpha, kappa
-  real :: dr2_idzh, ds_qtr, m2, ik
+  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, m2, ik
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
   real, dimension(:,:,:), pointer :: chi_re => null(), chi_im => null()
   character(len=32), save :: sname = 'set_rhs_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp    = this%cfr_re(0)%get_ndp(1)
-  nzp    = this%cfr_re(0)%get_ndp(2)
-  noff   = this%cfr_re(0)%get_noff(1)
-  dr2_idzh = 0.5 * this%dr**2 / this%dz
-  kappa  = this%k0 * this%dr**2
-  ds_qtr = 0.25 * this%ds
-  idproc = id_proc_loc()
-  nvp    = num_procs_loc()
+  nrp        = this%cfr_re(0)%get_ndp(1)
+  nzp        = this%cfr_re(0)%get_ndp(2)
+  noff       = this%cfr_re(0)%get_noff(1)
+  dr2_idzh   = 0.5 * this%dr**2 / this%dz
+  kappa      = this%k0 * this%dr**2
+  ds_qtr     = 0.25 * this%ds
+  ds_qtr_dr2 = ds_qtr * this%dr**2
+  idproc     = id_proc_loc()
+  nvp        = num_procs_loc()
   
   ! mode = 0
   ar_re => this%cfr_re(0)%get_f2()
@@ -575,8 +576,8 @@ subroutine set_rhs_field_laser( this, chi )
 
       do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
         do i = 1, nrp
-          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ar_re(1,i,j)
-          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ai_re(1,i,j)
+          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
+          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
         enddo
       enddo
 
@@ -588,8 +589,8 @@ subroutine set_rhs_field_laser( this, chi )
 
       do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
         do i = 1, nrp
-          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr * chi_im(1,i,j) * ar_im(1,i,j)
-          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr * chi_im(1,i,j) * ai_im(1,i,j)
+          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
+          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
         enddo
       enddo
     enddo
@@ -605,8 +606,8 @@ subroutine set_rhs_field_laser( this, chi )
 
         do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
           do i = 1, nrp
-            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr * chi_im(1,i,j) * ar_re(1,i,j)
-            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr * chi_im(1,i,j) * ai_re(1,i,j)
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
           enddo
         enddo
       endif
@@ -618,8 +619,8 @@ subroutine set_rhs_field_laser( this, chi )
 
         do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
           do i = 1, nrp
-            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ar_im(1,i,j)
-            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr * chi_re(1,i,j) * ai_im(1,i,j)
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
           enddo
         enddo
       endif
@@ -741,7 +742,7 @@ subroutine solve_field_laser( this, chi, i_slice )
   integer, intent(in) :: i_slice
 
   integer :: m, k, i, j, nrp, nzp
-  real :: dr2_idzh, ds_qtr, rhs
+  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, rhs
   real, dimension(:,:), pointer :: chi_re => null(), chi_im => null()
   real, dimension(:,:), pointer :: ar_re => null(), ar_im => null()
   real, dimension(:,:), pointer :: ai_re => null(), ai_im => null()
@@ -755,10 +756,11 @@ subroutine solve_field_laser( this, chi, i_slice )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp    = this%cfr_re(0)%get_ndp(1)
-  nzp    = this%cfr_re(0)%get_ndp(2)
-  dr2_idzh = 0.5 * this%dr**2 / this%dz
-  ds_qtr = 0.25 * this%ds
+  nrp        = this%cfr_re(0)%get_ndp(1)
+  nzp        = this%cfr_re(0)%get_ndp(2)
+  dr2_idzh   = 0.5 * this%dr**2 / this%dz
+  ds_qtr     = 0.25 * this%ds
+  ds_qtr_dr2 = ds_qtr * this%dr**2
 
   if ( .not. allocated(tmp_r_re) ) then
     allocate( tmp_r_re(nrp), tmp_r_im(nrp), tmp_i_re(nrp), tmp_i_im(nrp) )
@@ -799,8 +801,8 @@ subroutine solve_field_laser( this, chi, i_slice )
       ai_re  => this%cfi_re(m-k)%get_f1()
 
       do i = 1, nrp
-        tmp_r_re(i) = ds_qtr * chi_re(1,i) * ar_re(1,i)
-        tmp_i_re(i) = ds_qtr * chi_re(1,i) * ai_re(1,i)
+        tmp_r_re(i) = ds_qtr_dr2 * chi_re(1,i) * ar_re(1,i)
+        tmp_i_re(i) = ds_qtr_dr2 * chi_re(1,i) * ai_re(1,i)
       enddo
 
       if ( k == 0 .or. k == m ) cycle
@@ -810,8 +812,8 @@ subroutine solve_field_laser( this, chi, i_slice )
       ai_im  => this%cfi_im(m-k)%get_f1()
 
       do i = 1, nrp
-        tmp_r_re(i) = tmp_r_re(i) - ds_qtr * chi_im(1,i) * ar_im(1,i)
-        tmp_i_re(i) = tmp_i_re(i) - ds_qtr * chi_im(1,i) * ai_im(1,i)
+        tmp_r_re(i) = tmp_r_re(i) - ds_qtr_dr2 * chi_im(1,i) * ar_im(1,i)
+        tmp_i_re(i) = tmp_i_re(i) - ds_qtr_dr2 * chi_im(1,i) * ai_im(1,i)
       enddo
     enddo
 
@@ -825,8 +827,8 @@ subroutine solve_field_laser( this, chi, i_slice )
         ai_re  => this%cfi_re(m-k)%get_f1()
 
         do i = 1, nrp
-          tmp_r_im(i) = tmp_r_im(i) + ds_qtr * chi_im(1,i) * ar_re(1,i)
-          tmp_i_im(i) = tmp_i_im(i) + ds_qtr * chi_im(1,i) * ai_re(1,i)
+          tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_im(1,i) * ar_re(1,i)
+          tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_im(1,i) * ai_re(1,i)
         enddo
       endif
 
@@ -836,8 +838,8 @@ subroutine solve_field_laser( this, chi, i_slice )
         ai_im  => this%cfi_im(m-k)%get_f1()
 
         do i = 1, nrp
-          tmp_r_im(i) = tmp_r_im(i) + ds_qtr * chi_re(1,i) * ar_im(1,i)
-          tmp_i_im(i) = tmp_i_im(i) + ds_qtr * chi_re(1,i) * ai_im(1,i)
+          tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_re(1,i) * ar_im(1,i)
+          tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_re(1,i) * ai_im(1,i)
         enddo
       endif
 
