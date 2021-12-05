@@ -80,6 +80,9 @@ type part2d
   procedure :: realloc               => realloc_part2d
   procedure :: sort                  => sort_part2d
 
+  procedure :: amjdeposit_robust_pgc_test => amjdeposit_robust_pgc_test_part2d
+  procedure :: push_robust_pgc_test       => push_robust_pgc_test_part2d
+
 ! ========================================================================
 ! EXPERIMENTAL CODES
 ! ========================================================================
@@ -782,7 +785,7 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2, utmp
-  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, gam_corr, tmp
+  real :: qtmh, qtmh_e, qtmh_b, idt, gam, ostq, ipsi, dpsi, w, ir, gam_corr, tmp
   complex(kind=DB) :: phase, phase0
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -846,24 +849,25 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
       ! calculate the averaged gamma factor
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 + gam_corr )
 
-      ! calculate the effective electric fields
-      tmp = 0.5 * this%qbm / gam
-      ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
-      ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
-
       ! calculate wake field
       wp(1,i) = ep(1,i) - bp(2,i)
       wp(2,i) = ep(2,i) + bp(1,i)
       wp(3,i) = ep(3,i)
 
+      ! calculate the effective electric fields
+      ! note that here the time-centered gamma is unknown, so we approximate it using the initial one.
+      tmp = 0.5 * this%qbm / gam
+      ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
+      ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+
       ! half electric acceleration
-      qtmh1 = qtmh * gam / ( gam - u0(3,i) )
-      utmp(:) = u0(:,i) + ep(:,i) * qtmh1
+      qtmh_e = qtmh * gam / ( gam - u0(3,i) )
+      utmp(:) = u0(:,i) + ep(:,i) * qtmh_e
 
       ! magnetic rotation
       gam = sqrt( 1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 + gam_corr )
-      qtmh2 = qtmh / ( gam - utmp(3) )
-      bp(:,i) = bp(:,i) * qtmh2
+      qtmh_b = qtmh / ( gam - utmp(3) )
+      bp(:,i) = bp(:,i) * qtmh_b
 
       u(1,i) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
       u(2,i) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
@@ -878,8 +882,8 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
 
       ! half electric acceleration
       gam = sqrt( 1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 + gam_corr )
-      qtmh1 = qtmh * gam / ( gam - utmp(3) )
-      u(:,i) = utmp(:) + ep(:,i) * qtmh1
+      qtmh_e = qtmh * gam / ( gam - utmp(3) )
+      u(:,i) = utmp(:) + ep(:,i) * qtmh_e
 
       ! calculate and store time-centered values
       ! deposit momentum flux, acceleration density, and current density
@@ -887,7 +891,7 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
       du(2) = idt * ( u(2,i) - u0(2,i) )
       
       u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
-      ! store the gamma and psi after averaging
+      ! store the time-centered gamma and (1-(q/m)*psi)
       this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 + gam_corr )
       this%psi(pp)   = this%gamma(pp) - u(3,i)
 
@@ -1035,6 +1039,296 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
   call write_dbg(cls_name, sname, cls_level, 'ends')
   
 end subroutine amjdeposit_robust_pgc_part2d
+
+subroutine amjdeposit_robust_pgc_test_part2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
+  ! deposit the current, acceleration and momentum flux
+  
+    implicit none
+  
+    class(part2d), intent(inout) :: this
+    class(field), intent(in) :: cu, amu, dcu
+    class(field), intent(in) :: ef, bf
+    class(field_laser), intent(in) :: af
+    integer, intent(in) :: slice_idx
+    ! local data
+    character(len=32), save :: sname = 'amjdeposit_robust_pgc_part2d'
+    type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+    type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+    type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
+    type(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
+    type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
+    type(ufield), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
+    type(ufield), dimension(:), pointer :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
+  
+    real, dimension(:,:), pointer :: cu0 => null(), dcu0 => null(), amu0 => null()
+    real, dimension(:,:), pointer :: cur => null(), dcur => null(), amur => null()
+    real, dimension(:,:), pointer :: cui => null(), dcui => null(), amui => null()
+  
+    integer(kind=LG) :: ptrcur, pp
+    integer :: i, j, noff, nrp, np, mode, max_mode
+    integer, dimension(p_cache_size) :: ix
+    real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u
+    real, dimension(p_cache_size) :: apr, api
+    real, dimension(3,p_cache_size) :: apr_grad, api_grad
+    real, dimension(0:1, p_cache_size) :: wt
+    real, dimension(p_cache_size) :: cc, ss
+    real, dimension(p_p_dim) :: du, u2, utmp
+    real :: qtmh, qtmh_e, qtmh_b, idt, gam, ostq, ipsi, dpsi, w, ir, gam_corr, tmp
+    complex(kind=DB) :: phase, phase0
+    real :: z
+  
+    call write_dbg(cls_name, sname, cls_level, 'starts')
+    call start_tprof( 'deposit 2D particles' )
+
+    z = slice_idx * 15.0 / 512 - 3.0
+  
+    ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
+    bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
+    cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
+    dcu_re => dcu%get_rf_re(); dcu_im => dcu%get_rf_im()
+    amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
+  
+    idt = 1.0 / this%dt
+    qtmh = 0.5 * this%qbm * this%dt
+    max_mode = ef%get_max_mode()
+  
+    noff = cu_re(0)%get_noff(1)
+    nrp  = cu_re(0)%get_ndp(1)
+  
+    cu0  => cu_re(0)%get_f1()
+    dcu0 => dcu_re(0)%get_f1()
+    amu0 => amu_re(0)%get_f1()
+  
+    ar_re => af%get_cfr_re()
+    ar_im => af%get_cfr_im()
+    ai_re => af%get_cfi_re()
+    ai_im => af%get_cfi_im()
+  
+    ar_grad_re => af%ar_grad_re
+    ar_grad_im => af%ar_grad_im
+    ai_grad_re => af%ai_grad_re
+    ai_grad_im => af%ai_grad_im
+  
+    do ptrcur = 1, this%npp, p_cache_size
+  
+      ! check if last copy of table and set np
+      if( ptrcur + p_cache_size > this%npp ) then
+        np = this%npp - ptrcur + 1
+      else
+        np = p_cache_size
+      endif
+  
+      ! interpolate fields to particles
+      call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+        bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+      call interp_laser_part2d_test( this%x, z, apr, api, apr_grad, api_grad, np, ptrcur, p_cylindrical )
+  
+      ! advance the particle momentum
+      pp = ptrcur
+      do i = 1, np
+  
+        ! calculate the correction factor for gamma due to ponderomotive force
+        gam_corr = 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 )
+  
+        ! transform momentum from Cartesian to cylindrical coordinates
+        u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+        u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+        u0(3,i) = this%p(3,pp)
+  
+        ! calculate the averaged gamma factor
+        gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 + gam_corr )
+  
+        ! calculate wake field
+        wp(1,i) = ep(1,i) - bp(2,i)
+        wp(2,i) = ep(2,i) + bp(1,i)
+        wp(3,i) = ep(3,i)
+  
+        ! calculate the effective electric fields
+        ! note that here the time-centered gamma is unknown, so we approximate it using the initial one.
+        tmp = 0.5 * this%qbm / gam
+        ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
+        ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+        ep(3,i) = ep(3,i) + tmp * ( apr(i) * apr_grad(3,i) + api(i) * api_grad(3,i) )
+  
+        ! half electric acceleration
+        qtmh_e = qtmh * gam / ( gam - u0(3,i) )
+        utmp(:) = u0(:,i) + ep(:,i) * qtmh_e
+  
+        ! magnetic rotation
+        gam = sqrt( 1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 + gam_corr )
+        qtmh_b = qtmh / ( gam - utmp(3) )
+        bp(:,i) = bp(:,i) * qtmh_b
+  
+        u(1,i) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
+        u(2,i) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
+        u(3,i) = utmp(3) + utmp(1) * bp(2,i) - utmp(2) * bp(1,i)
+  
+        ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+        bp(:,i) = bp(:,i) * ostq
+  
+        utmp(1) = utmp(1) + u(2,i) * bp(3,i) - u(3,i) * bp(2,i)
+        utmp(2) = utmp(2) + u(3,i) * bp(1,i) - u(1,i) * bp(3,i)
+        utmp(3) = utmp(3) + u(1,i) * bp(2,i) - u(2,i) * bp(1,i)
+  
+        ! half electric acceleration
+        gam = sqrt( 1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 + gam_corr )
+        qtmh_e = qtmh * gam / ( gam - utmp(3) )
+        u(:,i) = utmp(:) + ep(:,i) * qtmh_e
+  
+        ! calculate and store time-centered values
+        ! deposit momentum flux, acceleration density, and current density
+        du(1) = idt * ( u(1,i) - u0(1,i) )
+        du(2) = idt * ( u(2,i) - u0(2,i) )
+        
+        u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
+        ! store the time-centered gamma and (1-(q/m)*psi)
+        this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 + gam_corr )
+        this%psi(pp)   = this%gamma(pp) - u(3,i)
+  
+        ipsi = 1.0 / this%psi(pp)
+        dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u(1,i) + wp(2,i) * u(2,i) ) * ipsi )
+  
+        du(1) = du(1) + u(1,i) * dpsi * ipsi
+        du(2) = du(2) + u(2,i) * dpsi * ipsi
+  
+        u2(1) = u(1,i) * u(1,i) * ipsi
+        u2(2) = u(1,i) * u(2,i) * ipsi
+        u2(3) = u(2,i) * u(2,i) * ipsi
+  
+        phase0 = cmplx( cc(i), -ss(i) )
+        phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+  
+        ! deposit m = 0 mode
+        do j = 0, 1
+          w = wt(j,i) * real(phase)
+          cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
+          dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
+          amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
+        enddo
+  
+        ! deposit m > 0 mode
+        do mode = 1, max_mode
+  
+          cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+          dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+          amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+  
+          phase = phase * phase0
+  
+          do j = 0, 1
+            w = wt(j,i) * real(phase)
+            cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
+            dcur( 1:2, ix(i)+j ) = dcur( 1:2, ix(i)+j ) + w * du(1:2)
+            amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
+  
+            w = wt(j,i) * aimag(phase)
+            cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
+            dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
+            amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
+          enddo
+  
+        enddo
+  
+        pp = pp + 1
+      enddo
+  
+    enddo
+  
+    if ( noff == 0 ) then
+  
+      ! guard cells on the axis are useless
+      cu0(1:3,0)  = 0.0
+      dcu0(1:2,0) = 0.0
+      amu0(1:3,0) = 0.0
+  
+      cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
+      dcu0(1:2,1) = 0.0
+      amu0(1:3,1) = 0.0
+  
+      do mode = 1, max_mode
+  
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+  
+        ! guard cells on the axis are useless
+        cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
+        dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
+        amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
+          
+        if ( mode == 1 ) then
+          cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
+          dcur(1:2,1) = 8.0 * dcur(1:2,1)
+          amur(1:3,1) = 0.0
+          cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+          dcui(1:2,1) = 8.0 * dcui(1:2,1)
+          amui(1:3,1) = 0.0
+        elseif ( mode == 2 ) then
+          cur(1:3,1)  = 0.0
+          dcur(1:2,1) = 0.0
+          amur(1:3,1) = 8.0 * amur(1:3,1)
+          cui(1:3,1)  = 0.0
+          dcui(1:2,1) = 0.0
+          amui(1:3,1) = 8.0 * amui(1:3,1)
+        else
+          cur(1:3,1)  = 0.0
+          dcur(1:2,1) = 0.0
+          amur(1:3,1) = 0.0
+          cui(1:3,1)  = 0.0
+          dcui(1:2,1) = 0.0
+          amui(1:3,1) = 0.0
+          endif
+      enddo
+  
+      do j = 2, nrp + 1
+        ir = 1.0 / ( j + noff - 1 )
+        cu0(1:3,j)  = cu0(1:3,j)  * ir
+        dcu0(1:2,j) = dcu0(1:2,j) * ir
+        amu0(1:3,j) = amu0(1:3,j) * ir
+      enddo
+  
+      do mode = 1, max_mode
+  
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+  
+        do j = 2, nrp + 1
+          ir = 1.0 / ( j + noff - 1 )
+          cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+          dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+          amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+        enddo
+      enddo
+  
+    else
+  
+      do j = 0, nrp + 1
+          ir = 1.0 / ( j + noff - 1 )
+          cu0(1:3,j)  = cu0(1:3,j)  * ir
+          dcu0(1:2,j) = dcu0(1:2,j) * ir
+          amu0(1:3,j) = amu0(1:3,j) * ir
+      enddo
+  
+      do mode = 1, max_mode
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+  
+        do j = 0, nrp+1
+          ir = 1.0 / ( j + noff - 1 )
+          cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+          dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+          amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+        enddo
+      enddo
+  
+    endif
+  
+    call stop_tprof( 'deposit 2D particles' )
+    call write_dbg(cls_name, sname, cls_level, 'ends')
+    
+  end subroutine amjdeposit_robust_pgc_test_part2d
 
 subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, ep, np, ptrcur, &
   geom, weight, ix, pcos, psin )
@@ -1222,6 +1516,75 @@ subroutine interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, ar_grad_re, ar_grad_
 
 end subroutine interp_laser_part2d
 
+subroutine interp_laser_part2d_test( x, z, apr, api, apr_grad, api_grad, np, ptrcur, geom )
+
+  implicit none
+
+  integer, intent(in) :: np, geom
+  real, dimension(:,:), intent(in) :: x
+  real, intent(in) :: z
+  real, dimension(:), intent(inout) :: apr, api
+  real, dimension(:,:), intent(inout) :: apr_grad, api_grad
+  integer(kind=LG), intent(in) :: ptrcur
+
+  integer :: noff, i, j, nn, m
+  integer(kind=LG) :: pp
+  real :: pos, idr, ph_r, ph_i, cc, ss
+  real, dimension(0:1) :: wt
+  complex :: phase0, phase
+  real :: a0, w0, tau, z_center
+
+  a0 = 2.0
+  w0 = 2.828427
+  tau = 2.0
+  z_center = 0.0
+
+  apr = 0.0
+  api = 0.0
+  apr_grad = 0.0
+  api_grad = 0.0
+
+  pp = ptrcur
+  do i = 1, np
+    pos = sqrt( x(1,pp)**2 + x(2,pp)**2 )
+    ! cosine and sine
+    cc = x(1,pp) / pos
+    ss = x(2,pp) / pos
+    phase0 = cmplx( cc, ss )
+
+    if ( z-z_center < tau .and. z-z_center > -tau ) then
+      apr(i) = a0 * exp(-(pos/w0)**2) * cos( (z-z_center) / tau * 0.5 * pi)**2
+      apr_grad(1,i) = -2.0 * a0 * pos / w0**2 * exp(-(pos/w0)**2) * cos( (z-z_center) / tau * 0.5 * pi)**2
+      apr_grad(2,i) = 0.0
+    else
+      apr(i) = 0.0
+      apr_grad(1,i) = 0.0
+      apr_grad(2,i) = 0.0
+    endif
+    api(i) = 0.0
+    api_grad(1,i) = 0.0
+    api_grad(2,i) = 0.0
+
+
+    ! transform from cylindrical geometry to Cartesian geometry
+    if ( geom == p_cartesian ) then
+      ! ph_r, ph_i are temporary variables here
+      ph_r = apr_grad(1,i) * cc - apr_grad(2,i) * ss
+      ph_i = apr_grad(1,i) * ss + apr_grad(2,i) * cc
+      apr_grad(1,i) = ph_r
+      apr_grad(2,i) = ph_i
+
+      ph_r = api_grad(1,i) * cc - api_grad(2,i) * ss
+      ph_i = api_grad(1,i) * ss + api_grad(2,i) * cc
+      api_grad(1,i) = ph_r
+      api_grad(2,i) = ph_i
+    endif
+
+    pp = pp + 1
+  enddo
+
+end subroutine interp_laser_part2d_test
+
 subroutine push_robust_part2d( this, ef, bf )
 
   implicit none
@@ -1342,10 +1705,11 @@ subroutine push_robust_pgc_part2d( this, ef, bf, af )
   type(ufield), dimension(:), pointer :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
 
   integer :: i, np, max_mode
-  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq
-  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  real :: qtmh, qtmh_e, qtmh_b, gam, dtc, ostq, gam_corr, tmp
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep
   real, dimension(p_cache_size) :: apr, api
   real, dimension(2,p_cache_size) :: apr_grad, api_grad
+  real, dimension(p_p_dim) :: utmp
   integer(kind=LG) :: ptrcur, pp
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -1385,73 +1749,46 @@ subroutine push_robust_pgc_part2d( this, ef, bf, af )
                               ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im, &
                               max_mode, this%x, this%dr, apr, api, apr_grad, api_grad, np, ptrcur, p_cartesian )
 
-    ! DEBUG
-    ! if ( ptrcur == 1 ) then
-    !   print *, "mean(apr)", sum( apr(1:np) ) / np
-    !   print *, "mean(api)", sum( api(1:np) ) / np
-    !   print *, "mean(apr_grad(1))", sum( apr_grad(1,1:np) ) / np
-    !   print *, "mean(apr_grad(2))", sum( apr_grad(2,1:np) ) / np
-    !   print *, "mean(api_grad(1))", sum( api_grad(1,1:np) ) / np
-    !   print *, "mean(api_grad(2))", sum( api_grad(2,1:np) ) / np
-    ! endif
-
+    ! note that the gamma and momenta calculated in this subroutine are the ones after averaging.
     pp = ptrcur
     do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 &
-            + 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 ) )
-      qtmh1 = qtmh / ( gam - this%p(3,pp) )
-      qtmh2 = qtmh1 * gam
-      ep(:,i) = ep(:,i) * qtmh2
-      qtmh2 = 0.5 * this%qbm * qtmh1
-      ep(1,i) = ep(1,i) - qtmh2 * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
-      ep(2,i) = ep(2,i) - qtmh2 * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
-      bp(:,i) = bp(:,i) * qtmh1
-      pp = pp + 1
-    enddo
 
-    ! first half of electric field acceleration
-    pp = ptrcur
-    do i = 1, np
-      utmp(:,i) = this%p(:,pp) + ep(:,i)
-      pp = pp + 1
-    enddo
+      ! calculate the correction factor for gamma due to ponderomotive force
+      gam_corr = 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 )
 
-    ! rotation about magnetic field
-    pp = ptrcur
-    do i = 1, np
-      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
-      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
-      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
-      pp = pp + 1
-    enddo
+      ! calculate the effective electric fields
+      ! note that this%gamma is already time-centered
+      tmp = 0.5 * this%qbm / this%gamma(pp)
+      ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
+      ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
 
-    do i = 1, np
+      ! half acceleration due to effective electric field
+      ! note that this%psi (1 - (q/m)*psi) is already time-centered
+      qtmh_e = qtmh * this%gamma(pp) / this%psi(pp)
+      ep(:,i) = ep(:,i) * qtmh_e
+      utmp(:) = this%p(:,pp) + ep(:,i)
+
+      ! rotation about magnetic field
+      qtmh_b = qtmh / this%psi(pp)
+      bp(:,i) = bp(:,i) * qtmh_b
+      this%p(1,pp) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
+      this%p(2,pp) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
+      this%p(3,pp) = utmp(3) + utmp(1) * bp(2,i) - utmp(2) * bp(1,i)
+
       ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
       bp(1,i) = bp(1,i) * ostq
       bp(2,i) = bp(2,i) * ostq
       bp(3,i) = bp(3,i) * ostq
-    enddo
 
-    pp = ptrcur
-    do i = 1, np
-      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
-      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
-      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
-      pp = pp + 1
-    enddo
+      utmp(1) = utmp(1) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+      utmp(2) = utmp(2) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+      utmp(3) = utmp(3) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
 
-    ! second half of electric field acc.
-    pp = ptrcur
-    do i = 1, np
-      this%p(:,pp) = utmp(:,i) + ep(:,i)
-      pp = pp + 1
-    enddo
+      ! half acceleration due to effective electric field
+      this%p(:,pp) = utmp(:) + ep(:,i)
 
-    ! advance particle position
-    pp = ptrcur
-    do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 &
-          + 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 ) )
+      ! advance particle position
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 + gam_corr )
       dtc = this%dt / ( gam - this%p(3,pp) )
       this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
       this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
@@ -1464,6 +1801,119 @@ subroutine push_robust_pgc_part2d( this, ef, bf, af )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_robust_pgc_part2d
+
+subroutine push_robust_pgc_test_part2d( this, ef, bf, af, slice_idx )
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  class(field_laser), intent(in) :: af
+  integer, intent(in) :: slice_idx
+  ! local data
+  character(len=18), save :: sname = 'push_robust_pgc_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+  type(ufield), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
+  type(ufield), dimension(:), pointer :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, qtmh_e, qtmh_b, gam, dtc, ostq, gam_corr, tmp, z
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep
+  real, dimension(p_cache_size) :: apr, api
+  real, dimension(3,p_cache_size) :: apr_grad, api_grad
+  real, dimension(p_p_dim) :: utmp
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+  qtmh = this%qbm * this%dt * 0.5
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  ar_re => af%get_cfr_re()
+  ar_im => af%get_cfr_im()
+  ai_re => af%get_cfi_re()
+  ai_im => af%get_cfi_im()
+
+  ar_grad_re => af%ar_grad_re
+  ar_grad_im => af%ar_grad_im
+  ai_grad_re => af%ai_grad_re
+  ai_grad_im => af%ai_grad_im
+
+  z = slice_idx * 15.0 / 512 - 3.0
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+    call interp_laser_part2d_test( this%x, z, apr, api, apr_grad, api_grad, np, ptrcur, p_cartesian )
+
+    ! note that the gamma and momenta calculated in this subroutine are the ones after averaging.
+    pp = ptrcur
+    do i = 1, np
+
+      ! calculate the correction factor for gamma due to ponderomotive force
+      gam_corr = 0.5 * this%qbm**2 * ( apr(i)**2 + api(i)**2 )
+
+      ! calculate the effective electric fields
+      ! note that this%gamma is already time-centered
+      tmp = 0.5 * this%qbm / this%gamma(pp)
+      ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
+      ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+      ep(3,i) = ep(3,i) + tmp * ( apr(i) * apr_grad(3,i) + api(i) * api_grad(3,i) )
+
+      ! half acceleration due to effective electric field
+      ! note that this%psi (1 - (q/m)*psi) is already time-centered
+      qtmh_e = qtmh * this%gamma(pp) / this%psi(pp)
+      ep(:,i) = ep(:,i) * qtmh_e
+      utmp(:) = this%p(:,pp) + ep(:,i)
+
+      ! rotation about magnetic field
+      qtmh_b = qtmh / this%psi(pp)
+      bp(:,i) = bp(:,i) * qtmh_b
+      this%p(1,pp) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
+      this%p(2,pp) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
+      this%p(3,pp) = utmp(3) + utmp(1) * bp(2,i) - utmp(2) * bp(1,i)
+
+      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+      bp(1,i) = bp(1,i) * ostq
+      bp(2,i) = bp(2,i) * ostq
+      bp(3,i) = bp(3,i) * ostq
+
+      utmp(1) = utmp(1) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+      utmp(2) = utmp(2) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+      utmp(3) = utmp(3) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
+
+      ! half acceleration due to effective electric field
+      this%p(:,pp) = utmp(:) + ep(:,i)
+
+      ! advance particle position
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 + gam_corr )
+      dtc = this%dt / ( gam - this%p(3,pp) )
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_robust_pgc_test_part2d
 
 subroutine update_bound_part2d( this )
 

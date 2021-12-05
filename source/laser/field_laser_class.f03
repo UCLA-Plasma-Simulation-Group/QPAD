@@ -148,15 +148,15 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
     call this%si_re(i)%new( opts, 1, i, gc_num, has_2d=.true. )
     call this%axir_re(i)%new( opts, 1, i, gc_num, has_2d=.false. )
     call this%axii_re(i)%new( opts, 1, i, gc_num, has_2d=.false. )
-    call this%ar_grad_re(i)%new( opts, 2, i, gc_num, has_2d=.false. )
-    call this%ai_grad_re(i)%new( opts, 2, i, gc_num, has_2d=.false. )
+    call this%ar_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
+    call this%ai_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
     if (i==0) cycle
     call this%sr_im(i)%new( opts, 1, i, gc_num, has_2d=.true. )
     call this%si_im(i)%new( opts, 1, i, gc_num, has_2d=.true. )
     call this%axir_im(i)%new( opts, 1, i, gc_num, has_2d=.false. )
     call this%axii_im(i)%new( opts, 1, i, gc_num, has_2d=.false. )
-    call this%ar_grad_im(i)%new( opts, 2, i, gc_num, has_2d=.false. )
-    call this%ai_grad_im(i)%new( opts, 2, i, gc_num, has_2d=.false. )
+    call this%ar_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
+    call this%ai_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
   enddo
 
   ! call initialization routine of the parent class
@@ -205,11 +205,11 @@ subroutine init_auxiliary_field_laser( this, opts, dim, max_mode, gc_num, only_f
   allocate( this%ar_grad_im(max_mode) )
   allocate( this%ai_grad_im(max_mode) )
   do i = 0, max_mode
-    call this%ar_grad_re(i)%new( opts, 2, i, gc_num, has_2d=.false. )
-    call this%ai_grad_re(i)%new( opts, 2, i, gc_num, has_2d=.false. )
+    call this%ar_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
+    call this%ai_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
     if (i==0) cycle
-    call this%ar_grad_im(i)%new( opts, 2, i, gc_num, has_2d=.false. )
-    call this%ai_grad_im(i)%new( opts, 2, i, gc_num, has_2d=.false. )
+    call this%ar_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
+    call this%ai_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
   enddo
 
   ! call initialization routine of the parent class
@@ -633,14 +633,15 @@ subroutine set_rhs_field_laser( this, chi )
 
 end subroutine set_rhs_field_laser
 
-subroutine set_grad_field_laser( this )
+subroutine set_grad_field_laser( this, slice_idx )
 
   implicit none
   class( field_laser ), intent(inout) :: this
+  integer, intent(in) :: slice_idx
 
   integer :: m, i, j, nrp, idproc, noff
-  real :: idrh, ir
-  real, dimension(:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
+  real :: idrh, ir, idz
+  real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
   character(len=32), save :: sname = 'set_grad_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -648,14 +649,19 @@ subroutine set_grad_field_laser( this )
   nrp    = this%cfr_re(0)%get_ndp(1)
   noff   = this%cfr_re(0)%get_noff(1)
   idrh   = 0.5 / this%dr
+  idz    = 1.0 / this%dz
   idproc = id_proc_loc()
 
   ! m = 0 mode
-  ar_re => this%cfr_re(0)%get_f1()
-  ai_re => this%cfi_re(0)%get_f1()
+  ar_re => this%cfr_re(0)%get_f2()
+  ai_re => this%cfi_re(0)%get_f2()
+  do i = 1, nrp
+    this%ar_grad_re(0)%f1(3,i) = idz * ( ar_re(1,i,slice_idx) - ar_re(1,i,slice_idx-1) )
+    this%ai_grad_re(0)%f1(3,i) = idz * ( ai_re(1,i,slice_idx) - ai_re(1,i,slice_idx-1) )
+  enddo
   do i = 2, nrp
-    this%ar_grad_re(0)%f1(1,i) = idrh * ( ar_re(1,i+1) - ar_re(1,i-1) )
-    this%ai_grad_re(0)%f1(1,i) = idrh * ( ai_re(1,i+1) - ai_re(1,i-1) )
+    this%ar_grad_re(0)%f1(1,i) = idrh * ( ar_re(1,i+1,slice_idx) - ar_re(1,i-1,slice_idx) )
+    this%ai_grad_re(0)%f1(1,i) = idrh * ( ai_re(1,i+1,slice_idx) - ai_re(1,i-1,slice_idx) )
     this%ar_grad_re(0)%f1(2,i) = 0.0
     this%ai_grad_re(0)%f1(2,i) = 0.0
   enddo
@@ -665,8 +671,8 @@ subroutine set_grad_field_laser( this )
     this%ar_grad_re(0)%f1(2,1) = 0.0
     this%ai_grad_re(0)%f1(2,1) = 0.0
   else
-    this%ar_grad_re(0)%f1(1,1) = idrh * ( ar_re(1,2) - ar_re(1,0) )
-    this%ai_grad_re(0)%f1(1,1) = idrh * ( ai_re(1,2) - ai_re(1,0) )
+    this%ar_grad_re(0)%f1(1,1) = idrh * ( ar_re(1,2,slice_idx) - ar_re(1,0,slice_idx) )
+    this%ai_grad_re(0)%f1(1,1) = idrh * ( ai_re(1,2,slice_idx) - ai_re(1,0,slice_idx) )
     this%ar_grad_re(0)%f1(2,1) = 0.0
     this%ai_grad_re(0)%f1(2,1) = 0.0
   endif
@@ -680,30 +686,36 @@ subroutine set_grad_field_laser( this )
   ! m > 0 modes
   do m = 1, this%max_mode
 
-    ar_re => this%cfr_re(m)%get_f1()
-    ar_im => this%cfr_im(m)%get_f1()
-    ai_re => this%cfi_re(m)%get_f1()
-    ai_im => this%cfi_im(m)%get_f1()
+    ar_re => this%cfr_re(m)%get_f2()
+    ar_im => this%cfr_im(m)%get_f2()
+    ai_re => this%cfi_re(m)%get_f2()
+    ai_im => this%cfi_im(m)%get_f2()
 
+    do i = 1, nrp
+      this%ar_grad_re(m)%f1(3,i) = idz * ( ar_re(1,i,slice_idx) - ar_re(1,i,slice_idx-1) )
+      this%ar_grad_im(m)%f1(3,i) = idz * ( ar_im(1,i,slice_idx) - ar_im(1,i,slice_idx-1) )
+      this%ai_grad_re(m)%f1(3,i) = idz * ( ai_re(1,i,slice_idx) - ai_re(1,i,slice_idx-1) )
+      this%ai_grad_im(m)%f1(3,i) = idz * ( ai_im(1,i,slice_idx) - ai_im(1,i,slice_idx-1) )
+    enddo
     do i = 2, nrp
       ir = 1.0 / ( ( noff + i - 1 ) * this%dr )
-      this%ar_grad_re(m)%f1(1,i) = idrh * ( ar_re(1,i+1) - ar_re(1,i-1) )
-      this%ar_grad_im(m)%f1(1,i) = idrh * ( ar_im(1,i+1) - ar_im(1,i-1) )
-      this%ar_grad_re(m)%f1(2,i) = -ir * m * ar_im(1,i)
-      this%ar_grad_im(m)%f1(2,i) =  ir * m * ar_re(1,i)
-      this%ai_grad_re(m)%f1(1,i) = idrh * ( ai_re(1,i+1) - ai_re(1,i-1) )
-      this%ai_grad_im(m)%f1(1,i) = idrh * ( ai_im(1,i+1) - ai_im(1,i-1) )
-      this%ai_grad_re(m)%f1(2,i) = -ir * m * ai_im(1,i)
-      this%ai_grad_im(m)%f1(2,i) =  ir * m * ai_re(1,i)
+      this%ar_grad_re(m)%f1(1,i) = idrh * ( ar_re(1,i+1,slice_idx) - ar_re(1,i-1,slice_idx) )
+      this%ar_grad_im(m)%f1(1,i) = idrh * ( ar_im(1,i+1,slice_idx) - ar_im(1,i-1,slice_idx) )
+      this%ar_grad_re(m)%f1(2,i) = -ir * m * ar_im(1,i,slice_idx)
+      this%ar_grad_im(m)%f1(2,i) =  ir * m * ar_re(1,i,slice_idx)
+      this%ai_grad_re(m)%f1(1,i) = idrh * ( ai_re(1,i+1,slice_idx) - ai_re(1,i-1,slice_idx) )
+      this%ai_grad_im(m)%f1(1,i) = idrh * ( ai_im(1,i+1,slice_idx) - ai_im(1,i-1,slice_idx) )
+      this%ai_grad_re(m)%f1(2,i) = -ir * m * ai_im(1,i,slice_idx)
+      this%ai_grad_im(m)%f1(2,i) =  ir * m * ai_re(1,i,slice_idx)
     enddo
     if ( idproc == 0 ) then
       if ( mod(m,2) == 1 ) then
-        this%ar_grad_re(m)%f1(1,i) = 2.0 * idrh * ar_re(1,2)
-        this%ar_grad_im(m)%f1(1,i) = 2.0 * idrh * ar_im(1,2)
+        this%ar_grad_re(m)%f1(1,i) = 2.0 * idrh * ar_re(1,2,slice_idx)
+        this%ar_grad_im(m)%f1(1,i) = 2.0 * idrh * ar_im(1,2,slice_idx)
         this%ar_grad_re(m)%f1(2,i) = -m * this%ar_grad_im(m)%f1(1,i)
         this%ar_grad_im(m)%f1(2,i) =  m * this%ar_grad_re(m)%f1(1,i)
-        this%ai_grad_re(m)%f1(1,i) = 2.0 * idrh * ai_re(1,2)
-        this%ai_grad_im(m)%f1(1,i) = 2.0 * idrh * ai_im(1,2)
+        this%ai_grad_re(m)%f1(1,i) = 2.0 * idrh * ai_re(1,2,slice_idx)
+        this%ai_grad_im(m)%f1(1,i) = 2.0 * idrh * ai_im(1,2,slice_idx)
         this%ai_grad_re(m)%f1(2,i) = -m * this%ai_grad_im(m)%f1(1,i)
         this%ai_grad_im(m)%f1(2,i) =  m * this%ai_grad_re(m)%f1(1,i)
       else
@@ -718,14 +730,14 @@ subroutine set_grad_field_laser( this )
       endif
     else
       ir = 1.0 / ( noff * this%dr )
-      this%ar_grad_re(m)%f1(1,i) = idrh * ( ar_re(1,2) - ar_re(1,0) )
-      this%ar_grad_im(m)%f1(1,i) = idrh * ( ar_im(1,2) - ar_im(1,0) )
-      this%ar_grad_re(m)%f1(2,i) = -ir * m * ar_im(1,1)
-      this%ar_grad_im(m)%f1(2,i) =  ir * m * ar_re(1,1)
-      this%ai_grad_re(m)%f1(1,i) = idrh * ( ai_re(1,2) - ai_re(1,0) )
-      this%ai_grad_im(m)%f1(1,i) = idrh * ( ai_im(1,2) - ai_im(1,0) )
-      this%ai_grad_re(m)%f1(2,i) = -ir * m * ai_im(1,1)
-      this%ai_grad_im(m)%f1(2,i) =  ir * m * ai_re(1,1)
+      this%ar_grad_re(m)%f1(1,i) = idrh * ( ar_re(1,2,slice_idx) - ar_re(1,0,slice_idx) )
+      this%ar_grad_im(m)%f1(1,i) = idrh * ( ar_im(1,2,slice_idx) - ar_im(1,0,slice_idx) )
+      this%ar_grad_re(m)%f1(2,i) = -ir * m * ar_im(1,1,slice_idx)
+      this%ar_grad_im(m)%f1(2,i) =  ir * m * ar_re(1,1,slice_idx)
+      this%ai_grad_re(m)%f1(1,i) = idrh * ( ai_re(1,2,slice_idx) - ai_re(1,0,slice_idx) )
+      this%ai_grad_im(m)%f1(1,i) = idrh * ( ai_im(1,2,slice_idx) - ai_im(1,0,slice_idx) )
+      this%ai_grad_re(m)%f1(2,i) = -ir * m * ai_im(1,1,slice_idx)
+      this%ai_grad_im(m)%f1(2,i) =  ir * m * ai_re(1,1,slice_idx)
     endif
 
   enddo

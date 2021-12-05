@@ -374,13 +374,14 @@ subroutine run_simulation( this )
         call laser_all%zero( only_f1=.true. )
         do k = 1, this%nlasers
           call laser(k)%solve( chi, j )
-          ! call laser(k)%copy_slice( j, p_copy_2to1 )
-          call laser(k)%set_grad()
+          call laser(k)%copy_slice( j, p_copy_1to2 )
+          call laser(k)%set_grad( j )
           call laser_all%gather( laser(k) )
         enddo
 
         do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
+          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu, j )
+          ! call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
           ! call spe(k)%deposit_chi
         enddo
 
@@ -451,7 +452,8 @@ subroutine run_simulation( this )
       ! advance species particles
       do k = 1, this%nspecies
         ! call spe(k)%push( e, b )
-        call spe(k)%push( e, b, laser_all )
+        ! call spe(k)%push( e, b, laser_all )
+        call spe(k)%push( e, b, laser_all, j )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
