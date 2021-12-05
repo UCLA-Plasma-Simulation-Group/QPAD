@@ -233,7 +233,8 @@ subroutine deposit_chi_species2d( this, chi )
 
 end subroutine deposit_chi_species2d
 
-subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
+! subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
+subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -244,6 +245,7 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
+   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
@@ -257,6 +259,8 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
          call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
       case ( p_push2_robust_pgc )
          call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
+      case ( p_push2_robust_pgc_test )
+         call this%part%amjdeposit_robust_pgc_test( ef, bf, af, this%cu, this%amu, this%dcu, slice_idx )
    end select
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -277,7 +281,8 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine push_species2d( this, ef, bf, af )
+subroutine push_species2d( this, ef, bf, af, slice_idx )
+! subroutine push_species2d( this, ef, bf, af )
 
    implicit none
 
@@ -285,6 +290,7 @@ subroutine push_species2d( this, ef, bf, af )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
+   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'push_species2d'
 
@@ -295,6 +301,8 @@ subroutine push_species2d( this, ef, bf, af )
          call this%part%push_robust( ef, bf )
       case ( p_push2_robust_pgc )
          call this%part%push_robust_pgc( ef, bf, af )
+      case ( p_push2_robust_pgc_test )
+         call this%part%push_robust_pgc_test( ef, bf, af, slice_idx )
    end select
 
    call this%part%update_bound()
