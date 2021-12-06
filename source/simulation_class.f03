@@ -374,11 +374,7 @@ subroutine run_simulation( this )
         call laser_all%zero( only_f1=.true. )
         do k = 1, this%nlasers
           call laser(k)%solve( chi, j )
-<<<<<<< HEAD
-          ! call laser(k)%copy_slice( j, p_copy_2to1 )
-=======
           call laser(k)%copy_slice( j, p_copy_1to2 )
->>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
           call laser(k)%set_grad( j )
           call laser_all%gather( laser(k) )
         enddo

@@ -98,7 +98,7 @@ subroutine init_sim_lasers( this, input, opts )
 
   ! WARNING: the following number of cell only support iter=1
   gc_num(:,1) = (/1, 1/)
-  gc_num(:,2) = (/1, 1/)
+  gc_num(:,2) = (/2, 1/)
 
   do i = 1, this%num_lasers
     call input%get( 'laser(' // num2str(i) // ').iteration', iter )

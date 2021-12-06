@@ -169,10 +169,11 @@ subroutine end_field_complex( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call this%cfr_re(0)%del()
-  call this%cfi_re(0)%del()
-  do i = 1, this%max_mode
+  do i = 0, this%max_mode
     call this%cfr_re(i)%del()
+    call this%cfi_re(i)%del()
+    if ( i == 0 ) cycle
+    call this%cfr_im(i)%del()
     call this%cfi_im(i)%del()
   enddo
   deallocate( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )

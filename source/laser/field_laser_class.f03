@@ -640,11 +640,7 @@ subroutine set_grad_field_laser( this, slice_idx )
   integer, intent(in) :: slice_idx
 
   integer :: m, i, j, nrp, idproc, noff
-<<<<<<< HEAD
   real :: idrh, ir, idzh
-=======
-  real :: idrh, ir, idz
->>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
   character(len=32), save :: sname = 'set_grad_field_laser'
 
@@ -653,15 +649,15 @@ subroutine set_grad_field_laser( this, slice_idx )
   nrp    = this%cfr_re(0)%get_ndp(1)
   noff   = this%cfr_re(0)%get_noff(1)
   idrh   = 0.5 / this%dr
-  idz    = 1.0 / this%dz
+  idzh   = 0.5 / this%dz
   idproc = id_proc_loc()
 
   ! m = 0 mode
   ar_re => this%cfr_re(0)%get_f2()
   ai_re => this%cfi_re(0)%get_f2()
   do i = 1, nrp
-    this%ar_grad_re(0)%f1(3,i) = idz * ( ar_re(1,i,slice_idx) - ar_re(1,i,slice_idx-1) )
-    this%ai_grad_re(0)%f1(3,i) = idz * ( ai_re(1,i,slice_idx) - ai_re(1,i,slice_idx-1) )
+    this%ar_grad_re(0)%f1(3,i) = idzh * ( 3.0 * ar_re(1,i,slice_idx) - 4.0 * ar_re(1,i,slice_idx-1) + ar_re(1,i,slice_idx-2) )
+    this%ai_grad_re(0)%f1(3,i) = idzh * ( 3.0 * ai_re(1,i,slice_idx) - 4.0 * ai_re(1,i,slice_idx-1) + ai_re(1,i,slice_idx-2) )
   enddo
   do i = 2, nrp
     this%ar_grad_re(0)%f1(1,i) = idrh * ( ar_re(1,i+1,slice_idx) - ar_re(1,i-1,slice_idx) )
@@ -696,10 +692,10 @@ subroutine set_grad_field_laser( this, slice_idx )
     ai_im => this%cfi_im(m)%get_f2()
 
     do i = 1, nrp
-      this%ar_grad_re(m)%f1(3,i) = idz * ( ar_re(1,i,slice_idx) - ar_re(1,i,slice_idx-1) )
-      this%ar_grad_im(m)%f1(3,i) = idz * ( ar_im(1,i,slice_idx) - ar_im(1,i,slice_idx-1) )
-      this%ai_grad_re(m)%f1(3,i) = idz * ( ai_re(1,i,slice_idx) - ai_re(1,i,slice_idx-1) )
-      this%ai_grad_im(m)%f1(3,i) = idz * ( ai_im(1,i,slice_idx) - ai_im(1,i,slice_idx-1) )
+      this%ar_grad_re(m)%f1(3,i) = idzh * ( 3.0 * ar_re(1,i,slice_idx) - 4.0 * ar_re(1,i,slice_idx-1) + ar_re(1,i,slice_idx-2) )
+      this%ar_grad_im(m)%f1(3,i) = idzh * ( 3.0 * ar_im(1,i,slice_idx) - 4.0 * ar_im(1,i,slice_idx-1) + ar_im(1,i,slice_idx-2) )
+      this%ai_grad_re(m)%f1(3,i) = idzh * ( 3.0 * ai_re(1,i,slice_idx) - 4.0 * ai_re(1,i,slice_idx-1) + ai_re(1,i,slice_idx-2) )
+      this%ai_grad_im(m)%f1(3,i) = idzh * ( 3.0 * ai_im(1,i,slice_idx) - 4.0 * ai_im(1,i,slice_idx-1) + ai_im(1,i,slice_idx-2) )
     enddo
     do i = 2, nrp
       ir = 1.0 / ( ( noff + i - 1 ) * this%dr )
