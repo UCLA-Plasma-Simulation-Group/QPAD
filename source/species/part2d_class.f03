@@ -1069,7 +1069,11 @@ subroutine amjdeposit_robust_pgc_test_part2d( this, ef, bf, af, cu, amu, dcu, sl
     integer, dimension(p_cache_size) :: ix
     real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u
     real, dimension(p_cache_size) :: apr, api
+<<<<<<< HEAD
     real, dimension(2,p_cache_size) :: apr_grad, api_grad
+=======
+    real, dimension(3,p_cache_size) :: apr_grad, api_grad
+>>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
     real, dimension(0:1, p_cache_size) :: wt
     real, dimension(p_cache_size) :: cc, ss
     real, dimension(p_p_dim) :: du, u2, utmp
@@ -1148,6 +1152,10 @@ subroutine amjdeposit_robust_pgc_test_part2d( this, ef, bf, af, cu, amu, dcu, sl
         tmp = 0.5 * this%qbm / gam
         ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
         ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+<<<<<<< HEAD
+=======
+        ep(3,i) = ep(3,i) + tmp * ( apr(i) * apr_grad(3,i) + api(i) * api_grad(3,i) )
+>>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
   
         ! half electric acceleration
         qtmh_e = qtmh * gam / ( gam - u0(3,i) )
@@ -1819,7 +1827,11 @@ subroutine push_robust_pgc_test_part2d( this, ef, bf, af, slice_idx )
   real :: qtmh, qtmh_e, qtmh_b, gam, dtc, ostq, gam_corr, tmp, z
   real, dimension(p_p_dim, p_cache_size) :: bp, ep
   real, dimension(p_cache_size) :: apr, api
+<<<<<<< HEAD
   real, dimension(2,p_cache_size) :: apr_grad, api_grad
+=======
+  real, dimension(3,p_cache_size) :: apr_grad, api_grad
+>>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
   real, dimension(p_p_dim) :: utmp
   integer(kind=LG) :: ptrcur, pp
 
@@ -1872,6 +1884,10 @@ subroutine push_robust_pgc_test_part2d( this, ef, bf, af, slice_idx )
       tmp = 0.5 * this%qbm / this%gamma(pp)
       ep(1,i) = ep(1,i) - tmp * ( apr(i) * apr_grad(1,i) + api(i) * api_grad(1,i) )
       ep(2,i) = ep(2,i) - tmp * ( apr(i) * apr_grad(2,i) + api(i) * api_grad(2,i) )
+<<<<<<< HEAD
+=======
+      ep(3,i) = ep(3,i) + tmp * ( apr(i) * apr_grad(3,i) + api(i) * api_grad(3,i) )
+>>>>>>> 247e95446017637216014dfbb707d923cd3ab7ff
 
       ! half acceleration due to effective electric field
       ! note that this%psi (1 - (q/m)*psi) is already time-centered
