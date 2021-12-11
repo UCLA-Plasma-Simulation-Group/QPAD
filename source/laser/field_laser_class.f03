@@ -33,11 +33,6 @@ type, extends( field_complex ) :: field_laser
   class( ufield ), dimension(:), pointer, public :: si_re => null()
   class( ufield ), dimension(:), pointer, public :: si_im => null()
 
-  class( ufield ), dimension(:), pointer :: axir_re => null()
-  class( ufield ), dimension(:), pointer :: axir_im => null()
-  class( ufield ), dimension(:), pointer :: axii_re => null()
-  class( ufield ), dimension(:), pointer :: axii_im => null()
-
   class( ufield ), dimension(:), pointer, public :: ar_grad_re => null()
   class( ufield ), dimension(:), pointer, public :: ar_grad_im => null()
   class( ufield ), dimension(:), pointer, public :: ai_grad_re => null()
@@ -135,10 +130,6 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   allocate( this%si_re(0:max_mode) )
   allocate( this%sr_im(max_mode) )
   allocate( this%si_im(max_mode) )
-  allocate( this%axir_re(0:max_mode) )
-  allocate( this%axii_re(0:max_mode) )
-  allocate( this%axir_im(max_mode) )
-  allocate( this%axii_im(max_mode) )
   allocate( this%ar_grad_re(0:max_mode) )
   allocate( this%ai_grad_re(0:max_mode) )
   allocate( this%ar_grad_im(max_mode) )
@@ -146,15 +137,11 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   do i = 0, max_mode
     call this%sr_re(i)%new( opts, 1, i, gc_num, has_2d=.true. )
     call this%si_re(i)%new( opts, 1, i, gc_num, has_2d=.true. )
-    call this%axir_re(i)%new( opts, 1, i, gc_num, has_2d=.false. )
-    call this%axii_re(i)%new( opts, 1, i, gc_num, has_2d=.false. )
     call this%ar_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
     call this%ai_grad_re(i)%new( opts, 3, i, gc_num, has_2d=.false. )
     if (i==0) cycle
     call this%sr_im(i)%new( opts, 1, i, gc_num, has_2d=.true. )
     call this%si_im(i)%new( opts, 1, i, gc_num, has_2d=.true. )
-    call this%axir_im(i)%new( opts, 1, i, gc_num, has_2d=.false. )
-    call this%axii_im(i)%new( opts, 1, i, gc_num, has_2d=.false. )
     call this%ar_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
     call this%ai_grad_im(i)%new( opts, 3, i, gc_num, has_2d=.false. )
   enddo
@@ -233,21 +220,16 @@ subroutine end_field_laser( this )
     call this%pgc_solver(i)%destroy()
     call this%sr_re(i)%del()
     call this%si_re(i)%del()
-    call this%axir_re(i)%del()
-    call this%axii_re(i)%del()
     call this%ar_grad_re(i)%del()
     call this%ai_grad_re(i)%del()
     if ( i == 0 ) cycle
     call this%sr_im(i)%del()
     call this%si_im(i)%del()
-    call this%axir_im(i)%del()
-    call this%axii_im(i)%del()
     call this%ar_grad_im(i)%del()
     call this%ai_grad_im(i)%del()
   enddo
   deallocate( this%pgc_solver )
   deallocate( this%sr_re, this%sr_im, this%si_re, this%si_im )
-  deallocate( this%axir_re, this%axir_im, this%axii_re, this%axii_im )
   deallocate( this%ar_grad_re, this%ar_grad_im, this%ai_grad_re, this%ai_grad_im )
   call this%field_complex%del()
 
@@ -287,14 +269,16 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
   real, intent(in) :: k0, ds, dr, dz
 
   integer :: ierr, m, i, j, local_size, idproc, nvp
-  real :: a, b, c, d, e, m2, j2
+  real :: a, b, c, d, e, m2, j2, ds_qtr, dr2_idz_1hf
   character(len=32), save :: sname = 'init_solver'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   local_size = 2 * nrp
-  nvp = num_procs_loc()
-  idproc = id_proc_loc()
+  nvp        = num_procs_loc()
+  idproc     = id_proc_loc()
+  ds_qtr     = 0.25 * ds
+  dr2_idz_1hf = 1.5 * dr**2 / dz
 
   do m = 0, this%max_mode
     call this%pgc_solver(m)%create( 2*nr, comm_loc(), ierr )
@@ -306,18 +290,18 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       j = (i + 1) / 2 - 1 + noff
       j2 = j * j
 
-      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      a = -ds_qtr * ( 1.0 - 0.5 / j )
       b = 0.0
-      c = 0.25 * ds * ( 2.0 + m2 / j2 )
+      c = ds_qtr * ( 2.0 + m2 / j2 ) + dr2_idz_1hf
       d = -k0 * dr**2
-      e = -0.25 * ds * ( 1.0 + 0.5 / j )
+      e = -ds_qtr * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i )
 
-      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      a = -ds_qtr * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
-      c = 0.25 * ds * ( 2.0 + m2 / j2 )
+      c = ds_qtr * ( 2.0 + m2 / j2 ) + dr2_idz_1hf
       d = 0.0
-      e = -0.25 * ds * ( 1.0 + 0.5 / j )
+      e = -ds_qtr * ( 1.0 + 0.5 / j )
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, i+1 )
 
     enddo
@@ -329,14 +313,14 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
         a = 0.0
         b = epsilon(1.0)
-        c = ds
+        c = ds + dr2_idz_1hf
         d = -k0 * dr**2
         e = -ds
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
 
         a = epsilon(1.0)
         b = k0 * dr**2
-        c = ds
+        c = ds + dr2_idz_1hf
         d = 0.0
         e = -ds
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
@@ -347,14 +331,14 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
         ! is not singular.
         a = 0.0
         b = epsilon(1.0)
-        c = 1.0
+        c = 1.0 + dr2_idz_1hf
         d = 0.0
         e = 0.0
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
 
         a = epsilon(1.0)
         b = 0.0
-        c = 1.0
+        c = 1.0 + dr2_idz_1hf
         d = 0.0
         e = 0.0
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
@@ -363,14 +347,14 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
         ! on-axis values are zeros
         a = 0.0
         b = 0.0
-        c = 0.25 * ds * ( 2.0 + m2 )
+        c = ds_qtr * ( 2.0 + m2 ) + dr2_idz_1hf
         d = -k0 * dr**2
         e = -0.375 * ds
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 3 )
 
         a = 0.0
         b = k0 * dr**2
-        c = 0.25 * ds * ( 2.0 + m2 )
+        c = ds_qtr * ( 2.0 + m2 ) + dr2_idz_1hf
         d = 0.0
         e = -0.375 * ds
         call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 4 )
@@ -385,16 +369,16 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
       j = nr - 1
       j2 = j * j
 
-      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      a = -ds_qtr * ( 1.0 - 0.5 / j )
       b = 0.0
-      c = 0.25 * ds * ( 2.0 + m2 / j2 )
+      c = ds_qtr * ( 2.0 + m2 / j2 ) + dr2_idz_1hf
       d = -k0 * dr**2
       e = 0.0
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size-1 )
 
-      a = -0.25 * ds * ( 1.0 - 0.5 / j )
+      a = -ds_qtr * ( 1.0 - 0.5 / j )
       b = k0 * dr**2
-      c = 0.25 * ds * ( 2.0 + m2 / j2 )
+      c = ds_qtr * ( 2.0 + m2 / j2 ) + dr2_idz_1hf
       d = 0.0
       e = 0.0
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, local_size )
@@ -439,7 +423,8 @@ subroutine set_rhs_field_laser( this, chi )
   ! mode = 0
   ar_re => this%cfr_re(0)%get_f2()
   ai_re => this%cfi_re(0)%get_f2()
-  do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+  ! do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+  do j = 1, nzp
 
     ! calculate the inner cells
     do i = 2, nrp - 1
@@ -447,10 +432,10 @@ subroutine set_rhs_field_laser( this, chi )
       beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
       beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
       alpha = -ds_qtr * 2.0
-      this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
-                              + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-      this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
-                              + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)                              
+      this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) &
+                              - kappa * ai_re(1,i,j) + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
+      this%si_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) &
+                              + kappa * ar_re(1,i,j) + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)                              
     enddo
 
     ! calculate the first cell
@@ -466,9 +451,9 @@ subroutine set_rhs_field_laser( this, chi )
       beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
       alpha = -ds_qtr * 2.0
     endif
-    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) - kappa * ai_re(1,i,j) &
                               + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) + kappa * ar_re(1,i,j) &
                               + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
 
     ! calculate the last cell
@@ -485,9 +470,9 @@ subroutine set_rhs_field_laser( this, chi )
       beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
       alpha = -ds_qtr * 2.0
     endif
-    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+    this%sr_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) - kappa * ai_re(1,i,j) &
                               + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+    this%si_re(0)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) + kappa * ar_re(1,i,j) &
                               + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
   enddo
 
@@ -508,13 +493,13 @@ subroutine set_rhs_field_laser( this, chi )
         beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
         alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
 
-        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) - kappa * ai_re(1,i,j) &
                                 + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_im(1,i,j) - 4.0 * ar_im(1,i,j-1) + ar_im(1,i,j-2) ) - kappa * ai_im(1,i,j) &
                                 + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
-        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) + kappa * ar_re(1,i,j) &
                                 + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
-        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_im(1,i,j) - 4.0 * ai_im(1,i,j-1) + ai_im(1,i,j-2) ) + kappa * ar_im(1,i,j) &
                                 + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
       enddo
 
@@ -531,13 +516,13 @@ subroutine set_rhs_field_laser( this, chi )
         beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
         alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
 
-        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+        this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) - kappa * ai_re(1,i,j) &
                                 + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+        this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_im(1,i,j) - 4.0 * ar_im(1,i,j-1) + ar_im(1,i,j-2) ) - kappa * ai_im(1,i,j) &
                                 + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
-        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+        this%si_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) + kappa * ar_re(1,i,j) &
                                 + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
-        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+        this%si_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_im(1,i,j) - 4.0 * ai_im(1,i,j-1) + ai_im(1,i,j-2) ) + kappa * ar_im(1,i,j) &
                                 + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
       endif
 
@@ -555,13 +540,13 @@ subroutine set_rhs_field_laser( this, chi )
         beta_p = ds_qtr * ( 1.0 + 0.5 * ik )
         alpha = -ds_qtr * ( 2.0 + m2 * ik * ik )
       endif
-      this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( ar_re(1,i,j+1) - ar_re(1,i,j-1) ) - kappa * ai_re(1,i,j) &
+      this%sr_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_re(1,i,j) - 4.0 * ar_re(1,i,j-1) + ar_re(1,i,j-2) ) - kappa * ai_re(1,i,j) &
                               + beta_m * ar_re(1,i-1,j) + alpha * ar_re(1,i,j) + beta_p * ar_re(1,i+1,j)
-      this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( ar_im(1,i,j+1) - ar_im(1,i,j-1) ) - kappa * ai_im(1,i,j) &
+      this%sr_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ar_im(1,i,j) - 4.0 * ar_im(1,i,j-1) + ar_im(1,i,j-2) ) - kappa * ai_im(1,i,j) &
                               + beta_m * ar_im(1,i-1,j) + alpha * ar_im(1,i,j) + beta_p * ar_im(1,i+1,j)
-      this%si_re(m)%f2(1,i,j) = dr2_idzh * ( ai_re(1,i,j+1) - ai_re(1,i,j-1) ) + kappa * ar_re(1,i,j) &
+      this%si_re(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_re(1,i,j) - 4.0 * ai_re(1,i,j-1) + ai_re(1,i,j-2) ) + kappa * ar_re(1,i,j) &
                               + beta_m * ai_re(1,i-1,j) + alpha * ai_re(1,i,j) + beta_p * ai_re(1,i+1,j)
-      this%si_im(m)%f2(1,i,j) = dr2_idzh * ( ai_im(1,i,j+1) - ai_im(1,i,j-1) ) + kappa * ar_im(1,i,j) &
+      this%si_im(m)%f2(1,i,j) = dr2_idzh * ( 3.0 * ai_im(1,i,j) - 4.0 * ai_im(1,i,j-1) + ai_im(1,i,j-2) ) + kappa * ar_im(1,i,j) &
                               + beta_m * ai_im(1,i-1,j) + alpha * ai_im(1,i,j) + beta_p * ai_im(1,i+1,j)
     enddo
   enddo
@@ -677,12 +662,6 @@ subroutine set_grad_field_laser( this, slice_idx )
     this%ai_grad_re(0)%f1(2,1) = 0.0
   endif
 
-  ! DEBUG
-  ! print *, "sum(ar_re) = ", sum(ar_re(1,1:nrp))
-  ! print *, "sum(ai_re) = ", sum(ai_re(1,1:nrp))
-  ! print *, "sum(ar_grad_re) = ", sum(this%ar_grad_re(0)%f1(1,1:nrp))
-  ! print *, "sum(ai_grad_re) = ", sum(this%ai_grad_re(0)%f1(1,1:nrp))
-
   ! m > 0 modes
   do m = 1, this%max_mode
 
@@ -746,24 +725,19 @@ subroutine set_grad_field_laser( this, slice_idx )
 
 end subroutine set_grad_field_laser
 
-subroutine solve_field_laser( this, chi, i_slice )
+subroutine solve_field_laser( this, chi )
 
   implicit none
   class( field_laser ), intent(inout) :: this
   class( field ), intent(inout) :: chi
-  integer, intent(in) :: i_slice
 
-  integer :: m, k, i, j, nrp, nzp
+  integer :: m, k, i, j, l, nrp, nzp
   real :: dr2_idzh, ds_qtr, ds_qtr_dr2, rhs
-  real, dimension(:,:), pointer :: chi_re => null(), chi_im => null()
-  real, dimension(:,:), pointer :: ar_re => null(), ar_im => null()
-  real, dimension(:,:), pointer :: ai_re => null(), ai_im => null()
-  real, dimension(:,:), pointer :: axir_re => null(), axir_im => null()
-  real, dimension(:,:), pointer :: axii_re => null(), axii_im => null()
-  real, dimension(:,:,:), pointer :: ar_re_f2 => null(), ar_im_f2 => null()
-  real, dimension(:,:,:), pointer :: ai_re_f2 => null(), ai_im_f2 => null()
-  real, dimension(:,:,:), pointer :: sr_re_f2 => null(), sr_im_f2 => null()
-  real, dimension(:,:,:), pointer :: si_re_f2 => null(), si_im_f2 => null()
+  real, dimension(:,:,:), pointer :: chi_re => null(), chi_im => null()
+  real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null()
+  real, dimension(:,:,:), pointer :: ai_re => null(), ai_im => null()
+  real, dimension(:,:,:), pointer :: sr_re => null(), sr_im => null()
+  real, dimension(:,:,:), pointer :: si_re => null(), si_im => null()
   character(len=32), save :: sname = 'solve_field_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -782,162 +756,116 @@ subroutine solve_field_laser( this, chi, i_slice )
   tmp_i_re = 0.0
   tmp_i_im = 0.0
 
-  ! handle the first slice, calculate the da/dxi for the first slice
-  if ( i_slice == 2 - this%gc_num(1,2) ) then
-    do m = 0, this%max_mode
-      ar_re_f2 => this%cfr_re(m)%get_f2()
-      ai_re_f2 => this%cfi_re(m)%get_f2()
-      axir_re => this%axir_re(m)%get_f1()
-      axii_re => this%axii_re(m)%get_f1()
-      do i = 1, nrp
-        axir_re(1,i) = dr2_idzh * ( ar_re_f2(1,i,i_slice+1) - ar_re_f2(1,i,i_slice-1) )
-        axii_re(1,i) = dr2_idzh * ( ai_re_f2(1,i,i_slice+1) - ai_re_f2(1,i,i_slice-1) )
-      enddo
-      if ( m == 0 ) cycle
-      ar_im_f2 => this%cfr_im(m)%get_f2()
-      ai_im_f2 => this%cfi_im(m)%get_f2()
-      axir_im => this%axir_im(m)%get_f1()
-      axii_im => this%axii_im(m)%get_f1()
-      do i = 1, nrp
-        axir_im(1,i) = dr2_idzh * ( ar_im_f2(1,i,i_slice+1) - ar_im_f2(1,i,i_slice-1) )
-        axii_im(1,i) = dr2_idzh * ( ai_im_f2(1,i,i_slice+1) - ai_im_f2(1,i,i_slice-1) )
-      enddo
-    enddo
-  endif
+  do j = 1, nzp
 
-  ! calculate the contribution from the plasma susceptibility
-  do m = 0, this%max_mode
-    do k = 0, m
-      chi_re => chi%rf_re(k)%get_f1()
-      ar_re  => this%cfr_re(m-k)%get_f1()
-      ai_re  => this%cfi_re(m-k)%get_f1()
+    do l = 1, this%iter
 
-      do i = 1, nrp
-        tmp_r_re(i) = ds_qtr_dr2 * chi_re(1,i) * ar_re(1,i)
-        tmp_i_re(i) = ds_qtr_dr2 * chi_re(1,i) * ai_re(1,i)
-      enddo
+      ! calculate the contribution from the plasma susceptibility
+      do m = 0, this%max_mode
+        do k = 0, m
+          chi_re => chi%rf_re(k)%get_f2()
+          ar_re  => this%cfr_re(m-k)%get_f2()
+          ai_re  => this%cfi_re(m-k)%get_f2()
 
-      if ( k == 0 .or. k == m ) cycle
+          do i = 1, nrp
+            tmp_r_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
+            tmp_i_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
+          enddo
 
-      chi_im => chi%rf_im(k)%get_f1()
-      ar_im  => this%cfr_im(m-k)%get_f1()
-      ai_im  => this%cfi_im(m-k)%get_f1()
+          if ( k == 0 .or. k == m ) cycle
 
-      do i = 1, nrp
-        tmp_r_re(i) = tmp_r_re(i) - ds_qtr_dr2 * chi_im(1,i) * ar_im(1,i)
-        tmp_i_re(i) = tmp_i_re(i) - ds_qtr_dr2 * chi_im(1,i) * ai_im(1,i)
-      enddo
-    enddo
+          chi_im => chi%rf_im(k)%get_f2()
+          ar_im  => this%cfr_im(m-k)%get_f2()
+          ai_im  => this%cfi_im(m-k)%get_f2()
 
-    if ( m == 0 ) cycle
-
-    do k = 0, m
-
-      if ( k /= 0 ) then
-        chi_im => chi%rf_im(k)%get_f1()
-        ar_re  => this%cfr_re(m-k)%get_f1()
-        ai_re  => this%cfi_re(m-k)%get_f1()
-
-        do i = 1, nrp
-          tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_im(1,i) * ar_re(1,i)
-          tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_im(1,i) * ai_re(1,i)
+          do i = 1, nrp
+            tmp_r_re(i) = tmp_r_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
+            tmp_i_re(i) = tmp_i_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
+          enddo
         enddo
-      endif
 
-      if ( k /= m ) then
-        chi_re => chi%rf_re(k)%get_f1()
-        ar_im  => this%cfr_im(m-k)%get_f1()
-        ai_im  => this%cfi_im(m-k)%get_f1()
+        if ( m == 0 ) cycle
 
-        do i = 1, nrp
-          tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_re(1,i) * ar_im(1,i)
-          tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_re(1,i) * ai_im(1,i)
+        do k = 0, m
+
+          if ( k /= 0 ) then
+            chi_im => chi%rf_im(k)%get_f2()
+            ar_re  => this%cfr_re(m-k)%get_f2()
+            ai_re  => this%cfi_re(m-k)%get_f2()
+
+            do i = 1, nrp
+              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
+              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
+            enddo
+          endif
+
+          if ( k /= m ) then
+            chi_re => chi%rf_re(k)%get_f2()
+            ar_im  => this%cfr_im(m-k)%get_f2()
+            ai_im  => this%cfi_im(m-k)%get_f2()
+
+            do i = 1, nrp
+              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
+              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
+            enddo
+          endif
+
         enddo
-      endif
-
-    enddo
-  enddo
-
-  ! set rhs of the PCR solver and solve
-  do m = 0, this%max_mode
-
-    sr_re_f2 => this%sr_re(m)%get_f2()
-    si_re_f2 => this%si_re(m)%get_f2()
-    ar_re_f2 => this%cfr_re(m)%get_f2()
-    ai_re_f2 => this%cfi_re(m)%get_f2()
-    axir_re  => this%axir_re(m)%get_f1()
-    axii_re  => this%axii_re(m)%get_f1()
-    ar_re    => this%cfr_re(m)%get_f1()
-    ai_re    => this%cfi_re(m)%get_f1()
-
-    ! set rhs of PCR
-    do i = 1, nrp
-      rhs = sr_re_f2(1,i,i_slice) - axir_re(1,i) + tmp_r_re(i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-      rhs = si_re_f2(1,i,i_slice) - axii_re(1,i) + tmp_i_re(i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
-    enddo
-
-    call this%pgc_solver(m)%solve()
-
-    ! calculate the da/dxi at next slice before a is replaced
-    if ( i_slice < nzp + this%gc_num(2,2) - 1 ) then
-      do i = 1, nrp
-        axir_re(1,i) = dr2_idzh * ( ar_re_f2(1,i,i_slice+2) - ar_re_f2(1,i,i_slice) )
-        axii_re(1,i) = dr2_idzh * ( ai_re_f2(1,i,i_slice+2) - ai_re_f2(1,i,i_slice) )
       enddo
-    else
-      axir_re = 0.0
-      axii_re = 0.0
-    endif
 
-    ! get solution
-    do i = 1, nrp
-      call this%pgc_solver(m)%get_values_x( ar_re(1,i), 2*i-1 )
-      call this%pgc_solver(m)%get_values_x( ai_re(1,i), 2*i )
-    enddo
+      ! set rhs of the PCR solver and solve
+      do m = 0, this%max_mode
 
-    if ( m == 0 ) cycle
+        sr_re => this%sr_re(m)%get_f2()
+        si_re => this%si_re(m)%get_f2()
+        ar_re => this%cfr_re(m)%get_f2()
+        ai_re => this%cfi_re(m)%get_f2()
 
-    sr_im_f2 => this%sr_im(m)%get_f2()
-    si_im_f2 => this%si_im(m)%get_f2()
-    ar_im_f2 => this%cfr_im(m)%get_f2()
-    ai_im_f2 => this%cfi_im(m)%get_f2()
-    axir_im  => this%axir_im(m)%get_f1()
-    axii_im  => this%axii_im(m)%get_f1()
-    ar_im    => this%cfr_im(m)%get_f1()
-    ai_im    => this%cfi_im(m)%get_f1()
+        ! set rhs of PCR
+        do i = 1, nrp
+          rhs = sr_re(1,i,j) + tmp_r_re(i) + dr2_idzh * ( 4.0 * ar_re(1,i,j-1) - ar_re(1,i,j-2) )
+          call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
+          rhs = si_re(1,i,j) + tmp_i_re(i) + dr2_idzh * ( 4.0 * ai_re(1,i,j-1) - ai_re(1,i,j-2) )
+          call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
+        enddo
 
-    ! set rhs of PCR
-    do i = 1, nrp
-      rhs = sr_im_f2(1,i,i_slice) - axir_im(1,i) + tmp_r_im(i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-      rhs = si_im_f2(1,i,i_slice) - axii_im(1,i) + tmp_i_im(i)
-      call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
-    enddo
+        call this%pgc_solver(m)%solve()
 
-    call this%pgc_solver(m)%solve()
+        ! get solution
+        do i = 1, nrp
+          call this%pgc_solver(m)%get_values_x( ar_re(1,i,j), 2*i-1 )
+          call this%pgc_solver(m)%get_values_x( ai_re(1,i,j), 2*i )
+        enddo
 
-    ! calculate the da/dxi at next slice before a is replaced
-    if ( i_slice < nzp + this%gc_num(2,2) - 1 ) then
-      do i = 1, nrp
-        axir_im(1,i) = dr2_idzh * ( ar_im_f2(1,i,i_slice+2) - ar_im_f2(1,i,i_slice) )
-        axii_im(1,i) = dr2_idzh * ( ai_im_f2(1,i,i_slice+2) - ai_im_f2(1,i,i_slice) )
+        if ( m == 0 ) cycle
+
+        sr_im => this%sr_im(m)%get_f2()
+        si_im => this%si_im(m)%get_f2()
+        ar_im => this%cfr_im(m)%get_f2()
+        ai_im => this%cfi_im(m)%get_f2()
+
+        ! set rhs of PCR
+        do i = 1, nrp
+          rhs = sr_im(1,i,j) + tmp_r_im(i) + dr2_idzh * ( 4.0 * ar_im(1,i,j-1) - ar_im(1,i,j-2) )
+          call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
+          rhs = si_im(1,i,j) + tmp_i_im(i) + dr2_idzh * ( 4.0 * ai_im(1,i,j-1) - ai_im(1,i,j-2) )
+          call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
+        enddo
+
+        call this%pgc_solver(m)%solve()
+
+        ! get solution
+        do i = 1, nrp
+          call this%pgc_solver(m)%get_values_x( ar_im(1,i,j), 2*i-1 )
+          call this%pgc_solver(m)%get_values_x( ai_im(1,i,j), 2*i )
+        enddo
+
       enddo
-    else
-      axir_im = 0.0
-      axii_im = 0.0
-    endif
 
-    ! get solution
-    do i = 1, nrp
-      call this%pgc_solver(m)%get_values_x( ar_im(1,i), 2*i-1 )
-      call this%pgc_solver(m)%get_values_x( ai_im(1,i), 2*i )
-    enddo
-
-  enddo
+    enddo ! iter
+  enddo ! j
     
-  call this%copy_gc_f1()
+  call this%copy_gc_f2()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -960,10 +888,6 @@ subroutine gather_field_laser( this, that )
     call add_f1( that%ai_grad_im(m), this%ai_grad_im(m) )
   enddo
 
-  ! DEBUG
-  ! print *, "sum(cfr_re(0)) = ", sum( this%cfr_re(0)%f1 )
-  ! print *, "sum(cfi_re(0)) = ", sum( this%cfi_re(0)%f1 )
-
 end subroutine gather_field_laser
 
 subroutine zero_field_laser( this, only_f1 )
@@ -983,10 +907,6 @@ subroutine zero_field_laser( this, only_f1 )
       this%sr_re(m)%f1 = 0.0
       this%si_re(m)%f1 = 0.0
     endif
-    if ( associated( this%axir_re ) ) then
-      this%axir_re(m)%f1 = 0.0
-      this%axii_re(m)%f1 = 0.0
-    endif
     if ( associated( this%ar_grad_re ) ) then
       this%ar_grad_re(m)%f1 = 0.0
       this%ai_grad_re(m)%f1 = 0.0
@@ -999,10 +919,6 @@ subroutine zero_field_laser( this, only_f1 )
     if ( associated( this%sr_im ) ) then
       this%sr_im(m)%f1 = 0.0
       this%si_im(m)%f1 = 0.0
-    endif
-    if ( associated( this%axir_im ) ) then
-      this%axir_im(m)%f1 = 0.0
-      this%axii_im(m)%f1 = 0.0
     endif
     if ( associated( this%ar_grad_im ) ) then
       this%ar_grad_im(m)%f1 = 0.0
@@ -1024,10 +940,6 @@ subroutine zero_field_laser( this, only_f1 )
       this%sr_re(m)%f2 = 0.0
       this%si_re(m)%f2 = 0.0
     endif
-    if ( associated( this%axir_re ) .and. this%axir_re(m)%has2d() ) then
-      this%axir_re(m)%f2 = 0.0
-      this%axii_re(m)%f2 = 0.0
-    endif
     if ( associated( this%ar_grad_re ) .and. this%ar_grad_re(m)%has2d() ) then
       this%ar_grad_re(m)%f2 = 0.0
       this%ai_grad_re(m)%f2 = 0.0
@@ -1042,10 +954,6 @@ subroutine zero_field_laser( this, only_f1 )
     if ( associated( this%sr_im ) ) then
       this%sr_im(m)%f2 = 0.0
       this%si_im(m)%f2 = 0.0
-    endif
-    if ( associated( this%axir_im ) .and. this%axir_im(m)%has2d() ) then
-      this%axir_im(m)%f2 = 0.0
-      this%axii_im(m)%f2 = 0.0
     endif
     if ( associated( this%ar_grad_im ) .and. this%ar_grad_im(m)%has2d() ) then
       this%ar_grad_im(m)%f2 = 0.0

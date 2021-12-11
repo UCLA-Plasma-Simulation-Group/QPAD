@@ -323,15 +323,15 @@ subroutine run_simulation( this )
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
 
     ! pipeline data transfer for lasers
-    do k = 1, this%nlasers
-      this%tag_laser(1,k) = ntag()
-      call laser(k)%pipe_recv( this%tag_laser(1,k), 'forward', 'guard', 'replace' )
-    enddo
+    ! do k = 1, this%nlasers
+    !   this%tag_laser(1,k) = ntag()
+    !   call laser(k)%pipe_recv( this%tag_laser(1,k), 'forward', 'guard', 'replace' )
+    ! enddo
 
     ! set source terms for laser envelope equation
-    do k = 1, this%nlasers
-      call laser(k)%set_rhs( chi )
-    enddo
+    ! do k = 1, this%nlasers
+    !   call laser(k)%set_rhs( chi )
+    ! enddo
 
     b     = 0.0
     e     = 0.0
@@ -361,6 +361,13 @@ subroutine run_simulation( this )
       call psi%solve( q_spe )
       call b_spe%solve( cu )
 
+      call laser_all%zero( only_f1=.true. )
+      do k = 1, this%nlasers
+        call laser(k)%copy_slice( j, p_copy_2to1 )
+        call laser(k)%set_grad( j )
+        call laser_all%gather( laser(k) )
+      enddo
+
       do l = 1, this%iter
 
         call add_f1( b_spe, b_beam, b )
@@ -371,13 +378,13 @@ subroutine run_simulation( this )
         amu = 0.0
 
         ! solve and gather lasers' field
-        call laser_all%zero( only_f1=.true. )
-        do k = 1, this%nlasers
-          call laser(k)%solve( chi, j )
-          call laser(k)%copy_slice( j, p_copy_1to2 )
-          call laser(k)%set_grad( j )
-          call laser_all%gather( laser(k) )
-        enddo
+        ! call laser_all%zero( only_f1=.true. )
+        ! do k = 1, this%nlasers
+        !   call laser(k)%solve( chi, j )
+        !   call laser(k)%copy_slice( j, p_copy_1to2 )
+        !   call laser(k)%set_grad( j )
+        !   call laser_all%gather( laser(k) )
+        ! enddo
 
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, laser_all, cu, amu, acu, j )
@@ -407,10 +414,10 @@ subroutine run_simulation( this )
 
       enddo ! iteration
 
-      do k = 1, this%nlasers
-        call laser(k)%copy_slice( j, p_copy_1to2 )
-      enddo
-      call chi%copy_slice( j, p_copy_1to2 )
+      ! do k = 1, this%nlasers
+      !   call laser(k)%copy_slice( j, p_copy_1to2 )
+      ! enddo
+      ! call chi%copy_slice( j, p_copy_1to2 )
 
       call add_f1( b_spe, b_beam, b )
       call e_spe%solve( b_spe, psi )
@@ -435,10 +442,10 @@ subroutine run_simulation( this )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
 
         ! pipeline for lasers
-        do k = 1, this%nlasers
-          call mpi_wait( this%id_laser(1,k), istat, ierr )
-          call laser(k)%pipe_send( this%tag_laser(1,k), this%id_laser(1,k), 'forward', 'inner' )
-        enddo
+        ! do k = 1, this%nlasers
+        !   call mpi_wait( this%id_laser(1,k), istat, ierr )
+        !   call laser(k)%pipe_send( this%tag_laser(1,k), this%id_laser(1,k), 'forward', 'inner' )
+        ! enddo
       endif
 
       ! ! gather lasers' field
@@ -485,11 +492,11 @@ subroutine run_simulation( this )
         call mpi_wait( this%id_field(3), istat, ierr )
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
-        do k = 1, this%nlasers
-          call mpi_wait( this%id_laser(2,k), istat, ierr )
-          this%tag_laser(2,k) = ntag()
-          call laser(k)%pipe_send( this%tag_laser(2,k), this%id_laser(2,k), 'backward', 'inner' )
-        enddo
+        ! do k = 1, this%nlasers
+        !   call mpi_wait( this%id_laser(2,k), istat, ierr )
+        !   this%tag_laser(2,k) = ntag()
+        !   call laser(k)%pipe_send( this%tag_laser(2,k), this%id_laser(2,k), 'backward', 'inner' )
+        ! enddo
       endif
 
     enddo ! 2d loop
@@ -509,9 +516,12 @@ subroutine run_simulation( this )
     call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
 
     ! pipeline for backward transfered data
-    do k = 1, this%nlasers
-      call laser(k)%pipe_recv( this%tag_laser(2,k), 'backward', 'guard', 'replace' )
-    enddo
+    ! do k = 1, this%nlasers
+    !   call laser(k)%pipe_recv( this%tag_laser(2,k), 'backward', 'guard', 'replace' )
+    ! enddo
+
+    ! advance laser fields
+    call this%lasers%advance()
 
     ! pipeline for beams
     do k = 1, this%nbeams

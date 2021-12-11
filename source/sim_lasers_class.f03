@@ -25,10 +25,11 @@ type, public :: sim_lasers
 
   contains
 
-  procedure :: alloc => alloc_sim_lasers
-  procedure :: new   => init_sim_lasers
-  procedure :: del   => end_sim_lasers
+  procedure :: alloc       => alloc_sim_lasers
+  procedure :: new         => init_sim_lasers
+  procedure :: del         => end_sim_lasers
   procedure :: deposit_chi => deposit_chi_sim_lasers
+  procedure :: advance     => advance_sim_lasers
 
 end type sim_lasers
 
@@ -158,10 +159,29 @@ subroutine deposit_chi_sim_lasers( this, species, slice_idx )
   call this%chi%acopy_gc_f1( dir=p_mpi_forward )
   call this%chi%smooth_f1()
   call this%chi%copy_gc_f1()
-  ! call this%chi%copy_slice( slice_idx, dir=p_copy_1to2 )
+  call this%chi%copy_slice( slice_idx, dir=p_copy_1to2 )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine deposit_chi_sim_lasers
+
+subroutine advance_sim_lasers( this )
+
+  implicit none
+  class( sim_lasers ), intent(inout) :: this
+
+  integer :: k
+  character(len=32), save :: sname = 'advance_sim_lasers'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do k = 1, this%num_lasers
+    call this%laser(k)%set_rhs( this%chi )
+    call this%laser(k)%solve( this%chi )
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine advance_sim_lasers
 
 end module sim_lasers_class
