@@ -10,6 +10,7 @@ use param
 use sysutil_module
 use mpi
 use kwargs_class
+use ppmsg_class
 
 implicit none
 
@@ -62,7 +63,7 @@ type :: field_complex
   real, public :: dr, dz
   integer, public :: max_mode, dim
   integer, dimension(2,2), public :: gc_num
-  real, dimension(:,:,:), allocatable :: psend_buf, precv_buf
+  real, dimension(:), allocatable :: psend_buf, precv_buf
 
   contains
 
@@ -91,6 +92,8 @@ type :: field_complex
   procedure, private :: write_hdf5_single, write_hdf5_pipe
   procedure, private :: pipe_send_f1, pipe_recv_f1
   procedure, private :: pipe_send_f2, pipe_recv_f2
+  procedure, private :: check_send_buf
+  procedure, private :: check_recv_buf
 
   generic :: assignment(=) => assign_f1
   generic :: as            => assign_f2
@@ -304,17 +307,17 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-subroutine pipe_send_f2( this, stag, id, dir, pos )
+subroutine pipe_send_f2( this, pp_msg, dir, pos_type, num_slices )
 
   implicit none
 
   class( field_complex ), intent(inout) :: this
-  integer, intent(in) :: stag
-  integer, intent(inout) :: id
-  character(len=*), intent(in) :: dir, pos
+  type( ppmsg ), intent(inout) :: pp_msg
+  character(len=*), intent(in) :: dir, pos_type
+  integer, intent(in) :: num_slices
 
-  integer :: i, j, m, idproc_des, idx_send
-  integer :: nzp, n1p, count, ierr
+  integer :: i, j, k, m, idproc_des, idx_send, stride1, stride2
+  integer :: nzp, n1p, count, ierr, buf_idx
   integer, dimension(2) :: gc
   character(len=20), save :: sname = "pipe_send_f2"
 
@@ -326,78 +329,87 @@ subroutine pipe_send_f2( this, stag, id, dir, pos )
   gc  = this%gc_num(:,1)
 
   select case ( trim(dir) )
-  case ( 'forward' )
+    case ( 'forward' )
 
-    if ( id_stage() == num_stages() - 1 ) then
-      id = MPI_REQUEST_NULL
-      call stop_tprof( 'pipeline' )
-      call write_dbg( cls_name, sname, cls_level, 'ends' )
-      return
-    endif
+      if ( id_stage() == num_stages() - 1 ) then
+        call pp_msg%set_idle()
+        call stop_tprof( 'pipeline' )
+        call write_dbg( cls_name, sname, cls_level, 'ends' )
+        return
+      endif
 
-    select case ( trim(pos) )
-    case ( 'inner' )
-      idx_send = nzp
-    case ( 'guard' )
-      idx_send = nzp + 1
+      select case ( trim(pos_type) )
+      case ( 'inner' )
+        idx_send = nzp - num_slices + 1
+      case ( 'guard' )
+        idx_send = nzp + 1
+      case default
+        call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+      end select
+
+      idproc_des = id_proc() + num_procs_loc()
+
+    case ( 'backward' )
+
+      if ( id_stage() == 0 ) then
+        call pp_msg%set_idle()
+        call stop_tprof( 'pipeline' )
+        call write_dbg( cls_name, sname, cls_level, 'ends' )
+        return
+      endif
+
+      select case ( trim(pos_type) )
+      case ( 'inner' )
+        idx_send = 1
+      case ( 'guard' )
+        idx_send = 1 - num_slices
+      case default
+        call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
+      end select
+
+      idproc_des = id_proc() - num_procs_loc()
+
     case default
-      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
-    end select
-
-    idproc_des = id_proc() + num_procs_loc()
-
-  case ( 'backward' )
-
-    if ( id_stage() == 0 ) then
-      id = MPI_REQUEST_NULL
-      call stop_tprof( 'pipeline' )
-      call write_dbg( cls_name, sname, cls_level, 'ends' )
-      return
-    endif
-
-    select case ( trim(pos) )
-    case ( 'inner' )
-      idx_send = 1
-    case ( 'guard' )
-      idx_send = 0
-    case default
-      call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
-    end select
-
-    idproc_des = id_proc() - num_procs_loc()
-
-  case default
-    call write_err( 'Invalid data transfer direction! Valid options are "forward"&
-      & and "backward".' )
+      call write_err( 'Invalid data transfer direction! Valid options are "forward"&
+        & and "backward".' )
   end select
 
-  if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, 4*this%max_mode+2 ) )
-  endif
+  count = this%dim * n1p * num_slices * ( 4 * this%max_mode + 2 )
+  call this%check_send_buf( count )
 
   ! copy m = 0 mode
-  do j = 1, n1p
-    do i = 1, this%dim
-      this%psend_buf( i, j, 1 ) = this%cfr_re(0)%f2( i, j-gc(1), idx_send )
-      this%psend_buf( i, j, 2 ) = this%cfi_re(0)%f2( i, j-gc(1), idx_send )
+  do k = 1, num_slices
+    stride1 = 2 * this%dim * n1p * (k-1)
+    do j = 1, n1p
+      stride2 = 2 * this%dim * (j-1)
+      do i = 1, this%dim
+        buf_idx = (2*i-1) + stride1 + stride2
+        this%psend_buf( buf_idx   ) = this%cfr_re(0)%f2( i, j-gc(1), idx_send+k-1 )
+        this%psend_buf( buf_idx+1 ) = this%cfi_re(0)%f2( i, j-gc(1), idx_send+k-1 )
+      enddo
     enddo
   enddo
 
   ! copy m > 0 mode
   do m = 1, this%max_mode
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%psend_buf( i, j, 4*m-1 ) = this%cfr_re(m)%f2( i, j-gc(1), idx_send )
-        this%psend_buf( i, j, 4*m   ) = this%cfr_im(m)%f2( i, j-gc(1), idx_send )
-        this%psend_buf( i, j, 4*m+1 ) = this%cfi_re(m)%f2( i, j-gc(1), idx_send )
-        this%psend_buf( i, j, 4*m+2 ) = this%cfi_im(m)%f2( i, j-gc(1), idx_send )
+    do k = 1, num_slices
+      stride1 = 4 * this%dim * n1p * (k-1)
+      do j = 1, n1p
+        stride2 = 4 * this%dim * (j-1)
+        do i = 1, this%dim
+          buf_idx = (4*i-3) + stride1 + stride2
+          this%psend_buf( buf_idx   ) = this%cfr_re(m)%f2( i, j-gc(1), idx_send+k-1 )
+          this%psend_buf( buf_idx+1 ) = this%cfr_im(m)%f2( i, j-gc(1), idx_send+k-1 )
+          this%psend_buf( buf_idx+2 ) = this%cfi_re(m)%f2( i, j-gc(1), idx_send+k-1 )
+          this%psend_buf( buf_idx+3 ) = this%cfi_im(m)%f2( i, j-gc(1), idx_send+k-1 )
+        enddo
       enddo
     enddo
   enddo
 
-  count = size( this%psend_buf )
-  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, &
-    comm_world(), id, ierr )
+  call pp_msg%wait_task()
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, pp_msg%tag, &
+    comm_world(), pp_msg%id, ierr )
 
   ! check for error
   if ( ierr /= 0 ) then
@@ -409,16 +421,17 @@ subroutine pipe_send_f2( this, stag, id, dir, pos )
 
 end subroutine pipe_send_f2
 
-subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
+subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
 
   implicit none
 
   class( field_complex ), intent(inout) :: this
-  integer, intent(in) :: rtag
-  character(len=*), intent(in) :: dir, pos, mode
+  type( ppmsg ), intent(inout) :: pp_msg
+  character(len=*), intent(in) :: dir, pos_type, mode
+  integer, intent(in) :: num_slices
 
-  integer :: i, j, m, idx_recv, idproc_src, n1p, nzp
-  integer :: count, ierr
+  integer :: i, j, k, m, idx_recv, idproc_src, n1p, nzp, stride1, stride2
+  integer :: count, ierr, buf_idx
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=32), save :: sname = "pipe_precv_f2"
@@ -439,11 +452,11 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
       return
     endif
 
-    select case ( trim(pos) )
+    select case ( trim(pos_type) )
     case ( 'inner' )
       idx_recv = 1
     case ( 'guard' )
-      idx_recv = 0
+      idx_recv = 1 - num_slices
     case default
       call write_err( 'Invalid cell type! Valid options are "inner" and "guard".' )
     end select
@@ -458,9 +471,9 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
       return
     endif
 
-    select case ( trim(pos) )
+    select case ( trim(pos_type) )
     case ( 'inner' )
-      idx_recv = nzp
+      idx_recv = nzp - num_slices + 1
     case ( 'guard' )
       idx_recv = nzp + 1
     case default
@@ -474,12 +487,10 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
       & and "backward".' )
   end select
 
-  if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, 4*this%max_mode+2 ) )
-  endif
+  count = this%dim * n1p * num_slices * ( 4 * this%max_mode + 2 )
+  call this%check_recv_buf( count )
 
-  count = size( this%precv_buf )
-  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm_world(), stat, ierr )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, pp_msg%tag, comm_world(), stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )
@@ -489,21 +500,31 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
   case ( 'replace' )
 
     ! copy m=0 mode
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%cfr_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 1 )
-        this%cfi_re(0)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 2 )
+    do k = 1, num_slices
+      stride1 = 2 * this%dim * n1p * (k-1)
+      do j = 1, n1p
+        stride2 = 2 * this%dim * (j-1)
+        do i = 1, this%dim
+          buf_idx = (2*i-1) + stride1 + stride2
+          this%cfr_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx   )
+          this%cfi_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+1 )
+        enddo
       enddo
     enddo
 
     ! copy m>0 mode
     do m = 1, this%max_mode
-      do j = 1, n1p
-        do i = 1, this%dim
-          this%cfr_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 4*m-1 )
-          this%cfr_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 4*m   )
-          this%cfi_re(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 4*m+1 )
-          this%cfi_im(m)%f2( i, j-gc(1), idx_recv ) = this%precv_buf( i, j, 4*m+2 )
+      do k = 1, num_slices
+        stride1 = 4 * this%dim * n1p * (k-1)
+        do j = 1, n1p
+          stride2 = 4 * this%dim * (j-1)
+          do i = 1, this%dim
+            buf_idx = (4*i-3) + stride1 + stride2
+            this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx   )
+            this%cfr_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+1 )
+            this%cfi_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+2 )
+            this%cfi_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+3 )
+          enddo
         enddo
       enddo
     enddo
@@ -511,27 +532,37 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
   case ( 'add' )
 
     ! copy m=0 mode
-    do j = 1, n1p
-      do i = 1, this%dim
-        this%cfr_re(0)%f2( i, j-gc(1), idx_recv ) = &
-        this%cfr_re(0)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 1 )
-        this%cfi_re(0)%f2( i, j-gc(1), idx_recv ) = &
-        this%cfi_re(0)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 2 )
+    do k = 1, num_slices
+      stride1 = 2 * this%dim * n1p * (k-1)
+      do j = 1, n1p
+        stride2 = 2 * this%dim * (j-1)
+        do i = 1, this%dim
+          buf_idx = (2*i-1) + stride1 + stride2
+          this%cfr_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+          this%cfr_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx   )
+          this%cfi_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+          this%cfi_re(0)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx+1 )
+        enddo
       enddo
     enddo
 
     ! copy m>0 mode
     do m = 1, this%max_mode
-      do j = 1, n1p
-        do i = 1, this%dim
-          this%cfr_re(m)%f2( i, j-gc(1), idx_recv ) = &
-          this%cfr_re(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 4*m-1 )
-          this%cfr_im(m)%f2( i, j-gc(1), idx_recv ) = &
-          this%cfr_im(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 4*m   )
-          this%cfi_re(m)%f2( i, j-gc(1), idx_recv ) = &
-          this%cfi_re(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 4*m+1 )
-          this%cfi_im(m)%f2( i, j-gc(1), idx_recv ) = &
-          this%cfi_im(m)%f2( i, j-gc(1), idx_recv ) + this%precv_buf( i, j, 4*m+2 )
+      do k = 1, num_slices
+        stride1 = 4 * this%dim * n1p * (k-1)
+        do j = 1, n1p
+          stride2 = 4 * this%dim * (j-1)
+          do i = 1, this%dim
+            buf_idx = (4*i-3) + stride1 + stride2
+            this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+            this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx   )
+            this%cfr_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+            this%cfr_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx+1 )
+            this%cfi_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+            this%cfi_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx+2 )
+            this%cfi_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
+            this%cfi_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx+3 )
+          enddo
         enddo
       enddo
     enddo
@@ -546,15 +577,14 @@ subroutine pipe_recv_f2( this, rtag, dir, pos, mode )
 
 end subroutine pipe_recv_f2
 
-subroutine pipe_send_f1( this, stag, id, dir )
+subroutine pipe_send_f1( this, pp_msg, dir )
 
   implicit none
   class( field_complex ), intent(inout) :: this
-  integer, intent(in) :: stag
-  integer, intent(inout) :: id
+  type( ppmsg ), intent(inout) :: pp_msg
   character(len=*), intent(in) :: dir
 
-  integer :: i, j, m, idproc_des
+  integer :: i, j, m, idproc_des, buf_idx, stride
   integer :: n1p, count, ierr
   integer, dimension(2) :: gc
   character(len=32), save :: sname = "pipe_send_f1"
@@ -569,7 +599,7 @@ subroutine pipe_send_f1( this, stag, id, dir )
   case ( 'forward' )
 
     if ( id_stage() == num_stages() - 1 ) then
-      id = MPI_REQUEST_NULL
+      call pp_msg%set_idle()
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       return
@@ -580,7 +610,7 @@ subroutine pipe_send_f1( this, stag, id, dir )
   case ( 'backward' )
 
     if ( id_stage() == 0 ) then
-      id = MPI_REQUEST_NULL
+      call pp_msg%set_idle
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       return
@@ -593,32 +623,34 @@ subroutine pipe_send_f1( this, stag, id, dir )
       & and "backward".' )
   end select
 
-  if ( .not. allocated( this%psend_buf ) ) then
-    allocate( this%psend_buf( this%dim, n1p, 4*this%max_mode+2 ) )
-  endif
+  count = this%dim * n1p * ( 4 * this%max_mode + 2 )
+  call this%check_send_buf( count )
 
   ! copy m = 0 mode
   do j = 1, n1p
+    stride = 2 * this%dim * (j-1)
     do i = 1, this%dim
-      this%psend_buf( i, j, 1 ) = this%cfr_re(0)%f1( i, j-gc(1) )
-      this%psend_buf( i, j, 2 ) = this%cfi_re(0)%f1( i, j-gc(1) )
+      buf_idx = (2*i-1) + stride
+      this%psend_buf( buf_idx   ) = this%cfr_re(0)%f1( i, j-gc(1) )
+      this%psend_buf( buf_idx+1 ) = this%cfi_re(0)%f1( i, j-gc(1) )
     enddo
   enddo
 
   ! copy m > 0 mode
   do m = 1, this%max_mode
     do j = 1, n1p
+      stride = 4 * this%dim * (j-1)
       do i = 1, this%dim
-        this%psend_buf( i, j, 4*m-1 ) = this%cfr_re(m)%f1( i, j-gc(1) )
-        this%psend_buf( i, j, 4*m   ) = this%cfr_im(m)%f1( i, j-gc(1) )
-        this%psend_buf( i, j, 4*m+1 ) = this%cfi_re(m)%f1( i, j-gc(1) )
-        this%psend_buf( i, j, 4*m+2 ) = this%cfi_im(m)%f1( i, j-gc(1) )
+        buf_idx = (4*i-3) + stride
+        this%psend_buf( buf_idx   ) = this%cfr_re(m)%f1( i, j-gc(1) )
+        this%psend_buf( buf_idx+1 ) = this%cfr_im(m)%f1( i, j-gc(1) )
+        this%psend_buf( buf_idx+2 ) = this%cfi_re(m)%f1( i, j-gc(1) )
+        this%psend_buf( buf_idx+3 ) = this%cfi_im(m)%f1( i, j-gc(1) )
       enddo
     enddo
   enddo
 
-  count = size( this%psend_buf )
-  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, stag, comm_world(), id, ierr )
+  call mpi_isend( this%psend_buf, count, p_dtype_real, idproc_des, pp_msg%tag, comm_world(), pp_msg%id, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_ISEND failed.' )
@@ -629,14 +661,14 @@ subroutine pipe_send_f1( this, stag, id, dir )
 
 end subroutine pipe_send_f1
 
-subroutine pipe_recv_f1( this, rtag, dir, mode )
+subroutine pipe_recv_f1( this, pp_msg, dir, mode )
 
   implicit none
   class( field_complex ), intent(inout) :: this
-  integer, intent(in) :: rtag
+  type( ppmsg ), intent(inout) :: pp_msg
   character(len=*), intent(in) :: dir, mode
 
-  integer :: i, j, m, idproc_src, n1p
+  integer :: i, j, m, idproc_src, n1p, stride, buf_idx
   integer :: count, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -674,12 +706,10 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
       & and "backward".' )
   end select
 
-  if ( .not. allocated( this%precv_buf ) ) then
-    allocate( this%precv_buf( this%dim, n1p, 4*this%max_mode+2 ) )
-  endif
+  count = this%dim * n1p * ( 4 * this%max_mode + 2 )
+  call this%check_recv_buf( count )
 
-  count = size( this%precv_buf )
-  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, rtag, comm_world(), stat, ierr )
+  call mpi_recv( this%precv_buf, count, p_dtype_real, idproc_src, pp_msg%tag, comm_world(), stat, ierr )
   ! check for error
   if ( ierr /= 0 ) then
     call write_err( 'MPI_RECV failed.' )
@@ -690,20 +720,24 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
 
     ! copy m=0 mode
     do j = 1, n1p
+      stride = 2 * this%dim * (j-1)
       do i = 1, this%dim
-        this%cfr_re(0)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 1 )
-        this%cfi_re(0)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 2 )
+        buf_idx = (2*i-1) + stride
+        this%cfr_re(0)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx   )
+        this%cfi_re(0)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+1 )
       enddo
     enddo
 
     ! copy m>0 mode
     do m = 1, this%max_mode
       do j = 1, n1p
+        stride = 4 * this%dim * (j-1)
         do i = 1, this%dim
-          this%cfr_re(m)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 4*m-1 )
-          this%cfr_im(m)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 4*m   )
-          this%cfi_re(m)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 4*m+1 )
-          this%cfi_im(m)%f1( i, j-gc(1) ) = this%precv_buf( i, j, 4*m+2 )
+          buf_idx = (4*i-3) + stride
+          this%cfr_re(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx   )
+          this%cfr_im(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+1 )
+          this%cfi_re(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+2 )
+          this%cfi_im(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+3 )
         enddo
       enddo
     enddo
@@ -712,26 +746,30 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
 
     ! copy m=0 mode
     do j = 1, n1p
+      stride = 2 * this%dim * (j-1)
       do i = 1, this%dim
+        buf_idx = (2*i-1) + stride
         this%cfr_re(0)%f1( i, j-gc(1) ) = &
-        this%cfr_re(0)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 1 )
+        this%cfr_re(0)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx   )
         this%cfi_re(0)%f1( i, j-gc(1) ) = &
-        this%cfi_re(0)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 2 )
+        this%cfi_re(0)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx+1 )
       enddo
     enddo
 
     ! copy m>0 mode
     do m = 1, this%max_mode
       do j = 1, n1p
+        stride = 4 * this%dim * (j-1)
         do i = 1, this%dim
+          buf_idx = (4*i-3) + stride
           this%cfr_re(m)%f1( i, j-gc(1) ) = &
-          this%cfr_re(m)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 4*m-1 )
+          this%cfr_re(m)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx   )
           this%cfr_im(m)%f1( i, j-gc(1) ) = &
-          this%cfr_im(m)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 4*m   )
+          this%cfr_im(m)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx+1 )
           this%cfi_re(m)%f1( i, j-gc(1) ) = &
-          this%cfi_re(m)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 4*m+1 )
+          this%cfi_re(m)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx+2 )
           this%cfi_im(m)%f1( i, j-gc(1) ) = &
-          this%cfi_im(m)%f1( i, j-gc(1) ) + this%precv_buf( i, j, 4*m+2 )
+          this%cfi_im(m)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx+3 )
         enddo
       enddo
     enddo
@@ -745,6 +783,40 @@ subroutine pipe_recv_f1( this, rtag, dir, mode )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine pipe_recv_f1
+
+subroutine check_send_buf( this, size_min )
+  implicit none
+  class( field_complex ), intent(inout) :: this
+  integer, intent(in) :: size_min
+  character(len=32), save :: sname = 'check_send_buf'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  if ( .not. allocated( this%psend_buf ) ) then
+    allocate( this%psend_buf( size_min ) )
+  elseif ( size( this%psend_buf ) < size_min ) then
+    deallocate( this%psend_buf )
+    allocate( this%psend_buf( size_min ) )
+  endif
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine check_send_buf
+
+subroutine check_recv_buf( this, size_min )
+  implicit none
+  class( field_complex ), intent(inout) :: this
+  integer, intent(in) :: size_min
+  character(len=32), save :: sname = 'check_recv_buf'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  if ( .not. allocated( this%precv_buf ) ) then
+    allocate( this%precv_buf( size_min ) )
+  elseif ( size( this%precv_buf ) < size_min ) then
+    deallocate( this%precv_buf )
+    allocate( this%precv_buf( size_min ) )
+  endif
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine check_recv_buf
 
 subroutine write_hdf5_single( this, files, dim )
 

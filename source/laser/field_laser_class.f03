@@ -12,6 +12,7 @@ use sysutil_module
 use mpi
 use fpcr_penta_class
 use profile_laser_class
+use ppmsg_class
 
 implicit none
 
@@ -111,6 +112,7 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   real :: dr, dz
   integer :: id, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
+  type(ppmsg) :: msg
   character(len=32), save :: sname = "init_field_laser"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -155,12 +157,12 @@ subroutine init_field_laser( this, opts, dim, max_mode, gc_num, only_f1, kwargs 
   ! launch laser  
   call this%profile%launch( this%cfr_re, this%cfr_im, this%cfi_re, this%cfi_im )
   call this%copy_gc_f2()
-  call this%pipe_send( 1, id, 'forward', 'inner' )
-  call this%pipe_recv( 1, 'forward', 'guard', 'replace' )
-  call mpi_wait( id, istat, ierr )
-  call this%pipe_send( 1, id, 'backward', 'inner' )
-  call this%pipe_recv( 1, 'backward', 'guard', 'replace' )
-  call mpi_wait( id, istat, ierr )
+  call this%pipe_send( msg, 'forward', 'inner', this%gc_num(1,2) )
+  call this%pipe_recv( msg, 'forward', 'guard', 'replace', this%gc_num(1,2) )
+  call msg%wait_task()
+  call this%pipe_send( msg, 'backward', 'inner', this%gc_num(2,2) )
+  call this%pipe_recv( msg, 'backward', 'guard', 'replace', this%gc_num(2,2) )
+  call msg%wait_task()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

@@ -32,6 +32,7 @@ include $(configfile)
 src = dtimer.c param.f03 math_module.f03 parallel_module.f03 debug_tool.f03
 src += kwargs_class.f03
 src += sysutil_module.f03
+src += ppmsg_class.f03
 src += sort_module.f03
 src += hdf5io_class.f03
 src += interpolation.f03

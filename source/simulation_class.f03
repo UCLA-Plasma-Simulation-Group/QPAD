@@ -322,17 +322,6 @@ subroutine run_simulation( this )
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
 
-    ! pipeline data transfer for lasers
-    ! do k = 1, this%nlasers
-    !   this%tag_laser(1,k) = ntag()
-    !   call laser(k)%pipe_recv( this%tag_laser(1,k), 'forward', 'guard', 'replace' )
-    ! enddo
-
-    ! set source terms for laser envelope equation
-    ! do k = 1, this%nlasers
-    !   call laser(k)%set_rhs( chi )
-    ! enddo
-
     b     = 0.0
     e     = 0.0
     e_spe = 0.0
@@ -492,11 +481,6 @@ subroutine run_simulation( this )
         call mpi_wait( this%id_field(3), istat, ierr )
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
-        ! do k = 1, this%nlasers
-        !   call mpi_wait( this%id_laser(2,k), istat, ierr )
-        !   this%tag_laser(2,k) = ntag()
-        !   call laser(k)%pipe_send( this%tag_laser(2,k), this%id_laser(2,k), 'backward', 'inner' )
-        ! enddo
       endif
 
     enddo ! 2d loop

@@ -9,6 +9,7 @@ use field_class
 use field_laser_class
 use species2d_class
 use kwargs_class
+use ppmsg_class
 
 implicit none
 
@@ -22,6 +23,7 @@ type, public :: sim_lasers
   class( field_laser ), pointer :: laser_all => null()
   class( field ), pointer :: chi => null()
   integer :: num_lasers
+  type( ppmsg ), dimension(:), allocatable :: pp_msg
 
   contains
 
@@ -68,6 +70,10 @@ subroutine alloc_sim_lasers( this, input, opts )
   do i = 1, this%num_lasers
     call this%laser(i)%alloc( input, opts, i )
   enddo
+
+  if ( .not. allocated( this%pp_msg ) ) then
+    allocate( this%pp_msg( this%num_lasers ) )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -170,14 +176,18 @@ subroutine advance_sim_lasers( this )
   implicit none
   class( sim_lasers ), intent(inout) :: this
 
-  integer :: k
+  integer :: k, gc
   character(len=32), save :: sname = 'advance_sim_lasers'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   do k = 1, this%num_lasers
+    gc = this%laser(k)%gc_num(1,2)
     call this%laser(k)%set_rhs( this%chi )
+    call this%pp_msg(k)%get_tag()
+    call this%laser(k)%pipe_recv( this%pp_msg(k), 'forward', 'guard', 'replace', gc )
     call this%laser(k)%solve( this%chi )
+    call this%laser(k)%pipe_send( this%pp_msg(k), 'forward', 'inner', gc )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
