@@ -366,24 +366,12 @@ subroutine run_simulation( this )
         acu = 0.0
         amu = 0.0
 
-        ! solve and gather lasers' field
-        ! call laser_all%zero( only_f1=.true. )
-        ! do k = 1, this%nlasers
-        !   call laser(k)%solve( chi, j )
-        !   call laser(k)%copy_slice( j, p_copy_1to2 )
-        !   call laser(k)%set_grad( j )
-        !   call laser_all%gather( laser(k) )
-        ! enddo
-
         do k = 1, this%nspecies
           call spe(k)%amjdp( e, b, laser_all, cu, amu, acu, j )
-          ! call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
-          ! call spe(k)%deposit_chi
         enddo
 
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
-          ! call spe(k)%deposit_chi
         enddo
 
         call this%lasers%deposit_chi( spe, j )
@@ -402,11 +390,6 @@ subroutine run_simulation( this )
         endif
 
       enddo ! iteration
-
-      ! do k = 1, this%nlasers
-      !   call laser(k)%copy_slice( j, p_copy_1to2 )
-      ! enddo
-      ! call chi%copy_slice( j, p_copy_1to2 )
 
       call add_f1( b_spe, b_beam, b )
       call e_spe%solve( b_spe, psi )
@@ -429,26 +412,10 @@ subroutine run_simulation( this )
         call cu%pipe_send( this%tag_field(1), this%id_field(1), 'forward' )
         call mpi_wait( this%id_field(4), istat, ierr )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
-
-        ! pipeline for lasers
-        ! do k = 1, this%nlasers
-        !   call mpi_wait( this%id_laser(1,k), istat, ierr )
-        !   call laser(k)%pipe_send( this%tag_laser(1,k), this%id_laser(1,k), 'forward', 'inner' )
-        ! enddo
       endif
-
-      ! ! gather lasers' field
-      ! call laser_all%zero( only_f1=.true. )
-      ! do k = 1, this%nlasers
-      !   call laser(k)%copy_slice( j, p_copy_2to1 )
-      !   call laser(k)%set_grad()
-      !   call laser_all%gather( laser(k) )
-      ! enddo
 
       ! advance species particles
       do k = 1, this%nspecies
-        ! call spe(k)%push( e, b )
-        ! call spe(k)%push( e, b, laser_all )
         call spe(k)%push( e, b, laser_all, j )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
@@ -466,11 +433,6 @@ subroutine run_simulation( this )
       call psi%copy_slice( j, p_copy_1to2 )
       call b_spe%copy_slice( j, p_copy_1to2 )
       call e_spe%copy_slice( j, p_copy_1to2 )
-
-      ! laser solver directly put solutions onto the 2D grid
-      ! do k = 1, this%nlasers
-      !   call laser(k)%copy_slice( j, p_copy_1to2 )
-      ! enddo
 
       ! send the first slice of E and B field back to the last stage for 3D 
       ! particle push
@@ -498,11 +460,6 @@ subroutine run_simulation( this )
     ! pipeline for E and B fields
     call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )
     call e%pipe_recv( this%tag_field(3), 'backward', 'guard', 'replace' )
-
-    ! pipeline for backward transfered data
-    ! do k = 1, this%nlasers
-    !   call laser(k)%pipe_recv( this%tag_laser(2,k), 'backward', 'guard', 'replace' )
-    ! enddo
 
     ! advance laser fields
     call this%lasers%advance()

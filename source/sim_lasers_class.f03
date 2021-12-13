@@ -103,7 +103,6 @@ subroutine init_sim_lasers( this, input, opts )
   call kwargs%append( 'iter', 0 )
   call kwargs%append( 'k0', 10.0 )
 
-  ! WARNING: the following number of cell only support iter=1
   gc_num(:,1) = (/1, 1/)
   gc_num(:,2) = (/2, 1/)
 
