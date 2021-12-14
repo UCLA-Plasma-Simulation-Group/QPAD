@@ -425,7 +425,7 @@ subroutine set_rhs_field_laser( this, chi )
   ! mode = 0
   ar_re => this%cfr_re(0)%get_f2()
   ai_re => this%cfi_re(0)%get_f2()
-  ! do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+  
   do j = 1, nzp
 
     ! calculate the inner cells
@@ -488,7 +488,7 @@ subroutine set_rhs_field_laser( this, chi )
     m2 = m * m
 
     ! calculate the inner cells
-    do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+    do j = 1, nzp
       do i = 2, nrp - 1
         ik = 1.0 / (i + noff - 1)
         beta_m = ds_qtr * ( 1.0 - 0.5 * ik )
@@ -561,7 +561,7 @@ subroutine set_rhs_field_laser( this, chi )
       ar_re  => this%cfr_re(m-k)%get_f2()
       ai_re  => this%cfi_re(m-k)%get_f2()
 
-      do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+      do j = 1, nzp
         do i = 1, nrp
           this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
           this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
@@ -574,7 +574,7 @@ subroutine set_rhs_field_laser( this, chi )
       ar_im  => this%cfr_im(m-k)%get_f2()
       ai_im  => this%cfi_im(m-k)%get_f2()
 
-      do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+      do j = 1, nzp
         do i = 1, nrp
           this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
           this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
@@ -591,7 +591,7 @@ subroutine set_rhs_field_laser( this, chi )
         ar_re  => this%cfr_re(m-k)%get_f2()
         ai_re  => this%cfi_re(m-k)%get_f2()
 
-        do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+        do j = 1, nzp
           do i = 1, nrp
             this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
             this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
@@ -604,7 +604,7 @@ subroutine set_rhs_field_laser( this, chi )
         ar_im  => this%cfr_im(m-k)%get_f2()
         ai_im  => this%cfi_im(m-k)%get_f2()
 
-        do j = 2 - this%gc_num(1,2), nzp + this%gc_num(2,2) - 1
+        do j = 1, nzp
           do i = 1, nrp
             this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
             this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)

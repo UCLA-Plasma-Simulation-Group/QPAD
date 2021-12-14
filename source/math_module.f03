@@ -89,4 +89,53 @@ function eval_polynomial( x, x0, p ) result(y)
 
 end function eval_polynomial
 
+function factorial( n ) result(res)
+
+  implicit none
+  integer, intent(in) :: n
+  integer :: res, i
+
+  if ( n < 0 ) then
+    write(2, *) '[ERROR] Input of factorial function must be positive/zero!'
+    write(*, *) 'Input of factorial function must be positive/zero!'
+    stop
+  endif
+  res = 1
+  do i = 1, n
+    res = res * i
+  enddo
+
+end function factorial
+
+! Generalized Laguerre polynomial (recurrence relation)
+! https://en.wikipedia.org/wiki/Laguerre_polynomials#Generalized_Laguerre_polynomials
+function laguerre( n, alpha, x ) result(y)
+
+  implicit none
+  integer, intent(in) :: n, alpha
+  real, intent(in) :: x
+  real :: y, l0, l1
+  integer :: k
+
+  l0 = 1.0
+  l1 = 1.0 + real(alpha) - x
+
+  if ( n == 0 ) then
+    y = l0
+  elseif ( n == 1 ) then
+    y = l1
+  elseif ( n > 1 ) then
+    do k = 1, n-1
+      y = ( ( real( 2*k + 1 + alpha ) - x ) * l1 - real( k + alpha ) * l0 ) / real( k + 1 )
+      l0 = l1
+      l1 = y
+    enddo
+  else
+    write(2, *) '[ERROR] The first input of generalized Laguerre polynomial must be positive/zero!'
+    write(*, *) 'The first input of generalized Laguerre polynomial must be positive/zero!'
+    stop
+  endif
+
+end function laguerre
+
 end module math_module
