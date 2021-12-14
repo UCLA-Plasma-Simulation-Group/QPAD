@@ -316,8 +316,8 @@ subroutine pipe_send_f2( this, pp_msg, dir, pos_type, num_slices )
   character(len=*), intent(in) :: dir, pos_type
   integer, intent(in) :: num_slices
 
-  integer :: i, j, k, m, idproc_des, idx_send, stride1, stride2
-  integer :: nzp, n1p, count, ierr, buf_idx
+  integer :: i, j, k, m, idproc_des, idx_send, stride1, stride2, stride3
+  integer :: nzp, n1p, count, ierr, buf_idx, offset
   integer, dimension(2) :: gc
   character(len=20), save :: sname = "pipe_send_f2"
 
@@ -391,13 +391,15 @@ subroutine pipe_send_f2( this, pp_msg, dir, pos_type, num_slices )
   enddo
 
   ! copy m > 0 mode
+  offset = 2 * this%dim * n1p * num_slices
   do m = 1, this%max_mode
+    stride1 = 4 * this%dim * n1p * num_slices * (m-1)
     do k = 1, num_slices
-      stride1 = 4 * this%dim * n1p * (k-1)
+      stride2 = 4 * this%dim * n1p * (k-1)
       do j = 1, n1p
-        stride2 = 4 * this%dim * (j-1)
+        stride3 = 4 * this%dim * (j-1)
         do i = 1, this%dim
-          buf_idx = (4*i-3) + stride1 + stride2
+          buf_idx = (4*i-3) + stride1 + stride2 + stride3 + offset
           this%psend_buf( buf_idx   ) = this%cfr_re(m)%f2( i, j-gc(1), idx_send+k-1 )
           this%psend_buf( buf_idx+1 ) = this%cfr_im(m)%f2( i, j-gc(1), idx_send+k-1 )
           this%psend_buf( buf_idx+2 ) = this%cfi_re(m)%f2( i, j-gc(1), idx_send+k-1 )
@@ -430,8 +432,8 @@ subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
   character(len=*), intent(in) :: dir, pos_type, mode
   integer, intent(in) :: num_slices
 
-  integer :: i, j, k, m, idx_recv, idproc_src, n1p, nzp, stride1, stride2
-  integer :: count, ierr, buf_idx
+  integer :: i, j, k, m, idx_recv, idproc_src, n1p, nzp, stride1, stride2, stride3
+  integer :: count, ierr, buf_idx, offset
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
   character(len=32), save :: sname = "pipe_precv_f2"
@@ -499,7 +501,7 @@ subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
   select case ( trim(mode) )
   case ( 'replace' )
 
-    ! copy m=0 mode
+    ! copy m = 0 mode
     do k = 1, num_slices
       stride1 = 2 * this%dim * n1p * (k-1)
       do j = 1, n1p
@@ -512,14 +514,16 @@ subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
       enddo
     enddo
 
-    ! copy m>0 mode
+    ! copy m > 0 modes
+    offset = 2 * this%dim * n1p * num_slices
     do m = 1, this%max_mode
+      stride1 = 4 * this%dim * n1p * num_slices * (m-1)
       do k = 1, num_slices
-        stride1 = 4 * this%dim * n1p * (k-1)
+        stride2 = 4 * this%dim * n1p * (k-1)
         do j = 1, n1p
-          stride2 = 4 * this%dim * (j-1)
+          stride3 = 4 * this%dim * (j-1)
           do i = 1, this%dim
-            buf_idx = (4*i-3) + stride1 + stride2
+            buf_idx = (4*i-3) + stride1 + stride2 + stride3 + offset
             this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx   )
             this%cfr_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+1 )
             this%cfi_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = this%precv_buf( buf_idx+2 )
@@ -531,7 +535,7 @@ subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
 
   case ( 'add' )
 
-    ! copy m=0 mode
+    ! copy m = 0 mode
     do k = 1, num_slices
       stride1 = 2 * this%dim * n1p * (k-1)
       do j = 1, n1p
@@ -546,14 +550,16 @@ subroutine pipe_recv_f2( this, pp_msg, dir, pos_type, mode, num_slices )
       enddo
     enddo
 
-    ! copy m>0 mode
+    ! copy m > 0 modes
+    offset = 2 * this%dim * n1p * num_slices
     do m = 1, this%max_mode
+      stride1 = 4 * this%dim * n1p * num_slices * (m-1)
       do k = 1, num_slices
-        stride1 = 4 * this%dim * n1p * (k-1)
+        stride2 = 4 * this%dim * n1p * (k-1)
         do j = 1, n1p
-          stride2 = 4 * this%dim * (j-1)
+          stride3 = 4 * this%dim * (j-1)
           do i = 1, this%dim
-            buf_idx = (4*i-3) + stride1 + stride2
+            buf_idx = (4*i-3) + stride1 + stride2 + stride3 + offset
             this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
             this%cfr_re(m)%f2( i, j-gc(1), idx_recv+k-1 ) + this%precv_buf( buf_idx   )
             this%cfr_im(m)%f2( i, j-gc(1), idx_recv+k-1 ) = &
@@ -584,7 +590,7 @@ subroutine pipe_send_f1( this, pp_msg, dir )
   type( ppmsg ), intent(inout) :: pp_msg
   character(len=*), intent(in) :: dir
 
-  integer :: i, j, m, idproc_des, buf_idx, stride
+  integer :: i, j, m, idproc_des, buf_idx, stride1, stride2, offset
   integer :: n1p, count, ierr
   integer, dimension(2) :: gc
   character(len=32), save :: sname = "pipe_send_f1"
@@ -628,20 +634,22 @@ subroutine pipe_send_f1( this, pp_msg, dir )
 
   ! copy m = 0 mode
   do j = 1, n1p
-    stride = 2 * this%dim * (j-1)
+    stride1 = 2 * this%dim * (j-1)
     do i = 1, this%dim
-      buf_idx = (2*i-1) + stride
+      buf_idx = (2*i-1) + stride1
       this%psend_buf( buf_idx   ) = this%cfr_re(0)%f1( i, j-gc(1) )
       this%psend_buf( buf_idx+1 ) = this%cfi_re(0)%f1( i, j-gc(1) )
     enddo
   enddo
 
-  ! copy m > 0 mode
+  ! copy m > 0 modes
+  offset = 2 * this%dim * n1p
   do m = 1, this%max_mode
+    stride1 = 4 * this%dim * n1p * (m-1)
     do j = 1, n1p
-      stride = 4 * this%dim * (j-1)
+      stride2 = 4 * this%dim * (j-1)
       do i = 1, this%dim
-        buf_idx = (4*i-3) + stride
+        buf_idx = (4*i-3) + stride1 + stride2 + offset
         this%psend_buf( buf_idx   ) = this%cfr_re(m)%f1( i, j-gc(1) )
         this%psend_buf( buf_idx+1 ) = this%cfr_im(m)%f1( i, j-gc(1) )
         this%psend_buf( buf_idx+2 ) = this%cfi_re(m)%f1( i, j-gc(1) )
@@ -668,7 +676,7 @@ subroutine pipe_recv_f1( this, pp_msg, dir, mode )
   type( ppmsg ), intent(inout) :: pp_msg
   character(len=*), intent(in) :: dir, mode
 
-  integer :: i, j, m, idproc_src, n1p, stride, buf_idx
+  integer :: i, j, m, idproc_src, n1p, stride1, stride2, offset, buf_idx
   integer :: count, ierr
   integer, dimension(2) :: gc
   integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -718,22 +726,24 @@ subroutine pipe_recv_f1( this, pp_msg, dir, mode )
   select case ( trim(mode) )
   case ( 'replace' )
 
-    ! copy m=0 mode
+    ! copy m = 0 mode
     do j = 1, n1p
-      stride = 2 * this%dim * (j-1)
+      stride1 = 2 * this%dim * (j-1)
       do i = 1, this%dim
-        buf_idx = (2*i-1) + stride
+        buf_idx = (2*i-1) + stride1
         this%cfr_re(0)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx   )
         this%cfi_re(0)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+1 )
       enddo
     enddo
 
-    ! copy m>0 mode
+    ! copy m > 0 modes
+    offset = 2 * this%dim * n1p
     do m = 1, this%max_mode
+      stride1 = 4 * this%dim * n1p * (m-1)
       do j = 1, n1p
-        stride = 4 * this%dim * (j-1)
+        stride2 = 4 * this%dim * (j-1)
         do i = 1, this%dim
-          buf_idx = (4*i-3) + stride
+          buf_idx = (4*i-3) + stride1 + stride2 + offset
           this%cfr_re(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx   )
           this%cfr_im(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+1 )
           this%cfi_re(m)%f1( i, j-gc(1) ) = this%precv_buf( buf_idx+2 )
@@ -746,9 +756,9 @@ subroutine pipe_recv_f1( this, pp_msg, dir, mode )
 
     ! copy m=0 mode
     do j = 1, n1p
-      stride = 2 * this%dim * (j-1)
+      stride1 = 2 * this%dim * (j-1)
       do i = 1, this%dim
-        buf_idx = (2*i-1) + stride
+        buf_idx = (2*i-1) + stride1
         this%cfr_re(0)%f1( i, j-gc(1) ) = &
         this%cfr_re(0)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx   )
         this%cfi_re(0)%f1( i, j-gc(1) ) = &
@@ -756,12 +766,14 @@ subroutine pipe_recv_f1( this, pp_msg, dir, mode )
       enddo
     enddo
 
-    ! copy m>0 mode
+    ! copy m > 0 mode
+    offset = 2 * this%dim * n1p
     do m = 1, this%max_mode
+      stride1 = 4 * this%dim * n1p * (m-1)
       do j = 1, n1p
-        stride = 4 * this%dim * (j-1)
+        stride2 = 4 * this%dim * (j-1)
         do i = 1, this%dim
-          buf_idx = (4*i-3) + stride
+          buf_idx = (4*i-3) + stride1 + stride2 + offset
           this%cfr_re(m)%f1( i, j-gc(1) ) = &
           this%cfr_re(m)%f1( i, j-gc(1) ) + this%precv_buf( buf_idx   )
           this%cfr_im(m)%f1( i, j-gc(1) ) = &
