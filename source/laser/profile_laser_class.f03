@@ -82,9 +82,10 @@ interface
   end subroutine set_prof_intf
 end interface
 
-integer, parameter, public :: p_prof_laser_gaussian = 0, &
-                              p_prof_laser_sin2 = 100, &
-                              p_prof_laser_poly = 101
+integer, parameter, public :: p_prof_laser_gaussian = 0
+integer, parameter, public :: p_prof_laser_laguerre = 1
+integer, parameter, public :: p_prof_laser_sin2 = 100
+integer, parameter, public :: p_prof_laser_poly = 101
 
 character(len=32), save :: cls_name = 'profile_laser'
 integer, save :: cls_level = 2
@@ -125,9 +126,14 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%set_prof_perp => set_prof_perp_gaussian
       this%get_prof_perp => get_prof_perp_gaussian
 
+    case ( 'laguerre' )
+      this%prof_type(1)  = p_prof_laser_laguerre
+      this%set_prof_perp => set_prof_perp_laguerre
+      this%get_prof_perp => get_prof_perp_laguerre
+
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
-        &Currently available include "gaussian".' )
+        &Currently available include "gaussian" and "laguerre".' )
 
   end select
 
