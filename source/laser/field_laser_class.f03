@@ -67,7 +67,7 @@ type, extends( field_complex ) :: field_laser
 
 end type field_laser
 
-real, dimension(:), allocatable :: tmp_r_re, tmp_r_im, tmp_i_re, tmp_i_im
+real, dimension(:,:), allocatable :: tmpr_re, tmpr_im, tmpi_re, tmpi_im
 
 contains
 
@@ -309,59 +309,27 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
     enddo
 
     ! set the axial boundary condition
+    ! Note that zero axial boundary condition applies for m > 0 modes. However,
+    ! the zero BC is not directly included in the matrix. The axial field values
+    ! will be explicitly set zero after calling the laser solver. The purpose is
+    ! to avoid the singularity arising from performing the cyclic reduction to 
+    ! the penta-diagonal matrix. For m > 0 modes, the first two lines of matrix
+    ! elements can be arbitrarily selected as long as the matrix is still regular.
     if (idproc == 0) then
 
-      if ( m == 0 ) then
+      a = 0.0
+      b = epsilon(1.0)
+      c = ds + dr2_idz_1hf
+      d = -k0 * dr**2
+      e = -ds
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
 
-        a = 0.0
-        b = epsilon(1.0)
-        c = ds + dr2_idz_1hf
-        d = -k0 * dr**2
-        e = -ds
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
-
-        a = epsilon(1.0)
-        b = k0 * dr**2
-        c = ds + dr2_idz_1hf
-        d = 0.0
-        e = -ds
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
-
-      else
-
-        ! matrix elements of row 1 and 2 are given arbitrarily to make sure the matrix
-        ! is not singular.
-        a = 0.0
-        b = epsilon(1.0)
-        c = 1.0 + dr2_idz_1hf
-        d = 0.0
-        e = 0.0
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
-
-        a = epsilon(1.0)
-        b = 0.0
-        c = 1.0 + dr2_idz_1hf
-        d = 0.0
-        e = 0.0
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
-
-        ! first matrix elements of row 3 and 4 are given zeros indicating the
-        ! on-axis values are zeros
-        a = 0.0
-        b = 0.0
-        c = ds_qtr * ( 2.0 + m2 ) + dr2_idz_1hf
-        d = -k0 * dr**2
-        e = -0.375 * ds
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 3 )
-
-        a = 0.0
-        b = k0 * dr**2
-        c = ds_qtr * ( 2.0 + m2 ) + dr2_idz_1hf
-        d = 0.0
-        e = -0.375 * ds
-        call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 4 )
-
-      endif
+      a = epsilon(1.0)
+      b = k0 * dr**2
+      c = ds + dr2_idz_1hf
+      d = 0.0
+      e = -ds
+      call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
 
     endif
 
@@ -389,6 +357,13 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
 
     ! generate cyclic reduction coefficients
     call this%pgc_solver(m)%generate_cr_coef()
+
+    ! DEBUG
+    ! print *, "PENTA SOLVER COEFFICIENTS m = ", m
+    ! do i = 1, local_size
+    !   call this%pgc_solver(m)%get_values_matrix(a, b, c, d, e, i)
+    !   print *, "C(", i, ") = ", c
+    ! enddo
 
   enddo
 
@@ -750,17 +725,21 @@ subroutine solve_field_laser( this, chi )
   ds_qtr     = 0.25 * this%ds
   ds_qtr_dr2 = ds_qtr * this%dr**2
 
-  if ( .not. allocated(tmp_r_re) ) then
-    allocate( tmp_r_re(nrp), tmp_r_im(nrp), tmp_i_re(nrp), tmp_i_im(nrp) )
+  if ( .not. allocated(tmpr_re) ) then
+    allocate( tmpr_re( nrp, 0:this%max_mode ) )
+    allocate( tmpr_im( nrp, 0:this%max_mode ) )
+    allocate( tmpi_re( nrp, 0:this%max_mode ) )
+    allocate( tmpi_im( nrp, 0:this%max_mode ) )
   endif
-  tmp_r_re = 0.0
-  tmp_r_im = 0.0
-  tmp_i_re = 0.0
-  tmp_i_im = 0.0
 
   do j = 1, nzp
 
     do l = 1, this%iter
+
+      tmpr_re = 0.0
+      tmpr_im = 0.0
+      tmpi_re = 0.0
+      tmpi_im = 0.0
 
       ! calculate the contribution from the plasma susceptibility
       do m = 0, this%max_mode
@@ -770,8 +749,8 @@ subroutine solve_field_laser( this, chi )
           ai_re  => this%cfi_re(m-k)%get_f2()
 
           do i = 1, nrp
-            tmp_r_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
-            tmp_i_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
+            tmpr_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
+            tmpi_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
           enddo
 
           if ( k == 0 .or. k == m ) cycle
@@ -781,8 +760,8 @@ subroutine solve_field_laser( this, chi )
           ai_im  => this%cfi_im(m-k)%get_f2()
 
           do i = 1, nrp
-            tmp_r_re(i) = tmp_r_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
-            tmp_i_re(i) = tmp_i_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
+            tmpr_re(i,m) = tmpr_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
+            tmpi_re(i,m) = tmpi_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
           enddo
         enddo
 
@@ -796,8 +775,8 @@ subroutine solve_field_laser( this, chi )
             ai_re  => this%cfi_re(m-k)%get_f2()
 
             do i = 1, nrp
-              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
-              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
             enddo
           endif
 
@@ -807,8 +786,8 @@ subroutine solve_field_laser( this, chi )
             ai_im  => this%cfi_im(m-k)%get_f2()
 
             do i = 1, nrp
-              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
-              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
             enddo
           endif
 
@@ -825,9 +804,9 @@ subroutine solve_field_laser( this, chi )
 
         ! set rhs of PCR
         do i = 1, nrp
-          rhs = sr_re(1,i,j) + tmp_r_re(i) + dr2_idzh * ( 4.0 * ar_re(1,i,j-1) - ar_re(1,i,j-2) )
+          rhs = sr_re(1,i,j) + tmpr_re(i,m) + dr2_idzh * ( 4.0 * ar_re(1,i,j-1) - ar_re(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-          rhs = si_re(1,i,j) + tmp_i_re(i) + dr2_idzh * ( 4.0 * ai_re(1,i,j-1) - ai_re(1,i,j-2) )
+          rhs = si_re(1,i,j) + tmpi_re(i,m) + dr2_idzh * ( 4.0 * ai_re(1,i,j-1) - ai_re(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
         enddo
 
@@ -848,9 +827,9 @@ subroutine solve_field_laser( this, chi )
 
         ! set rhs of PCR
         do i = 1, nrp
-          rhs = sr_im(1,i,j) + tmp_r_im(i) + dr2_idzh * ( 4.0 * ar_im(1,i,j-1) - ar_im(1,i,j-2) )
+          rhs = sr_im(1,i,j) + tmpr_im(i,m) + dr2_idzh * ( 4.0 * ar_im(1,i,j-1) - ar_im(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-          rhs = si_im(1,i,j) + tmp_i_im(i) + dr2_idzh * ( 4.0 * ai_im(1,i,j-1) - ai_im(1,i,j-2) )
+          rhs = si_im(1,i,j) + tmpi_im(i,m) + dr2_idzh * ( 4.0 * ai_im(1,i,j-1) - ai_im(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
         enddo
 
@@ -861,6 +840,14 @@ subroutine solve_field_laser( this, chi )
           call this%pgc_solver(m)%get_values_x( ar_im(1,i,j), 2*i-1 )
           call this%pgc_solver(m)%get_values_x( ai_im(1,i,j), 2*i )
         enddo
+
+        ! on-axis values are zeros for m > 0
+        if ( id_proc_loc() == 0 ) then
+          ar_re(1,1,j) = 0.0
+          ai_re(1,1,j) = 0.0
+          ar_im(1,1,j) = 0.0
+          ai_im(1,1,j) = 0.0
+        endif
 
       enddo
 

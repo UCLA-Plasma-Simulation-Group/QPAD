@@ -136,8 +136,14 @@ subroutine get_prof_perp_laguerre( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_r
     r2_iw2 = r2 / w2
     gouy_shift = real( 1 + 2 * p + abs(l) ) * atan2( z_shift, zr )
     phase = 0.5 * k0 * r2 * curv - gouy_shift
-    amp = w0 / sqrt(w2) * exp(-r2_iw2) * ( sqrt2 * sqrt(r2_iw2) ) ** abs(l) &
-          * sqrt( 2.0 * factorial(p) / ( pi * factorial(p+abs(l)) ) ) &
+
+    ! This is the definition from Wikipedia
+    ! amp = w0 / sqrt(w2) * exp(-r2_iw2) * ( sqrt2 * sqrt(r2_iw2) ) ** abs(l) &
+    !       * sqrt( 2.0 * factorial(p) / ( pi * factorial(p+abs(l)) ) ) &
+    !       * laguerre( p, abs(l), 2.0 * r2_iw2 )
+
+    ! This is the definition from OSIRIS
+    amp = w0 / sqrt(w2) * exp(-r2_iw2) * sqrt(r2_iw2) ** abs(l) &
           * laguerre( p, abs(l), 2.0 * r2_iw2 )
 
     if ( mode == 0 ) then
