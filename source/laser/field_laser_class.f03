@@ -67,7 +67,7 @@ type, extends( field_complex ) :: field_laser
 
 end type field_laser
 
-real, dimension(:), allocatable :: tmp_r_re, tmp_r_im, tmp_i_re, tmp_i_im
+real, dimension(:,:), allocatable :: tmpr_re, tmpr_im, tmpi_re, tmpi_im
 
 contains
 
@@ -725,17 +725,21 @@ subroutine solve_field_laser( this, chi )
   ds_qtr     = 0.25 * this%ds
   ds_qtr_dr2 = ds_qtr * this%dr**2
 
-  if ( .not. allocated(tmp_r_re) ) then
-    allocate( tmp_r_re(nrp), tmp_r_im(nrp), tmp_i_re(nrp), tmp_i_im(nrp) )
+  if ( .not. allocated(tmpr_re) ) then
+    allocate( tmpr_re( nrp, 0:this%max_mode ) )
+    allocate( tmpr_im( nrp, 0:this%max_mode ) )
+    allocate( tmpi_re( nrp, 0:this%max_mode ) )
+    allocate( tmpi_im( nrp, 0:this%max_mode ) )
   endif
-  tmp_r_re = 0.0
-  tmp_r_im = 0.0
-  tmp_i_re = 0.0
-  tmp_i_im = 0.0
 
   do j = 1, nzp
 
     do l = 1, this%iter
+
+      tmpr_re = 0.0
+      tmpr_im = 0.0
+      tmpi_re = 0.0
+      tmpi_im = 0.0
 
       ! calculate the contribution from the plasma susceptibility
       do m = 0, this%max_mode
@@ -745,8 +749,8 @@ subroutine solve_field_laser( this, chi )
           ai_re  => this%cfi_re(m-k)%get_f2()
 
           do i = 1, nrp
-            tmp_r_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
-            tmp_i_re(i) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
+            tmpr_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
+            tmpi_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
           enddo
 
           if ( k == 0 .or. k == m ) cycle
@@ -756,8 +760,8 @@ subroutine solve_field_laser( this, chi )
           ai_im  => this%cfi_im(m-k)%get_f2()
 
           do i = 1, nrp
-            tmp_r_re(i) = tmp_r_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
-            tmp_i_re(i) = tmp_i_re(i) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
+            tmpr_re(i,m) = tmpr_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
+            tmpi_re(i,m) = tmpi_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
           enddo
         enddo
 
@@ -771,8 +775,8 @@ subroutine solve_field_laser( this, chi )
             ai_re  => this%cfi_re(m-k)%get_f2()
 
             do i = 1, nrp
-              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
-              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
             enddo
           endif
 
@@ -782,8 +786,8 @@ subroutine solve_field_laser( this, chi )
             ai_im  => this%cfi_im(m-k)%get_f2()
 
             do i = 1, nrp
-              tmp_r_im(i) = tmp_r_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
-              tmp_i_im(i) = tmp_i_im(i) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
             enddo
           endif
 
@@ -800,9 +804,9 @@ subroutine solve_field_laser( this, chi )
 
         ! set rhs of PCR
         do i = 1, nrp
-          rhs = sr_re(1,i,j) + tmp_r_re(i) + dr2_idzh * ( 4.0 * ar_re(1,i,j-1) - ar_re(1,i,j-2) )
+          rhs = sr_re(1,i,j) + tmpr_re(i,m) + dr2_idzh * ( 4.0 * ar_re(1,i,j-1) - ar_re(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-          rhs = si_re(1,i,j) + tmp_i_re(i) + dr2_idzh * ( 4.0 * ai_re(1,i,j-1) - ai_re(1,i,j-2) )
+          rhs = si_re(1,i,j) + tmpi_re(i,m) + dr2_idzh * ( 4.0 * ai_re(1,i,j-1) - ai_re(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
         enddo
 
@@ -823,9 +827,9 @@ subroutine solve_field_laser( this, chi )
 
         ! set rhs of PCR
         do i = 1, nrp
-          rhs = sr_im(1,i,j) + tmp_r_im(i) + dr2_idzh * ( 4.0 * ar_im(1,i,j-1) - ar_im(1,i,j-2) )
+          rhs = sr_im(1,i,j) + tmpr_im(i,m) + dr2_idzh * ( 4.0 * ar_im(1,i,j-1) - ar_im(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i-1 )
-          rhs = si_im(1,i,j) + tmp_i_im(i) + dr2_idzh * ( 4.0 * ai_im(1,i,j-1) - ai_im(1,i,j-2) )
+          rhs = si_im(1,i,j) + tmpi_im(i,m) + dr2_idzh * ( 4.0 * ai_im(1,i,j-1) - ai_im(1,i,j-2) )
           call this%pgc_solver(m)%set_values_rhs( rhs, 2*i )
         enddo
 
