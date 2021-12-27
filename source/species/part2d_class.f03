@@ -465,7 +465,7 @@ subroutine deposit_chi_part2d( this, chi )
 
     do j = 0, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
-      chi_re(0)%f1(1,j) = chi_re(mode)%f1(1,j) * ir
+      chi_re(0)%f1(1,j) = chi_re(0)%f1(1,j) * ir
     enddo
 
     do mode = 1, max_mode

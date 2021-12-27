@@ -12,6 +12,18 @@ public :: set_prof_perp_gaussian, get_prof_perp_gaussian
 public :: set_prof_perp_laguerre, get_prof_perp_laguerre
 public :: set_prof_lon_sin2, get_prof_lon_sin2
 
+integer, parameter :: laguerre_p_max = 5
+integer, parameter :: laguerre_l_max = 5
+real, dimension(0:laguerre_p_max, 0:laguerre_l_max), parameter :: laguerre_norm_fac = &
+  reshape( (/ &
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, &
+    .428881942195642, .587209029015734, .715480974477903, .824715297721105, .921317171436064, 1.00881288923537, &
+    .367879441171442, .606530658706018, .849813805803178, 1.09328889163892, 1.33673290295862, 1.58013471092357, &
+    .409916278920296, .771854776322994, 1.20512863331838, 1.69577853394018, 2.23759926979643, 2.82618005138511, &
+    .541341132211037, 1.13063145394112, 1.92864111604763, 2.92737142922967, 4.12615415717722, 5.52484537726148, &
+    .811173616512526, 1.84462325501195, 3.39116963304902, 5.49617869099731, 8.21093909438522, 11.5834999136547 &
+  /), (/6, 6/) )
+
 contains
 
 ! ------------------------------------------------------------------------------
@@ -145,6 +157,12 @@ subroutine get_prof_perp_laguerre( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_r
     ! This is the definition from OSIRIS
     amp = w0 / sqrt(w2) * exp(-r2_iw2) * sqrt(r2_iw2) ** abs(l) &
           * laguerre( p, abs(l), 2.0 * r2_iw2 )
+    if ( p <= laguerre_p_max .and. l <= laguerre_l_max ) then
+      amp = amp / laguerre_norm_fac( p, abs(l) )
+    else
+      call write_stdout( '[WARNING] The laser peak intensity is not normalized! &
+        &The maximum mode supporting normalization is (p,l)=(5,5).' )
+    endif
 
     if ( mode == 0 ) then
       ar_re = amp * cos(phase)
