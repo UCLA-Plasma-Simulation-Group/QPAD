@@ -48,6 +48,8 @@ type part2d
   real :: edge
   ! particle buffer
   real, dimension(:), allocatable :: pbuf
+  ! on-axis deposition correction factor
+  real :: deposit_ax_corr
 
   ! temporary arrays used for buffer reallocation
   real, private, dimension(:), allocatable :: tmp1
@@ -136,6 +138,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
+   this%deposit_ax_corr = get_deposit_ax_corr( pf%ppc(1) )
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
@@ -325,6 +328,7 @@ subroutine qdeposit_part2d( this, q )
 
     q0(1,0) = 0.0 ! guard cell is useless on axis
     q0(1,1) = 8.0 * q0(1,1)
+    ! q0(1,1) = q0(1,1) * this%deposit_ax_corr
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       q0(1,j) = q0(1,j) * ir
@@ -441,7 +445,8 @@ subroutine deposit_chi_part2d( this, chi )
   if ( id_proc_loc() == 0 ) then
 
     chi_re(0)%f1(1,0) = 0.0 ! guard cell is useless on axis
-    chi_re(0)%f1(1,1) = 8.0 * chi_re(0)%f1(1,1) ! is this correct???
+    ! chi_re(0)%f1(1,1) = 8.0 * chi_re(0)%f1(1,1) ! is this correct???
+    chi_re(0)%f1(1,1) = chi_re(0)%f1(1,1) * this%deposit_ax_corr
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       chi_re(0)%f1(1,j) = chi_re(0)%f1(1,j) * ir
@@ -2192,6 +2197,13 @@ subroutine sort_part2d( this, nrp, noff )
   call write_dbg(cls_name, sname, cls_level, 'ends')
     
 end subroutine sort_part2d
+
+function get_deposit_ax_corr( ppc_r ) result(res)
+  implicit none
+  integer, intent(in) :: ppc_r
+  real :: res
+  res = (12.0 * ppc_r**2) / ( 1.0 + 2.0 * ppc_r**2 ) 
+end function get_deposit_ax_corr
 
 end module part2d_class
 

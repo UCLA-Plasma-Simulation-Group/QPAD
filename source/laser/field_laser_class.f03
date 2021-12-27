@@ -482,6 +482,7 @@ subroutine set_rhs_field_laser( this, chi )
 
       ! calculate the first cell
       if ( idproc == 0 ) then
+        i = 1
         this%sr_re(m)%f2(1,i,j) = 0.0
         this%sr_im(m)%f2(1,i,j) = 0.0
         this%si_re(m)%f2(1,i,j) = 0.0
