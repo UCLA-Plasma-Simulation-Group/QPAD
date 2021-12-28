@@ -317,18 +317,34 @@ subroutine init_solver( this, nr, nrp, noff, k0, ds, dr, dz )
     ! elements can be arbitrarily selected as long as the matrix is still regular.
     if (idproc == 0) then
 
-      a = 0.0
-      b = epsilon(1.0)
-      c = ds + dr2_idz_1hf
-      d = -k0 * dr**2
-      e = -ds
+      if ( m == 0 ) then
+        a = 0.0
+        b = epsilon(1.0)
+        c = ds + dr2_idz_1hf
+        d = -k0 * dr**2
+        e = -ds
+      else
+        a = epsilon(1.0)
+        b = epsilon(1.0)
+        c = 1.0
+        d = epsilon(1.0)
+        e = epsilon(1.0)
+      endif
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 1 )
 
-      a = epsilon(1.0)
-      b = k0 * dr**2
-      c = ds + dr2_idz_1hf
-      d = 0.0
-      e = -ds
+      if ( m == 0 ) then
+        a = epsilon(1.0)
+        b = k0 * dr**2
+        c = ds + dr2_idz_1hf
+        d = 0.0
+        e = -ds
+      else
+        a = epsilon(1.0)
+        b = epsilon(1.0)
+        c = 1.0
+        d = epsilon(1.0)
+        e = epsilon(1.0)
+      endif
       call this%pgc_solver(m)%set_values_matrix( a, b, c, d, e, 2 )
 
     endif
