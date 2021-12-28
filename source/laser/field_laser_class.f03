@@ -396,7 +396,7 @@ subroutine set_rhs_field_laser( this, chi )
   integer :: m, i, j, k, nrp, nzp, noff
   integer :: nvp, idproc
   real :: beta_m, beta_p, alpha, kappa
-  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, m2, ik
+  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, m2, ik, sign_pm
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null(), ai_re => null(), ai_im => null()
   real, dimension(:,:,:), pointer :: chi_re => null(), chi_im => null()
   character(len=32), save :: sname = 'set_rhs_field_laser'
@@ -548,10 +548,17 @@ subroutine set_rhs_field_laser( this, chi )
   ! calculate the contribution from the plasma susceptibility
   do m = 0, this%max_mode
     
-    do k = 0, m
-      chi_re => chi%rf_re(k)%get_f2()
-      ar_re  => this%cfr_re(m-k)%get_f2()
-      ai_re  => this%cfi_re(m-k)%get_f2()
+    do k = m - this%max_mode, this%max_mode
+
+      chi_re => chi%rf_re( abs(k) )%get_f2()
+      ar_re  => this%cfr_re( abs(m-k) )%get_f2()
+      ai_re  => this%cfi_re( abs(m-k) )%get_f2()
+
+      if ( k >= 0 .and. k <= m ) then
+        sign_pm = 1.0
+      else
+        sign_pm = -1.0
+      endif
 
       do j = 1, nzp
         do i = 1, nrp
@@ -562,44 +569,56 @@ subroutine set_rhs_field_laser( this, chi )
 
       if ( k == 0 .or. k == m ) cycle
 
-      chi_im => chi%rf_im(k)%get_f2()
-      ar_im  => this%cfr_im(m-k)%get_f2()
-      ai_im  => this%cfi_im(m-k)%get_f2()
+      chi_im => chi%rf_im( abs(k) )%get_f2()
+      ar_im  => this%cfr_im( abs(m-k) )%get_f2()
+      ai_im  => this%cfi_im( abs(m-k) )%get_f2()
 
       do j = 1, nzp
         do i = 1, nrp
-          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
-          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
+          this%sr_re(m)%f2(1,i,j) = this%sr_re(m)%f2(1,i,j) - ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ar_im(1,i,j)
+          this%si_re(m)%f2(1,i,j) = this%si_re(m)%f2(1,i,j) - ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ai_im(1,i,j)
         enddo
       enddo
     enddo
 
     if ( m == 0 ) cycle
 
-    do k = 0, m
+    do k = m - this%max_mode, this%max_mode
 
       if ( k /= 0 ) then
-        chi_im => chi%rf_im(k)%get_f2()
-        ar_re  => this%cfr_re(m-k)%get_f2()
-        ai_re  => this%cfi_re(m-k)%get_f2()
+        chi_im => chi%rf_im( abs(k) )%get_f2()
+        ar_re  => this%cfr_re( abs(m-k) )%get_f2()
+        ai_re  => this%cfi_re( abs(m-k) )%get_f2()
+
+        if ( k < 0 ) then
+          sign_pm = -1.0
+        else
+          sign_pm = 1.0
+        endif
 
         do j = 1, nzp
           do i = 1, nrp
-            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
-            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ar_re(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ai_re(1,i,j)
           enddo
         enddo
       endif
 
       if ( k /= m ) then
-        chi_re => chi%rf_re(k)%get_f2()
-        ar_im  => this%cfr_im(m-k)%get_f2()
-        ai_im  => this%cfi_im(m-k)%get_f2()
+        chi_re => chi%rf_re( abs(k) )%get_f2()
+        ar_im  => this%cfr_im( abs(m-k) )%get_f2()
+        ai_im  => this%cfi_im( abs(m-k) )%get_f2()
+
+        if ( k > m ) then
+          sign_pm = -1.0
+        else
+          sign_pm = 1.0
+        endif
 
         do j = 1, nzp
           do i = 1, nrp
-            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
-            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
+            this%sr_im(m)%f2(1,i,j) = this%sr_im(m)%f2(1,i,j) + ds_qtr_dr2 * sign_pm * chi_re(1,i,j) * ar_im(1,i,j)
+            this%si_im(m)%f2(1,i,j) = this%si_im(m)%f2(1,i,j) + ds_qtr_dr2 * sign_pm * chi_re(1,i,j) * ai_im(1,i,j)
           enddo
         enddo
       endif
@@ -726,7 +745,7 @@ subroutine solve_field_laser( this, chi )
   class( field ), intent(inout) :: chi
 
   integer :: m, k, i, j, l, nrp, nzp
-  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, rhs
+  real :: dr2_idzh, ds_qtr, ds_qtr_dr2, rhs, sign_pm
   real, dimension(:,:,:), pointer :: chi_re => null(), chi_im => null()
   real, dimension(:,:,:), pointer :: ar_re => null(), ar_im => null()
   real, dimension(:,:,:), pointer :: ai_re => null(), ai_im => null()
@@ -760,10 +779,17 @@ subroutine solve_field_laser( this, chi )
 
       ! calculate the contribution from the plasma susceptibility
       do m = 0, this%max_mode
-        do k = 0, m
-          chi_re => chi%rf_re(k)%get_f2()
-          ar_re  => this%cfr_re(m-k)%get_f2()
-          ai_re  => this%cfi_re(m-k)%get_f2()
+        do k = m - this%max_mode, this%max_mode
+
+          chi_re => chi%rf_re( abs(k) )%get_f2()
+          ar_re  => this%cfr_re( abs(m-k) )%get_f2()
+          ai_re  => this%cfi_re( abs(m-k) )%get_f2()
+
+          if ( k >= 0 .and. k <= m ) then
+            sign_pm = 1.0
+          else
+            sign_pm = -1.0
+          endif
 
           do i = 1, nrp
             tmpr_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
@@ -772,39 +798,51 @@ subroutine solve_field_laser( this, chi )
 
           if ( k == 0 .or. k == m ) cycle
 
-          chi_im => chi%rf_im(k)%get_f2()
-          ar_im  => this%cfr_im(m-k)%get_f2()
-          ai_im  => this%cfi_im(m-k)%get_f2()
+          chi_im => chi%rf_im( abs(k) )%get_f2()
+          ar_im  => this%cfr_im( abs(m-k) )%get_f2()
+          ai_im  => this%cfi_im( abs(m-k) )%get_f2()
 
           do i = 1, nrp
-            tmpr_re(i,m) = tmpr_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ar_im(1,i,j)
-            tmpi_re(i,m) = tmpi_re(i,m) - ds_qtr_dr2 * chi_im(1,i,j) * ai_im(1,i,j)
+            tmpr_re(i,m) = tmpr_re(i,m) - ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ar_im(1,i,j)
+            tmpi_re(i,m) = tmpi_re(i,m) - ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ai_im(1,i,j)
           enddo
         enddo
 
         if ( m == 0 ) cycle
 
-        do k = 0, m
+        do k = m - this%max_mode, this%max_mode
 
           if ( k /= 0 ) then
-            chi_im => chi%rf_im(k)%get_f2()
-            ar_re  => this%cfr_re(m-k)%get_f2()
-            ai_re  => this%cfi_re(m-k)%get_f2()
+            chi_im => chi%rf_im( abs(k) )%get_f2()
+            ar_re  => this%cfr_re( abs(m-k) )%get_f2()
+            ai_re  => this%cfi_re( abs(m-k) )%get_f2()
+
+            if ( k < 0 ) then
+              sign_pm = -1.0
+            else
+              sign_pm = 1.0
+            endif
 
             do i = 1, nrp
-              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ar_re(1,i,j)
-              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_im(1,i,j) * ai_re(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ar_re(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * sign_pm * chi_im(1,i,j) * ai_re(1,i,j)
             enddo
           endif
 
           if ( k /= m ) then
-            chi_re => chi%rf_re(k)%get_f2()
-            ar_im  => this%cfr_im(m-k)%get_f2()
-            ai_im  => this%cfi_im(m-k)%get_f2()
+            chi_re => chi%rf_re( abs(k) )%get_f2()
+            ar_im  => this%cfr_im( abs(m-k) )%get_f2()
+            ai_im  => this%cfi_im( abs(m-k) )%get_f2()
+
+            if ( k > m ) then
+              sign_pm = -1.0
+            else
+              sign_pm = 1.0
+            endif
 
             do i = 1, nrp
-              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ar_im(1,i,j)
-              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ai_im(1,i,j)
+              tmpr_im(i,m) = tmpr_im(i,m) + ds_qtr_dr2 * sign_pm * chi_re(1,i,j) * ar_im(1,i,j)
+              tmpi_im(i,m) = tmpi_im(i,m) + ds_qtr_dr2 * sign_pm * chi_re(1,i,j) * ai_im(1,i,j)
             enddo
           endif
 
