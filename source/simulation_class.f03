@@ -346,7 +346,7 @@ subroutine run_simulation( this )
 
       call this%lasers%deposit_chi( spe, j )
 
-      call q_spe%copy_slice( j, p_copy_1to2 )
+      ! call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
       call b_spe%solve( cu )
 
@@ -387,6 +387,8 @@ subroutine run_simulation( this )
             call neut(k)%cbq(j)
           enddo
           call cu%copy_slice( j, p_copy_1to2 )
+          call add_f1( cu, q_spe, (/3/), (/1/) )
+          call q_spe%copy_slice( j, p_copy_1to2 )
         endif
 
       enddo ! iteration
