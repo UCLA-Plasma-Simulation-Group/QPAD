@@ -438,7 +438,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
-        HYPRE_BUF(2) = -4.0 - dr2
+        HYPRE_BUF(2) = -4.0
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
