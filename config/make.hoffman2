@@ -4,13 +4,13 @@ FC_OPTS = -r8 -fopenmp -stand f03 -FR -Tf
 
 # C compiler configuration
 CC = mpiicc
-CC_OPTS = -O3 -fopenmp -std=c99
+CC_OPTS = -O3 -fopenmp -std=c99 -no-multibyte-chars
 
 # Preprocessor configuration
 FPP = gcc -C -P -E -cpp
 
 # Python 2.x configuration. Used for automatically generate compile rules
-PYTHON = python 
+# PYTHON = python 
 
 # Linker configuration
 LINKER = mpiifort
@@ -18,11 +18,11 @@ LINKER_OPTS = -fopenmp -O3
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -Bstatic -lHYPRE -Bdynamic -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
-HYPRE_LIB=/u/home/l/lifei/local/hypre/intel-18.0.4/lib
-HYPRE_INC=/u/home/l/lifei/local/hypre/intel-18.0.4/include
-JSON_INC=/u/home/l/lifei/json-fortran/build/include
-JSON_LIB=/u/home/l/lifei/json-fortran/build/lib
-#HDF5_INC =
-#HDF5_LIB =
+HYPRE_LIB=/u/project/mori/lifei/apps/hypre/2.22.1/intel2020.4/lib
+HYPRE_INC=/u/project/mori/lifei/apps/hypre/2.22.1/intel2020.4/include
+JSON_INC=/u/project/mori/lifei/apps/json-fortran/8.2.5/intel2020.4/lib
+JSON_LIB=/u/project/mori/lifei/apps/json-fortran/8.2.5/intel2020.4/lib
+HDF5_INC=/u/project/mori/lifei/apps/hdf5/1.12.1/intel2020.4/include
+HDF5_LIB=/u/project/mori/lifei/apps/hdf5/1.12.1/intel2020.4/lib
 
 INCF = -I$(HDF5_INC) -I$(JSON_INC) -I$(HYPRE_INC)
