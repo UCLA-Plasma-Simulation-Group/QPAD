@@ -212,13 +212,13 @@ subroutine renew_part2d( this, pf, s, if_empty )
    logical, intent(in), optional :: if_empty
 
    ! local data
-   logical :: empty = .false.
+   logical :: empty
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%npp = 0
-
+   empty = .false.   
    if ( present( if_empty ) ) empty = if_empty
    if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
 
