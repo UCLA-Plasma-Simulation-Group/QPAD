@@ -145,9 +145,14 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%set_prof_lon => set_prof_lon_sin2
       this%get_prof_lon => get_prof_lon_sin2
 
+    case ( 'polynomial' )
+      this%prof_type(2)  = p_prof_laser_poly
+      this%set_prof_lon => set_prof_lon_poly
+      this%get_prof_lon => get_prof_lon_poly
+
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
-        &Currently available include "sin2".' )
+        &Currently available include "sin2" and "polynomial".' )
 
   end select
 
