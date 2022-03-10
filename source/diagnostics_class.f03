@@ -10,6 +10,7 @@ use field_class
 use beam3d_class
 use species2d_class
 use neutral_class
+use neutral2_class
 use sysutil_module
 use param
 use input_class
@@ -68,9 +69,9 @@ type sim_diag
   procedure :: run => run_sim_diag
   procedure :: set_ndump_gcd
   procedure :: to_next, to_head, to_tail, is_tail
-  generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst
+  generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst, add_diag_ion
 
-  procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst
+  procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst, add_diag_ion
   procedure, private :: init_diag_beams
   procedure, private :: init_diag_plasma
   procedure, private :: init_diag_fields
@@ -248,14 +249,15 @@ subroutine init_diag_plasma( this, input, plasma )
   type( input_json ), intent(inout) :: input
   class( sim_plasma ), intent(in), target :: plasma
   ! local data
-  integer :: nspecies, nneutrals, max_mode, ndump, psample
-  integer :: i, j, k, m, n
+  integer :: nspecies, nneutrals, nneutral2s, max_mode, ndump, psample
+  integer :: i, j, k, m, n, v, imax
   real :: rmin, rmax, zmin, zmax, dt
   character(len=:), allocatable :: ss
 
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.nspecies', nspecies )
   call input%get( 'simulation.nneutrals', nneutrals )
+  call input%get( 'simulation.nneutral2s', nneutral2s )
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
   call input%get( 'simulation.box.z(1)', zmin )
@@ -364,6 +366,82 @@ subroutine init_diag_plasma( this, input, plasma )
             call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
             call this%add_diag( &
               obj       = plasma%neut(i), &
+              dump_freq = ndump, &
+              psample   = psample, &
+              type_label= 'raw', &
+              filename  = './Neutral'//num2str(i)//'/Raw/', &
+              dataname  = 'raw', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              units     = '', &
+              label     = 'Neutral Raw' )
+          end select
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
+
+  ! add neutral2 diagnostics
+  do i = 1, nneutral2s
+    call input%info( 'neutral2s('//num2str(i)//').diag', n_children=m )
+    call input%info( 'neutral2s('//num2str(i)//').v', v )
+    call input%get('neutral2s('//num2str(i)//').max_e_ionized',imax)
+    if(v == 0) then
+      imax = imax - 1
+    else
+      imax = imax - v
+     endif
+    do j = 1, m
+      call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'charge_cyl_m' )
+            call this%add_diag( &
+              obj       = plasma%neut2(i), &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = 1, &
+              type_label= 'charge_cyl_m', &
+              filename  = './Neutral'//num2str(i)//'/'//'Charge'//'/', &
+              dataname  = 'charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          case ( 'ion_cyl_m' )
+            call this%add_diag( &
+              obj       = plasma%neut2(i), &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = 1, &
+              type_label= 'ion_cyl_m', &
+              filename  = './Neutral'//num2str(i)//'/'//'Ion_charge'//'/', &
+              dataname  = 'ion_charge', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              imax      = imax,&
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\rho', &
+              rank      = 2 )
+          case ( 'raw' )
+            call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
+            call this%add_diag( &
+              obj       = plasma%neut2(i), &
               dump_freq = ndump, &
               psample   = psample, &
               type_label= 'raw', &
@@ -776,6 +854,27 @@ subroutine run_sim_diag( this, tstep, dt )
           call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
 
         end select
+        
+      class is ( neutral2 )
+
+        select case ( trim( this%diag%type_label ) )
+
+        case ( 'raw' )
+
+          rtag = ntag(); stag = rtag
+          call obj%wr( this%diag%files )
+
+        case ( 'charge_cyl_m' )
+
+          rtag = ntag(); stag = rtag
+          call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
+
+        case ( 'ion_cyl_m' )
+
+          rtag = ntag(); stag = rtag
+          call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
+
+        end select
 
       end select
 
@@ -859,6 +958,78 @@ subroutine add_diag_cym( this, obj, max_mode, dump_freq, dim, type_label, filena
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_diag_cym
+
+! add ion
+subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filename, &
+  dataname, timeunit, dt, imax, axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  class(*), intent(in) :: obj
+  integer, intent(in) :: max_mode, dump_freq, dim, imax
+  character(len=*), intent(in) :: filename, timeunit, dataname, units, label, type_label
+  integer, intent(in) :: rank
+  real, intent(in) :: dt
+  character(len=*), dimension(3), intent(in) :: axisname, axislabel, axisunits
+  real, dimension(3), intent(in) :: axismax, axismin
+
+  character(len=64) :: ion_str, cym_str
+  integer :: i, j
+
+  integer, save :: cls_level = 2
+  character(len=32), save :: cls_name = 'sim_diag'
+  character(len=32), save :: sname = 'add_diag_ion'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  if ( .not. associated( this%head ) ) then
+    allocate( this%head )
+    call this%head%new( obj, dump_freq, num_files=imax*(2*max_mode+1), dim=dim, id=MPI_REQUEST_NULL )
+    this%diag => this%head
+  else
+    call this%to_tail()
+    allocate( this%diag%next )
+    this%diag => this%diag%next
+    call this%diag%new( obj, dump_freq, num_files=imax*(2*max_mode+1), dim=dim, id=MPI_REQUEST_NULL )
+  endif
+
+  this%diag%type_label = trim(type_label)
+  do j = 1, imax
+
+    ion_str = 'ion'//num2str(j)
+    call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
+
+    do i = 1, 2*max_mode+1
+
+      if ( i == 1 ) then
+        cym_str = 'Re0'
+      elseif ( mod(i,2)==0 ) then
+        cym_str = 'Re'//num2str(i/2)
+      else
+        cym_str = 'Im'//num2str(i/2)
+      endif
+      call system( 'mkdir -p '//trim(filename)//trim(ion_str)//trim(cym_str)//'/' )
+      call this%diag%files(i)%new( &
+        timeunit  = timeunit, &
+        dt        = dt, &
+        axisname  = axisname, &
+        axislabel = axislabel, &
+        axismin   = axismin, &
+        axismax   = axismax, &
+        rank      = rank, &
+        filename  = trim(filename)//trim(ion_str)//trim(cym_str)//'/', &
+        dataname  = dataname, &
+        units     = units, &
+        label     = label )
+
+    enddo
+    this%num_diag = this%num_diag + 1
+  enddo
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine add_diag_ion
+
 
 ! add restart file for particles
 subroutine add_diag_rst( this, obj, dump_freq, type_label, filename, dataname )

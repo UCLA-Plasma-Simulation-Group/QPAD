@@ -235,13 +235,13 @@ subroutine end_fdist2d( this )
 
 end subroutine end_fdist2d
 
-subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
+subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s )
 
   implicit none
 
   class( fdist2d ), intent(inout) :: this
   real, intent(inout), dimension(:,:) :: x, p
-  real, intent(inout), dimension(:) :: gamma, psi, q
+  real, intent(inout), dimension(:) :: gamma, psi, q, w
   integer(kind=LG), intent(inout) :: npp
   real, intent(in) :: s
 
@@ -289,6 +289,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
           p(2,ipart) = this%uth(2) * ranorm()
           p(3,ipart) = this%uth(3) * ranorm()
           gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
+          w(ipart) = 0
           psi(ipart) = gamma(ipart) - p(3,ipart)
           
         enddo

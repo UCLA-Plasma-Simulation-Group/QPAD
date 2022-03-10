@@ -6,6 +6,7 @@ use parallel_module
 use sort_module
 use options_class
 use field_class
+use field_e_class
 use ufield_class
 use fdist2d_class
 use hdf5io_class
@@ -46,6 +47,7 @@ type part2d
    real, dimension(:), allocatable :: q
    ! array for psi
    real, dimension(:), allocatable :: psi
+   real, dimension(:), allocatable :: w
    ! particle upper boundaries
    real :: edge
    ! particle buffer
@@ -66,6 +68,8 @@ type part2d
    procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
    procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
+   procedure :: ionize                   => ionize_part2d
+   procedure :: add_particles            => add_particles_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
@@ -126,7 +130,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
-   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
+   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ), this%w( npmax ) )
    allocate( this%pbuf( this%part_dim * npmax ) )
 
    recv_buf_size = max( recv_buf_size, npmax )
@@ -134,7 +138,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    if ( present( if_empty ) ) empty = if_empty
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -149,7 +153,7 @@ subroutine end_part2d(this)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   deallocate( this%x, this%p, this%gamma, this%q, this%psi )
+   deallocate( this%x, this%p, this%gamma, this%q, this%psi, this%w )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -190,6 +194,12 @@ subroutine realloc_part2d( this, ratio )
   this%tmp1( 1:this%npp ) = this%psi( 1:this%npp )
   call move_alloc( this%tmp1, this%psi )
 
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%w( 1:this%npp )
+  call move_alloc( this%tmp1, this%w )
+
   allocate( this%tmp1( npmax ) )
   this%tmp1 = 0.0
   this%tmp1( 1:this%npp ) = this%q( 1:this%npp )
@@ -220,7 +230,7 @@ subroutine renew_part2d( this, pf, s, if_empty )
    this%npp = 0
 
    if ( present( if_empty ) ) empty = if_empty
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -1380,6 +1390,220 @@ subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, e
     enddo
 
 end subroutine interp_emf_part2d
+
+subroutine ionize_part2d( this, prof, e, wp, dt, adk_coef )
+
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(fdist2d), intent(inout) :: prof
+   double precision, dimension(:,:), intent(in) :: adk_coef
+   class(field_e), intent(in) :: e
+   real, intent(in) :: wp, dt
+  ! local data
+   character(len=18), save :: sname = 'ionize_neutral'
+   type(ufield), dimension(:), pointer :: e_re => null(), e_im => null()
+   real, dimension(:,:), pointer :: e0, er, ei
+   real :: rn, dr, theta, dtheta, w_ion, cons, eff
+   integer :: noff, i, j, k, l, nn, mode, max_mode, nppp, nrp, n_theta
+   real, dimension(p_cache_size) :: cc1, ss1
+   real, dimension(p_cache_size) :: pcos, psin
+   real :: pos, idr, ph_r, ph_i, cc, ss
+   integer, dimension(p_cache_size) :: ix
+   real, dimension(0:1, p_cache_size) :: weight
+   real, dimension(0:1) :: wt
+   real, dimension(p_p_dim, p_cache_size) :: ep
+   complex(kind=DB) :: phase0, phase
+   
+!    pcos = cc1
+!    psin = ss1
+   dr = this%dr
+   idr = 1.0 / dr
+   e_re  => e%get_rf_re();  e_im  => e%get_rf_im()
+   noff = e_re(0)%get_noff(1)
+   nrp          = prof%nrp
+   n_theta      = prof%num_theta
+   dr           = prof%dr
+   dtheta       = 2.0 * pi / real( n_theta )
+   max_mode = e%get_max_mode()
+
+   e0 => e_re(0)%get_f1()
+
+   ep = 0.0
+
+!    if( ptrcur + p_cache_size > this%npp ) then
+!       np = this%npp - ptrcur + 1
+!    else
+!       np = p_cache_size
+!    endif
+!   pp = ptrcur
+   do k = 1, n_theta
+      do j = 1, nrp
+        nppp = this%npp
+        do i = 1, nppp
+            pos = sqrt( this%x(1,i)**2 + this%x(2,i)**2 ) * idr
+            ! cosine and sine
+            cc = this%x(1,i) / pos * idr
+            ss = this%x(2,i) / pos * idr
+            phase0 = cmplx( cc, ss )
+
+            ! in-cell position
+            nn  = int( pos )
+            pos = pos - real(nn)
+
+            ! cell index
+            nn = nn - noff + 1
+
+            ! get interpolation weight factor
+            call spline_linear( pos, wt )
+
+            weight(:,i) = wt
+            ix(i) = nn
+            pcos(i) = cc
+            psin(i) = ss
+
+            ! interpolate m=0 mode
+            do l = 0, 1
+              ep(:,i) = ep(:,i) + e0(:,nn+l) * wt(l)
+            enddo
+
+            ! interpolate m>0 modes
+            phase = cmplx( 1.0, 0.0 )
+            do mode = 1, max_mode
+               phase = phase * phase0
+               ph_r = 2.0 * real(phase)
+               ph_i = 2.0 * aimag(phase)
+
+               er => e_re(mode)%get_f1()
+               ei => e_im(mode)%get_f1()
+
+               do l = 0, 1
+                  ep(:,i) = ep(:,i) + ( er(:,nn+l) * ph_r - ei(:,nn+l) * ph_i ) * wt(l)
+               enddo
+            enddo
+             eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
+             eff = eff * wp * 1.708e-12
+         ! ion a particle
+        !In neutral2_class, this subroutine needs to be called many times to rea&
+        !&lize multi-stage ionization
+        !Only the ionization rate of the input particle is calculated, and the s&
+        !&ingle ionization of this particle is carried out
+            if (eff .gt. 1.0e-6) then 
+
+              w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
+             &)/wp 
+
+              ! w_ion is in normalized unit now
+              !2nd rk (dn/dt==n*w_ion)
+              !>>>>>> w_ion* dt/(1.0 + 0.5 * w_ion * dt) could be larger than 1. 
+              !>>>>>> should add:
+              cons = w_ion* dt
+              cons = cons/(1.0 + 0.5 * cons)
+              cons = cons*this%p(3,i)/this%gamma(i)
+              this%w(i) = (1.0-this%w(i))*cons+this%w(i)
+              if (this%w(i) .gt. 1.0) this%w(i) = 1.0
+              endif
+        enddo
+      enddo
+    enddo
+
+end subroutine ionize_part2d
+
+subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s )
+
+  implicit none
+  class(part2d), intent(inout) :: this
+  class(fdist2d), intent(inout) :: prof
+  class(part2d), intent(inout) :: ppart1
+  class(part2d), intent(inout) :: ppart2
+  real, intent(in) :: s
+  integer, intent(in) :: multi_max
+
+  ! local
+  character(len=18), save :: sname = 'add_particles'
+  integer :: nrp, noff, i, j, k, pp1, pp2, n_theta, m, m1, m2, nppp
+  real :: rn, dr, theta, dtheta, den_lon, den_perp, coef, dxp
+  real, dimension(2) :: x_tmp
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nrp          = prof%nrp
+  n_theta      = prof%num_theta
+  noff         = prof%noff
+  dr           = prof%dr
+  dtheta       = 2.0 * pi / real( n_theta )
+ ! ppc_tot      = product( prof%ppc )
+!call prof%get_den_lon( s, prof%prof_pars_lon, den_lon )
+! coef = real(multi_max) * sign(1.0, prof%qm) / ( real(ppc_tot) * real(n_theta) )
+      if (m .le. 2) then
+      m1 = 1
+      m2 = m
+      else
+      m1 = m-1
+      m2 = m
+      end if
+  do k = 1, n_theta
+    do j = 1, nrp
+
+      ! calculate the # of particles to inject based on the difference in ion density between 
+      ! the previous time step and the current time step.
+      ! here multi_ion(:,:,idx_ion) and ion_old should both be discrete.
+      !ppc_add = int( ( multi_ion(j, k, idx_ion) - ion_old(j, k) ) / multi_max * real(ppc_tot) + 0.5 )
+
+      nppp = this%npp
+      pp1 = ppart1%npp
+      pp2 = ppart2%npp
+      do i = 1, nppp
+
+        ! randomly generate injection position
+        ! r     = rand() + j + noff - 1
+        ! theta = ( rand() + k - 1.5 ) * dtheta
+!         rn    = j + noff - 1 + ( real(i) - 0.5 ) / ppc_add
+!         theta = ( k - 1 ) * dtheta
+!         x_tmp(1) = rn * dr * cos(theta)
+!         x_tmp(2) = rn * dr * sin(theta)
+        
+        !call prof%get_den_perp( x_tmp, s, prof%prof_pars_perp, prof%prof_pars_lon, den_perp )
+
+       ! if ( den_lon * den_perp * prof%density < prof%den_min ) cycle
+        if ( this%w(i) .gt. 0.95) cycle
+          pp1 = pp1 + 1
+          pp2 = pp2 + 1
+          dxp=this%q(i)/m1
+          ppart1%x(1,pp1)   = x_tmp(1)
+          ppart1%x(2,pp1)   = x_tmp(2)
+          ppart1%q(pp1)     = dxp*m2
+          ppart1%p(1,pp1)   = this%p(1,i)
+          ppart1%p(2,pp1)   = this%p(2,i)
+          ppart1%p(3,pp1)   = this%p(3,i)
+          ppart1%gamma(pp1) = 1.0
+          ppart1%w(pp1) = 0.0
+
+          ppart2%x(1,pp2)   = x_tmp(1)
+          ppart2%x(2,pp2)   = x_tmp(2)
+          ppart2%q(pp2)     = -dxp
+          ppart2%p(1,pp2)   = this%p(1,i)
+          ppart2%p(2,pp2)   = this%p(2,i)
+          ppart2%p(3,pp2)   = this%p(3,i)
+          ppart2%gamma(pp2) = 1.0
+          ppart2%w(pp2) = 0.0
+
+        ! store the position of ionized particles for ion charge deposition
+        !part_add%x(1,pp2) = part%x(1,pp1)
+        !part_add%x(2,pp2) = part%x(2,pp1)
+        !part_add%q(pp2)   = -part%q(pp1) ! note the sign
+
+      enddo
+     ! part%npp = part%npp + ppc_add
+     ! part_add%npp = part_add%npp + ppc_add
+
+    enddo
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine add_particles_part2d
+
 
 subroutine push_robust_part2d( this, ef, bf )
 

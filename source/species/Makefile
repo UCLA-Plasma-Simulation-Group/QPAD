@@ -5,6 +5,7 @@ src += part2d_class.f03
 src += part2d_comm.f03
 src += species2d_class.f03
 src += neutral_class.f03
+src += neutral2_class.f03
 
 # Add local path to vpath
 vpath %.f03 species
