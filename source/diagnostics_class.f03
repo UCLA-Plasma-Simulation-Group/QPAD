@@ -385,7 +385,7 @@ subroutine init_diag_plasma( this, input, plasma )
   do i = 1, nneutral2s
     call input%info( 'neutral2s('//num2str(i)//').diag', n_children=m )
     call input%info( 'neutral2s('//num2str(i)//').v', v )
-    call input%get('neutral2s('//num2str(i)//').max_e_ionized',imax)
+    call input%get('neutral2s('//num2str(i)//').ion_max',imax)
     if(v == 0) then
       imax = imax - 1
     else
@@ -406,7 +406,7 @@ subroutine init_diag_plasma( this, input, plasma )
               dump_freq = ndump, &
               dim       = 1, &
               type_label= 'charge_cyl_m', &
-              filename  = './Neutral'//num2str(i)//'/'//'Charge'//'/', &
+              filename  = './Neutral2'//num2str(i)//'/'//'Charge'//'/', &
               dataname  = 'charge', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
@@ -425,7 +425,7 @@ subroutine init_diag_plasma( this, input, plasma )
               dump_freq = ndump, &
               dim       = 1, &
               type_label= 'ion_cyl_m', &
-              filename  = './Neutral'//num2str(i)//'/'//'Ion_charge'//'/', &
+              filename  = './Neutral2'//num2str(i)//'/'//'Ion_charge'//'/', &
               dataname  = 'ion_charge', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
@@ -439,18 +439,18 @@ subroutine init_diag_plasma( this, input, plasma )
               label     = '\rho', &
               rank      = 2 )
           case ( 'raw' )
-            call input%get( 'neutrals('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
+            call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
             call this%add_diag( &
               obj       = plasma%neut2(i), &
               dump_freq = ndump, &
               psample   = psample, &
               type_label= 'raw', &
-              filename  = './Neutral'//num2str(i)//'/Raw/', &
+              filename  = './Neutral2'//num2str(i)//'/Raw/', &
               dataname  = 'raw', &
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
               units     = '', &
-              label     = 'Neutral Raw' )
+              label     = 'Neutral2 Raw' )
           end select
         enddo ! end of k
       endif
@@ -998,7 +998,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
   do j = 1, imax
 
     ion_str = 'ion'//num2str(j)
-    call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
+!     call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
 
     do i = 1, 2*max_mode+1
 
@@ -1024,8 +1024,8 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
         label     = label )
 
     enddo
-    this%num_diag = this%num_diag + 1
   enddo
+  this%num_diag = this%num_diag + 1
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_diag_ion

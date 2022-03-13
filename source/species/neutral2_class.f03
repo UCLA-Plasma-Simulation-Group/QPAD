@@ -405,6 +405,7 @@ contains
             call this%cu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
             call this%dcu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
             call this%amu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
+            allocate(this%qi(this%h))
             do i = 1, this%h
 
                 call this%qi(i)%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
