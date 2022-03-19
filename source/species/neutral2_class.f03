@@ -449,7 +449,7 @@ contains
         !     n_theta = pf%num_theta
             allocate(this%multi_ion(this%h))
 
-            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s, if_empty=.true. )
+            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s ,if_empty=.false.)
             do i = 2, this%h
 
                 call this%multi_ion(i)%new(opts, pf, qbm*(this%v -1+i), this%dt, s, if_empty=.true. )
@@ -556,6 +556,8 @@ contains
             end select
 
           call write_dbg(cls_name, sname, cls_level, 'ends')
+          write(2,*) this%q%getresum() , "init"
+!           write(2,*) this%multi_ion(1)%npp , "ion"
 
     end subroutine init_neutral
 
@@ -580,7 +582,8 @@ contains
              call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, s)
        ! >>>>>>    
           enddo
-
+          write(2,*) this%q%getresum() , "update"
+          write(2,*) this%qi(1)%getresum() , "qdeposit"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
@@ -619,7 +622,7 @@ contains
                 this%cui(i) = 0.0
              enddo
         endif
-
+        write(2,*) this%q%getresum(), "renew"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
     end subroutine renew_neutral
@@ -670,7 +673,8 @@ contains
       call add_f1( this%q, q_tot )
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
-
+      write(2,*) this%q%getresum() , "qdeposit"
+      write(2,*) this%qi(1)%getresum() , "qdeposit"
     end subroutine qdeposit_neutral
 
     subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
@@ -759,7 +763,7 @@ contains
             call add_f1( this%cui(i), cu )
         enddo
       endif
-
+      write(2,*) this%q%getresum() , "amjdeposit_neutral"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       
     end subroutine amjdeposit_neutral
@@ -819,7 +823,7 @@ contains
         enddo
       endif
 
-      
+      write(2,*) this%q%getresum() , "push_neutral"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
          
     end subroutine push_neutral
@@ -877,7 +881,7 @@ contains
 
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
-
+      write(2,*) this%q%getresum() , "psend_neutral"
     end subroutine psend_neutral
 
     subroutine precv_neutral( this, tag )

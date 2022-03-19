@@ -81,7 +81,7 @@ type part2d
    procedure :: realloc                  => realloc_part2d
    procedure :: sort                     => sort_part2d
 
-end type
+end type part2d
 
 save
 
@@ -1391,216 +1391,234 @@ subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, e
 
 end subroutine interp_emf_part2d
 
-subroutine ionize_part2d( this, prof, e, wp, dt, adk_coef )
+subroutine interp_ef_part2d( ef_re, ef_im, max_mode, x, dr, ep, np, ptrcur, &
+  geom, weight, ix, pcos, psin )
+
+  implicit none
+
+   type(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im
+   integer, intent(in) :: max_mode, np, geom
+   real, intent(in) :: dr
+   real, dimension(:,:), intent(in) :: x
+   real, dimension(:,:), intent(inout) :: ep
+   integer(kind=LG), intent(in) :: ptrcur
+   real, dimension(:,:), intent(out), optional :: weight
+   integer, dimension(:), intent(out), optional :: ix
+   real, dimension(:), intent(out), optional :: pcos, psin
+
+   real, dimension(:,:), pointer :: e0, er, ei
+   integer :: noff, i, j, nn, mode
+   integer(kind=LG) :: pp
+   real :: pos, idr, ph_r, ph_i, cc, ss
+   real, dimension(0:1) :: wt
+   complex(kind=DB) :: phase0, phase
+
+   idr = 1.0 / dr
+   noff = ef_re(0)%get_noff(1)
+
+   e0 => ef_re(0)%get_f1()
+  
+   ep = 0.0
+
+   pp = ptrcur
+   do i = 1, np
+      pos = sqrt( x(1,pp)**2 + x(2,pp)**2 ) * idr
+      ! cosine and sine
+      cc = x(1,pp) / pos * idr
+      ss = x(2,pp) / pos * idr
+      phase0 = cmplx( cc, ss )
+
+      ! in-cell position
+      nn  = int( pos )
+      pos = pos - real(nn)
+
+      ! cell index
+      nn = nn - noff + 1
+
+      ! get interpolation weight factor
+      call spline_linear( pos, wt )
+
+      if ( present(weight) ) weight(:,i) = wt
+      if ( present(ix) ) ix(i) = nn
+      if ( present(pcos) ) then
+        pcos(i) = cc
+        psin(i) = ss
+      endif
+
+      ! interpolate m=0 mode
+      do j = 0, 1
+        ep(:,i) = ep(:,i) + e0(:,nn+j) * wt(j)
+      enddo
+
+      ! interpolate m>0 modes
+      phase = cmplx( 1.0, 0.0 )
+      do mode = 1, max_mode
+         phase = phase * phase0
+         ph_r = 2.0 * real(phase)
+         ph_i = 2.0 * aimag(phase)
+
+         er => ef_re(mode)%get_f1()
+         ei => ef_im(mode)%get_f1()
+
+         do j = 0, 1
+            ep(:,i) = ep(:,i) + ( er(:,nn+j) * ph_r - ei(:,nn+j) * ph_i ) * wt(j)
+         enddo
+      enddo
+
+      ! transform from cylindrical geometry to Cartesian geometry
+      if ( geom == p_cartesian ) then
+        ! ph_r, ph_i are temporary variables here
+        ph_r = ep(1,i) * cc - ep(2,i) * ss
+        ph_i = ep(1,i) * ss + ep(2,i) * cc
+        ep(1,i) = ph_r
+        ep(2,i) = ph_i
+
+      endif
+
+      pp = pp + 1
+    enddo
+
+end subroutine interp_ef_part2d
+
+subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
 
    implicit none
    
    class(part2d), intent(inout) :: this
    class(fdist2d), intent(inout) :: prof
    double precision, dimension(:,:), intent(in) :: adk_coef
-   class(field_e), intent(in) :: e
+   class(field_e), intent(in) :: ef
    real, intent(in) :: wp, dt
   ! local data
    character(len=18), save :: sname = 'ionize_neutral'
-   type(ufield), dimension(:), pointer :: e_re => null(), e_im => null()
-   real, dimension(:,:), pointer :: e0, er, ei
-   real :: rn, dr, theta, dtheta, w_ion, cons, eff
-   integer :: noff, i, j, k, l, nn, mode, max_mode, nppp, nrp, n_theta
-   real, dimension(p_cache_size) :: cc1, ss1
+   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+   real, dimension(:,:), pointer :: ef0 => null()
+   real :: rn, dr, w_ion, cons, eff
+   integer :: noff, i, j, k, l, nn, mode, max_mode, np, nrp
+   real, dimension(p_cache_size) :: cc, ss
    real, dimension(p_cache_size) :: pcos, psin
-   real :: pos, idr, ph_r, ph_i, cc, ss
+   integer(kind=LG) :: ptrcur, pp
+   real :: idr
    integer, dimension(p_cache_size) :: ix
-   real, dimension(0:1, p_cache_size) :: weight
-   real, dimension(0:1) :: wt
+   real, dimension(0:1, p_cache_size) :: wt
    real, dimension(p_p_dim, p_cache_size) :: ep
    complex(kind=DB) :: phase0, phase
    
-!    pcos = cc1
-!    psin = ss1
-   dr = this%dr
-   idr = 1.0 / dr
-   e_re  => e%get_rf_re();  e_im  => e%get_rf_im()
-   noff = e_re(0)%get_noff(1)
-   nrp          = prof%nrp
-   n_theta      = prof%num_theta
-   dr           = prof%dr
-   dtheta       = 2.0 * pi / real( n_theta )
-   max_mode = e%get_max_mode()
+  idr = 1.0 / this%dr
 
-   e0 => e_re(0)%get_f1()
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
 
-   ep = 0.0
+  max_mode = ef%get_max_mode()
 
-!    if( ptrcur + p_cache_size > this%npp ) then
-!       np = this%npp - ptrcur + 1
-!    else
-!       np = p_cache_size
-!    endif
-!   pp = ptrcur
-   do k = 1, n_theta
-      do j = 1, nrp
-        nppp = this%npp
-        do i = 1, nppp
-            pos = sqrt( this%x(1,i)**2 + this%x(2,i)**2 ) * idr
-            ! cosine and sine
-            cc = this%x(1,i) / pos * idr
-            ss = this%x(2,i) / pos * idr
-            phase0 = cmplx( cc, ss )
+  noff = ef_re(0)%get_noff(1)
+  nrp  = ef_re(0)%get_ndp(1)
+  ef0  => ef_re(0)%get_f1()
 
-            ! in-cell position
-            nn  = int( pos )
-            pos = pos - real(nn)
+  do ptrcur = 1, this%npp, p_cache_size
 
-            ! cell index
-            nn = nn - noff + 1
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
 
-            ! get interpolation weight factor
-            call spline_linear( pos, wt )
+    call interp_ef_part2d( ef_re, ef_im, max_mode, this%x, this%dr, ep, np, &
+      ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
 
-            weight(:,i) = wt
-            ix(i) = nn
-            pcos(i) = cc
-            psin(i) = ss
+    pp = ptrcur
+      do i = 1, np
+        eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
+        eff = eff * wp * 1.708e-12
+        if (eff .gt. 1.0e-6) then 
 
-            ! interpolate m=0 mode
-            do l = 0, 1
-              ep(:,i) = ep(:,i) + e0(:,nn+l) * wt(l)
-            enddo
+          w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
+            &)/wp 
 
-            ! interpolate m>0 modes
-            phase = cmplx( 1.0, 0.0 )
-            do mode = 1, max_mode
-               phase = phase * phase0
-               ph_r = 2.0 * real(phase)
-               ph_i = 2.0 * aimag(phase)
-
-               er => e_re(mode)%get_f1()
-               ei => e_im(mode)%get_f1()
-
-               do l = 0, 1
-                  ep(:,i) = ep(:,i) + ( er(:,nn+l) * ph_r - ei(:,nn+l) * ph_i ) * wt(l)
-               enddo
-            enddo
-             eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
-             eff = eff * wp * 1.708e-12
-         ! ion a particle
-        !In neutral2_class, this subroutine needs to be called many times to rea&
-        !&lize multi-stage ionization
-        !Only the ionization rate of the input particle is calculated, and the s&
-        !&ingle ionization of this particle is carried out
-            if (eff .gt. 1.0e-6) then 
-
-              w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
-             &)/wp 
-
-              ! w_ion is in normalized unit now
-              !2nd rk (dn/dt==n*w_ion)
-              !>>>>>> w_ion* dt/(1.0 + 0.5 * w_ion * dt) could be larger than 1. 
-              !>>>>>> should add:
-              cons = w_ion* dt
-              cons = cons/(1.0 + 0.5 * cons)
-              cons = cons*this%p(3,i)/this%gamma(i)
-              this%w(i) = (1.0-this%w(i))*cons+this%w(i)
-              if (this%w(i) .gt. 1.0) this%w(i) = 1.0
-              endif
-        enddo
+                ! w_ion is in normalized unit now
+                !2nd rk (dn/dt==n*w_ion)
+                !>>>>>> w_ion* dt/(1.0 + 0.5 * w_ion * dt) could be larger than 1. 
+                !>>>>>> should add:
+          cons = w_ion* dt
+          cons = cons/(1.0 + 0.5 * cons)
+          cons = cons*this%p(3,pp)/this%gamma(pp)
+          this%w(pp) = (1.0-this%w(pp))*cons+this%w(pp)
+          if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
+        endif
+        pp = pp + 1
       enddo
-    enddo
-
+  enddo
 end subroutine ionize_part2d
 
-subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s )
+subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
 
-  implicit none
-  class(part2d), intent(inout) :: this
-  class(fdist2d), intent(inout) :: prof
-  class(part2d), intent(inout) :: ppart1
-  class(part2d), intent(inout) :: ppart2
-  real, intent(in) :: s
-  integer, intent(in) :: multi_max
+    implicit none
+    class(part2d), intent(inout) :: this
+    class(fdist2d), intent(inout) :: prof
+    class(part2d), intent(inout) :: ppart1
+    class(part2d), intent(inout) :: ppart2
+    real, intent(in) :: s
+    integer, intent(in) :: multi_max, m
 
-  ! local
-  character(len=18), save :: sname = 'add_particles'
-  integer :: nrp, noff, i, j, k, pp1, pp2, n_theta, m, m1, m2, nppp
-  real :: rn, dr, theta, dtheta, den_lon, den_perp, coef, dxp
-  real, dimension(2) :: x_tmp
+    ! local
+    character(len=18), save :: sname = 'add_particles'
+    integer :: noff, i, j, k, pp1, pp2, m1, m2, np
+    integer(kind=LG) :: ptrcur, pp
+    real :: dxp
 
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
+    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  nrp          = prof%nrp
-  n_theta      = prof%num_theta
-  noff         = prof%noff
-  dr           = prof%dr
-  dtheta       = 2.0 * pi / real( n_theta )
- ! ppc_tot      = product( prof%ppc )
-!call prof%get_den_lon( s, prof%prof_pars_lon, den_lon )
-! coef = real(multi_max) * sign(1.0, prof%qm) / ( real(ppc_tot) * real(n_theta) )
-      if (m .le. 2) then
-      m1 = 1
-      m2 = m
+      if ( m .le. 2 ) then
+        m1 = 1
+        m2 = m
       else
-      m1 = m-1
-      m2 = m
+        m1 = m - 1
+        m2 = m
       end if
-  do k = 1, n_theta
-    do j = 1, nrp
-
-      ! calculate the # of particles to inject based on the difference in ion density between 
-      ! the previous time step and the current time step.
-      ! here multi_ion(:,:,idx_ion) and ion_old should both be discrete.
-      !ppc_add = int( ( multi_ion(j, k, idx_ion) - ion_old(j, k) ) / multi_max * real(ppc_tot) + 0.5 )
-
-      nppp = this%npp
       pp1 = ppart1%npp
       pp2 = ppart2%npp
-      do i = 1, nppp
+     do ptrcur = 1, this%npp, p_cache_size
 
-        ! randomly generate injection position
-        ! r     = rand() + j + noff - 1
-        ! theta = ( rand() + k - 1.5 ) * dtheta
-!         rn    = j + noff - 1 + ( real(i) - 0.5 ) / ppc_add
-!         theta = ( k - 1 ) * dtheta
-!         x_tmp(1) = rn * dr * cos(theta)
-!         x_tmp(2) = rn * dr * sin(theta)
-        
-        !call prof%get_den_perp( x_tmp, s, prof%prof_pars_perp, prof%prof_pars_lon, den_perp )
+        ! check if last copy of table and set np
+        if( ptrcur + p_cache_size > this%npp ) then
+          np = this%npp - ptrcur + 1
+        else
+          np = p_cache_size
+        endif
 
-       ! if ( den_lon * den_perp * prof%density < prof%den_min ) cycle
-        if ( this%w(i) .gt. 0.95) cycle
-          pp1 = pp1 + 1
-          pp2 = pp2 + 1
-          dxp=this%q(i)/m1
-          ppart1%x(1,pp1)   = x_tmp(1)
-          ppart1%x(2,pp1)   = x_tmp(2)
-          ppart1%q(pp1)     = dxp*m2
-          ppart1%p(1,pp1)   = this%p(1,i)
-          ppart1%p(2,pp1)   = this%p(2,i)
-          ppart1%p(3,pp1)   = this%p(3,i)
-          ppart1%gamma(pp1) = 1.0
-          ppart1%w(pp1) = 0.0
+        pp = ptrcur
+        do i = 1, np
+            if ( this%w(pp) .gt. 0.95) then
+              dxp = this%q(pp)/m1
+              pp1 = pp1 + 1
+              pp2 = pp2 + 1
+              dxp=this%q(pp)/m1
+              ppart1%x(1,pp1)   = this%x(1,pp)
+              ppart1%x(2,pp1)   = this%x(2,pp)
+              ppart1%q(pp1)     = dxp*m2
+              ppart1%p(1,pp1)   = this%p(1,pp)
+              ppart1%p(2,pp1)   = this%p(2,pp)
+              ppart1%p(3,pp1)   = this%p(3,pp)
+              ppart1%gamma(pp1) = 1.0
+              ppart1%w(pp1) = 0.0
 
-          ppart2%x(1,pp2)   = x_tmp(1)
-          ppart2%x(2,pp2)   = x_tmp(2)
-          ppart2%q(pp2)     = -dxp
-          ppart2%p(1,pp2)   = this%p(1,i)
-          ppart2%p(2,pp2)   = this%p(2,i)
-          ppart2%p(3,pp2)   = this%p(3,i)
-          ppart2%gamma(pp2) = 1.0
-          ppart2%w(pp2) = 0.0
-
-        ! store the position of ionized particles for ion charge deposition
-        !part_add%x(1,pp2) = part%x(1,pp1)
-        !part_add%x(2,pp2) = part%x(2,pp1)
-        !part_add%q(pp2)   = -part%q(pp1) ! note the sign
-
-      enddo
-     ! part%npp = part%npp + ppc_add
-     ! part_add%npp = part_add%npp + ppc_add
-
-    enddo
-  enddo
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
+              ppart2%x(1,pp2)   = this%x(1,pp)
+              ppart2%x(2,pp2)   = this%x(1,pp)
+              ppart2%q(pp2)     = -dxp
+              ppart2%p(1,pp2)   = this%p(1,pp)
+              ppart2%p(2,pp2)   = this%p(2,pp)
+              ppart2%p(3,pp2)   = this%p(3,pp)
+              ppart2%gamma(pp2) = 1.0
+              ppart2%w(pp2) = 0.0
+            endif
+          pp = pp + 1
+        enddo
+     enddo
+    write(2,*) pp1, "add_particles"
+  !   write(2,*) pp1, "add_particles_ion"
+  !   write(2,*) pp2, "add_particles_e"
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_particles_part2d
 
