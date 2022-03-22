@@ -1531,6 +1531,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
       do i = 1, np
         eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
         eff = eff * wp * 1.708e-12
+!         write(2,*) eff, "ionize_part2d"
         if (eff .gt. 1.0e-6) then 
 
           w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
@@ -1542,8 +1543,9 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
                 !>>>>>> should add:
           cons = w_ion* dt
           cons = cons/(1.0 + 0.5 * cons)
-          cons = cons*this%p(3,pp)/this%gamma(pp)
+!           cons = cons*this%gamma(pp)/(this%gamma(pp) - this%p(3,pp))
           this%w(pp) = (1.0-this%w(pp))*cons+this%w(pp)
+!           write(2,*) w_ion, "ionize_part2d"
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
         pp = pp + 1
@@ -1597,6 +1599,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart1%x(1,pp1)   = this%x(1,pp)
               ppart1%x(2,pp1)   = this%x(2,pp)
               ppart1%q(pp1)     = dxp*m2
+!               write(2,*) pp,pp1,"pp,pp1"
               ppart1%p(1,pp1)   = this%p(1,pp)
               ppart1%p(2,pp1)   = this%p(2,pp)
               ppart1%p(3,pp1)   = this%p(3,pp)
@@ -1615,9 +1618,11 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
           pp = pp + 1
         enddo
      enddo
-    write(2,*) pp1, "add_particles"
-  !   write(2,*) pp1, "add_particles_ion"
-  !   write(2,*) pp2, "add_particles_e"
+     ppart1%npp = pp1
+     ppart2%npp = pp2
+!     write(2,*) pp1, "add_particles"
+    write(2,*) pp1, "add_particles_ion"
+    write(2,*) pp2, "add_particles_e"
     call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_particles_part2d

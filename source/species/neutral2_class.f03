@@ -385,7 +385,7 @@ contains
 
           ! local data
           character(len=18), save :: sname = 'init_neutral'
-          integer :: i, nrp, n_theta
+          integer :: i, nrp, n_theta 
           real :: pi2_ntheta
 
 
@@ -395,7 +395,7 @@ contains
           this%push_type = push_type
           this%v = v
           this%multi_max = max_e
-          this%h = max_e - this%v + 1
+          this%h = max_e - v + 1
 
           call write_dbg(cls_name, sname, cls_level, 'starts')
           
@@ -449,7 +449,7 @@ contains
         !     n_theta = pf%num_theta
             allocate(this%multi_ion(this%h))
 
-            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s ,if_empty=.false.)
+            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s, if_empty=.false. )
             do i = 2, this%h
 
                 call this%multi_ion(i)%new(opts, pf, qbm*(this%v -1+i), this%dt, s, if_empty=.true. )
@@ -468,85 +468,85 @@ contains
               case( p_neut_H )
 
                 this%multi_max = min( this%multi_max, size( H_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = H_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_He )
 
                 this%multi_max = min( this%multi_max, size( He_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = He_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Li )
 
                 this%multi_max = min( this%multi_max, size( Li_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Li_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_C )
 
                 this%multi_max = min( this%multi_max, size( C_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = C_param(  :, 1 + this%v:this%multi_max )
 
               case( p_neut_N )
 
                 this%multi_max = min( this%multi_max, size( N_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = N_param(  :, 1 + this%v:this%multi_max  )
 
               case( p_neut_O )
 
                 this%multi_max = min( this%multi_max, size( O_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = O_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Ne )
 
                 this%multi_max = min( this%multi_max, size( Ne_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Ne_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Na )
 
                 this%multi_max = min( this%multi_max, size( Na_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Na_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Ar )
 
                 this%multi_max = min( this%multi_max, size( Ar_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Ar_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_K )
 
                 this%multi_max = min( this%multi_max, size( K_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = K_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Rb )
 
                 this%multi_max = min( this%multi_max, size( Rb_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Rb_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Xe )
 
                 this%multi_max = min( this%multi_max, size( Xe_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Xe_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Cs )
 
                 this%multi_max = min( this%multi_max, size( Cs_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Cs_param( :, 1 + this%v:this%multi_max )
 
               case( p_neut_Yb )
 
                 this%multi_max = min( this%multi_max, size( Yb_param, 2 ) )   
-                allocate( this%rate_param( 3, this%multi_max ) )
+                allocate( this%rate_param( 3, this%h -1 ) )
                 this%rate_param = Yb_param( :, 1 + this%v:this%multi_max )
 
               case default
@@ -605,7 +605,7 @@ contains
 
       this%q = 0.0
       this%cu = 0.0
-      call this%multi_ion(1)%renew( this%pf, s, if_empty=.true. )
+      call this%multi_ion(1)%renew( this%pf, s )
       this%qi(1) = 1.0
       do i = 2, this%h
 
@@ -650,7 +650,11 @@ contains
         enddo
             this%qi(1) = 0.0
             call this%multi_ion(1)%qdeposit( this%qi(1) ) 
-            call add_f1(this%qi(1),q_tot)
+!             add qi(1)? 
+!             call add_f1(this%qi(1),q_tot)
+            call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%qi(1)%smooth_f1()
+            call this%qi(1)%copy_gc_f1()
 
        else
           do i = 1, this%h
@@ -663,6 +667,7 @@ contains
            enddo
              
         endif
+      write(2,*) q_tot%getresum() , "qdeposit_qe"
       this%q = 0.0
 
       call this%pd%qdeposit( this%q )
@@ -673,8 +678,10 @@ contains
       call add_f1( this%q, q_tot )
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
-      write(2,*) this%q%getresum() , "qdeposit"
-      write(2,*) this%qi(1)%getresum() , "qdeposit"
+      write(2,*) this%q%getresum() , "qdeposit_q"
+      write(2,*) this%qi(1)%getresum() , "qdeposit_q1"
+      write(2,*) this%qi(2)%getresum() , "qdeposit_q2"
+      write(2,*) this%qi(3)%getresum() , "qdeposit_q3"
     end subroutine qdeposit_neutral
 
     subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
@@ -790,7 +797,7 @@ contains
           call this%pd%push_robust_subcyc( e, b )
       end select
       if ( this%v == 0) then
-        do i = 2, this%multi_max + 1
+        do i = 1, this%multi_max + 1
           select case ( this%push_type )
             case ( p_push2_robust )
               call this%multi_ion(i)%push_robust( e, b )
@@ -812,13 +819,16 @@ contains
           end select
         enddo
       endif
+      call this%pd%update_bound()
       call move_part2d_comm( this%pd )
       if ( this%v == 0) then
         do i = 1, this%multi_max + 1
+          call this%multi_ion(i)%update_bound()
           call move_part2d_comm( this%multi_ion(i) )
         enddo
       else
         do i = 1, this%h
+          call this%multi_ion(i)%update_bound()
           call move_part2d_comm( this%multi_ion(i) )
         enddo
       endif
