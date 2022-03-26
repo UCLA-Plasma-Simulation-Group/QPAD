@@ -158,8 +158,10 @@ subroutine get_prof_perp_laguerre( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_r
     ! This is the definition from OSIRIS
     amp = w0 / sqrt(w2) * exp(-r2_iw2) * sqrt(r2_iw2) ** abs(l) &
           * laguerre( p, abs(l), 2.0 * r2_iw2 )
+          ! * laguerre( p, abs(l), 2.0 * r2_iw2 )
     if ( p <= laguerre_p_max .and. l <= laguerre_l_max ) then
-      amp = amp / laguerre_norm_fac( p, abs(l) )
+      amp = amp * 1.0
+      ! amp = amp / laguerre_norm_fac( p, abs(l) )
     else
       call write_stdout( '[WARNING] The laser peak intensity is not normalized! &
         &The maximum mode supporting normalization is (p,l)=(5,5).' )
