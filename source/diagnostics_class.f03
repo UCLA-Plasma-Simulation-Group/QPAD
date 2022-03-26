@@ -6,7 +6,9 @@ use hdf5io_class
 use sim_fields_class
 use sim_beams_class
 use sim_plasma_class
+use sim_lasers_class
 use field_class
+use field_complex_class
 use beam3d_class
 use species2d_class
 use neutral_class
@@ -74,6 +76,7 @@ type sim_diag
   procedure, private :: init_diag_beams
   procedure, private :: init_diag_plasma
   procedure, private :: init_diag_fields
+  procedure, private :: init_diag_lasers
   procedure, private :: init_diag_rst
 
 end type sim_diag
@@ -201,6 +204,7 @@ subroutine init_diag_beams( this, input, beams )
           case ( 'charge_cyl_m' )
             call this%add_diag( &
               obj       = beams%beam(i), &
+              dtype     = 'real', &
               max_mode  = max_mode, &
               dump_freq = ndump, &
               dim       = 1, &
@@ -276,6 +280,7 @@ subroutine init_diag_plasma( this, input, plasma )
           case ( 'charge_cyl_m' )
             call this%add_diag( &
               obj       = plasma%spe(i), &
+              dtype     = 'real', &
               max_mode  = max_mode, &
               dump_freq = ndump, &
               dim       = 1, &
@@ -325,6 +330,7 @@ subroutine init_diag_plasma( this, input, plasma )
           case ( 'charge_cyl_m' )
             call this%add_diag( &
               obj       = plasma%neut(i), &
+              dtype     = 'real', &
               max_mode  = max_mode, &
               dump_freq = ndump, &
               dim       = 1, &
@@ -344,6 +350,7 @@ subroutine init_diag_plasma( this, input, plasma )
           case ( 'ion_cyl_m' )
             call this%add_diag( &
               obj       = plasma%neut(i), &
+              dtype     = 'real', &
               max_mode  = max_mode, &
               dump_freq = ndump, &
               dim       = 1, &
@@ -570,6 +577,7 @@ subroutine init_diag_fields( this, input, opts, fields )
         end select
         call this%add_diag( &
           obj       = obj, &
+          dtype     = 'real', &
           max_mode  = max_mode, &
           dump_freq = ndump, &
           dim       = dim, &
@@ -591,6 +599,74 @@ subroutine init_diag_fields( this, input, opts, fields )
   enddo ! end of j
 
 end subroutine init_diag_fields
+
+subroutine init_diag_lasers( this, input, opts, lasers )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  type( options ), intent(in) :: opts
+  class( sim_lasers ), intent(in), target :: lasers
+  ! local data
+  integer :: max_mode, ndump, dim, nlasers
+  integer :: i, j, k, m, n
+  real :: rmin, rmax, zmin, zmax, dt
+  character(len=32) :: sn1, sn2, sn3, sn4
+  character(len=:), allocatable :: ss
+  class(*), pointer :: obj => null()
+
+  call input%get( 'simulation.max_mode', max_mode )
+  call input%get( 'simulation.box.r(1)', rmin )
+  call input%get( 'simulation.box.r(2)', rmax )
+  call input%get( 'simulation.box.z(1)', zmin )
+  call input%get( 'simulation.box.z(2)', zmax )
+  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.nlasers', nlasers )
+
+  do i = 1, nlasers
+    call input%info( 'laser(' // num2str(i) // ').diag', n_children=m )
+    do j = 1, m
+      call input%get( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').ndump', ndump )
+      if ( ndump > 0 ) then
+        call input%info( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').name', n_children=n )
+        do k = 1, n
+          if ( allocated(ss) ) deallocate(ss)
+          call input%get( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
+          select case ( trim(ss) )
+          case ( 'a_cyl_m' )
+            sn1 = 'A_laser'
+            sn2 = 'a_laser'
+            sn3 = 'm_ec^2/e'
+            sn4 = 'a'
+            dim = 1
+            obj => lasers%laser(i)
+          end select
+          call this%add_diag( &
+            obj       = obj, &
+            dtype     = 'complex', &
+            max_mode  = max_mode, &
+            dump_freq = ndump, &
+            dim       = dim, &
+            type_label= trim(ss), &
+            filename  = './Lasers'//num2str(i)//'/'//trim(sn1)//'/', &
+            dataname  = trim(sn2), &
+            timeunit  = '1 / \omega_p', &
+            dt        = dt, &
+            axisname  = (/'r  ', '\xi', '   '/), &
+            axislabel = (/'r  ', '\xi', '   '/), &
+            axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+            axismax   = (/rmax, zmax, 0.0/), &
+            axismin   = (/rmin, zmin, 0.0/), &
+            units     = trim(sn3), &
+            label     = trim(sn4), &
+            rank      = 2 )
+        enddo ! end of k
+      endif
+    enddo ! end of j
+  enddo ! end of i
+
+end subroutine init_diag_lasers
 
 subroutine init_diag_rst( this, input, beams )
 
@@ -615,7 +691,7 @@ subroutine init_diag_rst( this, input, beams )
 
 end subroutine init_diag_rst
 
-subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
+subroutine init_sim_diag( this, input, opts, fields, beams, plasma, lasers )
 
   implicit none
 
@@ -625,6 +701,7 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
   class( sim_fields ), intent(inout) :: fields
   class( sim_beams ), intent(in) :: beams
   class( sim_plasma ), intent(in) :: plasma
+  class( sim_lasers ), intent(in) :: lasers
 
   ! local data
   integer :: ierr
@@ -648,6 +725,9 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma )
 
   ! initialize field diagnostics
   call this%init_diag_fields( input, opts, fields )
+
+  ! initialize lasers diagnostics
+  call this%init_diag_lasers( input, opts, lasers )
 
   ! initialize restart file diagnostics
   if (rst) then
@@ -717,6 +797,12 @@ subroutine run_sim_diag( this, tstep, dt )
       select type ( obj => this%diag%obj )
 
       class is ( field )
+
+        rtag = ntag(); stag = rtag
+        call mpi_wait( this%diag%id, istat, ierr )
+        call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
+
+      class is ( field_complex )
 
         rtag = ntag(); stag = rtag
         call mpi_wait( this%diag%id, istat, ierr )
@@ -794,7 +880,7 @@ subroutine run_sim_diag( this, tstep, dt )
 end subroutine run_sim_diag
 
 ! add 2d-plot diagnostics of cylindrical modes
-subroutine add_diag_cym( this, obj, max_mode, dump_freq, dim, type_label, filename, &
+subroutine add_diag_cym( this, obj, dtype, max_mode, dump_freq, dim, type_label, filename, &
   dataname, timeunit, dt, axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
 
   implicit none
@@ -802,14 +888,14 @@ subroutine add_diag_cym( this, obj, max_mode, dump_freq, dim, type_label, filena
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
   integer, intent(in) :: max_mode, dump_freq, dim
-  character(len=*), intent(in) :: filename, timeunit, dataname, units, label, type_label
+  character(len=*), intent(in) :: dtype, filename, timeunit, dataname, units, label, type_label
   integer, intent(in) :: rank
   real, intent(in) :: dt
   character(len=*), dimension(3), intent(in) :: axisname, axislabel, axisunits
   real, dimension(3), intent(in) :: axismax, axismin
 
   character(len=64) :: cym_str
-  integer :: i
+  integer :: i, nfiles
 
   integer, save :: cls_level = 2
   character(len=32), save :: cls_name = 'sim_diag'
@@ -817,28 +903,59 @@ subroutine add_diag_cym( this, obj, max_mode, dump_freq, dim, type_label, filena
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  select case ( trim(dtype) )
+    case ( 'real' )
+      nfiles = 2 * max_mode + 1
+    case ( 'complex' )
+      nfiles = 4 * max_mode + 2
+    case default
+      call write_err( 'Wrong data type for 2D-plot diagnostics.' )
+  end select
+
   if ( .not. associated( this%head ) ) then
     allocate( this%head )
-    call this%head%new( obj, dump_freq, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
+    call this%head%new( obj, dump_freq, num_files=nfiles, dim=dim, id=MPI_REQUEST_NULL )
     this%diag => this%head
   else
     call this%to_tail()
     allocate( this%diag%next )
     this%diag => this%diag%next
-    call this%diag%new( obj, dump_freq, num_files=2*max_mode+1, dim=dim, id=MPI_REQUEST_NULL )
+    call this%diag%new( obj, dump_freq, num_files=nfiles, dim=dim, id=MPI_REQUEST_NULL )
   endif
 
   this%diag%type_label = trim(type_label)
 
-  do i = 1, 2*max_mode+1
+  do i = 1, nfiles
 
-    if ( i == 1 ) then
-      cym_str = 'Re0'
-    elseif ( mod(i,2)==0 ) then
-      cym_str = 'Re'//num2str(i/2)
-    else
-      cym_str = 'Im'//num2str(i/2)
-    endif
+    select case ( trim(dtype) )
+      case ( 'real' )
+
+        if ( i == 1 ) then
+          cym_str = 'Re0'
+        elseif ( mod(i,2)==0 ) then
+          cym_str = 'Re'//num2str(i/2)
+        else
+          cym_str = 'Im'//num2str(i/2)
+        endif
+
+      case ( 'complex' )
+
+        if ( i == 1 ) then
+          cym_str = 'Re_Re0'
+        elseif ( i == 2 ) then
+          cym_str = 'Im_Re0'
+        elseif ( mod(i,4) == 3 ) then
+          cym_str = 'Re_Re'// num2str( (i+1)/4 )
+        elseif ( mod(i,4) == 0 ) then
+          cym_str = 'Re_Im'// num2str( i/4 )
+        elseif ( mod(i,4) == 1 ) then
+          cym_str = 'Im_Re'// num2str( (i-1)/4 )
+        elseif ( mod(i,4) == 2 ) then
+          cym_str = 'Im_Im'// num2str( (i-2)/4 )
+        endif
+
+    end select
+
     call system( 'mkdir -p '//trim(filename)//trim(cym_str)//'/' )
     call this%diag%files(i)%new( &
       timeunit  = timeunit, &

@@ -637,27 +637,16 @@ subroutine get_solution_bt( this, mode )
 
     if ( idproc == 0 ) then
 
-      if ( mode == 1 ) then
-        f1_re(1,1) = -idr * mode * this%buf1_im(2)
-        f1_im(1,1) =  idr * mode * this%buf1_re(2)
-        f1_re(2,1) = -idr * this%buf1_re(2)
-        f1_im(2,1) = -idr * this%buf1_im(2)
-      else
+      if ( modulo(mode,2) == 0 ) then
         f1_re(1,1) = 0.0
         f1_im(1,1) = 0.0
         f1_re(2,1) = 0.0
         f1_im(2,1) = 0.0
-        ! if ( mod(mode,2) == 0 ) then
-        !   f1_re(1,1) = 0.0
-        !   f1_im(1,1) = 0.0
-        !   f1_re(2,1) = 0.0
-        !   f1_im(2,1) = 0.0
-        ! else
-        !   f1_re(1,1) = -idr * mode * this%buf1_im(2)
-        !   f1_im(1,1) =  idr * mode * this%buf1_re(2)
-        !   f1_re(2,1) = -idr * this%buf1_re(2)
-        !   f1_im(2,1) = -idr * this%buf1_im(2)
-        ! endif
+      else
+        f1_re(1,1) = -idr * mode * this%buf1_im(2)
+        f1_im(1,1) =  idr * mode * this%buf1_re(2)
+        f1_re(2,1) = -idr * this%buf1_re(2)
+        f1_im(2,1) = -idr * this%buf1_im(2)
       endif
 
     else

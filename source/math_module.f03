@@ -89,4 +89,121 @@ function eval_polynomial( x, x0, p ) result(y)
 
 end function eval_polynomial
 
+function factorial( n ) result(res)
+
+  implicit none
+  integer, intent(in) :: n
+  integer :: res, i
+
+  if ( n < 0 ) then
+    write(2, *) '[ERROR] Input of factorial function must be positive/zero!'
+    write(*, *) 'Input of factorial function must be positive/zero!'
+    stop
+  endif
+  res = 1
+  do i = 1, n
+    res = res * i
+  enddo
+
+end function factorial
+
+! Generalized Laguerre polynomial (recurrence relation)
+! https://en.wikipedia.org/wiki/Laguerre_polynomials#Generalized_Laguerre_polynomials
+! function laguerre( n, alpha, x ) result(y)
+
+!   implicit none
+!   integer, intent(in) :: n, alpha
+!   real, intent(in) :: x
+!   real :: y, l0, l1
+!   integer :: k
+
+!   l0 = 1.0
+!   l1 = 1.0 + real(alpha) - x
+
+!   if ( n == 0 ) then
+!     y = l0
+!   elseif ( n == 1 ) then
+!     y = l1
+!   elseif ( n > 1 ) then
+!     do k = 1, n-1
+!       y = ( ( real( 2*k + 1 + alpha ) - x ) * l1 - real( k + alpha ) * l0 ) / real( k + 1 )
+!       l0 = l1
+!       l1 = y
+!     enddo
+!   else
+!     write(2, *) '[ERROR] The first input of generalized Laguerre polynomial must be positive/zero!'
+!     write(*, *) 'The first input of generalized Laguerre polynomial must be positive/zero!'
+!     stop
+!   endif
+
+! end function laguerre
+
+function laguerre( p, l, u )
+
+  implicit none
+
+  real :: laguerre
+  integer, intent(in) :: p, l
+  real, intent(in) :: u
+
+  select case (p)
+  case(0)
+    laguerre = 1.0
+  case(1)
+    laguerre = 1.0 + l - u
+  case(2)
+    laguerre = (2 + 3.0* l + l**2 - 4.0* u - &
+        2.0* l*u + u**2)/2.0
+  case(3)
+    laguerre = (6.0 + 11.0* l + 6.0* l**2 + l**3 - &
+          18.0* u - 15.0* l*u - 3.0* l**2*u + &
+          9.0* u**2 + 3.0* l*u**2 - u**3)/6.0
+  case(4)
+    laguerre = (24.0 + 50.0* l + 35.0* l**2 + &
+          10.0* l**3 + l**4 - 96.0* u - 104.0* l*u - &
+          36.0* l**2*u - 4.0* l**3*u + 72.0* u**2 + &
+          42.0* l*u**2 + 6.0* l**2*u**2 - 16.0* u**3 - &
+          4.0* l*u**3 + u**4)/24.0
+  case(5)
+    laguerre = (120.0 + 274.0* l + 225.0* l**2 + &
+          85.0* l**3 + 15.0* l**4 + l**5 - 600.0* u - &
+          770.0* l*u - 355.0* l**2*u - 70.0* l**3*u - &
+          5.0* l**4*u + 600.0* u**2 + 470.0* l*u**2 + &
+          120.0* l**2*u**2 + 10.0* l**3*u**2 - &
+          200.0* u**3 - 90.0* l*u**3 - 10.0* l**2*u**3 + &
+          25.0* u**4 + 5.0* l*u**4 - u**5)/120.0
+  case(6)
+    laguerre = (720.0 + 1764.0* l + 1624.0* l**2 + &
+          735.0* l**3 + 175.0* l**4 + 21.0* l**5 + &
+          l**6 - 4320.0* u - 6264.0* l*u - &
+          3480.0* l**2*u - 930.0* l**3*u - &
+          120.0* l**4*u - 6.0* l**5*u + 5400.0* u**2 + &
+          5130.0* l*u**2 + 1785.0* l**2*u**2 + &
+          270.0* l**3*u**2 + 15.0* l**4*u**2 - &
+          2400.0* u**3 - 1480.0* l*u**3 - &
+          300.0* l**2*u**3 - 20.0* l**3*u**3 + &
+          450.0* u**4 + 165.0* l*u**4 + 15.0* l**2*u**4 - &
+          36.0* u**5 - 6.0* l*u**5 + u**6)/720.0
+  case(7)
+    laguerre = (5040.0 + 13068.0* l + 13132.0* l**2 + &
+          6769.0* l**3 + 1960.0* l**4 + 322.0* l**5 + &
+          28.0* l**6 + l**7 - 35280.0* u - &
+          56196.0* l*u - 35728.0* l**2*u - &
+          11655.0* l**3*u - 2065.0* l**4*u - &
+          189.0* l**5*u - 7.0* l**6*u + 52920.0* u**2 + &
+          57834.0* l*u**2 + 24675.0* l**2*u**2 + &
+          5145.0* l**3*u**2 + 525.0* l**4*u**2 + &
+          21.0* l**5*u**2 - 29400.0* u**3 - &
+          22330.0* l*u**3 - 6265.0* l**2*u**3 - &
+          770.0* l**3*u**3 - 35.0* l**4*u**3 + &
+          7350.0* u**4 + 3745.0* l*u**4 + &
+          630.0* l**2*u**4 + 35.0* l**3*u**4 - &
+          882.0* u**5 - 273.0* l*u**5 - 21.0* l**2*u**5 + &
+          49.0* u**6 + 7.0* l*u**6 - u**7)/5040.0
+  case default
+    laguerre = 0
+  end select
+
+end function laguerre
+
 end module math_module
