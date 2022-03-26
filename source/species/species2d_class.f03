@@ -8,6 +8,7 @@ use fdist2d_class
 use field_psi_class
 use field_e_class
 use field_b_class
+use field_laser_class
 use field_src_class
 use field_class
 use part2d_class
@@ -38,6 +39,7 @@ type species2d
    procedure :: renew => renew_species2d
    procedure :: del   => end_species2d
    procedure :: qdp   => qdp_species2d
+   procedure :: deposit_chi => deposit_chi_species2d
    procedure :: amjdp => amjdp_species2d
    procedure :: push  => push_species2d
    procedure :: psend => psend_species2d
@@ -187,28 +189,52 @@ end subroutine renew_species2d
 subroutine qdp_species2d(this,q)
 ! deposit the charge density
 
-   implicit none
+  implicit none
 
-   class(species2d), intent(inout) :: this
-   class(field_rho), intent(inout) :: q
-   ! local data
-   character(len=18), save :: sname = 'qdp_species2d'
+  class(species2d), intent(inout) :: this
+  class(field_rho), intent(inout) :: q
+  ! local data
+  character(len=18), save :: sname = 'qdp_species2d'
 
-   call write_dbg(cls_name, sname, cls_level, 'starts')
+  call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   this%q = 0.0
-   call this%part%qdeposit(this%q)
-   call this%q%acopy_gc_f1( dir=p_mpi_forward )
-   call this%q%smooth_f1()
-   call this%q%copy_gc_f1()
-   call add_f1( this%q, q )
-   if ( this%pf%neutralized ) call add_f1( this%qn, q )
+  this%q = 0.0
+  call this%part%qdeposit(this%q)
+  call this%q%acopy_gc_f1( dir=p_mpi_forward )
+  call this%q%smooth_f1()
+  call this%q%copy_gc_f1()
+  call add_f1( this%q, q )
+  if ( this%pf%neutralized ) call add_f1( this%qn, q )
 
-   call write_dbg(cls_name, sname, cls_level, 'ends')
+  call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine qdp_species2d
 
-subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
+subroutine deposit_chi_species2d( this, chi )
+! deposit the plasma susceptibility
+
+  implicit none
+
+  class(species2d), intent(inout) :: this
+  class(field), intent(inout) :: chi
+  ! local data
+  character(len=32), save :: sname = 'deposit_chi_species2d'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  call this%part%deposit_chi( chi )
+  ! call this%q%acopy_gc_f1( dir=p_mpi_forward )
+  ! call this%q%smooth_f1()
+  ! call this%q%copy_gc_f1()
+  ! call add_f1( this%q, q )
+  ! if ( this%pf%neutralized ) call add_f1( this%qn, q )
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine deposit_chi_species2d
+
+! subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
+subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -218,6 +244,8 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
    class(field_djdxi), intent(inout) :: dcu
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
+   class(field_laser), intent(in) :: af
+   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
@@ -229,10 +257,10 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
    select case ( this%push_type )
       case ( p_push2_robust )
          call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
-      case ( p_push2_clamp )
-         call this%part%amjdeposit_clamp( ef, bf, this%cu, this%amu, this%dcu )
-      case ( p_push2_robust_subcyc )
-         call this%part%amjdeposit_robust_subcyc( ef, bf, this%cu, this%amu, this%dcu )
+      case ( p_push2_robust_pgc )
+         call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
+      case ( p_push2_robust_pgc_test )
+         call this%part%amjdeposit_robust_pgc_test( ef, bf, af, this%cu, this%amu, this%dcu, slice_idx )
    end select
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -253,13 +281,16 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine push_species2d(this,ef,bf)
+subroutine push_species2d( this, ef, bf, af, slice_idx )
+! subroutine push_species2d( this, ef, bf, af )
 
    implicit none
 
    class(species2d), intent(inout) :: this
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
+   class(field_laser), intent(in) :: af
+   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'push_species2d'
 
@@ -268,10 +299,10 @@ subroutine push_species2d(this,ef,bf)
    select case ( this%push_type )
       case ( p_push2_robust )
          call this%part%push_robust( ef, bf )
-      case ( p_push2_clamp )
-         call this%part%push_clamp( ef, bf )
-      case ( p_push2_robust_subcyc )
-         call this%part%push_robust_subcyc( ef, bf )
+      case ( p_push2_robust_pgc )
+         call this%part%push_robust_pgc( ef, bf, af )
+      case ( p_push2_robust_pgc_test )
+         call this%part%push_robust_pgc_test( ef, bf, af, slice_idx )
    end select
 
    call this%part%update_bound()

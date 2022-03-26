@@ -30,19 +30,25 @@ include $(configfile)
 # arbitrary order. Otherwise, they must be listed in sequence.
 # ------------------------------------------------------------------------------
 src = dtimer.c param.f03 math_module.f03 parallel_module.f03 debug_tool.f03
+src += kwargs_class.f03
 src += sysutil_module.f03
+src += ppmsg_class.f03
 src += sort_module.f03
 src += hdf5io_class.f03
 src += interpolation.f03
 src += input_class.f03
 src += options_class.f03
+# PCR solver code
+include pcr-fortran/Makefile
 # fields code
 include fields/Makefile
+# laser code
+include laser/Makefile
 # species code
 include species/Makefile
 # beam code
 include beam/Makefile
-src += sim_fields_class.f03 sim_beams_class.f03 sim_plasma_class.f03
+src += sim_fields_class.f03 sim_beams_class.f03 sim_plasma_class.f03 sim_lasers_class.f03
 src += diagnostics_class.f03
 src += simulation_class.f03
 # template project code

@@ -38,20 +38,35 @@ if __name__ == '__main__':
 
     # check input arguments
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:', ['help', 'angle='])
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:t:', ['help', 'angle=', 'type='])
     except getopt.GetoptError:
-        print('Usage: merge_mode -a <angle in degree>')
+        print(
+'''
+Usage: merge_mode -a <angle in degree> -t <type of variable>
+Parameter:
+    -a, --angle: The angle of the output slice in degree.
+    -t, --type: Type of the data. The options include 'c' (cylindrical variables) and 's' (scalar). 
+                For example, the r and phi components of a vector are type 'c' while a scalar or
+                the z component of a vector are type 's'.
+'''
+            )
         sys.exit(2)
 
     # read input arguments
     phi = 0
     phi_degree = 0
+    sign = 1
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             print('Usage: merge_mode -a <angle in degree>')
         elif opt in ('-a', '--angle'):
             phi_degree = arg
             phi = float(arg) / 180 * np.pi
+        elif opt in ('-t', '--type'):
+            if arg == 'c':
+                sign = -1
+            elif arg == 's':
+                sign = 1
 
     max_mode = get_max_mode()
     file_list = get_file_list()
@@ -91,7 +106,7 @@ if __name__ == '__main__':
             file_attrs = {name: value for name, value in h5file.attrs.items()}
 
             dset = np.array(h5file[dset_name])
-            merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:])
+            merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:]) * sign
             merged_dset[:, dset_size[1] - 1:] += dset
 
         # add m > 0 modes to the merged dataset
@@ -99,12 +114,12 @@ if __name__ == '__main__':
 
             with h5py.File('Re' + str(mode) + '/' + filename, 'r') as h5file:
                 dset = np.array(h5file[dset_name])
-                merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:]) * 2 * np.cos(mode * (phi + np.pi))
+                merged_dset[:, 0:dset_size[1] - 1] += np.fliplr(dset[:, 1:]) * 2 * np.cos(mode * (phi + np.pi)) * sign
                 merged_dset[:, dset_size[1] - 1:] += dset * 2 * np.cos(mode * phi)
 
             with h5py.File('Im' + str(mode) + '/' + filename, 'r') as h5file:
                 dset = np.array(h5file[dset_name])
-                merged_dset[:, 0:dset_size[1] - 1] -= np.fliplr(dset[:, 1:]) * 2 * np.sin(mode * (phi + np.pi))
+                merged_dset[:, 0:dset_size[1] - 1] -= np.fliplr(dset[:, 1:]) * 2 * np.sin(mode * (phi + np.pi)) * sign
                 merged_dset[:, dset_size[1] - 1:] -= dset * 2 * np.sin(mode * phi)
 
         # write to the h5 files

@@ -52,7 +52,7 @@ integer, parameter :: p_ps_linear = 1, p_ps_quadratic = 2
 ! ================================================================
 integer, parameter :: p_push3_reduced = 1, p_push3_boris = 2
 integer, parameter :: p_push2_robust = 1, p_push2_robust_subcyc = 2, &
-                      p_push2_clamp = 3
+                      p_push2_clamp = 3, p_push2_robust_pgc = 4, p_push2_robust_pgc_test = 5
 
 ! ================================================================
 ! electromagnetic field solver
@@ -139,7 +139,7 @@ integer, parameter :: p_neut_H  = 1, &
                       p_neut_Yb = 70
 
 ! ================================================================
-! parameters for profile
+! parameters for beam/species profile
 ! ================================================================
 integer, parameter :: p_prof_uniform = 0, &
                       p_prof_pw_linear = 1, &
