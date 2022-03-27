@@ -1,2 +1,0 @@
-QPAD algorithm
-==============
