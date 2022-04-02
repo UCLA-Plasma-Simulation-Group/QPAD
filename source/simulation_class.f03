@@ -444,7 +444,7 @@ subroutine run_simulation( this )
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
       endif
-
+    write(2,*) j, "2dstep"
     enddo ! 2d loop
 
     ! pipeline for species
