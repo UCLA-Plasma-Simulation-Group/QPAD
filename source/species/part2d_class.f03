@@ -1493,7 +1493,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
    character(len=18), save :: sname = 'ionize_neutral'
    type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
    real, dimension(:,:), pointer :: ef0 => null()
-   real :: rn, dr, w_ion, cons, eff
+   real :: rn, dr, w_ion, cons, eff,esum
    integer :: noff, i, j, k, l, nn, mode, max_mode, np, nrp
    real, dimension(p_cache_size) :: cc, ss
    real, dimension(p_cache_size) :: pcos, psin
@@ -1515,6 +1515,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
   nrp  = ef_re(0)%get_ndp(1)
   ef0  => ef_re(0)%get_f1()
 
+  esum = 0.0
   do ptrcur = 1, this%npp, p_cache_size
 
     ! check if last copy of table and set np
@@ -1525,8 +1526,8 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
     endif
 
     call interp_ef_part2d( ef_re, ef_im, max_mode, this%x, this%dr, ep, np, &
-      ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
-
+      ptrcur, p_cartesian)
+!     write(2,*) wp, "ionize_part2d"
     pp = ptrcur
       do i = 1, np
         eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
@@ -1549,8 +1550,10 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
         pp = pp + 1
+        esum = esum + eff
       enddo
   enddo
+  write(2,*) esum, "ionize_part2d_esum"
 end subroutine ionize_part2d
 
 subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
@@ -1607,7 +1610,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart1%w(pp1) = 0.0
 
               ppart2%x(1,pp2)   = this%x(1,pp)
-              ppart2%x(2,pp2)   = this%x(1,pp)
+              ppart2%x(2,pp2)   = this%x(2,pp)
               ppart2%q(pp2)     = -dxp
               ppart2%p(1,pp2)   = this%p(1,pp)
               ppart2%p(2,pp2)   = this%p(2,pp)

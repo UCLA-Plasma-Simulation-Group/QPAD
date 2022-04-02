@@ -415,11 +415,13 @@ contains
                  allocate(this%cui(this%multi_max))
                  do i = 1, this%multi_max
                     call this%cui(i)%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
+                    this%cui(i) = 0.0
                  enddo
             else
                  allocate(this%cui(this%h))
                  do i = 1, this%h
                     call this%cui(i)%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
+                    this%cui(i) = 0.0
                  enddo
             end if  
           else
@@ -430,17 +432,19 @@ contains
             do i = 1, this%h
 
                 call this%qi(i)%new( opts, max_mode, p_ps_linear )
-
+                this%qi(i) = 0.0
             enddo
             if (this%v == 0) then
                  allocate(this%cui(this%multi_max))
                  do i = 1, this%multi_max
                     call this%cui(i)%new( opts, max_mode, p_ps_linear )
+                    this%cui(i) = 0.0
                  enddo
             else
                  allocate(this%cui(this%h))
                  do i = 1, this%h
                     call this%cui(i)%new( opts, max_mode, p_ps_linear )
+                    this%cui(i) = 0.0
                  enddo
             end if 
           endif
@@ -583,7 +587,7 @@ contains
        ! >>>>>>    
           enddo
           write(2,*) this%q%getresum() , "update"
-          write(2,*) this%qi(1)%getresum() , "qdeposit"
+          write(2,*) this%qi(1)%getresum() , "update_qi1"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
@@ -605,7 +609,7 @@ contains
 
       this%q = 0.0
       this%cu = 0.0
-      call this%multi_ion(1)%renew( this%pf, s )
+      call this%multi_ion(1)%renew( this%pf, s, if_empty=.false. )
       this%qi(1) = 1.0
       do i = 2, this%h
 
@@ -721,7 +725,7 @@ contains
           call this%pd%amjdeposit_robust_subcyc( e, b, this%cu, this%amu, this%dcu )
       end select
       if ( this%v == 0) then
-        do i = 2, this%multi_max
+        do i = 2, this%h
             select case ( this%push_type )
                 case ( p_push2_robust )
                   call this%multi_ion(i)%amjdeposit_robust( e, b, this%cui(i -1), this%amu, this%dcu )
