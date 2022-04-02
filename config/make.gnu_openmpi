@@ -8,11 +8,11 @@ FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 # -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
 # C compiler configuration
-CC = gcc
+CC = gcc-6
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-FPP = gcc -C -E -cpp
+FPP = gcc-6 -C -E -cpp
 
 # Python 2.x configuration. Used for automatically generate compile rules
 PYTHON = python 
@@ -23,9 +23,9 @@ LINKER_OPTS = -fopenmp -O3
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
-HYPRE_LIB = /usr/local/hypre/lib
-JSON_LIB = /usr/local/json-fortran/jsonfortran-gnu-6.3.0/lib
-JSON_INC = /usr/local/json-fortran/jsonfortran-gnu-6.3.0/lib
+HYPRE_LIB = /Users/anweiming/work/codes/hypre-2.14.0/src/hypre/lib
+JSON_LIB = /usr/local/jsonfortran-gnu-6.3.0/lib
+JSON_INC = /usr/local/jsonfortran-gnu-6.3.0/lib
 HDF5_INC = /usr/local/hdf5/include
 HDF5_LIB = /usr/local/hdf5/lib
 

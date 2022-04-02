@@ -1607,7 +1607,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart1%w(pp1) = 0.0
 
               ppart2%x(1,pp2)   = this%x(1,pp)
-              ppart2%x(2,pp2)   = this%x(1,pp)
+              ppart2%x(2,pp2)   = this%x(2,pp)
               ppart2%q(pp2)     = -dxp
               ppart2%p(1,pp2)   = this%p(1,pp)
               ppart2%p(2,pp2)   = this%p(2,pp)
