@@ -863,35 +863,35 @@ contains
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      call this%pd%pipesend( tag(1), id(1) )
-      if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
-            call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-        enddo
-      else
-        do i = 1, this%h
-            call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-        enddo
-      endif
+      ! call this%pd%pipesend( tag(1), id(1) )
+      ! if ( this%v == 0) then
+      !   do i = 1, this%multi_max + 1
+      !       call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
+      !   enddo
+      ! else
+      !   do i = 1, this%h
+      !       call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
+      !   enddo
+      ! endif
 
 
 
-      if ( id_stage() == num_stages() - 1 ) then
-        id(4) = MPI_REQUEST_NULL
-        call stop_tprof( 'pipeline' )
-        call write_dbg( cls_name, sname, cls_level, 'ends' )
-        return
-      endif
+      ! if ( id_stage() == num_stages() - 1 ) then
+      !   id(4) = MPI_REQUEST_NULL
+      !   call stop_tprof( 'pipeline' )
+      !   call write_dbg( cls_name, sname, cls_level, 'ends' )
+      !   return
+      ! endif
 
-      idproc_des = id_proc() + num_procs_loc()
-      count = size( this%multi_ion )
+      ! idproc_des = id_proc() + num_procs_loc()
+      ! count = size( this%multi_ion )
 
-      call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag(4), &
-        comm_world(), id(4), ierr )
-      ! check for error
-      if ( ierr /= 0 ) then
-        call write_err( 'MPI_ISEND failed.' )
-      endif
+      ! call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag(4), &
+      !   comm_world(), id(4), ierr )
+      ! ! check for error
+      ! if ( ierr /= 0 ) then
+      !   call write_err( 'MPI_ISEND failed.' )
+      ! endif
 
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -912,33 +912,33 @@ contains
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      call this%pd%piperecv( tag(1) )
-      if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
-            call this%multi_ion(i)%piperecv( tag(1+i) )
-        enddo
-      else
-        do i = 1, this%h
-            call this%multi_ion(i)%piperecv( tag(1+i) )
-        enddo
-      endif 
+      ! call this%pd%piperecv( tag(1) )
+      ! if ( this%v == 0) then
+      !   do i = 1, this%multi_max + 1
+      !       call this%multi_ion(i)%piperecv( tag(1+i) )
+      !   enddo
+      ! else
+      !   do i = 1, this%h
+      !       call this%multi_ion(i)%piperecv( tag(1+i) )
+      !   enddo
+      ! endif 
 
 
-      if ( id_stage() == 0 ) then
-        call stop_tprof( 'pipeline' )
-        call write_dbg( cls_name, sname, cls_level, 'ends' )
-        return
-      endif
+      ! if ( id_stage() == 0 ) then
+      !   call stop_tprof( 'pipeline' )
+      !   call write_dbg( cls_name, sname, cls_level, 'ends' )
+      !   return
+      ! endif
 
-      idproc_src = id_proc() - num_procs_loc()
-      count = size( this%multi_ion)
+      ! idproc_src = id_proc() - num_procs_loc()
+      ! count = size( this%multi_ion)
 
-      call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag(4), &
-        comm_world(), stat, ierr )
-      ! check for error
-      if ( ierr /= 0 ) then
-        call write_err( 'MPI_RECV failed.' )
-      endif
+      ! call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag(4), &
+      !   comm_world(), stat, ierr )
+      ! ! check for error
+      ! if ( ierr /= 0 ) then
+      !   call write_err( 'MPI_RECV failed.' )
+      ! endif
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
