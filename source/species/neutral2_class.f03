@@ -355,7 +355,7 @@ private
     procedure :: wrq    => writeq_neutral
     procedure :: wr_ion => write_ion_neutral
     procedure :: cbq    => cbq_neutral
-    procedure :: get_multi_max
+    procedure :: get_multi_max,get_v
 
 
 end type neutral2
@@ -464,6 +464,13 @@ contains
 !             this%multi_ion = 0.0
 !             this%multi_ion( 1 ) = 1.0
            if ( id_stage() == 0 ) then
+            call this%multi_ion(1)%qdeposit(this%qi(1))
+            call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%qi(1)%smooth_f1()
+            call this%qi(1)%copy_gc_f1()
+            do i = 1, this%h
+                call this%qi(i)%copy_slice( 1, p_copy_1to2)
+            enddo
             call this%q%copy_slice( 1, p_copy_1to2 )      
            endif
 
@@ -608,9 +615,11 @@ contains
       call this%pd%renew( this%pf, s, if_empty=.true. )
 
       this%q = 0.0
+      call this%pd%qdeposit(this%q)
       this%cu = 0.0
       call this%multi_ion(1)%renew( this%pf, s, if_empty=.false. )
       this%qi(1) = 1.0
+      call this%multi_ion(1)%qdeposit(this%qi(1))
       do i = 2, this%h
 
              call this%multi_ion(i)%renew( this%pf, s, if_empty=.true. )
@@ -626,6 +635,17 @@ contains
                 this%cui(i) = 0.0
              enddo
         endif
+      if ( id_stage() == 0 ) then
+        call this%multi_ion(1)%qdeposit(this%qi(1))
+        call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
+        call this%qi(1)%smooth_f1()
+        call this%qi(1)%copy_gc_f1()
+        do i = 1, this%h
+            call this%qi(i)%copy_slice( 1, p_copy_1to2)
+        enddo
+        call this%q%copy_slice( 1, p_copy_1to2 )        
+      end if
+
         write(2,*) this%q%getresum(), "renew"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -801,7 +821,7 @@ contains
           call this%pd%push_robust_subcyc( e, b )
       end select
       if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
+        do i = 2, this%multi_max + 1
           select case ( this%push_type )
             case ( p_push2_robust )
               call this%multi_ion(i)%push_robust( e, b )
@@ -826,7 +846,7 @@ contains
       call this%pd%update_bound()
       call move_part2d_comm( this%pd )
       if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
+        do i = 2, this%multi_max + 1
           call this%multi_ion(i)%update_bound()
           call move_part2d_comm( this%multi_ion(i) )
         enddo
@@ -849,13 +869,13 @@ contains
 
     end subroutine end_neutral
 
-    subroutine psend_neutral( this, tag, id )
+    subroutine psend_neutral( this, tag, id, tag_qi, id_qi )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in), dimension(4) :: tag
-      integer, intent(inout), dimension(4) :: id
+      integer, intent(in) :: tag, tag_qi(:)
+      integer, intent(inout) :: id, id_qi(:)
       ! local data
       character(len=18), save :: sname = 'psend_neutral'
       integer :: i, idproc_des, ierr, count
@@ -863,47 +883,49 @@ contains
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      call this%pd%pipesend( tag(1), id(1) )
-      if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
-            call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-        enddo
-      else
-        do i = 1, this%h
-            call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-        enddo
-      endif
+      call this%pd%pipesend( tag, id )
+!       if ( this%v == 0) then
+!         do i = 1, this%multi_max + 1
+!             call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
+!         enddo
+!       else
+!         do i = 1, this%h
+!             call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
+!         enddo
+!       endif
+      do i = 1, this%h
+         call this%qi(i)%pipe_send(tag_qi(i),id_qi(i),'forward')
+      end do 
 
 
+!       if ( id_stage() == num_stages() - 1 ) then
+!         id(4) = MPI_REQUEST_NULL
+!         call stop_tprof( 'pipeline' )
+!         call write_dbg( cls_name, sname, cls_level, 'ends' )
+!         return
+!       endif
 
-      if ( id_stage() == num_stages() - 1 ) then
-        id(4) = MPI_REQUEST_NULL
-        call stop_tprof( 'pipeline' )
-        call write_dbg( cls_name, sname, cls_level, 'ends' )
-        return
-      endif
+!       idproc_des = id_proc() + num_procs_loc()
+!       count = size( this%multi_ion )
 
-      idproc_des = id_proc() + num_procs_loc()
-      count = size( this%multi_ion )
-
-      call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag(4), &
-        comm_world(), id(4), ierr )
-      ! check for error
-      if ( ierr /= 0 ) then
-        call write_err( 'MPI_ISEND failed.' )
-      endif
+!       call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag(4), &
+!         comm_world(), id(4), ierr )
+!       ! check for error
+!       if ( ierr /= 0 ) then
+!         call write_err( 'MPI_ISEND failed.' )
+!       endif
 
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       write(2,*) this%q%getresum() , "psend_neutral"
     end subroutine psend_neutral
 
-    subroutine precv_neutral( this, tag )
+    subroutine precv_neutral( this, tag, tag_qi )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in), dimension(4) :: tag
+      integer, intent(in) :: tag, tag_qi(:)
       ! local data
       character(len=18), save :: sname = 'precv_neutral'
       integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -912,33 +934,36 @@ contains
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      call this%pd%piperecv( tag(1) )
-      if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
-            call this%multi_ion(i)%piperecv( tag(1+i) )
-        enddo
-      else
-        do i = 1, this%h
-            call this%multi_ion(i)%piperecv( tag(1+i) )
-        enddo
-      endif 
+      call this%pd%piperecv( tag )
+!       if ( this%v == 0) then
+!         do i = 1, this%multi_max + 1
+!             call this%multi_ion(i)%piperecv( tag(1+i) )
+!         enddo
+!       else
+!         do i = 1, this%h
+!             call this%multi_ion(i)%piperecv( tag(1+i) )
+!         enddo
+!       endif 
+      do i = 1, this%h
+         call this%qi(i)%pipe_recv( tag_qi(i), 'forward', 'replace' )
+      end do
 
 
-      if ( id_stage() == 0 ) then
-        call stop_tprof( 'pipeline' )
-        call write_dbg( cls_name, sname, cls_level, 'ends' )
-        return
-      endif
+!       if ( id_stage() == 0 ) then
+!         call stop_tprof( 'pipeline' )
+!         call write_dbg( cls_name, sname, cls_level, 'ends' )
+!         return
+!       endif
 
-      idproc_src = id_proc() - num_procs_loc()
-      count = size( this%multi_ion)
+!       idproc_src = id_proc() - num_procs_loc()
+!       count = size( this%multi_ion)
 
-      call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag(4), &
-        comm_world(), stat, ierr )
-      ! check for error
-      if ( ierr /= 0 ) then
-        call write_err( 'MPI_RECV failed.' )
-      endif
+!       call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag(4), &
+!         comm_world(), stat, ierr )
+!       ! check for error
+!       if ( ierr /= 0 ) then
+!         call write_err( 'MPI_RECV failed.' )
+!       endif
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -1051,5 +1076,16 @@ contains
       get_multi_max = this%multi_max
 
     end function get_multi_max
+
+    function get_v(this)
+
+      implicit none
+
+      class(neutral2), intent(in) :: this
+      integer :: get_v
+
+      get_v = this%v
+
+    end function get_v
 
 end module neutral2_class
