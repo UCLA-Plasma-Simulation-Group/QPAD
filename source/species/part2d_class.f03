@@ -1617,6 +1617,8 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart2%p(3,pp2)   = this%p(3,pp)
               ppart2%gamma(pp2) = 1.0
               ppart2%w(pp2) = 0.0
+              this%q(pp) = 0.0
+              this%w(pp) = 0.0
             endif
           pp = pp + 1
         enddo
