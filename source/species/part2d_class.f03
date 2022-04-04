@@ -1514,7 +1514,6 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
   noff = ef_re(0)%get_noff(1)
   nrp  = ef_re(0)%get_ndp(1)
   ef0  => ef_re(0)%get_f1()
-
   esum = 0.0
   do ptrcur = 1, this%npp, p_cache_size
 
@@ -1533,7 +1532,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
         eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
         eff = eff * wp * 1.708e-12
 !         write(2,*) eff, "ionize_part2d"
-        if (eff .gt. 1.0e-6) then 
+        if ((eff .gt. 1.0e-6) .and. (this%q(pp) .gt. 1.0e-6) ) then 
 
           w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
             &)/wp 
@@ -1546,7 +1545,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
           cons = cons/(1.0 + 0.5 * cons)
 !           cons = cons*this%gamma(pp)/(this%gamma(pp) - this%p(3,pp))
           this%w(pp) = (1.0-this%w(pp))*cons+this%w(pp)
-!           write(2,*) w_ion, "ionize_part2d"
+          ! write(2,*) "ionize_part2d",this%w(pp),dt
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
         pp = pp + 1
@@ -1598,11 +1597,10 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               dxp = this%q(pp)/m1
               pp1 = pp1 + 1
               pp2 = pp2 + 1
-              dxp=this%q(pp)/m1
               ppart1%x(1,pp1)   = this%x(1,pp)
               ppart1%x(2,pp1)   = this%x(2,pp)
               ppart1%q(pp1)     = dxp*m2
-!               write(2,*) pp,pp1,"pp,pp1"
+              write(2,*) pp,pp1,"pp,pp1"
               ppart1%p(1,pp1)   = this%p(1,pp)
               ppart1%p(2,pp1)   = this%p(2,pp)
               ppart1%p(3,pp1)   = this%p(3,pp)

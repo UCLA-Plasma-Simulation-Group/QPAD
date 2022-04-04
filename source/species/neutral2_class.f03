@@ -355,7 +355,7 @@ private
     procedure :: wrq    => writeq_neutral
     procedure :: wr_ion => write_ion_neutral
     procedure :: cbq    => cbq_neutral
-    procedure :: get_multi_max
+    procedure :: get_multi_max,get_v
 
 
 end type neutral2
@@ -464,6 +464,13 @@ contains
 !             this%multi_ion = 0.0
 !             this%multi_ion( 1 ) = 1.0
            if ( id_stage() == 0 ) then
+            call this%multi_ion(1)%qdeposit(this%qi(1))
+            call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%qi(1)%smooth_f1()
+            call this%qi(1)%copy_gc_f1()
+            do i = 1, this%h
+                call this%qi(i)%copy_slice( 1, p_copy_1to2)
+            enddo
             call this%q%copy_slice( 1, p_copy_1to2 )      
            endif
 
@@ -608,9 +615,11 @@ contains
       call this%pd%renew( this%pf, s, if_empty=.true. )
 
       this%q = 0.0
+      call this%pd%qdeposit(this%q)
       this%cu = 0.0
       call this%multi_ion(1)%renew( this%pf, s, if_empty=.false. )
       this%qi(1) = 1.0
+      call this%multi_ion(1)%qdeposit(this%qi(1))
       do i = 2, this%h
 
              call this%multi_ion(i)%renew( this%pf, s, if_empty=.true. )
@@ -626,6 +635,17 @@ contains
                 this%cui(i) = 0.0
              enddo
         endif
+      if ( id_stage() == 0 ) then
+        call this%multi_ion(1)%qdeposit(this%qi(1))
+        call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
+        call this%qi(1)%smooth_f1()
+        call this%qi(1)%copy_gc_f1()
+        do i = 1, this%h
+            call this%qi(i)%copy_slice( 1, p_copy_1to2)
+        enddo
+        call this%q%copy_slice( 1, p_copy_1to2 )        
+      end if
+
         write(2,*) this%q%getresum(), "renew"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -683,9 +703,9 @@ contains
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       write(2,*) this%q%getresum() , "qdeposit_q"
-      write(2,*) this%qi(1)%getresum() , "qdeposit_q1"
-      write(2,*) this%qi(2)%getresum() , "qdeposit_q2"
-      write(2,*) this%qi(3)%getresum() , "qdeposit_q3"
+      ! write(2,*) this%qi(1)%getresum() , "qdeposit_q1"
+      ! write(2,*) this%qi(2)%getresum() , "qdeposit_q2"
+      ! write(2,*) this%qi(3)%getresum() , "qdeposit_q3"
     end subroutine qdeposit_neutral
 
     subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
@@ -801,7 +821,7 @@ contains
           call this%pd%push_robust_subcyc( e, b )
       end select
       if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
+        do i = 2, this%multi_max + 1
           select case ( this%push_type )
             case ( p_push2_robust )
               call this%multi_ion(i)%push_robust( e, b )
@@ -826,7 +846,7 @@ contains
       call this%pd%update_bound()
       call move_part2d_comm( this%pd )
       if ( this%v == 0) then
-        do i = 1, this%multi_max + 1
+        do i = 2, this%multi_max + 1
           call this%multi_ion(i)%update_bound()
           call move_part2d_comm( this%multi_ion(i) )
         enddo
@@ -849,13 +869,13 @@ contains
 
     end subroutine end_neutral
 
-    subroutine psend_neutral( this, tag, id )
+    subroutine psend_neutral( this, tag, id, tag_qi, id_qi )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in), dimension(4) :: tag
-      integer, intent(inout), dimension(4) :: id
+      integer, intent(in) :: tag, tag_qi(:)
+      integer, intent(inout) :: id, id_qi(:)
       ! local data
       character(len=18), save :: sname = 'psend_neutral'
       integer :: i, idproc_des, ierr, count
@@ -898,12 +918,12 @@ contains
       write(2,*) this%q%getresum() , "psend_neutral"
     end subroutine psend_neutral
 
-    subroutine precv_neutral( this, tag )
+    subroutine precv_neutral( this, tag, tag_qi )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in), dimension(4) :: tag
+      integer, intent(in) :: tag, tag_qi(:)
       ! local data
       character(len=18), save :: sname = 'precv_neutral'
       integer, dimension(MPI_STATUS_SIZE) :: stat
@@ -1051,5 +1071,16 @@ contains
       get_multi_max = this%multi_max
 
     end function get_multi_max
+
+    function get_v(this)
+
+      implicit none
+
+      class(neutral2), intent(in) :: this
+      integer :: get_v
+
+      get_v = this%v
+
+    end function get_v
 
 end module neutral2_class

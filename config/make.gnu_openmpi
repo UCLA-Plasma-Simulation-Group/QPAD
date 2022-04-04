@@ -1,9 +1,9 @@
 # Fortran compiler configuration
 FC = mpif90
-FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
-# -fbacktrace -fbounds-check
+FC_OPTS = -g -Wall -fbacktrace -fbounds-check -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form  
+#
 # -fbounds-check
-# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
+#FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
 # -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
 # -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
@@ -19,7 +19,7 @@ PYTHON = python
 
 # Linker configuration
 LINKER = mpif90
-LINKER_OPTS = -fopenmp -O3
+LINKER_OPTS = -fopenmp 
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 
 # Library dependencies
