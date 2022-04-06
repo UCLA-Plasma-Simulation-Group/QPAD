@@ -646,6 +646,8 @@ contains
         call this%q%copy_slice( 1, p_copy_1to2 )        
       end if
 
+      call dot_f1(-1.0,this%q)
+
         write(2,*) this%q%getresum(), "renew"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 

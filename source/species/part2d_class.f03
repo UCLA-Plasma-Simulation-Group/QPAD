@@ -1533,7 +1533,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
         eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
         eff = eff * wp * 1.708e-12
 !         write(2,*) eff, "ionize_part2d"
-        if (eff .gt. 1.0e-6) then 
+        if ((eff .gt. 1.0e-6) .and. (this%q(pp) .gt. 1.0e-6 )) then 
 
           w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
             &)/wp 
