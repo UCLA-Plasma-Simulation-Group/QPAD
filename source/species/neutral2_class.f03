@@ -453,7 +453,7 @@ contains
         !     n_theta = pf%num_theta
             allocate(this%multi_ion(this%h))
 
-            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s, if_empty=.false. )
+            call this%multi_ion(1)%new(opts, pf, qbm*this%v, this%dt, s, if_empty=.false., ionization=.true. )
             do i = 2, this%h
 
                 call this%multi_ion(i)%new(opts, pf, qbm*(this%v -1+i), this%dt, s, if_empty=.true. )
@@ -593,8 +593,6 @@ contains
              call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, s)
        ! >>>>>>    
           enddo
-          write(2,*) this%q%getresum() , "update"
-          write(2,*) this%qi(1)%getresum() , "update_qi1"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
@@ -704,10 +702,7 @@ contains
       call add_f1( this%q, q_tot )
                
       call write_dbg( cls_name, sname, cls_level, 'ends' )
-      write(2,*) this%q%getresum() , "qdeposit_q"
-      write(2,*) this%qi(1)%getresum() , "qdeposit_q1"
-      write(2,*) this%qi(2)%getresum() , "qdeposit_q2"
-      write(2,*) this%qi(3)%getresum() , "qdeposit_q3"
+      
     end subroutine qdeposit_neutral
 
     subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )

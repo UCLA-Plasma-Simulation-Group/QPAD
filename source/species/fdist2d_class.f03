@@ -235,7 +235,7 @@ subroutine end_fdist2d( this )
 
 end subroutine end_fdist2d
 
-subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s )
+subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s, ionization )
 
   implicit none
 
@@ -244,6 +244,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s )
   real, intent(inout), dimension(:) :: gamma, psi, q, w
   integer(kind=LG), intent(inout) :: npp
   real, intent(in) :: s
+  logical, intent(in) :: ionization
 
   integer :: i, j, i1, i2, ppc_tot, n_theta, nrp, noff
   integer(kind=LG) :: ipart
@@ -261,43 +262,82 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s )
   ppc_tot = product( this%ppc )
 
   call this%get_den_lon( s, this%prof_pars_lon, den_lon )
-  coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
-  ipart = 0
-  do j = 1, n_theta
-    do i = 1, nrp
-      
-      do i1 = 1, this%ppc(1)
-        rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff)
+  if(ionization) then
+    coef = sign(1.0, -this%qm) / ( real(ppc_tot) * real(n_theta) )
+    ipart = 0
+    do j = 1, n_theta
+      do i = 1, nrp
         
-        do i2 = 1, this%ppc(2)
+        do i1 = 1, this%ppc(1)
+          rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff)
           
-          theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
+          do i2 = 1, this%ppc(2)
+            
+            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
 
-          x_tmp(1) = rn * dr * cos(theta)
-          x_tmp(2) = rn * dr * sin(theta)
+            x_tmp(1) = rn * dr * cos(theta)
+            x_tmp(2) = rn * dr * sin(theta)
 
-          call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp )
+            call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp )
 
-          if ( den_lon * den_perp * this%density < this%den_min ) cycle
+            if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
-          ipart = ipart + 1
-          x(1,ipart) = x_tmp(1)
-          x(2,ipart) = x_tmp(2)
-          q(ipart) = rn * den_perp * den_lon * this%density * coef
-          p(1,ipart) = this%uth(1) * ranorm()
-          p(2,ipart) = this%uth(2) * ranorm()
-          p(3,ipart) = this%uth(3) * ranorm()
-          gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
-          w(ipart) = 0
-          psi(ipart) = gamma(ipart) - p(3,ipart)
-          
+            ipart = ipart + 1
+            x(1,ipart) = x_tmp(1)
+            x(2,ipart) = x_tmp(2)
+            q(ipart) = rn * den_perp * den_lon * this%density * coef
+            p(1,ipart) = this%uth(1) * ranorm()
+            p(2,ipart) = this%uth(2) * ranorm()
+            p(3,ipart) = this%uth(3) * ranorm()
+            gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
+            w(ipart) = 0
+            psi(ipart) = gamma(ipart) - p(3,ipart)
+            
+          enddo
         enddo
       enddo
     enddo
-  enddo
 
-  npp = ipart
+    npp = ipart
+  else
+    coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
+    ipart = 0
+    do j = 1, n_theta
+      do i = 1, nrp
+        
+        do i1 = 1, this%ppc(1)
+          rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff)
+          
+          do i2 = 1, this%ppc(2)
+            
+            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
+
+            x_tmp(1) = rn * dr * cos(theta)
+            x_tmp(2) = rn * dr * sin(theta)
+
+            call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp )
+
+            if ( den_lon * den_perp * this%density < this%den_min ) cycle
+
+            ipart = ipart + 1
+            x(1,ipart) = x_tmp(1)
+            x(2,ipart) = x_tmp(2)
+            q(ipart) = rn * den_perp * den_lon * this%density * coef
+            p(1,ipart) = this%uth(1) * ranorm()
+            p(2,ipart) = this%uth(2) * ranorm()
+            p(3,ipart) = this%uth(3) * ranorm()
+            gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
+            w(ipart) = 0
+            psi(ipart) = gamma(ipart) - p(3,ipart)
+            
+          enddo
+        enddo
+      enddo
+    enddo
+    npp = ipart
+
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

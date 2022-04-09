@@ -98,7 +98,7 @@ real, parameter :: p_buf_incr = 1.5
 
 contains
 
-subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
+subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
 
    implicit none
 
@@ -107,11 +107,13 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
    logical, intent(in), optional :: if_empty
+   logical, intent(in), optional :: ionization
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax
    logical :: empty = .false.
+   logical :: ionize = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -136,9 +138,11 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    recv_buf_size = max( recv_buf_size, npmax )
 
    if ( present( if_empty ) ) empty = if_empty
+   if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s, ionize )
+
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -212,7 +216,7 @@ subroutine realloc_part2d( this, ratio )
 
 end subroutine realloc_part2d
 
-subroutine renew_part2d( this, pf, s, if_empty )
+subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    implicit none
 
@@ -220,9 +224,11 @@ subroutine renew_part2d( this, pf, s, if_empty )
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: s
    logical, intent(in), optional :: if_empty
+   logical, intent(in), optional :: ionization
 
    ! local data
    logical :: empty = .false.
+   logical :: ionize = .false.
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -230,7 +236,8 @@ subroutine renew_part2d( this, pf, s, if_empty )
    this%npp = 0
 
    if ( present( if_empty ) ) empty = if_empty
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s )
+   if ( present( ionization ) ) ionize = ionization
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
