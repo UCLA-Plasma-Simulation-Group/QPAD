@@ -306,17 +306,17 @@ subroutine run_simulation( this )
       call neut(k)%precv( this%tag_neut(1:4,k) )
     enddo
 
-    do k = 1, this%nneutral2s
-      ! tag 1 and 2 are for particle array and ion density transfer respectively
-      this%tag_neut2(k) = ntag()
-      nlevel = neut2(k)%get_multi_max()
-      v = neut2(k)%get_v()
-      ! + 1 is for neural gas (level 0)
-      do m = 1, nlevel - v + 1
-        this%tag_multi_ion2(k,m) = ntag()
-      end do
-      call neut2(k)%precv( this%tag_neut2(k),this%tag_multi_ion2(k,:) )
-    enddo
+!     do k = 1, this%nneutral2s
+!       ! tag 1 and 2 are for particle array and ion density transfer respectively
+!       this%tag_neut2(k) = ntag()
+!       nlevel = neut2(k)%get_multi_max()
+!       v = neut2(k)%get_v()
+!       ! + 1 is for neural gas (level 0)
+!       do m = 1, nlevel - v + 1
+!         this%tag_multi_ion2(k,m) = ntag()
+!       end do
+!       call neut2(k)%precv( this%tag_neut2(k),this%tag_multi_ion2(k,:) )
+!     enddo
 
     ! pipeline data transfer for current and species B-field
     this%tag_field(1) = ntag()
@@ -464,9 +464,9 @@ subroutine run_simulation( this )
       call neut(k)%psend( this%tag_neut(1:4,k), this%id_neut(1:4,k) )
     enddo
 
-    do k = 1, this%nneutral2s
-      call neut2(k)%psend( this%tag_neut2(k), this%id_neut2(k),this%tag_multi_ion2(k,:),this%id_multi_ion2(k,:) )
-    enddo
+!     do k = 1, this%nneutral2s
+!       call neut2(k)%psend( this%tag_neut2(k), this%id_neut2(k),this%tag_multi_ion2(k,:),this%id_multi_ion2(k,:) )
+!     enddo
 
     ! pipeline for E and B fields
     call b%pipe_recv( this%tag_field(2), 'backward', 'guard', 'replace' )

@@ -859,20 +859,20 @@ subroutine run_sim_diag( this, tstep, dt )
 
         select case ( trim( this%diag%type_label ) )
 
-        case ( 'raw' )
+!         case ( 'raw' )
 
-          rtag = ntag(); stag = rtag
-          call obj%wr( this%diag%files )
+!           rtag = ntag(); stag = rtag
+!           call obj%wr( this%diag%files )
 
         case ( 'charge_cyl_m' )
 
           rtag = ntag(); stag = rtag
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
 
-        case ( 'ion_cyl_m' )
+!         case ( 'ion_cyl_m' )
 
-          rtag = ntag(); stag = rtag
-          call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
+!           rtag = ntag(); stag = rtag
+!           call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
 
         end select
 

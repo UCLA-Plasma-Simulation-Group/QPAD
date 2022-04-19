@@ -1177,7 +1177,7 @@ function get_multi_max(this)
 
 end function get_multi_max
 
-subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
+subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty, ionization )
 
   implicit none
 
@@ -1186,6 +1186,7 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
   class(fdist2d), intent(inout) :: pf
   real, intent(in) :: qbm, dt, s
   logical, intent(in), optional :: if_empty
+  logical, intent(in), optional :: ionization
 
   ! local data
   character(len=18), save :: sname = 'init_part2d_buf'
