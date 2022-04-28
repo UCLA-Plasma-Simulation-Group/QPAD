@@ -60,10 +60,14 @@ The ``neutrals`` session is an array and each component is a session that define
     Maximum ionization status allowed in the simulation.
 
 * ``push_type``, string
-    Species particle pusher type. Currently, the valid options are ``"robust"`` and ``"clamp"``. The ``"robust"`` push type is generally the first choice for most cases. The ``"clamp"`` push type will clamp the value of :math:`\gamma/(\gamma-p_z)` (specified by ``fac_clamp`` parameter) of the plasma particles. This can mitigate the code crashing or numerical instability that emerges at the back of the wake for highly nonlinear blowout regime. Note that the clamping is an artificial treatment and will lead to unphysical result. This method is currently provided only for experimental purposes.
+    Species particle pusher type. Currently, the valid options are ``"robust"`` and ``"clamp"``. The ``"robust"`` push type is generally the first choice for most cases. The ``"clamp"`` push type will clamp the value of :math:`\gamma/(\gamma-p_z)` (specified by ``fac_clamp`` parameter) of the plasma particles. This can mitigate the code crashing or numerical instability that emerges at the back of the wake for highly nonlinear blowout regime.
+    
+.. warning::
+
+    Note that the clamping is an artificial treatment and will lead to unphysical result. The ``"clamp"`` pusher is currently provided only for experimental purposes.
 
 * ``fac_clamp``, real, optional, default ``10.0``
-    Clamped value of :math:`\gamma/(\gamma-p_z) used by ``"clamp"`` push type.
+    Clamped value of :math:`\gamma/(\gamma-p_z)` used by ``"clamp"`` push type.
 
 * ``den_min``, real, optional, default ``1.0d-10``
     It specifies the minimum density for injecting particles. Particles are only injected when the specified density is above this threshold.
