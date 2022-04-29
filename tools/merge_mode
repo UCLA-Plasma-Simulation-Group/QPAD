@@ -33,14 +33,8 @@ def get_file_list():
     file_list = [os.path.basename(file) for file in file_list]
     return file_list
 
-
-if __name__ == '__main__':
-
-    # check input arguments
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], 'ha:t:', ['help', 'angle=', 'type='])
-    except getopt.GetoptError:
-        print(
+def print_help_info():
+    print(
 '''
 Usage: merge_mode -a <angle in degree> -t <type of variable>
 Parameter:
@@ -49,7 +43,17 @@ Parameter:
                 For example, the r and phi components of a vector are type 'c' while a scalar or
                 the z component of a vector are type 's'.
 '''
-            )
+    )
+    return
+
+
+if __name__ == '__main__':
+
+    # check input arguments
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'ha:t:', ['help', 'angle=', 'type='])
+    except getopt.GetoptError:
+        print_help_info()
         sys.exit(2)
 
     # read input arguments
@@ -58,7 +62,8 @@ Parameter:
     sign = 1
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('Usage: merge_mode -a <angle in degree>')
+            print_help_info()
+            sys.exit(2)
         elif opt in ('-a', '--angle'):
             phi_degree = arg
             phi = float(arg) / 180 * np.pi
