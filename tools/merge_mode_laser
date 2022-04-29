@@ -48,6 +48,15 @@ def get_file_list():
     file_list = [os.path.basename(file) for file in file_list]
     return file_list
 
+def print_help_info():
+    print(
+'''
+Usage: merge_mode_laser -a <angle in degree>
+Parameter:
+    -a, --angle: The angle of the output slice in degree.
+'''
+    )
+    return
 
 if __name__ == '__main__':
 
@@ -55,7 +64,7 @@ if __name__ == '__main__':
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'ha:', ['help', 'angle='])
     except getopt.GetoptError:
-        print('Usage: postprocess_laser -a <angle in degree>')
+        print_help_info()
         sys.exit(2)
 
     # read input arguments
@@ -63,7 +72,8 @@ if __name__ == '__main__':
     phi_degree = 0
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('Usage: postprocess_laser -a <angle in degree>')
+            print_help_info()
+            sys.exit(2)
         elif opt in ('-a', '--angle'):
             phi_degree = arg
             phi = float(arg) / 180 * np.pi
