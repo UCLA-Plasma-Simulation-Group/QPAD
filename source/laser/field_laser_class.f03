@@ -734,6 +734,14 @@ subroutine set_grad_field_laser( this, slice_idx )
 
   enddo
 
+  do m = 0, this%max_mode
+    call this%ar_grad_re(m)%copy_gc_f1()
+    call this%ai_grad_re(m)%copy_gc_f1()
+    if ( m == 0 ) cycle
+    call this%ar_grad_im(m)%copy_gc_f1()
+    call this%ai_grad_im(m)%copy_gc_f1()
+  enddo
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_grad_field_laser
