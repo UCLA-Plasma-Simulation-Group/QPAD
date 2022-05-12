@@ -43,6 +43,7 @@ type diag_node
   character(len=32) :: type_label = ''
   ! Tag and identifier for pipeline data communication
   integer :: tag = -1, id = MPI_REQUEST_NULL
+  integer :: n ! the number of ion
 
   contains
 
@@ -387,10 +388,11 @@ subroutine init_diag_plasma( this, input, plasma )
     call input%info( 'neutral2s('//num2str(i)//').v', v )
     call input%get('neutral2s('//num2str(i)//').ion_max',imax)
     if(v == 0) then
-      imax = imax - 1
+      imax = imax + 1
     else
-      imax = imax - v
-     endif
+      imax = imax - v + 1
+    endif
+!     this%diag%n = imax
     do j = 1, m
       call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
       if ( ndump > 0 ) then
@@ -430,6 +432,7 @@ subroutine init_diag_plasma( this, input, plasma )
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
               imax      = imax,&
+              v         = v,&
               axisname  = (/'r  ', '\xi', '   '/), &
               axislabel = (/'r  ', '\xi', '   '/), &
               axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
@@ -775,6 +778,7 @@ subroutine run_sim_diag( this, tstep, dt )
   ! local data
   integer :: stag, rtag, ierr
   integer, dimension(MPI_STATUS_SIZE) :: istat
+  integer :: i, n
 
   integer, save :: cls_level = 3
   character(len=32), save :: cls_name = 'sim_diag'
@@ -851,7 +855,7 @@ subroutine run_sim_diag( this, tstep, dt )
         case ( 'ion_cyl_m' )
 
           rtag = ntag(); stag = rtag
-          call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
+            call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
 
         end select
         
@@ -859,20 +863,22 @@ subroutine run_sim_diag( this, tstep, dt )
 
         select case ( trim( this%diag%type_label ) )
 
-!         case ( 'raw' )
+        case ( 'raw' )
 
-!           rtag = ntag(); stag = rtag
-!           call obj%wr( this%diag%files )
+          rtag = ntag(); stag = rtag
+          call obj%wr( this%diag%files(1) )
 
         case ( 'charge_cyl_m' )
 
           rtag = ntag(); stag = rtag
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
 
-!         case ( 'ion_cyl_m' )
+        case ( 'ion_cyl_m' )
 
-!           rtag = ntag(); stag = rtag
-!           call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id )
+          rtag = ntag(); stag = rtag; n = this%diag%n
+!           do i = 1,n
+            call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id, n )
+!           enddo
 
         end select
 
@@ -961,13 +967,13 @@ end subroutine add_diag_cym
 
 ! add ion
 subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filename, &
-  dataname, timeunit, dt, imax, axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
+  dataname, timeunit, dt, imax, v, axisname, axislabel, axisunits, axismax, axismin, units, label, rank )
 
   implicit none
 
   class( sim_diag ), intent(inout) :: this
   class(*), intent(in) :: obj
-  integer, intent(in) :: max_mode, dump_freq, dim, imax
+  integer, intent(in) :: max_mode, dump_freq, dim, imax, v
   character(len=*), intent(in) :: filename, timeunit, dataname, units, label, type_label
   integer, intent(in) :: rank
   real, intent(in) :: dt
@@ -997,9 +1003,9 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
   this%diag%type_label = trim(type_label)
   do j = 1, imax
 
-    ion_str = 'ion'//num2str(j)
+    ion_str = 'ion'//num2str(v+j-1)
 !     call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
-
+    this%diag%n = j - 1
     do i = 1, 2*max_mode+1
 
       if ( i == 1 ) then

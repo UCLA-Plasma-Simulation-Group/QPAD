@@ -615,14 +615,22 @@ contains
       this%q = 0.0
       call this%pd%qdeposit(this%q)
       this%cu = 0.0
-      call this%multi_ion(1)%renew( this%pf, s, if_empty=.false. )
+      call this%q%acopy_gc_f1( dir = p_mpi_forward )
+      call this%q%smooth_f1()
+      call this%q%copy_gc_f1()
+      call this%multi_ion(1)%renew( this%pf, s, if_empty=.false., ionization=.true. )
       this%qi(1) = 1.0
       call this%multi_ion(1)%qdeposit(this%qi(1))
+      call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward)
+      call this%qi(1)%smooth_f1()
+      call this%qi(1)%copy_gc_f1()
       do i = 2, this%h
 
              call this%multi_ion(i)%renew( this%pf, s, if_empty=.true. )
              this%qi(i) = 0.0
-
+             call this%qi(i)%acopy_gc_f1(dir=p_mpi_forward)
+             call this%qi(i)%smooth_f1()
+             call this%qi(i)%copy_gc_f1()
       enddo
        if ( this%v ==0 ) then
              do i=1,this%multi_max 
@@ -634,17 +642,19 @@ contains
              enddo
         endif
       if ( id_stage() == 0 ) then
-        call this%multi_ion(1)%qdeposit(this%qi(1))
-        call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
-        call this%qi(1)%smooth_f1()
-        call this%qi(1)%copy_gc_f1()
         do i = 1, this%h
+!             call this%qi(i)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%qi(i)%smooth_f1()
+!             call this%qi(i)%copy_gc_f1()
             call this%qi(i)%copy_slice( 1, p_copy_1to2)
         enddo
+!         call this%q%acopy_gc_f1( dir=p_mpi_forward )
+        call this%q%smooth_f1()
+!         call this%q%copy_gc_f1()
         call this%q%copy_slice( 1, p_copy_1to2 )        
       end if
 
-      call dot_f1(-1.0,this%q)
+!       call dot_f1(-1.0,this%q)
 
         write(2,*) this%q%getresum(), "renew"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -668,7 +678,7 @@ contains
             this%qi(i) = 0.0
             call this%multi_ion(i)%qdeposit( this%qi(i) )
             call this%qi(i)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%qi(i)%smooth_f1()
+!             call this%qi(i)%smooth_f1()
             call this%qi(i)%copy_gc_f1()
             call add_f1(this%qi(i),q_tot)
         enddo
@@ -677,7 +687,7 @@ contains
 !             add qi(1)? 
 !             call add_f1(this%qi(1),q_tot)
             call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%qi(1)%smooth_f1()
+!             call this%qi(1)%smooth_f1()
             call this%qi(1)%copy_gc_f1()
 
        else
@@ -685,19 +695,20 @@ contains
             this%qi(i) = 0.0
             call this%multi_ion(i)%qdeposit( this%qi(i) ) 
             call this%qi(i)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%qi(i)%smooth_f1()
+!             call this%qi(i)%smooth_f1()
             call this%qi(i)%copy_gc_f1()
             call add_f1(this%qi(i),q_tot)
            enddo
              
         endif
-      write(2,*) q_tot%getresum() , "qdeposit_qe"
+      write(2,*) q_tot%getresum() , "qdeposit_qi"
       this%q = 0.0
 
       call this%pd%qdeposit( this%q )
       call this%q%acopy_gc_f1( dir=p_mpi_forward )
       call this%q%smooth_f1()
       call this%q%copy_gc_f1()
+      write(2,*) this%q%getresum() , "qdeposit_q"
       
       call add_f1( this%q, q_tot )
                
@@ -752,7 +763,7 @@ contains
                   call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i -1), this%amu, this%dcu )
             end select
             call this%cui(i -1)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%cui(i -1)%smooth_f1()
+!             call this%cui(i -1)%smooth_f1()
             call this%cui(i -1)%copy_gc_f1()
         enddo
       else
@@ -766,16 +777,16 @@ contains
                   call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i), this%amu, this%dcu )
             end select
             call this%cui(i)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%cui(i)%smooth_f1()
+!             call this%cui(i)%smooth_f1()
             call this%cui(i)%copy_gc_f1()
         enddo
       endif
       call this%cu%acopy_gc_f1( dir=p_mpi_forward )
       call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
       call this%amu%acopy_gc_f1( dir=p_mpi_forward )
-      call this%cu%smooth_f1()
-      call this%dcu%smooth_f1()
-      call this%amu%smooth_f1()
+!       call this%cu%smooth_f1()
+!       call this%dcu%smooth_f1()
+!       call this%amu%smooth_f1()
       call this%cu%copy_gc_f1()
       call this%dcu%copy_gc_f1()
       call this%amu%copy_gc_f1()
@@ -966,20 +977,19 @@ contains
 
     end subroutine precv_neutral
 
-    subroutine writehdf5_neutral( this, files )
+    subroutine writehdf5_neutral( this, file )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      class(hdf5file), intent(in), dimension(:) :: files
-!       integer, intent(in) :: rtag, stag
-!       integer, intent(inout) :: id
+      class(hdf5file), intent(in) :: file
       ! local data
       character(len=18), save :: sname = 'writehdf5_neutral'
 
       call write_dbg(cls_name, sname, cls_level, 'starts')
 
-      call this%qi(1)%write_hdf5( files, 1 )
+      call this%multi_ion(1)%wr(file)
+      
 
       call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -1004,13 +1014,13 @@ contains
 
     end subroutine writeq_neutral
 
-    subroutine write_ion_neutral( this, files, rtag, stag, id )
+    subroutine write_ion_neutral( this, files, rtag, stag, id, n )
 
       implicit none
       
       class(neutral2), intent(inout) :: this
       class(hdf5file), intent(in), dimension(:) :: files
-      integer, intent(in) :: rtag, stag
+      integer, intent(in) :: rtag, stag, n
       integer, intent(inout) :: id
       ! local data
       character(len=18), save :: sname = 'write_ion_neutral'
@@ -1018,15 +1028,9 @@ contains
 
       call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-      if ( this%v == 0) then
-        do i = 2, this%multi_max + 1
-            call this%qi(i)%write_hdf5( files, 1, rtag, stag, id ) 
-        enddo
-      else
-        do i = 2, this%h
-            call this%qi(i)%write_hdf5( files, 1, rtag, stag, id ) 
-        enddo
-      endif 
+!         do i = 1, this%h
+      call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
+!         enddo
 
       call write_dbg( cls_name, sname, cls_level, 'ends' )  
 
