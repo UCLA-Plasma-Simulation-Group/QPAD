@@ -1499,7 +1499,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
    character(len=18), save :: sname = 'ionize_neutral'
    type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
    real, dimension(:,:), pointer :: ef0 => null()
-   real :: rn, dr, w_ion, cons, eff,esum
+   real :: rn, dr, w_ion, cons, eff,esum,r
    integer :: noff, i, j, k, l, nn, mode, max_mode, np, nrp
    real, dimension(p_cache_size) :: cc, ss
    real, dimension(p_cache_size) :: pcos, psin
@@ -1555,6 +1555,13 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
 !           write(2,*) w_ion, "ionize_part2d"
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
+        r = sqrt(this%x(1,pp)**2 + this%x(2,pp)**2)
+        if ((r .gt. 4.5).and.(r .lt. 5)) then
+!           write(2,*) w_ion, "w_ion"
+          write(2,*) eff, "eff"
+          write(2,*) w_ion, "w_ion"
+          write(2,*) r, "particle_r"
+        endif
         pp = pp + 1
         esum = esum + eff
       enddo
@@ -1590,6 +1597,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
       write(2,*) m1,m2,"m1,m2"
       pp1 = ppart1%npp
       pp2 = ppart2%npp
+!       write(2,*) pp2, "particles_e"
      do ptrcur = 1, this%npp, p_cache_size
 
         ! check if last copy of table and set np
