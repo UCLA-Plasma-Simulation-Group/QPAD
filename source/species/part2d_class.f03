@@ -6,7 +6,6 @@ use parallel_module
 use sort_module
 use options_class
 use field_class
-use field_e_class
 use ufield_class
 use fdist2d_class
 use hdf5io_class
@@ -1494,13 +1493,13 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
    class(part2d), intent(inout) :: this
    class(fdist2d), intent(inout) :: prof
    double precision, dimension(:,:), intent(in) :: adk_coef
-   class(field_e), intent(in) :: ef
+   class(field), intent(in) :: ef
    real, intent(in) :: wp, dt
   ! local data
    character(len=18), save :: sname = 'ionize_neutral'
    type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
    real, dimension(:,:), pointer :: ef0 => null()
-   real :: rn, dr, w_ion, cons, eff,esum
+   real :: rn, dr, w_ion, cons, eff,esum,r
    integer :: noff, i, j, k, l, nn, mode, max_mode, np, nrp
    real, dimension(p_cache_size) :: cc, ss
    real, dimension(p_cache_size) :: pcos, psin
@@ -1532,7 +1531,7 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
     endif
 
     call interp_ef_part2d( ef_re, ef_im, max_mode, this%x, this%dr, ep, np, &
-      ptrcur, p_cartesian)
+      ptrcur, p_cylindrical)
 !     write(2,*) wp, "ionize_part2d"
     pp = ptrcur
       do i = 1, np
@@ -1549,11 +1548,18 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
                 !>>>>>> should add:
           cons = w_ion* dt
           cons = cons/(1.0 + 0.5 * cons)
-!           cons = cons*this%gamma(pp)/(this%gamma(pp) - this%p(3,pp))
+          cons = cons*this%gamma(pp)/(this%gamma(pp) - this%p(3,pp))
           this%w(pp) = (1.0-this%w(pp))*cons+this%w(pp)
           ! write(2,*) "ionize_part2d",this%w(pp),dt
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
+!         r = sqrt(this%x(1,pp)**2 + this%x(2,pp)**2)
+!         if ((r .gt. 4.5).and.(r .lt. 5)) then
+! !           write(2,*) w_ion, "w_ion"
+!           write(2,*) eff, "eff"
+!           write(2,*) w_ion, "w_ion"
+!           write(2,*) r, "particle_r"
+!         endif
         pp = pp + 1
         esum = esum + eff
       enddo
@@ -1586,8 +1592,10 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
         m1 = m - 1
         m2 = m
       end if
+      write(2,*) m1,m2,"m1,m2"
       pp1 = ppart1%npp
       pp2 = ppart2%npp
+!       write(2,*) pp2, "particles_e"
      do ptrcur = 1, this%npp, p_cache_size
 
         ! check if last copy of table and set np
@@ -1606,7 +1614,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart1%x(1,pp1)   = this%x(1,pp)
               ppart1%x(2,pp1)   = this%x(2,pp)
               ppart1%q(pp1)     = dxp*m2
-              write(2,*) pp,pp1,"pp,pp1"
+              write(2,*) dxp*m2,"add_qi"
               ppart1%p(1,pp1)   = this%p(1,pp)
               ppart1%p(2,pp1)   = this%p(2,pp)
               ppart1%p(3,pp1)   = this%p(3,pp)
@@ -1616,6 +1624,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart2%x(1,pp2)   = this%x(1,pp)
               ppart2%x(2,pp2)   = this%x(2,pp)
               ppart2%q(pp2)     = -dxp
+              write(2,*) -dxp,"add_qe"
               ppart2%p(1,pp2)   = this%p(1,pp)
               ppart2%p(2,pp2)   = this%p(2,pp)
               ppart2%p(3,pp2)   = this%p(3,pp)

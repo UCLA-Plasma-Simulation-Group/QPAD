@@ -588,11 +588,13 @@ contains
     
           do  i = 1, this%h -1
              adk_coef(:,1)=this%rate_param(:,i)
+             write(2,*) adk_coef ,"adk_coef"
              call this%multi_ion(i)%ionize(this%pf,e,this%wp, this%dt, adk_coef)
        ! >>>>>>if i=this%multi_max+1, this%multi_ion(i+1) will out of boundary
              call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, s)
        ! >>>>>>    
           enddo
+          write(2,*) this%pd%npp, "update_particles_e"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
@@ -615,14 +617,22 @@ contains
       this%q = 0.0
       call this%pd%qdeposit(this%q)
       this%cu = 0.0
-      call this%multi_ion(1)%renew( this%pf, s, if_empty=.false. )
+      call this%q%acopy_gc_f1( dir = p_mpi_forward )
+      call this%q%smooth_f1()
+      call this%q%copy_gc_f1()
+      call this%multi_ion(1)%renew( this%pf, s, if_empty=.false., ionization=.true. )
       this%qi(1) = 1.0
       call this%multi_ion(1)%qdeposit(this%qi(1))
+      call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward)
+      call this%qi(1)%smooth_f1()
+      call this%qi(1)%copy_gc_f1()
       do i = 2, this%h
 
              call this%multi_ion(i)%renew( this%pf, s, if_empty=.true. )
              this%qi(i) = 0.0
-
+             call this%qi(i)%acopy_gc_f1(dir=p_mpi_forward)
+             call this%qi(i)%smooth_f1()
+             call this%qi(i)%copy_gc_f1()
       enddo
        if ( this%v ==0 ) then
              do i=1,this%multi_max 
@@ -634,19 +644,21 @@ contains
              enddo
         endif
       if ( id_stage() == 0 ) then
-        call this%multi_ion(1)%qdeposit(this%qi(1))
-        call this%qi(1)%acopy_gc_f1( dir=p_mpi_forward )
-        call this%qi(1)%smooth_f1()
-        call this%qi(1)%copy_gc_f1()
         do i = 1, this%h
+!             call this%qi(i)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%qi(i)%smooth_f1()
+!             call this%qi(i)%copy_gc_f1()
             call this%qi(i)%copy_slice( 1, p_copy_1to2)
         enddo
+!         call this%q%acopy_gc_f1( dir=p_mpi_forward )
+        call this%q%smooth_f1()
+!         call this%q%copy_gc_f1()
         call this%q%copy_slice( 1, p_copy_1to2 )        
       end if
 
-      call dot_f1(-1.0,this%q)
+!       call dot_f1(-1.0,this%q)
 
-        write(2,*) this%q%getresum(), "renew"
+      write(2,*) this%pd%npp, "renew_particles_e"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
     end subroutine renew_neutral
@@ -691,13 +703,14 @@ contains
            enddo
              
         endif
-      write(2,*) q_tot%getresum() , "qdeposit_qe"
+      write(2,*) q_tot%getresum() , "qdeposit_qi"
       this%q = 0.0
 
       call this%pd%qdeposit( this%q )
       call this%q%acopy_gc_f1( dir=p_mpi_forward )
       call this%q%smooth_f1()
       call this%q%copy_gc_f1()
+      write(2,*) this%pd%npp, "qdeposite_particles_e"
       
       call add_f1( this%q, q_tot )
                
@@ -791,7 +804,7 @@ contains
             call add_f1( this%cui(i), cu )
         enddo
       endif
-      write(2,*) this%q%getresum() , "amjdeposit_neutral"
+      write(2,*) this%pd%npp, "amjdp_particles_e"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       
     end subroutine amjdeposit_neutral
@@ -854,7 +867,7 @@ contains
         enddo
       endif
 
-      write(2,*) this%q%getresum() , "push_neutral"
+      write(2,*) this%pd%npp, "push_particles_e"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
          
     end subroutine push_neutral
@@ -866,115 +879,64 @@ contains
 
     end subroutine end_neutral
 
-    subroutine psend_neutral( this, tag, id, tag_qi, id_qi )
+    subroutine psend_neutral(this, tag, id)
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in) :: tag, tag_qi(:)
-      integer, intent(inout) :: id, id_qi(:)
+      integer, intent(in) :: tag(:)
+      integer, intent(inout) :: id(:)
       ! local data
-      character(len=18), save :: sname = 'psend_neutral'
+      character(len=18), save :: sname = 'pipesend_neutral'
       integer :: i, idproc_des, ierr, count
                
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      ! call this%pd%pipesend( tag(1), id(1) )
-      ! if ( this%v == 0) then
-      !   do i = 1, this%multi_max + 1
-      !       call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-      !   enddo
-      ! else
-      !   do i = 1, this%h
-      !       call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
-      !   enddo
-      ! endif
-
-
-
-      ! if ( id_stage() == num_stages() - 1 ) then
-      !   id(4) = MPI_REQUEST_NULL
-      !   call stop_tprof( 'pipeline' )
-      !   call write_dbg( cls_name, sname, cls_level, 'ends' )
-      !   return
-      ! endif
-
-      ! idproc_des = id_proc() + num_procs_loc()
-      ! count = size( this%multi_ion )
-
-      ! call mpi_isend( this%multi_ion, count, p_dtype_real, idproc_des, tag(4), &
-      !   comm_world(), id(4), ierr )
-      ! ! check for error
-      ! if ( ierr /= 0 ) then
-      !   call write_err( 'MPI_ISEND failed.' )
-      ! endif
-
+      call this%pd%pipesend( tag(1), id(1) )
+      do i = 1, this%h
+            call this%multi_ion(i)%pipesend( tag(1+i), id(1+i) )
+      enddo
       call stop_tprof( 'pipeline' )
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       write(2,*) this%q%getresum() , "psend_neutral"
     end subroutine psend_neutral
 
-    subroutine precv_neutral( this, tag, tag_qi )
+    subroutine precv_neutral(this, tag)
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      integer, intent(in) :: tag, tag_qi(:)
+      integer, intent(in) :: tag(:)
       ! local data
-      character(len=18), save :: sname = 'precv_neutral'
+      character(len=18), save :: sname = 'piperecv_neutral'
       integer, dimension(MPI_STATUS_SIZE) :: stat
       integer :: i, idproc_src, ierr, count
 
       call write_dbg( cls_name, sname, cls_level, 'starts' )
       call start_tprof( 'pipeline' )
 
-      ! call this%pd%piperecv( tag(1) )
-      ! if ( this%v == 0) then
-      !   do i = 1, this%multi_max + 1
-      !       call this%multi_ion(i)%piperecv( tag(1+i) )
-      !   enddo
-      ! else
-      !   do i = 1, this%h
-      !       call this%multi_ion(i)%piperecv( tag(1+i) )
-      !   enddo
-      ! endif 
-
-
-      ! if ( id_stage() == 0 ) then
-      !   call stop_tprof( 'pipeline' )
-      !   call write_dbg( cls_name, sname, cls_level, 'ends' )
-      !   return
-      ! endif
-
-      ! idproc_src = id_proc() - num_procs_loc()
-      ! count = size( this%multi_ion)
-
-      ! call mpi_recv( this%multi_ion, count, p_dtype_real, idproc_src, tag(4), &
-      !   comm_world(), stat, ierr )
-      ! ! check for error
-      ! if ( ierr /= 0 ) then
-      !   call write_err( 'MPI_RECV failed.' )
-      ! endif
-               
+      call this%pd%piperecv(tag(1))
+      do i = 1, this%h
+        call this%multi_ion(i)%piperecv(tag(1+i))
+      enddo
       call write_dbg( cls_name, sname, cls_level, 'ends' )
 
     end subroutine precv_neutral
 
-    subroutine writehdf5_neutral( this, files )
+    subroutine writehdf5_neutral( this, file )
 
       implicit none
 
       class(neutral2), intent(inout) :: this
-      class(hdf5file), intent(in), dimension(:) :: files
-!       integer, intent(in) :: rtag, stag
-!       integer, intent(inout) :: id
+      class(hdf5file), intent(in) :: file
       ! local data
       character(len=18), save :: sname = 'writehdf5_neutral'
 
       call write_dbg(cls_name, sname, cls_level, 'starts')
 
-      call this%qi(1)%write_hdf5( files, 1 )
+      call this%multi_ion(1)%wr(file)
+      
 
       call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -999,13 +961,13 @@ contains
 
     end subroutine writeq_neutral
 
-    subroutine write_ion_neutral( this, files, rtag, stag, id )
+    subroutine write_ion_neutral( this, files, rtag, stag, id, n )
 
       implicit none
       
       class(neutral2), intent(inout) :: this
       class(hdf5file), intent(in), dimension(:) :: files
-      integer, intent(in) :: rtag, stag
+      integer, intent(in) :: rtag, stag, n
       integer, intent(inout) :: id
       ! local data
       character(len=18), save :: sname = 'write_ion_neutral'
@@ -1013,16 +975,10 @@ contains
 
       call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-      if ( this%v == 0) then
-        do i = 2, this%multi_max + 1
-            call this%qi(i)%write_hdf5( files, 1, rtag, stag, id ) 
-        enddo
-      else
-        do i = 2, this%h
-            call this%qi(i)%write_hdf5( files, 1, rtag, stag, id ) 
-        enddo
-      endif 
-
+!       do i = 1, this%h
+        call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
+!       enddo
+      write(2,*) n, "write_ion_neutral"
       call write_dbg( cls_name, sname, cls_level, 'ends' )  
 
     end subroutine write_ion_neutral

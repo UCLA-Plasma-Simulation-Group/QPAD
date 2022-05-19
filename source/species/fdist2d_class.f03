@@ -287,6 +287,8 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s, ionization )
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
             q(ipart) = rn * den_perp * den_lon * this%density * coef
+!             q(ipart) = -this%qm
+!             write(2,*) q(ipart), "fdist2d_q"
             p(1,ipart) = this%uth(1) * ranorm()
             p(2,ipart) = this%uth(2) * ranorm()
             p(3,ipart) = this%uth(3) * ranorm()
@@ -324,6 +326,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, w, npp, s, ionization )
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
             q(ipart) = rn * den_perp * den_lon * this%density * coef
+!             write(2,*) q(ipart), "fdist2d_q"
             p(1,ipart) = this%uth(1) * ranorm()
             p(2,ipart) = this%uth(2) * ranorm()
             p(3,ipart) = this%uth(3) * ranorm()
