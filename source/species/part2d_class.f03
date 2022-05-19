@@ -1555,13 +1555,13 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
 !           write(2,*) w_ion, "ionize_part2d"
           if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
         endif
-        r = sqrt(this%x(1,pp)**2 + this%x(2,pp)**2)
-        if ((r .gt. 4.5).and.(r .lt. 5)) then
+!         r = sqrt(this%x(1,pp)**2 + this%x(2,pp)**2)
+!         if ((r .gt. 4.5).and.(r .lt. 5)) then
+! !           write(2,*) w_ion, "w_ion"
+!           write(2,*) eff, "eff"
 !           write(2,*) w_ion, "w_ion"
-          write(2,*) eff, "eff"
-          write(2,*) w_ion, "w_ion"
-          write(2,*) r, "particle_r"
-        endif
+!           write(2,*) r, "particle_r"
+!         endif
         pp = pp + 1
         esum = esum + eff
       enddo

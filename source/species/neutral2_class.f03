@@ -972,10 +972,10 @@ contains
 
       call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-!         do i = 1, this%h
-      call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
-!         enddo
-
+!       do i = 1, this%h
+        call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
+!       enddo
+      write(2,*) n, "write_ion_neutral"
       call write_dbg( cls_name, sname, cls_level, 'ends' )  
 
     end subroutine write_ion_neutral

@@ -392,7 +392,7 @@ subroutine init_diag_plasma( this, input, plasma )
     else
       imax = imax - v + 1
     endif
-!     this%diag%n = imax
+    this%diag%n = imax
     do j = 1, m
       call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
       if ( ndump > 0 ) then
@@ -872,13 +872,16 @@ subroutine run_sim_diag( this, tstep, dt )
 
           rtag = ntag(); stag = rtag
           call obj%wrq( this%diag%files, rtag, stag, this%diag%id )
+          write(2,*) "true", "charge_cyl_m"
 
         case ( 'ion_cyl_m' )
 
-          rtag = ntag(); stag = rtag; n = this%diag%n
-!           do i = 1,n
-            call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id, n )
-!           enddo
+          n = this%diag%n
+          do i = 1,n
+            rtag = ntag(); stag = rtag;
+            call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id, i)
+            write(2,*) i, "ion_cyl_m"
+          enddo
 
         end select
 
@@ -1005,7 +1008,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
 
     ion_str = 'ion'//num2str(v+j-1)
 !     call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
-    this%diag%n = j - 1
+    this%diag%n = j 
     do i = 1, 2*max_mode+1
 
       if ( i == 1 ) then
@@ -1031,6 +1034,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
 
     enddo
   enddo
+  write(2,*) imax, "add_diag_ion"
   this%num_diag = this%num_diag + 1
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
