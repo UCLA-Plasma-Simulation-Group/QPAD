@@ -1023,6 +1023,7 @@ contains
       call this%q%copy_slice( pos, p_copy_1to2 )
 
       if ( this%v == 0) then
+        call this%qi(1)%copy_slice( pos, p_copy_1to2 )
         do i = 2, this%multi_max + 1
             call add_f1( this%cui(i -1), this%qi(i), (/3/), (/1/) )
             call this%qi(i)%copy_slice( pos, p_copy_1to2 )
@@ -1033,7 +1034,6 @@ contains
             call this%qi(i)%copy_slice( pos, p_copy_1to2 )
         enddo
       endif 
-
 
     end subroutine cbq_neutral
 
