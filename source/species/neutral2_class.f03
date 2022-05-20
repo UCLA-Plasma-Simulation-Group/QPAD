@@ -754,35 +754,6 @@ contains
         case ( p_push2_robust_subcyc )
           call this%pd%amjdeposit_robust_subcyc( e, b, this%cu, this%amu, this%dcu )
       end select
-      if ( this%v == 0) then
-        do i = 2, this%h
-            select case ( this%push_type )
-                case ( p_push2_robust )
-                  call this%multi_ion(i)%amjdeposit_robust( e, b, this%cui(i -1), this%amu, this%dcu )
-                case ( p_push2_clamp )
-                  call this%multi_ion(i)%amjdeposit_clamp( e, b, this%cui(i -1), this%amu, this%dcu )
-                case ( p_push2_robust_subcyc )
-                  call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i -1), this%amu, this%dcu )
-            end select
-            call this%cui(i -1)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%cui(i -1)%smooth_f1()
-            call this%cui(i -1)%copy_gc_f1()
-        enddo
-      else
-        do i = 1, this%h
-            select case ( this%push_type )
-                case ( p_push2_robust )
-                  call this%multi_ion(i)%amjdeposit_robust( e, b, this%cui(i), this%amu, this%dcu )
-                case ( p_push2_clamp )
-                  call this%multi_ion(i)%amjdeposit_clamp( e, b, this%cui(i), this%amu, this%dcu )
-                case ( p_push2_robust_subcyc )
-                  call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i), this%amu, this%dcu )
-            end select
-            call this%cui(i)%acopy_gc_f1( dir=p_mpi_forward )
-            call this%cui(i)%smooth_f1()
-            call this%cui(i)%copy_gc_f1()
-        enddo
-      endif
       call this%cu%acopy_gc_f1( dir=p_mpi_forward )
       call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
       call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -795,6 +766,58 @@ contains
       call add_f1( this%cu, cu )
       call add_f1( this%dcu, dcu )
       call add_f1( this%amu, amu )
+
+      if ( this%v == 0) then
+        do i = 2, this%h
+            this%dcu = 0.0
+            this%amu = 0.0
+            select case ( this%push_type )
+                case ( p_push2_robust )
+                  call this%multi_ion(i)%amjdeposit_robust( e, b, this%cui(i -1), this%amu, this%dcu )
+                case ( p_push2_clamp )
+                  call this%multi_ion(i)%amjdeposit_clamp( e, b, this%cui(i -1), this%amu, this%dcu )
+                case ( p_push2_robust_subcyc )
+                  call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i -1), this%amu, this%dcu )
+            end select
+            call this%cui(i -1)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%cui(i -1)%smooth_f1()
+            call this%cui(i -1)%copy_gc_f1()
+            call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
+            call this%amu%acopy_gc_f1( dir=p_mpi_forward )
+            call this%dcu%smooth_f1()
+            call this%amu%smooth_f1()
+            call this%dcu%copy_gc_f1()
+            call this%amu%copy_gc_f1()
+            call add_f1( this%cui(i-1), cu )
+            call add_f1( this%dcu, dcu )
+            call add_f1( this%amu, amu )
+        enddo
+      else
+        do i = 1, this%h
+            this%dcu = 0.0
+            this%amu = 0.0            
+            select case ( this%push_type )
+                case ( p_push2_robust )
+                  call this%multi_ion(i)%amjdeposit_robust( e, b, this%cui(i), this%amu, this%dcu )
+                case ( p_push2_clamp )
+                  call this%multi_ion(i)%amjdeposit_clamp( e, b, this%cui(i), this%amu, this%dcu )
+                case ( p_push2_robust_subcyc )
+                  call this%multi_ion(i)%amjdeposit_robust_subcyc( e, b, this%cui(i), this%amu, this%dcu )
+            end select
+            call this%cui(i)%acopy_gc_f1( dir=p_mpi_forward )
+            call this%cui(i)%smooth_f1()
+            call this%cui(i)%copy_gc_f1()
+            call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
+            call this%amu%acopy_gc_f1( dir=p_mpi_forward )
+            call this%dcu%smooth_f1()
+            call this%amu%smooth_f1()
+            call this%dcu%copy_gc_f1()
+            call this%amu%copy_gc_f1()
+            call add_f1( this%cui(i), cu )
+            call add_f1( this%dcu, dcu )
+            call add_f1( this%amu, amu )            
+        enddo
+      endif
       if ( this%v == 0) then
         do i = 1, this%multi_max
             call add_f1( this%cui(i), cu )

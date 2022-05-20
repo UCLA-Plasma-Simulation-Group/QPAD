@@ -1607,6 +1607,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
 
         pp = ptrcur
         do i = 1, np
+
             if ( this%w(pp) .gt. 0.95) then
               dxp = this%q(pp)/m1
               pp1 = pp1 + 1
@@ -1619,6 +1620,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart1%p(2,pp1)   = this%p(2,pp)
               ppart1%p(3,pp1)   = this%p(3,pp)
               ppart1%gamma(pp1) = 1.0
+              ppart1%psi(pp1) = 1.0
               ppart1%w(pp1) = 0.0
 
               ppart2%x(1,pp2)   = this%x(1,pp)
@@ -1629,6 +1631,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
               ppart2%p(2,pp2)   = this%p(2,pp)
               ppart2%p(3,pp2)   = this%p(3,pp)
               ppart2%gamma(pp2) = 1.0
+              ppart2%psi(pp2) = 1.0
               ppart2%w(pp2) = 0.0
               this%q(pp) = 0.0
               this%w(pp) = 0.0
