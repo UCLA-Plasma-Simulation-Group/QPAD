@@ -1,11 +1,18 @@
 # Configure file for CORI cluster @ NERSC
-# To use this configuration, load the modules below first
-# PrgEnv-gnu/6.0.4
-# cray-hdf5-parallel/1.10.2.0 
+
+#########################################################################################
+# This configuration has been tested with the following modules loaded
+
+# PrgEnv-gnu/6.0.10
+# cray-hdf5-parallel/1.12.1.1
+# gcc/11.2.0
+
+# JSON-FORTRAN and Hypre libraries are compiled with GNU family compilers of version 11.2
+######################################################################################### 
 
 # Fortran compiler configuration
 FC = ftn -O3
-FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+FC_OPTS = -g -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -fallow-argument-mismatch
 
 # Compiler options for debug
 # FC_OPTS += -fcheck=all
@@ -22,11 +29,15 @@ LINKER = ftn
 LINKER_OPTS = -fopenmp -O3 -ffree-form
 LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -ldl -lz
 
+# Enable/Disable branch modules
+DISABLE_POPAS = TRUE
+DISABLE_TEMPLETE = TRUE
+
 # Library dependencies
-HYPRE_LIB = $(HOME)/local/hypre-2.15.1/gnu-8.3/lib
-HYPRE_INC = $(HOME)/local/hypre-2.15.1/gnu-8.3/include
-JSON_LIB = $(HOME)/local/json-fortran-8.2.0/jsonfortran-gnu-8.2.0/lib
-JSON_INC = $(HOME)/local/json-fortran-8.2.0/jsonfortran-gnu-8.2.0/lib
+HYPRE_LIB = $(HOME)/local/hypre/2.15.1_gnu-11.2/lib
+HYPRE_INC = $(HOME)/local/hypre/2.15.1_gnu-11.2/include
+JSON_LIB = $(HOME)/local/json-fortran/8.2.0_gnu-11.2/lib
+JSON_INC = $(HOME)/local/json-fortran/8.2.0_gnu-11.2/lib
 HDF5_INC =
 HDF5_LIB = 
 
