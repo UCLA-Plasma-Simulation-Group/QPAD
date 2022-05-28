@@ -47,6 +47,7 @@ type part2d
    ! array for psi
    real, dimension(:), allocatable :: psi
    real, dimension(:), allocatable :: w
+   real, dimension(:), allocatable :: w0
    ! particle upper boundaries
    real :: edge
    ! particle buffer
@@ -131,7 +132,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
-   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ), this%w( npmax ) )
+   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ), this%w( npmax ), this%w0( npmax ) )
    allocate( this%pbuf( this%part_dim * npmax ) )
 
    recv_buf_size = max( recv_buf_size, npmax )
@@ -140,7 +141,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -236,7 +237,7 @@ subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    if ( present( if_empty ) ) empty = if_empty
    if ( present( ionization ) ) ionize = ionization
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -1581,7 +1582,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
     character(len=18), save :: sname = 'add_particles'
     integer :: noff, i, j, k, pp1, pp2, m1, m2, np
     integer(kind=LG) :: ptrcur, pp
-    real :: dxp
+    real :: dxp, ww
 
     call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -1607,34 +1608,51 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
 
         pp = ptrcur
         do i = 1, np
+          ww  = this%w0(pp)*this%w(pp)
+!             if ( (ww .ge. 0.25) .and. (ww .lt. 0.5)) then
+!               this%w(pp) = 0.25
+!             else if (( ww .ge. 0.5) .and. ( ww .lt. 0.75)) then
+!               this%w(pp) = 0.5
+!             else if (( ww .ge. 0.75) .and. ( ww .lt. 0.95)) then
+!               this%w(pp) = 0.75
+!             else if (ww .ge. 0.95) then
+!               this%w(pp) = 1.0
+!             endif
+            if ( ww .ge. 0.4) then
+                dxp = this%q(pp)/m1
+                pp1 = pp1 + 1
+                pp2 = pp2 + 1
+                ppart1%x(1,pp1)   = this%x(1,pp)
+                ppart1%x(2,pp1)   = this%x(2,pp)
+                ppart1%q(pp1)     = dxp*m2*this%w(pp)
+                write(2,*) dxp*m2,"add_qi"
+                ppart1%p(1,pp1)   = this%p(1,pp)
+                ppart1%p(2,pp1)   = this%p(2,pp)
+                ppart1%p(3,pp1)   = this%p(3,pp)
+                ppart1%gamma(pp1) = 1.0
+                ppart1%psi(pp1) = 1.0
+                ppart1%w(pp1) = 0.0
+                ppart1%w0(pp1) = 1.0
 
-            if ( this%w(pp) .gt. 0.95) then
-              dxp = this%q(pp)/m1
-              pp1 = pp1 + 1
-              pp2 = pp2 + 1
-              ppart1%x(1,pp1)   = this%x(1,pp)
-              ppart1%x(2,pp1)   = this%x(2,pp)
-              ppart1%q(pp1)     = dxp*m2
-              write(2,*) dxp*m2,"add_qi"
-              ppart1%p(1,pp1)   = this%p(1,pp)
-              ppart1%p(2,pp1)   = this%p(2,pp)
-              ppart1%p(3,pp1)   = this%p(3,pp)
-              ppart1%gamma(pp1) = 1.0
-              ppart1%psi(pp1) = 1.0
-              ppart1%w(pp1) = 0.0
-
-              ppart2%x(1,pp2)   = this%x(1,pp)
-              ppart2%x(2,pp2)   = this%x(2,pp)
-              ppart2%q(pp2)     = -dxp
-              write(2,*) -dxp,"add_qe"
-              ppart2%p(1,pp2)   = this%p(1,pp)
-              ppart2%p(2,pp2)   = this%p(2,pp)
-              ppart2%p(3,pp2)   = this%p(3,pp)
-              ppart2%gamma(pp2) = 1.0
-              ppart2%psi(pp2) = 1.0
-              ppart2%w(pp2) = 0.0
-              this%q(pp) = 0.0
-              this%w(pp) = 0.0
+                ppart2%x(1,pp2)   = this%x(1,pp)
+                ppart2%x(2,pp2)   = this%x(2,pp)
+                ppart2%q(pp2)     = -dxp*this%w(pp)
+                write(2,*) -dxp,"add_qe"
+                ppart2%p(1,pp2)   = this%p(1,pp)
+                ppart2%p(2,pp2)   = this%p(2,pp)
+                ppart2%p(3,pp2)   = this%p(3,pp)
+                ppart2%gamma(pp2) = 1.0
+                ppart2%psi(pp2) = 1.0
+                ppart2%w(pp2) = 0.0
+                ppart2%w0(pp2) = 1.0
+                if (this%w0(pp)*(1-this%w(pp)) .lt. 0.1) then
+                  this%q(pp) = 0.0
+                  this%w0(pp) = 0.0
+                  this%w(pp) = 0.0
+                else
+                  this%q(pp) = this%q(pp)*(1-this%w(pp))
+                  this%w0(pp) = this%w0(pp)*(1-this%w(pp))
+                endif
             endif
           pp = pp + 1
         enddo
@@ -2105,6 +2123,8 @@ subroutine update_bound_part2d( this )
          this%gamma(i) = this%gamma(this%npp)
          this%psi(i)   = this%psi(this%npp)
          this%q(i)     = this%q(this%npp)
+         this%w(i)     = this%w(this%npp)
+         this%w0(i)    = this%w0(this%npp)
          this%npp = this%npp - 1
          cycle
       endif

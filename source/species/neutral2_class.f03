@@ -595,6 +595,9 @@ contains
        ! >>>>>>    
           enddo
           write(2,*) this%pd%npp, "update_particles_e"
+          write(2,*) this%multi_ion(1)%npp, "update_particles_v1"
+          write(2,*) this%multi_ion(2)%npp, "update_particles_v2"
+          write(2,*) this%multi_ion(3)%npp, "update_particles_v3"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
@@ -818,15 +821,15 @@ contains
             call add_f1( this%amu, amu )            
         enddo
       endif
-      if ( this%v == 0) then
-        do i = 1, this%multi_max
-            call add_f1( this%cui(i), cu )
-        enddo
-      else
-        do i = 1, this%h
-            call add_f1( this%cui(i), cu )
-        enddo
-      endif
+!       if ( this%v == 0) then
+!         do i = 1, this%multi_max
+!             call add_f1( this%cui(i), cu )
+!         enddo
+!       else
+!         do i = 1, this%h
+!             call add_f1( this%cui(i), cu )
+!         enddo
+!       endif
       write(2,*) this%pd%npp, "amjdp_particles_e"
       call write_dbg( cls_name, sname, cls_level, 'ends' )
       
