@@ -594,10 +594,10 @@ contains
              call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, s)
        ! >>>>>>    
           enddo
-          write(2,*) this%pd%npp, "update_particles_e"
-          write(2,*) this%multi_ion(1)%npp, "update_particles_v1"
-          write(2,*) this%multi_ion(2)%npp, "update_particles_v2"
-          write(2,*) this%multi_ion(3)%npp, "update_particles_v3"
+          ! write(2,*) this%pd%npp, "update_particles_e"
+          ! write(2,*) this%multi_ion(1)%npp, "update_particles_v1"
+          ! write(2,*) this%multi_ion(2)%npp, "update_particles_v2"
+          ! write(2,*) this%multi_ion(3)%npp, "update_particles_v3"
           call write_dbg(cls_name, sname, cls_level, 'ends')
 
     end subroutine update_neutral
