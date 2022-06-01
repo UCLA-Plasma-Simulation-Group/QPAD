@@ -175,6 +175,7 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then
     call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
   endif
+  print *, this%chirp_coefs
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -213,7 +214,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       ! longitudinal frequency chirp
       k = this%k0
       do l = 1, size(this%chirp_coefs)
-        k = k + this%chirp_coefs(i) * z ** l
+        k = k + this%chirp_coefs(l) * z ** l
       enddo
 
       do i = 1, this%nrp
