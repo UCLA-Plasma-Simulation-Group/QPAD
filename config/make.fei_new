@@ -1,0 +1,36 @@
+#Fortran compiler configuration
+FC = mpif90
+FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -fcheck=all -fallow-argument-mismatch
+# -fbounds-check -fcheck=all
+# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
+# -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
+# -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+
+# C compiler configuration
+CC = gcc-11
+CC_OPTS = -O3 -std=c99
+
+# Preprocessor configuration
+# FPP = gcc-8 -C -E -x assembler-with-cpp
+FPP = gcc-11 -C -P -E -cpp
+
+# Python 2.x configuration. Used for automatically generate compile rules
+# PYTHON = python 
+
+# Select modules to be compiled
+DISABLE_TEMPLATE = true
+DISABLE_POPAS = true
+
+# Linker configuration
+LINKER = mpif90
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5
+
+# Library dependencies
+HYPRE_LIB = /usr/local/hypre-2.24.0/gcc-11.1/lib
+JSON_LIB = /usr/local/json-fortran-8.3.0/gcc-11.1/lib
+JSON_INC = /usr/local/json-fortran-8.3.0/gcc-11.1/lib
+HDF5_INC = /usr/local/hdf5-1.12.2/gcc-11.1/include
+HDF5_LIB = /usr/local/hdf5-1.12.2/gcc-11.1/lib
+
+INCF = -I$(HDF5_INC) -I$(JSON_INC)
