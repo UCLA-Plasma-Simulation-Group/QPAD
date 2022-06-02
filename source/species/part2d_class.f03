@@ -1613,215 +1613,130 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
 
         pp = ptrcur
         do i = 1, np
-!           !Add the charge of the next ion that ionizes again
-!           !because the ionization rate has accumulated to a value greater than 
-!           !the target and the charge of the electron with the new position
-          if ( this%w(pp) .ge. 0.95) then
+          !Adding particles in segments according to the gain of ionization rate
+          ww = this%w(pp) - this%w0(pp)
+          if ( ww .ge. 0.25) then
+            if ( this%w(pp) .ge. 0.95) then
 
-                dxp = this%q(pp)/m1
-                pp1 = pp1 + 1
-                pp2 = pp2 + 1
-                ppart1%x(1,pp1)   = this%x(1,pp)
-                ppart1%x(2,pp1)   = this%x(2,pp)
-                ppart1%q(pp1)     = dxp*m2
-                ppart1%p(1,pp1)   = this%p(1,pp)
-                ppart1%p(2,pp1)   = this%p(2,pp)
-                ppart1%p(3,pp1)   = this%p(3,pp)
-                ppart1%gamma(pp1) = 1.0
-                ppart1%psi(pp1) = 1.0
-                ppart1%w(pp1) = 0.0
-                ppart1%w0(pp1) = 1.0
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = 1.0
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
 
-                ppart2%x(1,pp2)   = this%x(1,pp)
-                ppart2%x(2,pp2)   = this%x(2,pp)
-                ppart2%q(pp2)     = -dxp
-                ppart2%p(1,pp2)   = this%p(1,pp)
-                ppart2%p(2,pp2)   = this%p(2,pp)
-                ppart2%p(3,pp2)   = this%p(3,pp)
-                ppart2%gamma(pp2) = 1.0
-                ppart2%psi(pp2) = 1.0
-                ppart2%w(pp2) = 0.0
-                ppart2%w0(pp2) = 1.0
-                this%q(pp) = 0.0
-                this%w0(pp) = 0.0
-                this%w(pp) = 0.0
-            else if (this%w(pp) .ge. 0.75) then
-                dxp = this%q(pp)/m1
-                pp1 = pp1 + 1
-                pp2 = pp2 + 1
-
-                ppart1%x(1,pp1)   = this%x(1,pp)
-                ppart1%x(2,pp1)   = this%x(2,pp)
-                ppart1%q(pp1)     = dxp*m2*0.75
-                ppart1%p(1,pp1)   = this%p(1,pp)
-                ppart1%p(2,pp1)   = this%p(2,pp)
-                ppart1%p(3,pp1)   = this%p(3,pp)
-                ppart1%gamma(pp1) = 1.0
-                ppart1%psi(pp1) = 1.0
-                ppart1%w(pp1) = 0.0
-                ppart1%w0(pp1) = 1.0
-
-                ppart2%x(1,pp2)   = this%x(1,pp)
-                ppart2%x(2,pp2)   = this%x(2,pp)
-                ppart2%q(pp2)     = -dxp*0.75
-                ppart2%p(1,pp2)   = this%p(1,pp)
-                ppart2%p(2,pp2)   = this%p(2,pp)
-                ppart2%p(3,pp2)   = this%p(3,pp)
-                ppart2%gamma(pp2) = 1.0
-                ppart2%psi(pp2) = 1.0
-                ppart2%w(pp) = 0.0
-                ppart2%w0(pp2) = 1.0
-
-                this%q(pp) = this%q(pp)*(1-0.75)
-                this%w0(pp) = this%w0(pp)*(1-0.75)
-
-                if (this%w0(pp).lt.0.05) then
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = 1.0
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp2) = 0.0
+                  ppart2%w0(pp2) = 0.0
                   this%q(pp) = 0.0
-                  this%w0(pp) = 0.0
+                  this%w0(pp) = 1.0
                   this%w(pp) = 0.0
-                endif
+              else if ( this%w(pp) .ge. 0.75) then
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
 
-            else if (this%w(pp) .ge. 0.5) then
-                dxp = this%q(pp)/m1
-                pp1 = pp1 + 1
-                pp2 = pp2 + 1
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2*0.75
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = 1.0
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
 
-                ppart1%x(1,pp1)   = this%x(1,pp)
-                ppart1%x(2,pp1)   = this%x(2,pp)
-                ppart1%q(pp1)     = dxp*m2*0.5
-                ppart1%p(1,pp1)   = this%p(1,pp)
-                ppart1%p(2,pp1)   = this%p(2,pp)
-                ppart1%p(3,pp1)   = this%p(3,pp)
-                ppart1%gamma(pp1) = 1.0
-                ppart1%psi(pp1) = 1.0
-                ppart1%w(pp1) = 0.0
-                ppart1%w0(pp1) = 1.0
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp*0.75
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = 1.0
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp) = 0.0
+                  ppart2%w0(pp2) = 0.0
 
-                ppart2%x(1,pp2)   = this%x(1,pp)
-                ppart2%x(2,pp2)   = this%x(2,pp)
-                ppart2%q(pp2)     = -dxp*0.5
-                ppart2%p(1,pp2)   = this%p(1,pp)
-                ppart2%p(2,pp2)   = this%p(2,pp)
-                ppart2%p(3,pp2)   = this%p(3,pp)
-                ppart2%gamma(pp2) = 1.0
-                ppart2%psi(pp2) = 1.0
-                ppart2%w(pp) = 0.0
-                ppart2%w0(pp2) = 1.0
+                  this%q(pp) = this%q(pp)*(1-0.75)
+                  this%w0(pp) = 0.75
 
-                this%q(pp) = this%q(pp)*(1-0.5)
-                this%w0(pp) = this%w0(pp)*(1-0.5)
+              else if (this%w(pp) .ge. 0.5) then
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
 
-                if (this%w0(pp).lt.0.05) then
-                  this%q(pp) = 0.0
-                  this%w0(pp) = 0.0
-                  this%w(pp) = 0.0
-                endif
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2*0.5
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = 1.0
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
 
-            else if (this%w(pp) .ge. 0.25) then
-                dxp = this%q(pp)/m1
-                pp1 = pp1 + 1
-                pp2 = pp2 + 1
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp*0.5
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = 1.0
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp) = 0.0
+                  ppart2%w0(pp2) = 0.0
 
-                ppart1%x(1,pp1)   = this%x(1,pp)
-                ppart1%x(2,pp1)   = this%x(2,pp)
-                ppart1%q(pp1)     = dxp*m2*0.25
-                ppart1%p(1,pp1)   = this%p(1,pp)
-                ppart1%p(2,pp1)   = this%p(2,pp)
-                ppart1%p(3,pp1)   = this%p(3,pp)
-                ppart1%gamma(pp1) = 1.0
-                ppart1%psi(pp1) = 1.0
-                ppart1%w(pp1) = 0.0
-                ppart1%w0(pp1) = 1.0
+                  this%q(pp) = this%q(pp)*(1-0.5)
+                  this%w0(pp) = 0.5
 
-                ppart2%x(1,pp2)   = this%x(1,pp)
-                ppart2%x(2,pp2)   = this%x(2,pp)
-                ppart2%q(pp2)     = -dxp*0.25
-                ppart2%p(1,pp2)   = this%p(1,pp)
-                ppart2%p(2,pp2)   = this%p(2,pp)
-                ppart2%p(3,pp2)   = this%p(3,pp)
-                ppart2%gamma(pp2) = 1.0
-                ppart2%psi(pp2) = 1.0
-                ppart2%w(pp) = 0.0
-                ppart2%w0(pp2) = 1.0
+              else if (this%w(pp) .ge. 0.25) then
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
 
-                this%q(pp) = this%q(pp)*(1-0.25)
-                this%w0(pp) = this%w0(pp)*(1-0.25)
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2*0.25
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = 1.0
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
 
-                if (this%w0(pp).lt.0.05) then
-                  this%q(pp) = 0.0
-                  this%w0(pp) = 0.0
-                  this%w(pp) = 0.0
-                endif
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp*0.25
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = 1.0
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp) = 0.0
+                  ppart2%w0(pp2) = 1.0
 
+                  this%q(pp) = this%q(pp)*(1-0.25)
+                  this%w0(pp) = 0.25
+
+              endif
             endif
-
-!           ww  = this%w0(pp)*this%w(pp)
-!             if ( (ww .ge. 0.25) .and. (ww .lt. 0.5)) then
-!               this%w(pp) = 0.25
-!             else if (( ww .ge. 0.5) .and. ( ww .lt. 0.75)) then
-!               this%w(pp) = 0.5
-!             else if (( ww .ge. 0.75) .and. ( ww .lt. 0.95)) then
-!               this%w(pp) = 0.75
-!             else if (ww .ge. 0.95) then
-!               this%w(pp) = 1.0
-!             endif
-!             if ( ww .ge. 0.95) then
-
-!                 dxp = this%q(pp)/m1
-!                 pp1 = pp1 + 1
-!                 pp2 = pp2 + 1
-!                 ppart1%x(1,pp1)   = this%x(1,pp)
-!                 ppart1%x(2,pp1)   = this%x(2,pp)
-!                 ppart1%q(pp1)     = dxp*m2
-!                 ppart1%p(1,pp1)   = this%p(1,pp)
-!                 ppart1%p(2,pp1)   = this%p(2,pp)
-!                 ppart1%p(3,pp1)   = this%p(3,pp)
-!                 ppart1%gamma(pp1) = 1.0
-!                 ppart1%psi(pp1) = 1.0
-!                 ppart1%w(pp1) = 0.0
-!                 ppart1%w0(pp1) = this%w0(pp)
-
-!                 ppart2%x(1,pp2)   = this%x(1,pp)
-!                 ppart2%x(2,pp2)   = this%x(2,pp)
-!                 ppart2%q(pp2)     = -dxp
-!                 ppart2%p(1,pp2)   = this%p(1,pp)
-!                 ppart2%p(2,pp2)   = this%p(2,pp)
-!                 ppart2%p(3,pp2)   = this%p(3,pp)
-!                 ppart2%gamma(pp2) = 1.0
-!                 ppart2%psi(pp2) = 1.0
-!                 ppart2%w(pp2) = 0.0
-!                 ppart2%w0(pp2) = 1.0
-!                 this%q(pp) = 0.0
-!                 this%w0(pp) = 0.0
-!                 this%w(pp) = 0.0
-!             else if (ww .ge. 0.05) then
-!                 dxp = this%q(pp)/m1
-!                 pp1 = pp1 + 1
-!                 pp2 = pp2 + 1
-!                 ppart1%x(1,pp1)   = this%x(1,pp)
-!                 ppart1%x(2,pp1)   = this%x(2,pp)
-!                 ppart1%q(pp1)     = dxp*m2*this%w(pp)
-!                 ppart1%p(1,pp1)   = this%p(1,pp)
-!                 ppart1%p(2,pp1)   = this%p(2,pp)
-!                 ppart1%p(3,pp1)   = this%p(3,pp)
-!                 ppart1%gamma(pp1) = 1.0
-!                 ppart1%psi(pp1) = 1.0
-!                 ppart1%w(pp1) = 0.0
-!                 ppart1%w0(pp1) = ww
-
-!                 ppart2%x(1,pp2)   = this%x(1,pp)
-!                 ppart2%x(2,pp2)   = this%x(2,pp)
-!                 ppart2%q(pp2)     = -dxp*this%w(pp)
-!                 ppart2%p(1,pp2)   = this%p(1,pp)
-!                 ppart2%p(2,pp2)   = this%p(2,pp)
-!                 ppart2%p(3,pp2)   = this%p(3,pp)
-!                 ppart2%gamma(pp2) = 1.0
-!                 ppart2%psi(pp2) = 1.0
-!                 ppart2%w(pp2) = 0.0
-!                 ppart2%w0(pp2) = 1.0
-!                 this%q(pp) = this%q(pp)*(1-this%w(pp))
-!                 this%w0(pp) = this%w0(pp)*(1-this%w(pp))
-!             endif
 
           pp = pp + 1
         enddo

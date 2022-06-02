@@ -43,7 +43,7 @@ type diag_node
   character(len=32) :: type_label = ''
   ! Tag and identifier for pipeline data communication
   integer :: tag = -1, id = MPI_REQUEST_NULL
-  integer :: n ! the number of ion
+
 
   contains
 
@@ -61,6 +61,7 @@ type sim_diag
   integer :: ndump_gcd = 0 ! greatest common divisor of all the values of ndump
   logical :: has_vpotz = .false.
   logical :: has_vpott = .false.
+  integer :: n ! the number of ion
 
   contains
 
@@ -392,7 +393,7 @@ subroutine init_diag_plasma( this, input, plasma )
     else
       imax = imax - v + 1
     endif
-    this%diag%n = imax
+    this%n = imax
     do j = 1, m
       call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
       if ( ndump > 0 ) then
@@ -876,8 +877,7 @@ subroutine run_sim_diag( this, tstep, dt )
 
         case ( 'ion_cyl_m' )
 
-          n = this%diag%n
-          do i = 1,n
+          do i = 1,this%n
             rtag = ntag(); stag = rtag;
             call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id, i)
             write(2,*) i, "ion_cyl_m"
@@ -1004,11 +1004,11 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
   endif
 
   this%diag%type_label = trim(type_label)
+  this%n = imax
   do j = 1, imax
 
     ion_str = 'ion'//num2str(v+j-1)
 !     call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/' )
-    this%diag%n = j 
     do i = 1, 2*max_mode+1
 
       if ( i == 1 ) then
@@ -1034,7 +1034,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
 
     enddo
   enddo
-  write(2,*) imax, "add_diag_ion"
+  write(2,*) this%n, "add_diag_ion"
   this%num_diag = this%num_diag + 1
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
