@@ -175,7 +175,6 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then
     call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
   endif
-  print *, this%chirp_coefs
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
