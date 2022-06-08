@@ -81,6 +81,7 @@ type :: ufield
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: has2d
+  procedure :: read_hdf5
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
@@ -91,7 +92,6 @@ type :: ufield
   procedure, private :: get_gc_num_all, get_gc_num_dim
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
-
   procedure, private :: assign_f1, assign_f2
 
 end type ufield
@@ -241,6 +241,35 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
+
+subroutine read_hdf5( this, file, dim )
+
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class( hdf5file ), intent(in) :: file
+  integer, intent(in) :: dim
+
+  ! local data
+  integer :: ierr
+  integer, dimension(2) :: lsize, gsize
+  integer, dimension(2) :: noff
+  character(len=32), save :: sname = 'read_hdf5'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  ! TODO: change to 'hdf5 I/O'
+  ! call start_tprof( 'write hdf5' )
+
+  gsize = this%nd
+  lsize = this%ndp
+  noff = this%noff
+
+  call prfield(file, this%f2(dim,1:,1:), gsize, lsize, noff, ierr)
+
+  ! call stop_tprof( 'write hdf5' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine read_hdf5
 
 subroutine copy_slice( this, idx, dir )
 

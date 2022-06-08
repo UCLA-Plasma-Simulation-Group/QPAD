@@ -10,6 +10,7 @@ use field_laser_class
 use species2d_class
 use kwargs_class
 use ppmsg_class
+use hdf5io_class
 
 implicit none
 
@@ -89,12 +90,13 @@ subroutine init_sim_lasers( this, input, opts )
 
   ! local data
   character(len=32), save :: sname = 'init_sim_lasers'
-  character(len=:), allocatable :: str
-  integer :: max_mode, iter, i
+  character(len=:), allocatable :: cym_str
+  integer :: max_mode, iter, i, m, rst_timestep
   integer, dimension(2,2) :: gc_num
   real :: k0 
   type( kw_list ) :: kwargs
   logical :: read_rst
+  type(hdf5file), dimension(:), allocatable :: file_rst
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -113,8 +115,35 @@ subroutine init_sim_lasers( this, input, opts )
     call kwargs%set( 'k0', k0 )
     call this%laser(i)%new( opts, 1, max_mode, gc_num, only_f1=.false., kwargs=kwargs )
 
+    ! read restart files
     if ( read_rst ) then
-      call write_err( 'Restarting is currently not available for laser field.' )
+
+      allocate(file_rst(4 * max_mode + 2))
+      call input%get('simulation.restart_timestep', rst_timestep)
+
+      ! create restart files to be read
+      do m = 1, 4 * max_mode + 2
+        if ( m == 1 ) then
+          cym_str = 're_re0'
+        elseif ( m == 2 ) then
+          cym_str = 'im_re0'
+        elseif ( mod(m, 4) == 3 ) then
+          cym_str = 're_re'// num2str( (i+1)/4 )
+        elseif ( mod(m, 4) == 0 ) then
+          cym_str = 're_im'// num2str( i/4 )
+        elseif ( mod(m, 4) == 1 ) then
+          cym_str = 'im_re'// num2str( (i-1)/4 )
+        elseif ( mod(m, 4) == 2 ) then
+          cym_str = 'im_im'// num2str( (i-2)/4 )
+        endif
+
+        call file_rst(m)%new(&
+          filename = './RST/Laser'//num2str(i,2)//'/', &
+          dataname = 'RST-laser'//num2str(i,2) // '-' // trim(cym_str), &
+          n = rst_timestep)
+      enddo
+
+      call this%laser(i)%read_rst(file_rst)
     endif
 
   enddo

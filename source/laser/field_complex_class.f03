@@ -75,6 +75,7 @@ type :: field_complex
   generic :: get_cfi_re => get_cfi_re_all, get_cfi_re_mode
   generic :: get_cfi_im => get_cfi_im_all, get_cfi_im_mode
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
+  procedure :: read_hdf5
   procedure :: copy_slice
   procedure :: copy_gc_f1
   procedure :: copy_gc_f2
@@ -894,6 +895,38 @@ subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
+
+subroutine read_hdf5( this, files, dim )
+
+  implicit none
+
+  class( field_complex ), intent(inout) :: this
+  class( hdf5file ), intent(in), dimension(:) :: files
+  integer, intent(in) :: dim
+
+  integer :: i
+  character(len=32), save :: sname = 'read_hdf5'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do i = 0, this%max_mode
+
+    if ( i == 0 ) then
+      call this%cfr_re(i)%read_hdf5( files(1), dim )
+      call this%cfi_re(i)%read_hdf5( files(2), dim )
+      cycle
+    endif
+
+    call this%cfr_re(i)%read_hdf5( files(4*i-1), dim )
+    call this%cfr_im(i)%read_hdf5( files(4*i  ), dim )
+    call this%cfi_re(i)%read_hdf5( files(4*i+1), dim )
+    call this%cfi_im(i)%read_hdf5( files(4*i+2), dim )
+
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine read_hdf5
 
 function get_cfr_re_all( this )
   implicit none

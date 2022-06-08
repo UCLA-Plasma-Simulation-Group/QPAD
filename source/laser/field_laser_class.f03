@@ -13,6 +13,7 @@ use mpi
 use fpcr_penta_class
 use profile_laser_class
 use ppmsg_class
+use hdf5io_class
 
 implicit none
 
@@ -63,6 +64,8 @@ type, extends( field_complex ) :: field_laser
   procedure :: set_grad => set_grad_field_laser
   procedure :: gather   => gather_field_laser
   procedure :: zero     => zero_field_laser
+  procedure :: write_rst => write_rst_field_laser
+  procedure :: read_rst => read_rst_field_laser
   procedure, private :: init_solver
 
 end type field_laser
@@ -1015,5 +1018,31 @@ subroutine zero_field_laser( this, only_f1 )
   enddo
 
 end subroutine zero_field_laser
+
+subroutine write_rst_field_laser( this, files, rtag, stag, id )
+  implicit none
+
+  class(field_laser), intent(inout) :: this
+  class(hdf5file), intent(in), dimension(:) :: files
+  integer, intent(in) :: rtag, stag
+  integer, intent(inout) :: id
+
+  character(len=32), save :: sname = 'write_rst_field_laser'
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call this%write_hdf5(files, 1, rtag, stag, id)
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+end subroutine write_rst_field_laser
+
+subroutine read_rst_field_laser( this, files )
+  implicit none
+
+  class(field_laser), intent(inout) :: this
+  class(hdf5file), intent(in), dimension(:) :: files
+
+  character(len=32), save :: sname = 'read_rst_field_laser'
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call this%read_hdf5(files, 1)
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+end subroutine read_rst_field_laser
 
 end module field_laser_class
