@@ -64,3 +64,5 @@ Then navigate to the `/docs` folder and use the following command to generate do
 make html
 ```
 The output documentation is located at `/docs/build/html` and you can visit it via `index.html`. To generate documentation with other output formats, please check with `make help`.
+
+In case that you have difficulty to install Sphinx or the above the method does not work for you, we have put a precompiled html documentation and you can visit it via `/docs/html/index.html`.
