@@ -60,6 +60,9 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
 * ``ppc``, integer array (3)
     The numbers of particles per "virtual" cell in the cylindrical coordinate, i.e. :math:`(\Delta r, \Delta\phi, \Delta z)`. Note it is not affected by the choice of ``geometry``.
 
+* ``num_theta``, integer
+    Numbers of "virtual" cells distributed azimuthally, i.e. :math:`\Delta\phi=2\pi`/``num_theta``.
+
 * ``npmax``, integer, optional
     Number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If ``npmax`` is not large enough during the initialization, the program will automatically resize the particle buffers.
     

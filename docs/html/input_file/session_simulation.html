@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulation Session &mdash; QPAD 0.1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Beam Session" href="session_beam.html" />
+    <link rel="prev" title="Input File" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> QPAD
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview/overview.html">Overview of QPAD algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="overview.html">Input File</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="overview.html#format-of-input-file">Format of Input File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#parameter-unit">Parameter Unit</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="overview.html#sessions-of-input-file">Sessions of Input File</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Simulation Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_beam.html">Beam Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_species.html">Species Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_neutral.html">Neutral Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_field.html">Field Session</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../post_process/post_process.html">Post-processing Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/contribution.html">Contribute to QPAD</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">QPAD</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="overview.html">Input File</a> &raquo;</li>
+      <li>Simulation Session</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/input_file/session_simulation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="simulation-session">
+<h1>Simulation Session<a class="headerlink" href="#simulation-session" title="Permalink to this heading"></a></h1>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">algorithm</span></code>, string</dt><dd><p>The simulation mode. Available modes include <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;popas&quot;</span></code>. The <code class="docutils literal notranslate"><span class="pre">&quot;popas&quot;</span></code> mode provides the interfaces and emittance/energy spread diagnostics for the beam parameter optimization code developed by ANL.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">nodes</span></code>, integer array (2)</dt><dd><p>The first component define the MPI processors used in each stage (in r-direction); the second component defines the number of pipeline stages used in the simulation (in <span class="math notranslate nohighlight">\(\xi\)</span>-direction).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">grid</span></code>, integer array (2)</dt><dd><p>The first and second components define the number of cells used along r- and <span class="math notranslate nohighlight">\(\xi\)</span>-direction respectively.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">box</span></code>, session</dt><dd><p>Define the size of simulation box in r- and <span class="math notranslate nohighlight">\(\xi\)</span>-direction. This session includes two parameters</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">r</span></code>, real array(2)</dt><dd><p>Starting and end coordinates in r-direction. The lower limit should be always 0.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">z</span></code>, real array(2)</dt><dd><p>Starting and end coordinates in <span class="math notranslate nohighlight">\(\xi\)</span>-direction.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">field_boundary</span></code>, string</dt><dd><p>Boundary condition of fields for the simulation. The current available options only include <code class="docutils literal notranslate"><span class="pre">&quot;open&quot;</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">max_mode</span></code>, integer</dt><dd><p>Maximum harmonic number of Fourier azimuthal mode.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">interpolation</span></code>, string</dt><dd><p>Order of interpolation of the simulation. Only <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code> is available currently.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">n0</span></code>, real</dt><dd><p>Reference plasma density (in the unit of <span class="math notranslate nohighlight">\(\text{cm}^{-3}\)</span>). <strong>This parameter is required when the ionization is turned on</strong>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">time</span></code>, real</dt><dd><p>Total duration of the simulation. The initial moment defaults to 0.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">dt</span></code>, real</dt><dd><p>Time step of pushing relativistic particle beams.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">nbeams</span></code>, integer</dt><dd><p>Total number of particle beams.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">nspecies</span></code>, integer</dt><dd><p>Total number of plasma species.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">nneutrals</span></code>, integer</dt><dd><p>Total number of neutral gas species.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">dump_restart</span></code>, logical</dt><dd><p>If true, the code will dump the restart files during the simulation.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ndump_restart</span></code>, integer</dt><dd><p>Frequency of dumping restart files. QPAD will dump the restart files every <code class="docutils literal notranslate"><span class="pre">ndump_restart</span></code> steps.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">read_restart</span></code>, logical</dt><dd><p>If true, QPAD will read the restart files when it starts.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">restart_timestep</span></code>, integer</dt><dd><p>The number of time step from which the code will restart when <code class="docutils literal notranslate"><span class="pre">read_restart</span></code> is true.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">iter</span></code>, integer</dt><dd><p>Number of predictor-corrector iterations the code will use when solving the plasma response. Setting <code class="docutils literal notranslate"><span class="pre">&quot;iter&quot;:</span> <span class="pre">1</span></code> is usually enough for the vast majority of situations. A safe strategy is to do numerical convergence tests with larger <code class="docutils literal notranslate"><span class="pre">iter</span></code> and reduce it gradually to determine the minimal value suitable for the problems to be simulated.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">smooth_type</span></code>, string</dt><dd><p>Smoother used to smooth the source terms. The available options include <code class="docutils literal notranslate"><span class="pre">&quot;binomial&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;compensated&quot;</span></code>. Set <code class="docutils literal notranslate"><span class="pre">&quot;none&quot;</span></code> to switch off the smoother.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">smooth_order</span></code>, integer</dt><dd><p>Order of smooth. It only takes effect for “binomial” and “compensated” types.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The smoother is not currently available now. Please turn it off by setting <code class="docutils literal notranslate"><span class="pre">&quot;smooth_type&quot;:</span> <span class="pre">&quot;none&quot;</span></code> until this issue is fixed in the future updates.</p>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">verbose</span></code>, integer</dt><dd><p>Level of verbosity. This parameter should be always set as 0 unless for debugging purpose. A larger <code class="docutils literal notranslate"><span class="pre">verbose</span></code> will output more debugging information into the log files. The maximum value is 5.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">random_seed</span></code>, integer</dt><dd><p>Seed of the pseudo-random number generator. Set 0 to use the operating-system-specified seeds, which varies from run to run. Specify any integer greater than 0 to use the user-specified seed which is fixed for each run.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="overview.html" class="btn btn-neutral float-left" title="Input File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="session_beam.html" class="btn btn-neutral float-right" title="Beam Session" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Fei Li.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
