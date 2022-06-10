@@ -801,15 +801,14 @@ subroutine prfield_2d(file, fd, gs, ls, noff, ierr)
    integer, intent(in), dimension(2) :: gs, ls
    integer, intent(in), dimension(2) :: noff
    integer, intent(inout) :: ierr
-  ! local data
+  
    integer(hid_t) :: treal,fapl_id, xfer_id, mspace_id
-   integer(hid_t) :: file_id, root_id, dset_id, fspace_id
+   integer(hid_t) :: file_id, root_id, dset_id, fspace_id, dtype_id
    integer(hsize_t), dimension(2) :: gsize, lsize, offset
    character(len=:), allocatable :: filename
    character(len=8) :: st
   
    filename = trim(file%filename) // trim(file%dataname) // '_' // num2str(file%n, width=8) // '.h5'
-  
    ierr = 0
    gsize = gs
    lsize = ls
@@ -819,29 +818,32 @@ subroutine prfield_2d(file, fd, gs, ls, noff, ierr)
 
    ! set property for file accessing and data transfer
    call h5pcreate_f(H5P_FILE_ACCESS_F, fapl_id, ierr)
-   call h5pcreate_f(H5P_DATASET_XFER_F, xfer_id, ierr)
    call h5pset_fapl_mpio_f(fapl_id, comm_world(), MPI_INFO_NULL, ierr)
+   call h5pcreate_f(H5P_DATASET_XFER_F, xfer_id, ierr)
    call h5pset_dxpl_mpio_f(xfer_id, H5FD_MPIO_COLLECTIVE_F, ierr)
   
    ! open hdf5 file
    call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr, fapl_id)
   
-   ! create dataspaces for dataset in the file and memory
-   call h5screate_simple_f(2, gsize, fspace_id, ierr)
+   ! create dataspaces for dataset in the memory
    call h5screate_simple_f(2, lsize, mspace_id, ierr)
 
    ! open root group and dataset
    call h5gopen_f(file_id, '/', root_id, ierr)
    call h5dopen_f(root_id, file%dataname, dset_id, ierr)
+   call h5dget_space_f(dset_id, fspace_id, ierr)
+   call h5dget_type_f(dset_id, dtype_id, ierr)
   
    ! read dataset from the file
    offset = noff
    call h5sselect_hyperslab_f(fspace_id, H5S_SELECT_SET_F, offset, lsize, ierr)
-   call h5dread_f(dset_id, treal, fd(1:lsize(1), 1:lsize(2)), lsize, ierr, mspace_id, fspace_id, xfer_prp=xfer_id)
+   call h5dread_f(dset_id, dtype_id, fd(1:lsize(1), 1:lsize(2)), lsize, ierr, &
+      mem_space_id=mspace_id, file_space_id=fspace_id, xfer_prp=xfer_id)
 
    ! close all the objects
    call h5sclose_f(mspace_id, ierr)
    call h5sclose_f(fspace_id, ierr)
+   call h5tclose_f(dtype_id, ierr)
    call h5pclose_f(xfer_id, ierr)
    call h5pclose_f(fapl_id, ierr)
    call h5gclose_f(root_id, ierr)
