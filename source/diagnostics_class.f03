@@ -880,7 +880,7 @@ subroutine run_sim_diag( this, tstep, dt )
           write(2,*) "true", "charge_cyl_m"
 
         case ( 'ion_cyl_m' )
-          do i = 1,3
+          do i = 1,this%n
               rtag = ntag(); stag = rtag;
               call obj%wr_ion( this%diag%files((i-1)*this%m+1:i*this%m), rtag, stag, this%diag%id, i )
                write(2,*) i, "ion_cyl_m"
