@@ -329,7 +329,7 @@ private
     class(field_jay) , allocatable :: cui(:)
     class(field_rho) , allocatable :: qi(:)
 
-    integer :: multi_max, xppc, yppc, v, h
+    integer :: multi_max, xppc, yppc, v, h, max_mode
     ! qm is the 8th coordinate for every particle.
     ! If the longitudinal density of the plasma changes,
     ! the qm will change correspondingly
@@ -396,6 +396,7 @@ contains
           this%v = v
           this%multi_max = max_e
           this%h = max_e - v + 1
+          this%max_mode = max_mode
 
           call write_dbg(cls_name, sname, cls_level, 'starts')
           
@@ -987,7 +988,7 @@ contains
 
     end subroutine writeq_neutral
 
-    subroutine write_ion_neutral( this, files, rtag, stag, id, n )
+    subroutine write_ion_neutral( this, files, rtag, stag, id, n)
 
       implicit none
       
@@ -1000,11 +1001,10 @@ contains
       integer :: i
 
       call write_dbg( cls_name, sname, cls_level, 'starts' )
-
 !       do i = 1, this%h
-        call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
+      call this%qi(n)%write_hdf5( files, 1, rtag, stag, id ) 
 !       enddo
-      write(2,*) n, "write_ion_neutral"
+!       write(2,*) n, "write_ion_neutral"
       call write_dbg( cls_name, sname, cls_level, 'ends' )  
 
     end subroutine write_ion_neutral

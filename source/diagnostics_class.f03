@@ -62,6 +62,7 @@ type sim_diag
   logical :: has_vpotz = .false.
   logical :: has_vpott = .false.
   integer :: n ! the number of ion
+  integer :: m ! 2*max_mode + 1
 
   contains
 
@@ -252,7 +253,7 @@ subroutine init_diag_plasma( this, input, plasma )
   class( sim_plasma ), intent(in), target :: plasma
   ! local data
   integer :: nspecies, nneutrals, nneutral2s, max_mode, ndump, psample
-  integer :: i, j, k, m, n, v, imax
+  integer :: i, j, k, m, n, v, imax, l
   real :: rmin, rmax, zmin, zmax, dt
   character(len=:), allocatable :: ss
 
@@ -422,26 +423,29 @@ subroutine init_diag_plasma( this, input, plasma )
               label     = '\rho', &
               rank      = 2 )
           case ( 'ion_cyl_m' )
-            call this%add_diag( &
-              obj       = plasma%neut2(i), &
-              max_mode  = max_mode, &
-              dump_freq = ndump, &
-              dim       = 1, &
-              type_label= 'ion_cyl_m', &
-              filename  = './Neutral2'//num2str(i)//'/'//'Ion_charge'//'/', &
-              dataname  = 'ion_charge', &
-              timeunit  = '1 / \omega_p', &
-              dt        = dt, &
-              imax      = imax,&
-              v         = v,&
-              axisname  = (/'r  ', '\xi', '   '/), &
-              axislabel = (/'r  ', '\xi', '   '/), &
-              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
-              axismax   = (/rmax, zmax, 0.0/), &
-              axismin   = (/rmin, zmin, 0.0/), &
-              units     = 'n_0', &
-              label     = '\rho', &
-              rank      = 2 )
+!             do l = 1,imax
+!               case ( 'ion_cyl_m'//num2str(l) )
+              call this%add_diag( &
+                obj       = plasma%neut2(i), &
+                max_mode  = max_mode, &
+                dump_freq = ndump, &
+                dim       = 1, &
+                type_label= 'ion_cyl_m', &
+                filename  = './Neutral2'//num2str(i)//'/'//'Ion_charge'//'/', &
+                dataname  = 'ion_charge', &
+                timeunit  = '1 / \omega_p', &
+                dt        = dt, &
+                imax      = imax,&
+                v         = v,&
+                axisname  = (/'r  ', '\xi', '   '/), &
+                axislabel = (/'r  ', '\xi', '   '/), &
+                axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+                axismax   = (/rmax, zmax, 0.0/), &
+                axismin   = (/rmin, zmin, 0.0/), &
+                units     = 'n_0', &
+                label     = '\rho', &
+                rank      = 2 )
+!             enddo
           case ( 'raw' )
             call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').psample', psample )
             call this%add_diag( &
@@ -876,13 +880,11 @@ subroutine run_sim_diag( this, tstep, dt )
           write(2,*) "true", "charge_cyl_m"
 
         case ( 'ion_cyl_m' )
-
-          do i = 1,this%n
-            rtag = ntag(); stag = rtag;
-            call obj%wr_ion( this%diag%files, rtag, stag, this%diag%id, i)
-            write(2,*) i, "ion_cyl_m"
+          do i = 1,3
+              rtag = ntag(); stag = rtag;
+              call obj%wr_ion( this%diag%files((i-1)*this%m+1:i*this%m), rtag, stag, this%diag%id, i )
+               write(2,*) i, "ion_cyl_m"
           enddo
-
         end select
 
       end select
@@ -1005,6 +1007,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
 
   this%diag%type_label = trim(type_label)
   this%n = imax
+  this%m = 2*max_mode + 1
   do j = 1, imax
 
     ion_str = 'ion'//num2str(v+j-1)
@@ -1018,8 +1021,8 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
       else
         cym_str = 'Im'//num2str(i/2)
       endif
-      call system( 'mkdir -p '//trim(filename)//trim(ion_str)//trim(cym_str)//'/' )
-      call this%diag%files(i)%new( &
+      call system( 'mkdir -p '//trim(filename)//trim(ion_str)//'/'//trim(cym_str)//'/' )
+      call this%diag%files((2*max_mode+1)*(j-1)+i)%new( &
         timeunit  = timeunit, &
         dt        = dt, &
         axisname  = axisname, &
@@ -1027,15 +1030,15 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
         axismin   = axismin, &
         axismax   = axismax, &
         rank      = rank, &
-        filename  = trim(filename)//trim(ion_str)//trim(cym_str)//'/', &
+        filename  = trim(filename)//trim(ion_str)//'/'//trim(cym_str)//'/', &
         dataname  = dataname, &
         units     = units, &
         label     = label )
 
     enddo
+  this%num_diag = this%num_diag + 1
   enddo
   write(2,*) this%n, "add_diag_ion"
-  this%num_diag = this%num_diag + 1
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_diag_ion
