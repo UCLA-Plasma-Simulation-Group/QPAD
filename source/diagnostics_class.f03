@@ -253,7 +253,7 @@ subroutine init_diag_plasma( this, input, plasma )
   class( sim_plasma ), intent(in), target :: plasma
   ! local data
   integer :: nspecies, nneutrals, nneutral2s, max_mode, ndump, psample
-  integer :: i, j, k, m, n, v, imax, l
+  integer :: i, j, k, m, n, v, l,imax
   real :: rmin, rmax, zmin, zmax, dt
   character(len=:), allocatable :: ss
 
@@ -387,13 +387,14 @@ subroutine init_diag_plasma( this, input, plasma )
   ! add neutral2 diagnostics
   do i = 1, nneutral2s
     call input%info( 'neutral2s('//num2str(i)//').diag', n_children=m )
-    call input%info( 'neutral2s('//num2str(i)//').v', v )
+    call input%get( 'neutral2s('//num2str(i)//').v', v )
     call input%get('neutral2s('//num2str(i)//').ion_max',imax)
     if(v == 0) then
       imax = imax + 1
     else
       imax = imax - v + 1
     endif
+    write(2,*) v,imax, "neutral2 diagnostics_v"
     this%n = imax
     do j = 1, m
       call input%get( 'neutral2s('//num2str(i)//').diag'//'('//num2str(j)//').ndump', ndump )
@@ -1005,6 +1006,7 @@ subroutine add_diag_ion( this, obj, max_mode, dump_freq, dim, type_label, filena
     call this%diag%new( obj, dump_freq, num_files=imax*(2*max_mode+1), dim=dim, id=MPI_REQUEST_NULL )
   endif
 
+  write(2,*) imax, "imax"
   this%diag%type_label = trim(type_label)
   this%n = imax
   this%m = 2*max_mode + 1
