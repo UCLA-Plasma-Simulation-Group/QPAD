@@ -81,7 +81,7 @@ subroutine init_sim_plasma( this, input, opts, s )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_plasma'
-  real :: qm, qbme, qbm, qbmi, omega_p, np
+  real :: qm, qbme, qbm, qbmi, omega_p, np, sec
   integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type, v
   character(len=:), allocatable :: str
 
@@ -203,6 +203,7 @@ subroutine init_sim_plasma( this, input, opts, s )
     call input%get( 'neutral2s('//num2str(i)//').element', elem )
     call input%get( 'neutral2s('//num2str(i)//').ion_max', ion_max )
     call input%get( 'neutral2s('//num2str(i)//').v', v )
+    call input%get( 'neutral2s('//num2str(i)//').sec', sec )
     qbme = qm / qbm
     qbm = -qm/qbmi
 
@@ -220,7 +221,7 @@ subroutine init_sim_plasma( this, input, opts, s )
         &are supported currently.' )
     end select
 
-    call this%neut2(i)%new( opts, this%pf_neut2(i), max_mode, elem, ion_max, v, &
+    call this%neut2(i)%new( opts, this%pf_neut2(i), max_mode, elem, ion_max, v, sec, &
       qbm, qbme, omega_p, s, push_type, sm_type, sm_ord )
 
   enddo

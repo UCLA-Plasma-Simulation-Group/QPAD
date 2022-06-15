@@ -1573,21 +1573,21 @@ subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
   write(2,*) esum, "ionize_part2d_esum"
 end subroutine ionize_part2d
 
-subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
+subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, s)
 
     implicit none
     class(part2d), intent(inout) :: this
     class(fdist2d), intent(inout) :: prof
     class(part2d), intent(inout) :: ppart1
     class(part2d), intent(inout) :: ppart2
-    real, intent(in) :: s
+    real, intent(in) :: s, sec
     integer, intent(in) :: multi_max, m
 
     ! local
     character(len=18), save :: sname = 'add_particles'
-    integer :: noff, i, j, k, pp1, pp2, m1, m2, np
+    integer :: noff, i, j, k, pp1, pp2, m1, m2, np, l
     integer(kind=LG) :: ptrcur, pp
-    real :: dxp, ww
+    real :: dxp, ww, a, b
 
     call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -1614,7 +1614,8 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
         pp = ptrcur
         do i = 1, np
           !Adding particles in segments according to the gain of ionization rate
-          ww = this%w(pp) - this%w0(pp)
+          if (sec.ge.2) then
+            ww = this%w(pp) - this%w0(pp)
             if ( this%w(pp) .ge. 0.95) then
 
                   dxp = this%q(pp)/m1
@@ -1646,15 +1647,53 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
                   this%w0(pp) = 1.0
                   this%w(pp) = 0.0
 
-              else if ( ww .ge. 0.75) then
+            else
+
+                do l = 1, sec - 1
+                  b = l/sec
+                  a = 1 - b
+                  if( ww .ge. a) then
+                    dxp = this%q(pp)/m1
+                    pp1 = pp1 + 1
+                    pp2 = pp2 + 1
+
+                    ppart1%x(1,pp1)   = this%x(1,pp)
+                    ppart1%x(2,pp1)   = this%x(2,pp)
+                    ppart1%q(pp1)     = dxp*m2*a/(1-this%w0(pp))
+  !                   ppart1%q(pp1)     = dxp*m2*0.75
+                    ppart1%p(1,pp1)   = this%p(1,pp)
+                    ppart1%p(2,pp1)   = this%p(2,pp)
+                    ppart1%p(3,pp1)   = this%p(3,pp)
+                    ppart1%gamma(pp1) = 1.0
+                    ppart1%psi(pp1) = 1.0
+                    ppart1%w(pp1) = 0.0
+                    ppart1%w0(pp1) = 0.0
+
+                    ppart2%x(1,pp2)   = this%x(1,pp)
+                    ppart2%x(2,pp2)   = this%x(2,pp)
+                    ppart2%q(pp2)     = -dxp*a/(1-this%w0(pp))
+                    ppart2%p(1,pp2)   = this%p(1,pp)
+                    ppart2%p(2,pp2)   = this%p(2,pp)
+                    ppart2%p(3,pp2)   = this%p(3,pp)
+                    ppart2%gamma(pp2) = 1.0
+                    ppart2%psi(pp2) = 1.0
+                    ppart2%w(pp2) = 0.0
+                    ppart2%w0(pp2) = 0.0
+
+                    this%q(pp) = this%q(pp)*((1-this%w0(pp)-a)/(1-this%w0(pp)))
+                    this%w0(pp) = a + this%w0(pp)
+                  endif
+                enddo
+            endif
+          elseif (sec.ge.1) then
+            if ( this%w(pp) .ge. 0.95) then
+
                   dxp = this%q(pp)/m1
                   pp1 = pp1 + 1
                   pp2 = pp2 + 1
-
                   ppart1%x(1,pp1)   = this%x(1,pp)
                   ppart1%x(2,pp1)   = this%x(2,pp)
-                  ppart1%q(pp1)     = dxp*m2*0.75/(1-this%w0(pp))
-!                   ppart1%q(pp1)     = dxp*m2*0.75
+                  ppart1%q(pp1)     = dxp*m2
                   ppart1%p(1,pp1)   = this%p(1,pp)
                   ppart1%p(2,pp1)   = this%p(2,pp)
                   ppart1%p(3,pp1)   = this%p(3,pp)
@@ -1665,7 +1704,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
 
                   ppart2%x(1,pp2)   = this%x(1,pp)
                   ppart2%x(2,pp2)   = this%x(2,pp)
-                  ppart2%q(pp2)     = -dxp*0.75/(1-this%w0(pp))
+                  ppart2%q(pp2)     = -dxp
                   ppart2%p(1,pp2)   = this%p(1,pp)
                   ppart2%p(2,pp2)   = this%p(2,pp)
                   ppart2%p(3,pp2)   = this%p(3,pp)
@@ -1674,84 +1713,11 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, s)
                   ppart2%w(pp2) = 0.0
                   ppart2%w0(pp2) = 0.0
 
-                  this%q(pp) = this%q(pp)*((1-this%w0(pp)-0.75)/(1-this%w0(pp)))
-!                   if ((this%w0(pp) + 0.75).ge.1.0) then
-!                     this%w0(pp) = 1.0
-!                     this%w(pp) = 0.0
-!                   else
-                  this%w0(pp) = 0.75 + this%w0(pp)
-!                   endif
-     
-              else if ( ww .ge. 0.5) then
-                  dxp = this%q(pp)/m1
-                  pp1 = pp1 + 1
-                  pp2 = pp2 + 1
-
-                  ppart1%x(1,pp1)   = this%x(1,pp)
-                  ppart1%x(2,pp1)   = this%x(2,pp)
-                  ppart1%q(pp1)     = dxp*m2*0.5/(1-this%w0(pp))
-                  ppart1%p(1,pp1)   = this%p(1,pp)
-                  ppart1%p(2,pp1)   = this%p(2,pp)
-                  ppart1%p(3,pp1)   = this%p(3,pp)
-                  ppart1%gamma(pp1) = 1.0
-                  ppart1%psi(pp1) = 1.0
-                  ppart1%w(pp1) = 0.0
-                  ppart1%w0(pp1) = 0.0
-
-                  ppart2%x(1,pp2)   = this%x(1,pp)
-                  ppart2%x(2,pp2)   = this%x(2,pp)
-                  ppart2%q(pp2)     = -dxp*0.5/(1-this%w0(pp))
-                  ppart2%p(1,pp2)   = this%p(1,pp)
-                  ppart2%p(2,pp2)   = this%p(2,pp)
-                  ppart2%p(3,pp2)   = this%p(3,pp)
-                  ppart2%gamma(pp2) = 1.0
-                  ppart2%psi(pp2) = 1.0
-                  ppart2%w(pp2) = 0.0
-                  ppart2%w0(pp2) = 0.0
-
-                  this%q(pp) = this%q(pp)*((1-this%w0(pp)-0.5)/(1-this%w0(pp)))
-!                   if ((this%w0(pp) + 0.5).ge.1.0) then
-!                     this%w0(pp) = 1.0
-!                     this%w(pp) = 0.0
-!                   else
-                  this%w0(pp) = 0.5 + this%w0(pp)
-!                   endif
-
-              else if ( ww .ge. 0.25) then
-                  dxp = this%q(pp)/m1
-                  pp1 = pp1 + 1
-                  pp2 = pp2 + 1
-
-                  ppart1%x(1,pp1)   = this%x(1,pp)
-                  ppart1%x(2,pp1)   = this%x(2,pp)
-                  ppart1%q(pp1)     = dxp*m2*0.25/(1-this%w0(pp))
-                  ppart1%p(1,pp1)   = this%p(1,pp)
-                  ppart1%p(2,pp1)   = this%p(2,pp)
-                  ppart1%p(3,pp1)   = this%p(3,pp)
-                  ppart1%gamma(pp1) = 1.0
-                  ppart1%psi(pp1) = 1.0
-                  ppart1%w(pp1) = 0.0
-                  ppart1%w0(pp1) = 0.0
-
-                  ppart2%x(1,pp2)   = this%x(1,pp)
-                  ppart2%x(2,pp2)   = this%x(2,pp)
-                  ppart2%q(pp2)     = -dxp*0.25/(1-this%w0(pp))
-                  ppart2%p(1,pp2)   = this%p(1,pp)
-                  ppart2%p(2,pp2)   = this%p(2,pp)
-                  ppart2%p(3,pp2)   = this%p(3,pp)
-                  ppart2%gamma(pp2) = 1.0
-                  ppart2%psi(pp2) = 1.0
-                  ppart2%w(pp2) = 0.0
-                  ppart2%w0(pp2) = 1.0
-
-                  this%q(pp) = this%q(pp)*((1-this%w0(pp)-0.25)/(1-this%w0(pp)))
-!                   if ((this%w0(pp) + 0.25).ge.1.0) then
-!                     this%w0(pp) = 1.0
-!                     this%w(pp) = 0.0
-!                   else
-                  this%w0(pp) = 0.25 + this%w0(pp)
-!                   endif
-              endif
+                  this%q(pp) = 0.0
+                  this%w0(pp) = 1.0
+                  this%w(pp) = 0.0
+            endif
+          endif
 
           pp = pp + 1
         enddo

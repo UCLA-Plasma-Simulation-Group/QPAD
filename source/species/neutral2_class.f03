@@ -333,7 +333,7 @@ private
     ! qm is the 8th coordinate for every particle.
     ! If the longitudinal density of the plasma changes,
     ! the qm will change correspondingly
-    real :: wp, dt, qm
+    real :: wp, dt, qm, sec
     ! real :: wp ! plasma frequency in SI unit
     integer :: push_type
     double precision, dimension(:,:), pointer :: rate_param
@@ -367,7 +367,7 @@ integer, parameter :: cls_level = 2
 
 contains
 
-    subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, v, qbm, &
+    subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, v, sec, qbm, &
      qbme, wp, s, push_type, smth_type, smth_ord )
     ! element is atomic number. e.g.: For Li, element = 3
     ! max_e is the maximum number of electrons that the programmer allow the atom
@@ -380,7 +380,7 @@ contains
           type(options), intent(in) :: opts
           class(fdist2d), intent(inout), target :: pf
           integer, intent(in) :: max_mode, elem, max_e, v, push_type
-          real, intent(in) :: qbm, wp, qbme,s
+          real, intent(in) :: qbm, wp, qbme,s, sec
           integer, intent(in), optional :: smth_type, smth_ord
 
           ! local data
@@ -394,6 +394,7 @@ contains
           this%dt = opts%get_dxi()
           this%push_type = push_type
           this%v = v
+          this%sec = sec
           this%multi_max = max_e
           this%h = max_e - v + 1
           this%max_mode = max_mode
@@ -592,7 +593,7 @@ contains
              write(2,*) adk_coef ,"adk_coef"
              call this%multi_ion(i)%ionize(this%pf,e,this%wp, this%dt, adk_coef)
        ! >>>>>>if i=this%multi_max+1, this%multi_ion(i+1) will out of boundary
-             call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, s)
+             call this%multi_ion(i)%add_particles(this%pf, this%multi_ion(i +1), this%pd, this%multi_max, this%v+i, this%sec, s)
        ! >>>>>>    
           enddo
           ! write(2,*) this%pd%npp, "update_particles_e"
