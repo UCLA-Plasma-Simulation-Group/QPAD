@@ -1682,6 +1682,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
 
                     this%q(pp) = this%q(pp)*((1-this%w0(pp)-a)/(1-this%w0(pp)))
                     this%w0(pp) = a + this%w0(pp)
+                    exit
                   endif
                 enddo
             endif
