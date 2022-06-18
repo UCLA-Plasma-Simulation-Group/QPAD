@@ -6,13 +6,13 @@ toplevel = 1
 # main binary name
 qpad = $(builddir)/qpad.e
 # build directory
-builddir?=build
+builddir ?= build
 # binary directory
-bindir?=../bin
+bindir ?= ../bin
 # test directory
-testdir?=../test
+testdir ?= ../test
 
-BUILD_CONFIGURATION_FILE?=../config/make.$(sys)
+BUILD_CONFIGURATION_FILE ?= ../config/make.$(sys)
 configfile=$(BUILD_CONFIGURATION_FILE)
 include $(configfile)
 
@@ -66,7 +66,7 @@ $(qpad) : $(objs)
 	@if [ ! -d $(bindir) ];then \
 		mkdir $(bindir); \
 	fi
-	@cp $@ $(bindir)/qpad.e
+	@cp $@ $(bindir)/qpad-$(DATESTAMP).e
 	@echo "Creating symbolic link"
 	@ln -f -s qpad-$(DATESTAMP).e $(bindir)/qpad.e
 	@echo "Done!"
@@ -76,13 +76,11 @@ $(objs) : $(configfile) | $(builddir)
 $(builddir) :
 	@echo "Creating $@ directory"
 	@mkdir -p $@
-# @mkdir -p $@/preprocessed
 
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@$(FPP) $(FPPF) -I. -I./$(builddir) $< > $(builddir)/$(<F)
 	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F) && rm $(<F)
-#@cd $(builddir) && mv $(<F) ./preprocessed
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
