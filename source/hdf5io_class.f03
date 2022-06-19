@@ -5,7 +5,6 @@ use sysutil_module
 use param
 use HDF5
 use mpi
-use param
 
 implicit none
 
@@ -349,7 +348,7 @@ subroutine pwfield_3d(file,fd,gs,ls,noff,ierr)
  integer :: info
  character(len=:), allocatable :: filename
  character(len=8) :: st
-
+ real, dimension(:,:,:), allocatable :: fd_tmp
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -359,6 +358,7 @@ subroutine pwfield_3d(file,fd,gs,ls,noff,ierr)
  gsize = gs
  lsize = ls
  lnoff = noff
+ fd_tmp = fd(1:lsize(1), 1:lsize(2), 1:lsize(3))
 
  call h5open_f(ierr)
  treal = detect_precision()
@@ -386,8 +386,7 @@ subroutine pwfield_3d(file,fd,gs,ls,noff,ierr)
  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
  &ierr)
 
- call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2),1:lsize(3)),&
- &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
+ call h5dwrite_f(dset_id, treal, fd_tmp, lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
 
  call wrattr_dataset(file,dset_id)
 
@@ -421,7 +420,7 @@ subroutine pwfield_2d( file, fd, gs, ls, noff, ierr )
  integer :: info
  character(len=:), allocatable :: filename
  character(len=8) :: st
-
+ real, dimension(:,:), allocatable :: fd_tmp
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -431,6 +430,7 @@ subroutine pwfield_2d( file, fd, gs, ls, noff, ierr )
  gsize = gs
  lsize = ls
  lnoff = noff
+ fd_tmp = fd(1:lsize(1), 1:lsize(2))
  call h5open_f(ierr)
  treal = detect_precision()
  call h5pcreate_f(H5P_FILE_ACCESS_F, flplID, ierr)
@@ -458,8 +458,7 @@ subroutine pwfield_2d( file, fd, gs, ls, noff, ierr )
  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
  &ierr)
 
- call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),lsize, ierr,&
- &memspaceID, dspace_id, xfer_prp=xferID)
+ call h5dwrite_f(dset_id, treal, fd_tmp, lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
 
  call wrattr_dataset(file,dset_id)
 
@@ -500,7 +499,7 @@ subroutine pwfield_3d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
  integer(hsize_t), dimension(1) :: dims
  character(len=:), allocatable :: filename
  character(len=8) :: st
-
+ real, dimension(:,:,:), allocatable :: fd_tmp
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -514,6 +513,7 @@ subroutine pwfield_3d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
  ori = id_proc() - nvyp
  des = id_proc() + nvyp
  dims = 1
+ fd_tmp = fd(1:lsize(1), 1:lsize(2), 1:lsize(3))
 
  if (ori >= 0) then
     call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),mid,ierr)
@@ -562,8 +562,7 @@ subroutine pwfield_3d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
  &ierr)
 
- call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2),1:lsize(3)),&
- &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
+ call h5dwrite_f(dset_id, treal, fd_tmp, lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
 
 
  call h5sclose_f(memspaceID, ierr)
@@ -609,7 +608,7 @@ subroutine pwfield_2d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
   integer(hsize_t), dimension(1) :: dims
   character(len=:), allocatable :: filename
   character(len=8) :: st
-
+  real, dimension(:,:), allocatable :: fd_tmp
 
   allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
   write (st,'(I8.8)') file%n
@@ -623,6 +622,8 @@ subroutine pwfield_2d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
   ori = id_proc() - nvyp
   des = id_proc() + nvyp
   dims = 1
+
+  fd_tmp = fd(1:lsize(1), 1:lsize(2))
 
   if (ori >= 0) then
     call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),&
@@ -670,9 +671,7 @@ subroutine pwfield_2d_pipe( file, fd, gs, ls, noff, rtag, stag, id, ierr )
   call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize,&
   &ierr)
 
-  call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
-  &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
-
+  call h5dwrite_f(dset_id, treal, fd_tmp, lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
 
   call h5sclose_f(memspaceID, ierr)
   call h5sclose_f(dspace_id, ierr)
@@ -717,7 +716,7 @@ subroutine wfield_2d_pipe(file,fd,gs,ls,noff,rtag,stag,id,ierr)
  integer(hsize_t), dimension(1) :: dims
  character(len=:), allocatable :: filename
  character(len=8) :: st
-
+ real, dimension(:,:), allocatable :: fd_tmp
 
  allocate(character(len(trim(file%filename))+len(trim(file%dataname))+11) :: filename)
  write (st,'(I8.8)') file%n
@@ -731,6 +730,7 @@ subroutine wfield_2d_pipe(file,fd,gs,ls,noff,rtag,stag,id,ierr)
  ori = id_proc() - nvyp
  des = id_proc() + nvyp
  dims = 1
+ fd_tmp = fd(1:lsize(1), 1:lsize(2))
 
  if (ori >= 0) then
     call MPI_IRECV(message,1,p_dtype_int,ori,rtag,comm_world(),mid,ierr)
@@ -769,8 +769,7 @@ subroutine wfield_2d_pipe(file,fd,gs,ls,noff,rtag,stag,id,ierr)
 
  call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, lsize, ierr)
 
- call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
- &lsize, ierr, memspaceID, dspace_id)
+ call h5dwrite_f(dset_id, treal, fd_tmp, lsize, ierr, memspaceID, dspace_id)
 
 
  call h5sclose_f(memspaceID, ierr)
