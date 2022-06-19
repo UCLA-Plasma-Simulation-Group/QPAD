@@ -2,6 +2,7 @@ module fdist2d_lib
 
 use input_class
 use sysutil_module
+use param
 
 implicit none
 
@@ -12,6 +13,7 @@ public :: set_prof_perp_para_chl, get_den_perp_para_chl
 public :: set_prof_perp_hllw_chl, get_den_perp_hllw_chl
 public :: set_prof_lon_uniform, get_den_lon_uniform
 public :: set_prof_lon_pw_linear, get_den_lon_pw_linear
+public :: set_prof_lon_sine, get_den_lon_sine
 
 contains
 
@@ -204,5 +206,56 @@ subroutine get_den_lon_pw_linear( s, prof_pars_lon, den_value )
   enddo
 
 end subroutine get_den_lon_pw_linear
+
+subroutine set_prof_lon_sine( input, sect_name, prof_pars )
+
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  real, intent(inout), dimension(:), pointer :: prof_pars
+
+  integer :: i
+  real :: start, length
+  real, dimension(:), allocatable :: coefs
+
+  call input%get( trim(sect_name)//'.start', start )
+  call input%get( trim(sect_name)//'.length', length )
+  call input%get( trim(sect_name)//'.sine_coefs', coefs )
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  allocate( prof_pars( 2 * size(coefs) + 2 ) )
+
+  prof_pars(1) = start
+  prof_pars(2) = length
+  prof_pars(3:) = coefs
+
+end subroutine set_prof_lon_sine
+
+subroutine get_den_lon_sine( s, prof_pars_lon, den_value )
+
+  implicit none
+  real, intent(in) :: s
+  real, intent(in), dimension(:), pointer :: prof_pars_lon
+  real, intent(out) :: den_value
+  
+  integer :: i
+  real, dimension(:), pointer :: coefs => null()
+  real :: start, length
+
+  start = prof_pars_lon(1)
+  length = prof_pars_lon(2)
+  ! use pointer to associate with the segment of data to avoid hard-copy
+  coefs => prof_pars_lon(3:)
+
+  den_value = 0.0
+  if (s > start .and. s <= start + length) then
+    do i = 1, size(coefs)
+      den_value = den_value + coefs(i) * sin(pi * real(i) * (s - start) / length)
+    enddo
+  endif
+
+end subroutine get_den_lon_sine
 
 end module fdist2d_lib
