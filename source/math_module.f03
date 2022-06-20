@@ -206,4 +206,30 @@ function laguerre( p, l, u )
 
 end function laguerre
 
+! solve tri-diagonal matrix equation using Gaussian elimination
+! https://en.wikibooks.org/wiki/Algorithm_Implementation/Linear_Algebra/Tridiagonal_matrix_algorithm
+subroutine tdma(n, a, b, c, d, x)
+  implicit none
+  integer, intent(in) :: n
+  real, intent(in), dimension(n-1) :: a, c
+  real, intent(inout), dimension(n) :: b, d
+  real, intent(out), dimension(n) :: x
+  !  --- Local variables ---
+  integer :: i
+  real :: q
+  !  --- Elimination ---
+  do i = 2, n
+    q = a(i) / b(i - 1)
+    b(i) = b(i) - c(i - 1) * q
+    d(i) = d(i) - d(i - 1) * q
+  enddo
+  ! --- Backsubstitution ---
+  q = d(n) / b(n)
+  x(n) = q
+  do i = n - 1, 1, -1
+    q = (d(i) - c(i) * q) / b(i)
+    x(i) = q
+  enddo
+end subroutine tdma
+
 end module math_module
