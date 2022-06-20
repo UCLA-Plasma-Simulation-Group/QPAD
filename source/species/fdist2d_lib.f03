@@ -284,7 +284,8 @@ subroutine set_prof_lon_cubic_spline( input, sect_name, prof_pars )
       call write_err( 'Array of longitudinal position must be monotonically increasing!' )
     endif
   enddo
-  allocate(d(n), diag(n), off_diag_lower(n-1), off_diag_upper(n-1), rhs(n))
+  ! note that the first element of off_diag_lower and the last element of off_diag_upper are useless.
+  allocate(d(n), diag(n), off_diag_lower(n), off_diag_upper(n), rhs(n))
   diag = 4.0
   off_diag_lower = 1.0
   off_diag_upper = 1.0
@@ -301,12 +302,12 @@ subroutine set_prof_lon_cubic_spline( input, sect_name, prof_pars )
       call tdma(n, off_diag_lower, diag, off_diag_upper, rhs, d)
     case ('clamped')
       ! The first-order derivatives of the endpoints are zero
-      call tdma(n-2, off_diag_lower(1:n-3), diag(2:n-1), off_diag_upper(1:n-3), rhs(2:n-1), d(2:n-1))
-      d(0) = 0.0; d(n) = 0.0
+      call tdma(n-2, off_diag_lower(2:n-1), diag(2:n-1), off_diag_upper(2:n-1), rhs(2:n-1), d(2:n-1))
+      d(1) = 0.0; d(n) = 0.0
     case ('not-a-knot')
       ! The third-order derivatives of the endpoints are equal to those of the adjacent points.
       diag(1) = 2.0; diag(n) = 2.0
-      off_diag_lower(n-1) = 4.0
+      off_diag_lower(n) = 4.0
       off_diag_upper(1) = 4.0
       rhs(1) = -5.0 * fs(1) + 4.0 * fs(2) + fs(3)
       rhs(n) = -5.0 * fs(n-2) + 4.0 * fs(n-1) + fs(n)
@@ -333,7 +334,7 @@ subroutine get_den_lon_cubic_spline( s, prof_pars_lon, den_value )
   real, intent(out) :: den_value
   
   integer :: i, n
-  real :: s_norm, t, a, b, c, d
+  real :: s_norm, a, b, c, d
   real, dimension(:), pointer :: s_ptr => null(), fs_ptr => null(), dfs_ptr => null()
 
   n = size(prof_pars_lon) / 3
@@ -350,9 +351,9 @@ subroutine get_den_lon_cubic_spline( s, prof_pars_lon, den_value )
     do i = 1, n-1
       if ( s <= s_ptr(i+1) ) then
         s_norm = (s - s_ptr(i)) / (s_ptr(i+1) - s_ptr(i))
-        den_value = fs_ptr(i) + dfs_ptr(i) * t &
-          + ( 3.0 * (fs_ptr(i+1) - fs_ptr(i)) - 2.0 * dfs_ptr(i) - dfs_ptr(i+1) ) * t**2 &
-          + ( 2.0 * (fs_ptr(i) - fs_ptr(i+1)) + dfs_ptr(i) + dfs_ptr(i+1) ) * t**3
+        den_value = fs_ptr(i) + dfs_ptr(i) * s_norm &
+          + ( 3.0 * (fs_ptr(i+1) - fs_ptr(i)) - 2.0 * dfs_ptr(i) - dfs_ptr(i+1) ) * s_norm**2 &
+          + ( 2.0 * (fs_ptr(i) - fs_ptr(i+1)) + dfs_ptr(i) + dfs_ptr(i+1) ) * s_norm**3
         exit
       endif
     enddo

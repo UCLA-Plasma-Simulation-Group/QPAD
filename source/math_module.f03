@@ -211,7 +211,7 @@ end function laguerre
 subroutine tdma(n, a, b, c, d, x)
   implicit none
   integer, intent(in) :: n
-  real, intent(in), dimension(n-1) :: a, c
+  real, intent(in), dimension(n) :: a, c
   real, intent(inout), dimension(n) :: b, d
   real, intent(out), dimension(n) :: x
   !  --- Local variables ---
