@@ -81,8 +81,8 @@ subroutine init_sim_plasma( this, input, opts, s )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_plasma'
-  real :: qm, qbme, qbm, qbmi, omega_p, np, sec
-  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type, v
+  real :: qm, qbme, qbm, qbmi, omega_p, np
+  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type, v, sec
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )

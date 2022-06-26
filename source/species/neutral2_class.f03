@@ -37,7 +37,7 @@ private
 ! http://physics.nist.gov/PhysRefData/ASD/ionEnergy.html
 
 double precision, parameter, dimension(3,1) :: H_param = &
-    reshape( (/ 8.522542995398661d19, 342.53947239007687d0, 1.0005337056631487d0 /), &
+    reshape( (/ 8.50168d19, 3.42554d2, 1.0d0 /), &
                                                                      (/ 3, 1 /) )
 double precision, parameter, dimension(3,3) :: Li_param = &
     reshape( (/ 3.460272990838495d21, 85.51998980232813d0, 2.1770706138013733d0, &
@@ -119,7 +119,7 @@ double precision, parameter, dimension(3,37) :: Rb_param = &
                                                                      (/ 3, 37 /) )
 double precision, parameter, dimension(3,55) :: Cs_param = &
     reshape( (/ 1.0067145666103756d22, 52.487440693139064d0, 2.7385019836913114d0, &
-                7.850381786372777d23, 761.2255911152253d0, 2.0660197638382733d0, &
+                4.36300414d23, 8.58877619d2, 1.94d0, &
                 1.2352289567990247d27, 1306.4304282001383d0, 2.841273587760102d0, &
                 8.285899003417227d29, 1926.1050102158758d0, 3.5000370081744165d0, &
                 1.3943473132068207d32, 2862.591109127988d0, 3.9290850597544393d0, &
@@ -329,11 +329,11 @@ private
     class(field_jay) , allocatable :: cui(:)
     class(field_rho) , allocatable :: qi(:)
 
-    integer :: multi_max, xppc, yppc, v, h, max_mode
+    integer :: multi_max, xppc, yppc, v, h, max_mode, sec
     ! qm is the 8th coordinate for every particle.
     ! If the longitudinal density of the plasma changes,
     ! the qm will change correspondingly
-    real :: wp, dt, qm, sec
+    real :: wp, dt, qm
     ! real :: wp ! plasma frequency in SI unit
     integer :: push_type
     double precision, dimension(:,:), pointer :: rate_param
@@ -379,8 +379,8 @@ contains
           class(neutral2), intent(inout) :: this
           type(options), intent(in) :: opts
           class(fdist2d), intent(inout), target :: pf
-          integer, intent(in) :: max_mode, elem, max_e, v, push_type
-          real, intent(in) :: qbm, wp, qbme,s, sec
+          integer, intent(in) :: max_mode, elem, max_e, v, push_type, sec
+          real, intent(in) :: qbm, wp, qbme,s
           integer, intent(in), optional :: smth_type, smth_ord
 
           ! local data

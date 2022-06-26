@@ -1580,8 +1580,8 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
     class(fdist2d), intent(inout) :: prof
     class(part2d), intent(inout) :: ppart1
     class(part2d), intent(inout) :: ppart2
-    real, intent(in) :: s, sec
-    integer, intent(in) :: multi_max, m
+    real, intent(in) :: s
+    integer, intent(in) :: multi_max, m, sec
 
     ! local
     character(len=18), save :: sname = 'add_particles'
@@ -1650,7 +1650,7 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
             else
 
                 do l = 1, sec - 1
-                  b = l/sec
+                  b = l/real(sec)
                   a = 1 - b
                   if( ww .ge. a) then
                     dxp = this%q(pp)/m1
