@@ -58,6 +58,23 @@ if nneutrals > 0:
             if "ion_cyl_m" in names:
                 all_paths.append('../Neutral' + str(i+1) + '/Ion_charge/')
 
+#get all the paths for the neutral2s
+nneutral2s = qpinput["simulation"]["nneutral2s"]
+if nneutral2s > 0:
+    for i in range(nneutral2s):
+        diags = qpinput["neutral2s"][i]["diag"]
+        for j in range(len(diags)):
+            names = diags[j]["name"]
+            if "charge_cyl_m" in names:
+                all_paths.append('../Neutral2' + str(i+1) + '/Charge/')
+            if "ion_cyl_m" in names:
+                v = qpinput["neutral2s"][i]["v"]
+                v = int(v)
+                imax = qpinput["neutral2s"][i]["ion_max"]
+                imax = int(imax)
+                for k in range(imax-v+1):
+                    all_paths.append('../Neutral2' + str(i+1) + '/Ion_charge/'+'ion'+str(k+1)+'/')
+
 # get all the paths for the beams
 nbeams = qpinput["simulation"]["nbeams"]
 if nbeams > 0:
