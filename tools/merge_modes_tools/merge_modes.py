@@ -73,7 +73,7 @@ if nneutral2s > 0:
                 imax = qpinput["neutral2s"][i]["ion_max"]
                 imax = int(imax)
                 for k in range(imax-v+1):
-                    all_paths.append('../Neutral2' + str(i+1) + '/Ion_charge/'+'ion'+str(k+1)+'/')
+                    all_paths.append('../Neutral2' + str(i+1) + '/Ion_charge/'+'ion'+str(k+v)+'/')
 
 # get all the paths for the beams
 nbeams = qpinput["simulation"]["nbeams"]
