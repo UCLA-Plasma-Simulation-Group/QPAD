@@ -386,7 +386,7 @@ subroutine cbq_species2d(this,pos)
    class(species2d), intent(inout) :: this
    integer, intent(in) :: pos
    ! local data
-   character(len=18), save :: sname = 'cpq_species2d'
+   character(len=18), save :: sname = 'cbq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    call add_f1( this%cu, this%q, (/3/), (/1/) )
