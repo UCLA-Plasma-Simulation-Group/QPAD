@@ -316,18 +316,23 @@ subroutine run_simulation( this )
       call neut(k)%precv( this%tag_neut(1:4,k) )
     enddo
 
+    b     = 0.0
+    e     = 0.0
+    b_spe = 0.0
+    e_spe = 0.0
+    psi   = 0.0
+    cu    = 0.0
+    acu   = 0.0
+    amu   = 0.0
+    do k = 1, this%nlasers
+      call laser(k)%zero( only_f1=.true. )
+    enddo
+
     ! pipeline data transfer for current and species B-field
     this%tag_field(1) = ntag()
     call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
-
-    b     = 0.0
-    e     = 0.0
-    e_spe = 0.0
-    psi   = 0.0
-    acu   = 0.0
-    amu   = 0.0
 
     do j = 1, this%nstep2d
 
