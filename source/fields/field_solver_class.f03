@@ -272,7 +272,7 @@ subroutine set_struct_matrix( this, opts, dr )
   m2 = real(m*m)
   nr = this%iupper - this%ilower + 1
   local_vol = nr * this%num_stencil
-  alpha = 0.001
+  alpha = 0.01
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )
