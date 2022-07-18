@@ -378,7 +378,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   noff   = jay_re%get_noff(1)
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
-  alpha = 0.001 * idr * idr
+  alpha = 0.01 * idr * idr
 
   f1_re => djdxi_re%get_f1()
   f2_re => jay_re%get_f1()
