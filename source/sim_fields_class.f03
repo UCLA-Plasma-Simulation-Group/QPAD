@@ -99,7 +99,7 @@ subroutine init_sim_fields( this, input, opts )
   ! local data
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=:), allocatable :: str
-  integer :: entity, max_mode, ps, bnd, sm_type, sm_ord
+  integer :: entity, max_mode, ps, bnd
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -131,27 +131,13 @@ subroutine init_sim_fields( this, input, opts )
     call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
   end select
 
-  ! read smooth parameters
-  call input%get( 'simulation.smooth_type', str )
-  select case ( trim(str) )
-  case ( 'none' )
-    sm_type = p_smooth_none
-  case ( 'binomial' )
-    sm_type = p_smooth_binomial
-  case ( 'compensated' )
-    sm_type = p_smooth_compensated
-  case default
-    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are supported currently.' )
-  end select
-  call input%get( 'simulation.smooth_order', sm_ord )
-
   call this%psi%new(    opts, max_mode, ps, bnd )
-  call this%q_spe%new(  opts, max_mode, ps, sm_type, sm_ord )
-  call this%q_beam%new( opts, max_mode, ps, sm_type, sm_ord )
-  call this%cu%new(     opts, max_mode, ps, sm_type, sm_ord )
-  call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%q_spe%new(  opts, max_mode, ps, smooth_order=0 )
+  call this%q_beam%new( opts, max_mode, ps, smooth_order=0 )
+  call this%cu%new(     opts, max_mode, ps, smooth_order=0 )
+  call this%dcu%new(    opts, max_mode, ps, smooth_order=0 )
+  call this%acu%new(    opts, max_mode, ps, smooth_order=0 )
+  call this%amu%new(    opts, max_mode, ps, smooth_order=0 )
   entity = p_entity_plasma
   call this%e_spe%new(  opts, max_mode, ps, bnd, entity )
   call this%b_spe%new(  opts, max_mode, ps, bnd, entity )

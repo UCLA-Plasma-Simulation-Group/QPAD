@@ -341,7 +341,6 @@ subroutine run_simulation( this )
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
-      call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
       q_spe = 0.0
       do k = 1, this%nspecies

@@ -119,7 +119,7 @@ subroutine alloc_beam3d( this, input, opts, beam_id )
 end subroutine alloc_beam3d
 
 subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
-  smooth_type, smooth_order, beam_id )
+  smooth_order, beam_id )
 
   implicit none
 
@@ -128,7 +128,7 @@ subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
   type(options), intent(in) :: opts
   real, intent(in) :: dt
   integer, intent(in) :: part_shape, max_mode, beam_id
-  integer, intent(in) :: smooth_type, smooth_order
+  integer, intent(in) :: smooth_order
   ! local data
   integer :: ierr, id
   character(len=:), allocatable :: read_str
@@ -158,7 +158,7 @@ subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
 
   ! initialize charge field
   allocate( this%q )
-  call this%q%new( opts, max_mode, part_shape, smooth_type, smooth_order )
+  call this%q%new( opts, max_mode, part_shape, smooth_order )
 
   ! initialize particles
   if ( this%pf%has_spin ) then
