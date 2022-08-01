@@ -405,7 +405,7 @@ subroutine alloc_neutral( this )
 end subroutine alloc_neutral
 
 subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
-  push_type, smth_type, smth_ord )
+  push_type, smooth_order )
 ! element is atomic number. e.g.: For Li, element = 3
 ! max_e is the maximum number of electrons that the programmer allow the atom
 ! to lose due to the ionization. It should be less or equal to element
@@ -417,11 +417,11 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   class(fdist2d), intent(inout), target :: pf
   integer, intent(in) :: max_mode, elem, max_e, push_type
   real, intent(in) :: qbm, wp, s
-  integer, intent(in), optional :: smth_type, smth_ord
+  integer, intent(in), optional :: smooth_order
 
   ! local data
   character(len=18), save :: sname = 'init_neutral'
-  integer :: i, nrp, n_theta
+  integer :: i, nrp, n_theta, smth_ord
   real :: pi2_ntheta
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -433,21 +433,14 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
 
   allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion, this%rho_ion_add )
 
-  if ( present(smth_type) .and. present(smth_ord) ) then
-    call this%q%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
-    call this%rho_ion%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
-    call this%rho_ion_add%new( opts, max_mode, p_ps_linear, smth_type, smth_ord, has_2d=.false. )
-    call this%cu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
-    call this%dcu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
-    call this%amu%new( opts, max_mode, p_ps_linear, smth_type, smth_ord )
-  else
-    call this%q%new( opts, max_mode, p_ps_linear )
-    call this%rho_ion%new( opts, max_mode, p_ps_linear )
-    call this%rho_ion_add%new( opts, max_mode, p_ps_linear, has_2d=.false. )
-    call this%cu%new( opts, max_mode, p_ps_linear )
-    call this%dcu%new( opts, max_mode, p_ps_linear )
-    call this%amu%new( opts, max_mode, p_ps_linear )
-  endif
+  smth_ord = 0
+  if ( present(smooth_order) ) smth_ord = smooth_order
+  call this%q%new( opts, max_mode, p_ps_linear, smth_ord )
+  call this%rho_ion%new( opts, max_mode, p_ps_linear, smth_ord )
+  call this%rho_ion_add%new( opts, max_mode, p_ps_linear, smth_ord, has_2d=.false. )
+  call this%cu%new( opts, max_mode, p_ps_linear, smth_ord )
+  call this%dcu%new( opts, max_mode, p_ps_linear, smth_ord )
+  call this%amu%new( opts, max_mode, p_ps_linear, smth_ord )
 
   call this%part%new( opts, pf, qbm, this%dt, s, if_empty=.true. )
   call this%part_add%new( opts, pf, qbm, this%dt, s )
@@ -898,8 +891,8 @@ subroutine qdeposit_neutral( this, q_tot )
 
   call this%part%qdeposit( this%q )
   call this%q%acopy_gc_f1( dir=p_mpi_forward )
-  call this%q%smooth_f1()
   call this%q%copy_gc_f1()
+  call this%q%smooth()
   
   call add_f1( this%q, q_tot )
            
@@ -922,8 +915,8 @@ subroutine ion_deposit_neutral( this, q_tot )
 
   call this%part_add%qdeposit( this%rho_ion_add )
   call this%rho_ion_add%acopy_gc_f1( dir=p_mpi_forward )
-  call this%rho_ion_add%smooth_f1()
   call this%rho_ion_add%copy_gc_f1()
+  call this%rho_ion_add%smooth()
   
   call add_f1( this%rho_ion_add, this%rho_ion )
   call add_f1( this%rho_ion, q_tot )
@@ -961,12 +954,12 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   call this%cu%acopy_gc_f1( dir=p_mpi_forward )
   call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
   call this%amu%acopy_gc_f1( dir=p_mpi_forward )
-  call this%cu%smooth_f1()
-  call this%dcu%smooth_f1()
-  call this%amu%smooth_f1()
   call this%cu%copy_gc_f1()
   call this%dcu%copy_gc_f1()
   call this%amu%copy_gc_f1()
+  ! call this%cu%smooth()
+  ! call this%dcu%smooth()
+  ! call this%amu%smooth()
   call add_f1( this%cu, cu )
   call add_f1( this%dcu, dcu )
   call add_f1( this%amu, amu )

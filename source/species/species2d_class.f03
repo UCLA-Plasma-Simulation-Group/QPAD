@@ -71,7 +71,7 @@ subroutine alloc_species2d( this )
 end subroutine alloc_species2d
 
 subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
-   push_type, smooth_type, smooth_order )
+   push_type, smooth_order )
 
    implicit none
 
@@ -80,10 +80,11 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    class(fdist2d), intent(inout), target :: pf
    real, intent(in) :: qbm, s
    integer, intent(in) :: part_shape, max_mode, push_type
-   integer, intent(in), optional :: smooth_type, smooth_order
+   integer, intent(in), optional :: smooth_order
    ! local data
    real :: dt
    logical :: ntd
+   integer :: smth_ord
    character(len=18), save :: sname = 'init_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -95,17 +96,13 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
 
    allocate( this%q, this%cu, this%amu, this%dcu )
 
-   if ( present(smooth_type) .and. present(smooth_order) ) then
-      call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-      call this%cu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-      call this%dcu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-      call this%amu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-   else
-      call this%q%new(opts,max_mode,part_shape)      
-      call this%cu%new(opts,max_mode,part_shape)
-      call this%dcu%new(opts,max_mode,part_shape)
-      call this%amu%new(opts,max_mode,part_shape)
-   endif
+   smth_ord = 0
+   if (present(smooth_order)) smth_ord = smooth_order
+
+   call this%q%new(opts,max_mode,part_shape,smth_ord)
+   call this%cu%new(opts,max_mode,part_shape,smth_ord)
+   call this%dcu%new(opts,max_mode,part_shape,smth_ord)
+   call this%amu%new(opts,max_mode,part_shape,smth_ord)
    call this%part%new(opts,pf,qbm,dt,s)
 
    this%q  = 0.0
@@ -121,11 +118,9 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    if ( ntd ) then
 
       allocate( this%qn )
-      if ( present(smooth_type) .and. present(smooth_order) ) then
-         call this%qn%new(opts,max_mode,part_shape,smooth_type,smooth_order)
-      else
-         call this%qn%new(opts,max_mode,part_shape)
-      endif
+      smth_ord = 0
+      if (present(smooth_order)) smth_ord = smooth_order
+      call this%qn%new(opts,max_mode,part_shape,smth_ord)
 
       this%qn = this%q
       call dot_f1( -1.0, this%qn )
@@ -201,8 +196,8 @@ subroutine qdp_species2d(this,q)
   this%q = 0.0
   call this%part%qdeposit(this%q)
   call this%q%acopy_gc_f1( dir=p_mpi_forward )
-  call this%q%smooth_f1()
   call this%q%copy_gc_f1()
+  call this%q%smooth()
   call add_f1( this%q, q )
   if ( this%pf%neutralized ) call add_f1( this%qn, q )
 
@@ -266,12 +261,12 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
-   call this%cu%smooth_f1()
-   call this%dcu%smooth_f1()
-   call this%amu%smooth_f1()
    call this%cu%copy_gc_f1()
    call this%dcu%copy_gc_f1()
    call this%amu%copy_gc_f1()
+   call this%cu%smooth()
+   call this%dcu%smooth()
+   call this%amu%smooth()
 
    call add_f1( this%cu, cu )
    call add_f1( this%dcu, dcu )

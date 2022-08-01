@@ -76,16 +76,6 @@ Simulation Session
 * ``iter_max``, integer
     The maximum number of predictor-corrector iterations the code will use when solving the plasma response.
 
-* ``smooth_type``, string
-    Smoother used to smooth the source terms. The available options include ``"binomial"`` and ``"compensated"``. Set ``"none"`` to switch off the smoother. 
-
-* ``smooth_order``, integer
-    Order of smooth. It only takes effect for "binomial" and "compensated" types.
-
-.. warning::
-
-    The smoother is not currently available now. Please turn it off by setting ``"smooth_type": "none"`` until this issue is fixed in the future updates.
-
 * ``verbose``, integer
     Level of verbosity. This parameter should be always set as 0 unless for debugging purpose. A larger ``verbose`` will output more debugging information into the log files. The maximum value is 5.
 

@@ -79,7 +79,7 @@ subroutine init_sim_beams( this, input, opts )
   integer :: i, part_dim
   real :: dt
   logical :: read_rst
-  integer :: rst_timestep, ps, sm_type, sm_ord, ierr, max_mode
+  integer :: rst_timestep, ps, sm_ord, ierr, max_mode
   type(hdf5file) :: file_rst
   character(len=:), allocatable :: str
 
@@ -100,21 +100,6 @@ subroutine init_sim_beams( this, input, opts )
       &currently.' )
   end select
 
-  ! read smooth parameters
-  call input%get( 'simulation.smooth_type', str )
-  select case ( trim(str) )
-  case ( 'none' )
-    sm_type = p_smooth_none
-  case ( 'binomial' )
-    sm_type = p_smooth_binomial
-  case ( 'compensated' )
-    sm_type = p_smooth_compensated
-  case default
-    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are &
-      &supported currently.' )
-  end select
-  call input%get( 'simulation.smooth_order', sm_ord )
-
   ! initialize beam particle manager
   do i = 1, this%num_beams
     part_dim = p_x_dim + p_p_dim + 1
@@ -126,7 +111,12 @@ subroutine init_sim_beams( this, input, opts )
   ! initialize beams
   do i = 1, this%num_beams
 
-    call this%beam(i)%new( input, opts, max_mode, ps, dt, sm_type, sm_ord, i )
+    sm_ord = 0
+    if(input%found('beams('//num2str(i)//').smooth_order')) then
+      call input%get('beams('//num2str(i)//').smooth_order', sm_ord)
+    endif
+
+    call this%beam(i)%new( input, opts, max_mode, ps, dt, sm_ord, i )
 
     if ( read_rst ) then
       call input%get( 'simulation.restart_timestep', rst_timestep )

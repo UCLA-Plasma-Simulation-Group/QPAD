@@ -4,7 +4,6 @@ use parallel_module
 use input_class
 use options_class
 use ufield_class
-use ufield_smooth_class
 use hdf5io_class
 use param
 use sysutil_module
