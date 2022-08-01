@@ -45,7 +45,8 @@ type simulation
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
-  integer :: iter, nstep3d, nstep2d, start2d, start3d, tstep
+  real :: iter_reltol, iter_abstol
+  integer :: iter_max, nstep3d, nstep2d, start2d, start3d, tstep
   integer :: nbeams, nspecies, nneutrals, nlasers
   integer :: ndump, max_mode
 
@@ -153,7 +154,9 @@ subroutine init_simulation(this, input, opts)
     this%start3d = 1
   endif
 
-  call input%get( 'simulation.iter', this%iter )
+  call input%get( 'simulation.iter_max', this%iter_max )
+  call input%get( 'simulation.iter_reltol', this%iter_reltol )
+  call input%get( 'simulation.iter_abstol', this%iter_abstol )
   call input%get( 'simulation.nbeams', this%nbeams )
   call input%get( 'simulation.nspecies', this%nspecies )
   call input%get( 'simulation.nneutrals', this%nneutrals )
@@ -226,6 +229,7 @@ subroutine run_simulation( this )
   class( simulation ), intent(inout) :: this
 
   integer :: i, j, k, l, ierr
+  real :: rel_res, abs_res
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation'
 
@@ -244,8 +248,6 @@ subroutine run_simulation( this )
   class(neutral), dimension(:), pointer :: neut
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  call start_tprof( 'total simulation time' )
 
   psi    => this%fields%psi
   vpot   => this%fields%vpot
@@ -286,6 +288,8 @@ subroutine run_simulation( this )
 
   endif
 
+  call start_tprof( 'total simulation time' )
+
   do i = this%start3d, this%nstep3d
 
     this%tstep = i
@@ -316,23 +320,27 @@ subroutine run_simulation( this )
       call neut(k)%precv( this%tag_neut(1:4,k) )
     enddo
 
+    b     = 0.0
+    e     = 0.0
+    b_spe = 0.0
+    e_spe = 0.0
+    psi   = 0.0
+    cu    = 0.0
+    acu   = 0.0
+    amu   = 0.0
+    do k = 1, this%nlasers
+      call laser(k)%zero( only_f1=.true. )
+    enddo
+
     ! pipeline data transfer for current and species B-field
     this%tag_field(1) = ntag()
     call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
 
-    b     = 0.0
-    e     = 0.0
-    e_spe = 0.0
-    psi   = 0.0
-    acu   = 0.0
-    amu   = 0.0
-
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
-      call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
       q_spe = 0.0
       do k = 1, this%nspecies
@@ -356,7 +364,11 @@ subroutine run_simulation( this )
         call laser_all%gather( laser(k) )
       enddo
 
-      do l = 1, this%iter
+      ! predictor-corrector iteration
+      do l = 1, this%iter_max
+
+        ! store the old Br
+        call convergence_tester(b_spe, 2, 'record')
 
         call add_f1( b_spe, b_beam, b )
         call e%solve( cu )
@@ -378,19 +390,39 @@ subroutine run_simulation( this )
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
         call b_spe%solve( cu )
-        if ( l == this%iter ) then
-          do k = 1, this%nspecies
-            call spe(k)%cbq(j)
-          enddo
-          do k = 1, this%nneutrals
-            call neut(k)%cbq(j)
-          enddo
-          call cu%copy_slice( j, p_copy_1to2 )
-          call add_f1( cu, q_spe, (/3/), (/1/) )
-          call q_spe%copy_slice( j, p_copy_1to2 )
+        ! if ( l == this%iter ) then
+        !   do k = 1, this%nspecies
+        !     call spe(k)%cbq(j)
+        !   enddo
+        !   do k = 1, this%nneutrals
+        !     call neut(k)%cbq(j)
+        !   enddo
+        !   call cu%copy_slice( j, p_copy_1to2 )
+        !   call add_f1( cu, q_spe, (/3/), (/1/) )
+        !   call q_spe%copy_slice( j, p_copy_1to2 )
+        ! endif
+
+        ! get the relative error between the old and new Br
+        call convergence_tester(b_spe, 2, 'compare', rel_res=rel_res, abs_res=abs_res)
+        if (rel_res < this%iter_reltol .or. abs_res < this%iter_abstol) then
+          ! DEBUG
+          ! if (id_proc_loc() == 0) then
+          !   print *, "    2D step = ", j, ", iter = ", l, ", rel_res = ", rel_res, ", abs_res = ", abs_res
+          ! endif
+          exit
         endif
 
       enddo ! iteration
+
+      do k = 1, this%nspecies
+        call spe(k)%cbq(j)
+      enddo
+      do k = 1, this%nneutrals
+        call neut(k)%cbq(j)
+      enddo
+      call cu%copy_slice( j, p_copy_1to2 )
+      call add_f1( cu, q_spe, (/3/), (/1/) )
+      call q_spe%copy_slice( j, p_copy_1to2 )
 
       call add_f1( b_spe, b_beam, b )
       call e_spe%solve( b_spe, psi )
@@ -498,5 +530,91 @@ subroutine run_simulation( this )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine run_simulation
+
+subroutine convergence_tester(fld, dim, operation, rel_res, abs_res)
+
+  use ufield_class
+  use field_class
+
+  implicit none
+  class(field), intent(in) :: fld
+  integer, intent(in) :: dim
+  character(len=*), intent(in) :: operation
+  real, intent(out), optional :: rel_res, abs_res
+
+  integer :: max_mode, mode, nrp, ierr
+  real, dimension(:), allocatable, save :: fld_re_old, fld_im_old
+  real :: fld_old_norm, norm_tmp, res
+  type(ufield), dimension(:), pointer :: fld_re_ptr => null(), fld_im_ptr => null()
+
+  max_mode = fld%get_max_mode()
+  fld_re_ptr => fld%get_rf_re()
+  if (max_mode > 0) fld_im_ptr => fld%get_rf_im()
+  nrp = fld_re_ptr(0)%get_ndp(1)
+
+  if (.not. allocated(fld_re_old)) then
+    allocate(fld_re_old(nrp), fld_im_old(nrp))
+  endif
+
+  select case (trim(operation))
+
+    case ("record")
+
+      ! In the "record" mode, the subroutine stores the sum of field values of the given dimension.
+      fld_re_old = 0.0
+      fld_im_old = 0.0
+      do mode = 0, max_mode
+        fld_re_old = fld_re_old + abs(fld_re_ptr(mode)%f1(dim, 1:nrp))
+        if (mode == 0) cycle
+        fld_im_old = fld_im_old + abs(fld_im_ptr(mode)%f1(dim, 1:nrp))
+      enddo
+
+    case ("compare")
+
+      ! In the "compare" mode, the subroutine compares the relative error between the old and new field values.
+      if (.not. present(rel_res) .or. .not. present(abs_res)) then
+        call write_err("Parameter 'rel_res' and 'abs_res' must be given for 'compare' operation.")
+      endif
+
+      ! 2-norm
+      ! norm_tmp = norm2(fld_re_old)**2 + norm2(fld_im_old)**2
+      ! call mpi_allreduce(norm_tmp, fld_old_norm, 1, p_dtype_real, MPI_SUM, comm_loc(), ierr)
+
+      ! infinity-norm
+      norm_tmp = sqrt(maxval(fld_re_old**2 + fld_im_old**2))
+      call mpi_allreduce(norm_tmp, fld_old_norm, 1, p_dtype_real, MPI_MAX, comm_loc(), ierr)
+      
+      ! DEBUG
+      ! if (id_proc_loc() == 0) then
+      !   print *, "fld_old_norm = ", fld_old_norm
+      ! endif
+
+      do mode = 0, max_mode
+        fld_re_old = fld_re_old - abs(fld_re_ptr(mode)%f1(dim, 1:nrp))
+        if (mode == 0) cycle
+        fld_im_old = fld_im_old - abs(fld_im_ptr(mode)%f1(dim, 1:nrp))
+      enddo
+
+      ! 2-norm
+      ! norm_tmp = norm2(fld_re_old)**2 + norm2(fld_im_old)**2
+      ! call mpi_allreduce(norm_tmp, res, 1, p_dtype_real, MPI_SUM, comm_loc(), ierr)
+      ! residue = sqrt(res / fld_old_norm)
+
+      ! infinity-norm
+      norm_tmp = sqrt(maxval(fld_re_old**2 + fld_im_old**2))
+      call mpi_allreduce(norm_tmp, abs_res, 1, p_dtype_real, MPI_MAX, comm_loc(), ierr)
+      ! deal with divided-by-zero error
+      if (fld_old_norm > epsilon(1.0d0)) then
+        rel_res = abs_res / fld_old_norm
+      else
+        rel_res = huge(1.0)
+      endif
+
+    case default
+      call write_err("Invalid operation mode!")
+
+  end select
+
+end subroutine convergence_tester
 
 end module simulation_class

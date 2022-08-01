@@ -74,7 +74,7 @@ subroutine init_sim_plasma( this, input, opts, s )
   ! local data
   character(len=18), save :: sname = 'init_sim_plasma'
   real :: qm, qbm, omega_p, np
-  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type
+  integer :: i, ps, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -91,20 +91,6 @@ subroutine init_sim_plasma( this, input, opts, s )
   case default
     call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
   end select
-
-  ! read smooth parameters
-  call input%get( 'simulation.smooth_type', str )
-  select case ( trim(str) )
-  case ( 'none' )
-    sm_type = p_smooth_none
-  case ( 'binomial' )
-    sm_type = p_smooth_binomial
-  case ( 'compensated' )
-    sm_type = p_smooth_compensated
-  case default
-    call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are supported currently.' )
-  end select
-  call input%get( 'simulation.smooth_order', sm_ord )
 
   ! initialize profiles of species and neutrals
   allocate( this%pf_spe( this%num_species ), this%pf_neut( this%num_neutrals ) )
@@ -152,8 +138,12 @@ subroutine init_sim_plasma( this, input, opts, s )
         &are supported currently.' )
     end select
 
-    call this%spe(i)%new( opts, this%pf_spe(i), ps, max_mode, &
-      qbm, s, push_type, sm_type, sm_ord )
+    sm_ord = 0
+    if (input%found('species('//num2str(i)//').smooth_order')) then
+      call input%get( 'species('//num2str(i)//').smooth_order', sm_ord )
+    endif
+
+    call this%spe(i)%new( opts, this%pf_spe(i), ps, max_mode, qbm, s, push_type, sm_ord )
 
   enddo
 
@@ -179,8 +169,13 @@ subroutine init_sim_plasma( this, input, opts, s )
         &are supported currently.' )
     end select
 
+    sm_ord = 0
+    if (input%found('neutrals('//num2str(i)//').smooth_order')) then
+      call input%get( 'neutrals('//num2str(i)//').smooth_order', sm_ord )
+    endif
+
     call this%neut(i)%new( opts, this%pf_neut(i), max_mode, elem, ion_max, &
-      qbm, omega_p, s, push_type, sm_type, sm_ord )
+      qbm, omega_p, s, push_type, sm_ord )
 
   enddo
 

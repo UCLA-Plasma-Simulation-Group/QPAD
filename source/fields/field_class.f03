@@ -3,7 +3,6 @@ module field_class
 use parallel_module
 use options_class
 use ufield_class
-use ufield_smooth_class
 use hdf5io_class
 use param
 use sysutil_module
@@ -54,7 +53,6 @@ type :: field
 
   class( ufield ), dimension(:), pointer :: rf_re => null()
   class( ufield ), dimension(:), pointer :: rf_im => null()
-  type( ufield_smooth ) :: smooth
 
   real :: dr, dxi
   integer :: max_mode, dim
@@ -69,7 +67,6 @@ type :: field
   generic :: get_rf_re => get_rf_re_all, get_rf_re_mode
   generic :: get_rf_im => get_rf_im_all, get_rf_im_mode
   generic :: write_hdf5 => write_hdf5_single, write_hdf5_pipe
-  procedure :: smooth_f1
   procedure :: copy_slice
   procedure :: get_dr, get_dxi, get_max_mode, get_dim
   procedure :: copy_gc_f1, copy_gc_f2
@@ -107,8 +104,7 @@ subroutine alloc_field( this, max_mode )
 
 end subroutine alloc_field
 
-subroutine init_field( this, opts, dim, max_mode, gc_num, &
-  entity, smooth_type, smooth_order, has_2d )
+subroutine init_field( this, opts, dim, max_mode, gc_num, entity, has_2d )
 
   implicit none
 
@@ -116,24 +112,19 @@ subroutine init_field( this, opts, dim, max_mode, gc_num, &
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, dim
   integer, intent(in), dimension(2,2) :: gc_num
-  integer, intent(in), optional :: entity, smooth_type, smooth_order
+  integer, intent(in), optional :: entity
   logical, intent(in), optional :: has_2d
 
-  integer :: i, entity_, smooth_type_, smooth_order_
+  integer :: i, entity_
   logical :: has_2d_
-  integer, dimension(2,2) :: gc_num_new
   character(len=20), save :: sname = "init_field"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   ! set values of optional arguments
   entity_       = p_entity_none
-  smooth_type_  = p_smooth_none
-  smooth_order_ = 0
   has_2d_       = .true.
   if ( present(entity) ) entity_ = entity
-  if ( present(smooth_type) ) smooth_type_ = smooth_type
-  if ( present(smooth_order) ) smooth_order_ = smooth_order
   if ( present(has_2d) ) has_2d_ = has_2d
 
   this%dim      = dim
@@ -142,29 +133,12 @@ subroutine init_field( this, opts, dim, max_mode, gc_num, &
   this%dxi      = opts%get_dxi()
   this%entity   = entity_
 
-  ! gc_num_new(:,1) = gc_num(:,1)
-  ! gc_num_new(:,2) = gc_num(:,2)
-
-  call this%smooth%new( smooth_type_, smooth_order_ )
-  gc_num_new(1,1) = max( gc_num(1,1), smooth_order_ )
-  gc_num_new(2,1) = max( gc_num(2,1), smooth_order_ )
-  gc_num_new(:,2) = gc_num(:,2)
-
-  ! if ( present(smooth_type) .and. present(smooth_order) ) then
-  !   call this%smooth%new( smooth_type, smooth_order )
-  !   gc_num_new(1,1) = max( gc_num(1,1), smooth_order )
-  !   gc_num_new(2,1) = max( gc_num(2,1), smooth_order )
-  !   gc_num_new(:,2) = gc_num(:,2)
-  ! else
-  !   call this%smooth%new( p_smooth_none, 0 )
-  ! endif
-
   allocate( this%rf_re(0:max_mode) )
   allocate( this%rf_im(max_mode) )
   do i = 0, this%max_mode
-    call this%rf_re(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
+    call this%rf_re(i)%new( opts, dim, i, gc_num, has_2d=has_2d_ )
     if (i==0) cycle
-    call this%rf_im(i)%new( opts, dim, i, gc_num_new, has_2d=has_2d_ )
+    call this%rf_im(i)%new( opts, dim, i, gc_num, has_2d=has_2d_ )
   enddo
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -213,8 +187,6 @@ subroutine end_field( this )
     call this%rf_im(i)%del()
   enddo
   deallocate( this%rf_re, this%rf_im )
-
-  call this%smooth%del()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -851,38 +823,6 @@ subroutine write_hdf5_pipe( this, files, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
-
-subroutine smooth_f1( this )
-
-  implicit none
-
-  class( field ), intent(inout) :: this
-  ! logical, intent(in) :: q_cons
-
-  integer :: i
-  character(len=32), save :: sname = 'smooth_f1'
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  if ( .not. this%smooth%if_smooth() ) return
-
-  do i = 0, this%max_mode
-
-    if ( i == 0 ) then
-      call this%smooth%smooth_f1( this%rf_re(i) )
-      cycle
-    endif
-
-    call this%smooth%smooth_f1( this%rf_re(i) )
-    call this%smooth%smooth_f1( this%rf_im(i) )
-
-  enddo
-
-  call this%acopy_gc_f1( dir=p_mpi_bothway, ncell=this%smooth%get_order() )
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine smooth_f1
 
 function get_dr( this )
 

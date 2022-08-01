@@ -257,7 +257,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
   integer :: i, ierr, local_vol, nr, noff, m
   integer :: comm, lidproc, lnvp
-  real :: dr2, m2, j, jmax
+  real :: dr2, m2, j, jmax, alpha
   character(len=32), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -272,6 +272,7 @@ subroutine set_struct_matrix( this, opts, dr )
   m2 = real(m*m)
   nr = this%iupper - this%ilower + 1
   local_vol = nr * this%num_stencil
+  alpha = 0.01
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )
@@ -330,7 +331,8 @@ subroutine set_struct_matrix( this, opts, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - dr2
+      ! HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - dr2
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - alpha
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -349,7 +351,8 @@ subroutine set_struct_matrix( this, opts, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - dr2
+      ! HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - dr2
+      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - alpha
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -361,7 +364,8 @@ subroutine set_struct_matrix( this, opts, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - dr2
+      ! HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - dr2
+      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - alpha
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -370,7 +374,8 @@ subroutine set_struct_matrix( this, opts, dr )
 
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
-        HYPRE_BUF(2) = -4.0 - dr2
+        ! HYPRE_BUF(2) = -4.0 - dr2
+        HYPRE_BUF(2) = -4.0 - alpha
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
@@ -382,11 +387,20 @@ subroutine set_struct_matrix( this, opts, dr )
         HYPRE_BUF(4) = 0.0
       endif
 
+      ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
+      ! is not singular. The vanishing of element 4 indicates the on-axis field
+      ! value is zero.
+      ! HYPRE_BUF(1) = 0.0
+      ! HYPRE_BUF(2) = 1.0
+      ! HYPRE_BUF(3) = 0.0
+      ! HYPRE_BUF(4) = 0.0
+
     else
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - dr2
+      ! HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - dr2
+      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - alpha
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif

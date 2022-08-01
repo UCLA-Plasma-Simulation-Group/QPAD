@@ -147,7 +147,9 @@ integer, parameter :: p_prof_uniform = 0, &
                       p_prof_para_chl = 3, &
                       p_prof_hllw_chl = 4, &
                       p_prof_parabolic = 5, &
-                      p_prof_rational = 6
+                      p_prof_rational = 6, &
+                      p_prof_sine = 7, &
+                      p_prof_cubic_spline = 8
 
 ! ================================================================
 ! others

@@ -365,7 +365,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
-  real :: idrh, idr, ir
+  real :: idrh, idr, ir, alpha
   real :: s1_re, s1_im, s2_re, s2_im
   character(len=20), save :: sname = 'set_source_bt_iter'
 
@@ -378,6 +378,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   noff   = jay_re%get_noff(1)
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
+  alpha = 0.01 * idr * idr
 
   f1_re => djdxi_re%get_f1()
   f2_re => jay_re%get_f1()
@@ -396,8 +397,8 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   if ( mode == 0 ) then
 
     do i = 2, nrp
-      this%buf1_re(i) = -f1_re(2,i) - f3_re(1,i) ! Re(Br)
-      this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) ! Re(Bphi)
+      this%buf1_re(i) = -f1_re(2,i) - f3_re(1,i) * alpha ! Re(Br)
+      this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) * alpha ! Re(Bphi)
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -406,15 +407,16 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       this%buf2_re(1) = 0.0
       ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
       ! calculated using forward difference
-      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2)
+      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2) * alpha
     else
-      this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
-      this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1)
+      this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1) * alpha
+      this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1) * alpha
     endif
 
     if ( idproc == nvp-1 ) then
-      this%buf1_re(nrp) = -f1_re(2,nrp) - f3_re(1,nrp)
-      this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf1_re(nrp) = -f1_re(2,nrp) - f3_re(1,nrp) * alpha
+      this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) &
+        - f3_re(2,nrp) * alpha
     endif
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
@@ -425,10 +427,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       s1_im = -f1_im(2,i) - mode * f2_re(3,i) * ir
       s2_re =  f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) )
       s2_im =  f1_im(1,i) + idrh * ( f2_im(3,i+1) - f2_im(3,i-1) )
-      this%buf1_re(i) = s1_re - s2_im - f3_re(1,i) + f3_im(2,i) ! Re(B_plus)
-      this%buf1_im(i) = s1_im + s2_re - f3_im(1,i) - f3_re(2,i) ! Im(B_plus)
-      this%buf2_re(i) = s1_re + s2_im - f3_re(1,i) - f3_im(2,i) ! Re(B_minus)
-      this%buf2_im(i) = s1_im - s2_re - f3_im(1,i) + f3_re(2,i) ! Im(B_minus)
+      this%buf1_re(i) = s1_re - s2_im - ( f3_re(1,i) - f3_im(2,i) ) * alpha ! Re(B_plus)
+      this%buf1_im(i) = s1_im + s2_re - ( f3_im(1,i) + f3_re(2,i) ) * alpha ! Im(B_plus)
+      this%buf2_re(i) = s1_re + s2_im - ( f3_re(1,i) + f3_im(2,i) ) * alpha ! Re(B_minus)
+      this%buf2_im(i) = s1_im - s2_re - ( f3_im(1,i) - f3_re(2,i) ) * alpha ! Im(B_minus)
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -453,10 +455,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
         endif
       endif
 
-      this%buf1_re(1) = s1_re - s2_im - f3_re(1,1) + f3_im(2,1) ! Re(B_plus)
-      this%buf1_im(1) = s1_im + s2_re - f3_im(1,1) - f3_re(2,1) ! Im(B_plus)
-      this%buf2_re(1) = s1_re + s2_im - f3_re(1,1) - f3_im(2,1) ! Re(B_minus)
-      this%buf2_im(1) = s1_im - s2_re - f3_im(1,1) + f3_re(2,1) ! Im(B_minus)
+      this%buf1_re(1) = s1_re - s2_im - ( f3_re(1,1) - f3_im(2,1) ) * alpha ! Re(B_plus)
+      this%buf1_im(1) = s1_im + s2_re - ( f3_im(1,1) + f3_re(2,1) ) * alpha ! Im(B_plus)
+      this%buf2_re(1) = s1_re + s2_im - ( f3_re(1,1) + f3_im(2,1) ) * alpha ! Re(B_minus)
+      this%buf2_im(1) = s1_im - s2_re - ( f3_im(1,1) - f3_re(2,1) ) * alpha ! Im(B_minus)
 
     else
 
@@ -466,10 +468,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       s2_re =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) )
       s2_im =  f1_im(1,1) + idrh * ( f2_im(3,2) - f2_im(3,0) )
 
-      this%buf1_re(1) = s1_re - s2_im - f3_re(1,1) + f3_im(2,1) ! Re(B_plus)
-      this%buf1_im(1) = s1_im + s2_re - f3_im(1,1) - f3_re(2,1) ! Im(B_plus)
-      this%buf2_re(1) = s1_re + s2_im - f3_re(1,1) - f3_im(2,1) ! Re(B_minus)
-      this%buf2_im(1) = s1_im - s2_re - f3_im(1,1) + f3_re(2,1) ! Im(B_minus)
+      this%buf1_re(1) = s1_re - s2_im - ( f3_re(1,1) - f3_im(2,1) ) * alpha ! Re(B_plus)
+      this%buf1_im(1) = s1_im + s2_re - ( f3_im(1,1) + f3_re(2,1) ) * alpha ! Im(B_plus)
+      this%buf2_re(1) = s1_re + s2_im - ( f3_re(1,1) + f3_im(2,1) ) * alpha ! Re(B_minus)
+      this%buf2_im(1) = s1_im - s2_re - ( f3_im(1,1) - f3_re(2,1) ) * alpha ! Im(B_minus)
 
     endif
 
@@ -480,10 +482,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       s1_im = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir
       s2_re =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) )
       s2_im =  f1_im(1,nrp) + idrh * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) )
-      this%buf1_re(nrp) = s1_re - s2_im - f3_re(1,nrp) + f3_im(2,nrp) ! Re(B_plus)
-      this%buf1_im(nrp) = s1_im + s2_re - f3_im(1,nrp) - f3_re(2,nrp) ! Im(B_plus)
-      this%buf2_re(nrp) = s1_re + s2_im - f3_re(1,nrp) - f3_im(2,nrp) ! Re(B_minus)
-      this%buf2_im(nrp) = s1_im - s2_re - f3_im(1,nrp) + f3_re(2,nrp) ! Im(B_minus)
+      this%buf1_re(nrp) = s1_re - s2_im - ( f3_re(1,nrp) - f3_im(2,nrp) ) * alpha ! Re(B_plus)
+      this%buf1_im(nrp) = s1_im + s2_re - ( f3_im(1,nrp) + f3_re(2,nrp) ) * alpha ! Im(B_plus)
+      this%buf2_re(nrp) = s1_re + s2_im - ( f3_re(1,nrp) + f3_im(2,nrp) ) * alpha ! Re(B_minus)
+      this%buf2_im(nrp) = s1_im - s2_re - ( f3_im(1,nrp) - f3_re(2,nrp) ) * alpha ! Im(B_minus)
 
     endif
 

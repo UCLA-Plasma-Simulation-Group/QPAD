@@ -81,6 +81,7 @@ type :: ufield
   procedure :: copy_gc_f1, copy_gc_f2
   procedure :: acopy_gc_f1, acopy_gc_f2
   procedure :: has2d
+  procedure :: smooth_f1
 
   generic :: assignment(=)   => assign_f1
   generic :: as              => assign_f2
@@ -241,6 +242,73 @@ subroutine write_hdf5_pipe( this, file, dim, rtag, stag, id )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine write_hdf5_pipe
+
+subroutine smooth_f1(this, stencil, ax_smooth)
+
+  implicit none
+  class(ufield), intent(inout) :: this
+  real, intent(in), dimension(3) :: stencil
+  logical, intent(in), dimension(:) :: ax_smooth
+
+  real, dimension(-1:1) :: kernel
+  real, dimension(:, :), allocatable :: smooth_tmp
+  integer :: idproc, i, j, r_idx
+  character(len=32), save :: sname = 'smooth_f1'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'smooth' )
+
+  idproc = id_proc_loc()
+  allocate(smooth_tmp(this%dim, this%ndp(1)))
+
+  ! normalize the smooth stencil
+  kernel(-1:1) = stencil / sum(stencil)
+
+  ! smooth the first two cells
+  if (idproc == 0) then
+    do i = 1, this%dim
+      if (ax_smooth(i)) then
+        smooth_tmp(i, 1) = (kernel(0) + kernel(1)) * this%f1(i, 1) +  8.0 * kernel(1) * this%f1(i, 2)
+        smooth_tmp(i, 2) = kernel(0) * this%f1(i, 2) + 0.125 * kernel(-1) * this%f1(i, 1) + 2.0 * kernel(1) * this%f1(i, 3)
+      else
+        smooth_tmp(i, 1) = 0.0
+        smooth_tmp(i, 2) = kernel(0) * this%f1(i, 2) + 0.125 * kernel(-1) * this%f1(i, 1) + 2.0 * kernel(1) * this%f1(i, 3)
+      endif
+    enddo
+  else
+    do i = 1, this%dim
+      r_idx = this%noff(1)
+      smooth_tmp(i, 1) = kernel(0) * this%f1(i, 1) &
+                    + (1.0 - 1.0 / r_idx) * kernel(-1) * this%f1(i, 0) &
+                    + (1.0 + 1.0 / r_idx) * kernel(1)  * this%f1(i, 2)
+      r_idx = this%noff(1) + 1
+      smooth_tmp(i, 2) = kernel(0) * this%f1(i, 2) &
+                    + (1.0 - 1.0 / r_idx) * kernel(-1) * this%f1(i, 1) &
+                    + (1.0 + 1.0 / r_idx) * kernel(1)  * this%f1(i, 3)
+    enddo
+  endif
+
+  ! smooth the remaining cells
+  do j = 3, this%ndp(1)
+    r_idx = this%noff(1) + j - 1
+    do i = 1, this%dim
+      smooth_tmp(i, j) = kernel(0) * this%f1(i, j) &
+                        + (1.0 - 1.0 / r_idx) * kernel(-1) * this%f1(i, j - 1) &
+                        + (1.0 + 1.0 / r_idx) * kernel(1)  * this%f1(i, j + 1)
+    enddo
+  enddo
+
+  ! copy back
+  do j = 1, this%ndp(1)
+    do i = 1, this%dim
+      this%f1(i, j) = smooth_tmp(i, j)
+    enddo
+  enddo
+
+  call stop_tprof( 'smooth' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine smooth_f1
 
 subroutine copy_slice( this, idx, dir )
 

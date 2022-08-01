@@ -158,9 +158,19 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
       this%set_prof_lon => set_prof_lon_pw_linear
       this%get_den_lon  => get_den_lon_pw_linear
 
+    case ( 'sine-series' )
+      this%prof_type(2) = p_prof_sine
+      this%set_prof_lon => set_prof_lon_sine
+      this%get_den_lon  => get_den_lon_sine
+
+    case ( 'cubic-spline' )
+      this%prof_type(2) = p_prof_cubic_spline
+      this%set_prof_lon => set_prof_lon_cubic_spline
+      this%get_den_lon  => get_den_lon_cubic_spline
+
     case default
       call write_err( 'Invalid longitudinal density profile! Currently available &
-        &include "uniform" and "piecewise-linear".' )
+        &include "uniform", "piecewise-linear", "sine-series" and "cubic-spline".' )
 
   end select
 

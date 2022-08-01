@@ -162,7 +162,7 @@ subroutine deposit_chi_sim_lasers( this, species, slice_idx )
     call species(k)%deposit_chi( this%chi )
   enddo
   call this%chi%acopy_gc_f1( dir=p_mpi_forward )
-  call this%chi%smooth_f1()
+  ! call this%chi%smooth_f1()
   call this%chi%copy_gc_f1()
   call this%chi%copy_slice( slice_idx, dir=p_copy_1to2 )
 

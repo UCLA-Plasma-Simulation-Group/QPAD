@@ -60,6 +60,9 @@ The "species" session is an array and each component is a session that defines t
 
     Note that the clamping is an artificial treatment and will lead to unphysical result. The ``"clamp"`` pusher is currently provided only for experimental purposes.
 
+* ``smooth_order``, integer, optional, default ``0``
+    Order of smooth. It means the times of applying 1-2-1 smoothing to the charge and current density. Setting 0 to disable the smooth.
+
 * ``fac_clamp``, real, optional, default ``10.0``
     Clamped value of :math:`\gamma/(\gamma-p_z)` used by ``"clamp"`` push type.
 

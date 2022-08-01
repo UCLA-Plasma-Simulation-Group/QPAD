@@ -4,7 +4,6 @@ use field_class
 use parallel_module
 use options_class
 use ufield_class
-use ufield_smooth_class
 use param
 use sysutil_module
 use mpi
@@ -18,48 +17,55 @@ public :: field_rho, field_jay, field_djdxi
 type, extends( field ) :: field_rho
 
   real :: q_ax ! on-axis charge
+  integer :: smooth_order = 0
 
   contains
 
   generic :: new => init_field_rho
-  procedure, private :: init_field_rho
+  procedure :: init_field_rho
+  procedure :: smooth => smooth_field_rho
 
 end type field_rho
 
 type, extends( field ) :: field_jay
 
+  integer :: smooth_order = 0
+
   contains
 
   generic :: new => init_field_jay
-  procedure, private :: init_field_jay
+  procedure :: init_field_jay
+  procedure :: smooth => smooth_field_jay
 
 end type field_jay
 
 type, extends( field ) :: field_djdxi
 
+  integer :: smooth_order = 0
+
   contains
 
   generic :: new => init_field_djdxi
-  generic :: solve => solve_field_djdxi
-  procedure, private :: init_field_djdxi, solve_field_djdxi
+  procedure :: init_field_djdxi
+  procedure :: solve => solve_field_djdxi
+  procedure :: smooth => smooth_field_djdxi
 
 end type field_djdxi
 
 contains
 
-subroutine init_field_rho( this, opts, max_mode, part_shape, &
-  smth_type, smth_order, has_2d )
+subroutine init_field_rho(this, opts, max_mode, part_shape, smooth_order, has_2d)
 
   implicit none
 
   class( field_rho ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, part_shape
-  integer, intent(in), optional :: smth_type, smth_order
+  integer, intent(in) :: smooth_order
   logical, intent(in), optional :: has_2d
 
   integer, dimension(2,2) :: gc_num
-  integer :: dim, smth_type_, smth_order_
+  integer :: dim
   logical :: has_2d_
   character(len=20), save :: cls_name = "field_rho"
   integer, parameter :: cls_level = 3
@@ -69,63 +75,63 @@ subroutine init_field_rho( this, opts, max_mode, part_shape, &
 
   select case ( part_shape )
 
-  case ( p_ps_linear )
+    case ( p_ps_linear )
 
-    gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
+      gc_num(:,1) = (/1, 1/)
+      gc_num(:,2) = (/0, 1/)
 
-  case ( p_ps_quadratic )
+    case ( p_ps_quadratic )
+      call write_err( "Quadratic particle shape not implemented." )
 
-    call write_err( "Quadratic particle shape not implemented." )
-
-  case default
-
-    call write_err( "Invalid particle shape." )
+    case default
+      call write_err( "Invalid particle shape." )
 
   end select
 
   dim = 1
-  smth_type_  = p_smooth_none
-  smth_order_ = 0
-  has_2d_     = .true.
-  if ( present(smth_type) ) smth_type_ = smth_type
-  if ( present(smth_order) ) smth_order_ = smth_order
+  has_2d_ = .true.
   if ( present(has_2d) ) has_2d_ = has_2d
 
-  gc_num(1,1) = max( gc_num(1,1), smth_order_ )
-  gc_num(2,1) = max( gc_num(2,1), smth_order_ )
-
-  call this%field%new( opts, dim, max_mode, gc_num, &
-      smooth_type=smth_type_, smooth_order=smth_order_, has_2d=has_2d_ )
-
-  ! call initialization routine of the parent class
-  ! if ( present(smth_type) .and. present(smth_order) ) then
-
-  !   gc_num(1,1) = max( gc_num(1,1), smth_order )
-  !   gc_num(2,1) = max( gc_num(2,1), smth_order )
-
-  !   call this%field%new( opts, dim, max_mode, gc_num, &
-  !     smooth_type=smth_type, smooth_order=smth_order )
-
-  ! else
-
-  !   call this%field%new( opts, dim, max_mode, gc_num )
-
-  ! endif
+  call this%field%new( opts, dim, max_mode, gc_num, has_2d=has_2d_ )
+  this%smooth_order = smooth_order
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_rho
 
-subroutine init_field_jay( this, opts, max_mode, part_shape, &
-  smooth_type, smooth_order )
+subroutine smooth_field_rho(this)
+
+  implicit none
+  class( field_rho ), intent(inout) :: this
+
+  integer :: mode, k
+  character(len=20), save :: cls_name = "field_rho"
+  integer, parameter :: cls_level = 3
+  character(len=20), save :: sname = "smooth_field_rho"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do k = 1, this%smooth_order
+    call this%rf_re(0)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.true.])
+    do mode = 1, this%max_mode
+      call this%rf_re(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false.])
+      call this%rf_im(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false.])
+    enddo
+    call this%copy_gc_f1()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine smooth_field_rho
+
+subroutine init_field_jay(this, opts, max_mode, part_shape, smooth_order)
 
   implicit none
 
   class( field_jay ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, part_shape
-  integer, intent(in), optional :: smooth_type, smooth_order
+  integer, intent(in) :: smooth_order
 
   integer, dimension(2,2) :: gc_num
   integer :: dim
@@ -137,50 +143,69 @@ subroutine init_field_jay( this, opts, max_mode, part_shape, &
 
   select case ( part_shape )
 
-  case ( p_ps_linear )
+    case ( p_ps_linear )
 
-    gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
+      gc_num(:,1) = (/1, 1/)
+      gc_num(:,2) = (/0, 1/)
 
-  case ( p_ps_quadratic )
+    case ( p_ps_quadratic )
 
-    call write_err( "Quadratic particle shape not implemented." )
+      call write_err( "Quadratic particle shape not implemented." )
 
-  case default
+    case default
 
-    call write_err( "Invalid particle shape." )
+      call write_err( "Invalid particle shape." )
 
   end select
 
   dim = 3
-  ! call initialization routine of the parent class
-  if ( present(smooth_type) .and. present(smooth_order) ) then
-
-    gc_num(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num(2,1) = max( gc_num(2,1), smooth_order )
-
-    call this%field%new( opts, dim, max_mode, gc_num, &
-      smooth_type=smooth_type, smooth_order=smooth_order )
-
-  else
-
-    call this%field%new( opts, dim, max_mode, gc_num )
-
-  endif
+  call this%field%new( opts, dim, max_mode, gc_num )
+  this%smooth_order = smooth_order
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_jay
 
-subroutine init_field_djdxi( this, opts, max_mode, part_shape, &
-  smooth_type, smooth_order )
+subroutine smooth_field_jay(this)
+
+  implicit none
+  class( field_jay ), intent(inout) :: this
+
+  integer :: mode, k
+  character(len=20), save :: cls_name = "field_jay"
+  integer, parameter :: cls_level = 3
+  character(len=20), save :: sname = "smooth_field_jay"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  ! TODO: note that the amu is also the instance of field_jay class, but amu corrects the
+  ! on-axis value for m=2 mode. Therefore, this routine may not work for amu smooth.
+  do k = 1, this%smooth_order
+    call this%rf_re(0)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false., .true.])
+    do mode = 1, this%max_mode
+      if (mode == 1) then
+        call this%rf_re(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.true., .true., .false.])
+        call this%rf_im(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.true., .true., .false.])
+      else
+        call this%rf_re(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false., .false.])
+        call this%rf_im(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false., .false.])
+      endif
+    enddo
+    call this%copy_gc_f1()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine smooth_field_jay
+
+subroutine init_field_djdxi( this, opts, max_mode, part_shape, smooth_order )
 
   implicit none
 
   class( field_djdxi ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: max_mode, part_shape
-  integer, intent(in), optional :: smooth_type, smooth_order
+  integer, intent(in) :: smooth_order
 
   integer, dimension(2,2) :: gc_num
   integer :: dim
@@ -208,24 +233,42 @@ subroutine init_field_djdxi( this, opts, max_mode, part_shape, &
   end select
 
   dim = 2
-  ! call initialization routine of the parent class
-  if ( present(smooth_type) .and. present(smooth_order) ) then
-
-    gc_num(1,1) = max( gc_num(1,1), smooth_order )
-    gc_num(2,1) = max( gc_num(2,1), smooth_order )
-
-    call this%field%new( opts, dim, max_mode, gc_num, &
-      smooth_type=smooth_type, smooth_order=smooth_order )
-
-  else
-
-    call this%field%new( opts, dim, max_mode, gc_num )
-
-  endif
+  call this%field%new( opts, dim, max_mode, gc_num )
+  this%smooth_order = smooth_order
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_djdxi
+
+subroutine smooth_field_djdxi(this)
+
+  implicit none
+  class( field_djdxi ), intent(inout) :: this
+
+  integer :: mode, k
+  character(len=20), save :: cls_name = "field_djdxi"
+  integer, parameter :: cls_level = 3
+  character(len=20), save :: sname = "smooth_field_djdxi"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  do k = 1, this%smooth_order
+    call this%rf_re(0)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false.])
+    do mode = 1, this%max_mode
+      if (mode == 1) then
+        call this%rf_re(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.true., .true.])
+        call this%rf_im(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.true., .true.])
+      else
+        call this%rf_re(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false.])
+        call this%rf_im(mode)%smooth_f1(stencil=[1.0, 2.0, 1.0], ax_smooth=[.false., .false.])
+      endif
+    enddo
+    call this%copy_gc_f1()
+  enddo
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine smooth_field_djdxi
 
 subroutine solve_field_djdxi( this, acu, amu )
 

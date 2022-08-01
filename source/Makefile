@@ -11,23 +11,13 @@ builddir ?= build
 bindir ?= ../bin
 # test directory
 testdir ?= ../test
-# configuration directory
-configdir ?= ../config
 
-configfile = $(configdir)/make.$(sys)
+BUILD_CONFIGURATION_FILE ?= ../config/make.$(sys)
+configfile=$(BUILD_CONFIGURATION_FILE)
 include $(configfile)
 
-# AUTO_MAKE_DEPEND ?= FALSE
-# MAKEDEPEND = ../tools/gendepends -t obj-dep
-# depfile = .depend
-# ifeq ($(AUTO_MAKE_DEPEND),TRUE)
-# 	-include $(depfile)
-# endif
-
 # ------------------------------------------------------------------------------
-# QuickPIC source files
-# If AUTO_MAKE_DEPEND is TRUE, the source files below can be listed in
-# arbitrary order. Otherwise, they must be listed in sequence.
+# QPAD source files
 # ------------------------------------------------------------------------------
 src = dtimer.c param.f03 math_module.f03 parallel_module.f03 debug_tool.f03
 src += kwargs_class.f03
@@ -68,7 +58,7 @@ DATESTAMP := $$(date +%s)
 .DEFAULT_GOAL := $(qpad)
 .PHONY: clean
 
-$(qpad) : $(builddir) $(objs)
+$(qpad) : $(objs)
 	@echo "[LINK] $(@F)"
 	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -I./$(builddir) -o $(notdir $(qpad)) $(notdir $(objs)) $(LDF)
 	@chmod a+x $@
@@ -81,22 +71,20 @@ $(qpad) : $(builddir) $(objs)
 	@ln -f -s qpad-$(DATESTAMP).e $(bindir)/qpad.e
 	@echo "Done!"
 
-$(objs) : $(builddir) | $(configfile)
+$(objs) : $(configfile) | $(builddir)
 
 $(builddir) :
 	@echo "Creating $@ directory"
 	@mkdir -p $@
-	@mkdir -p $@/preprocessed
 
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@$(FPP) $(FPPF) -I. -I./$(builddir) $< > $(builddir)/$(<F)
-	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F)
-	@cd $(builddir) && mv $(<F) ./preprocessed
+	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F) && rm $(<F)
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
-	@$(CC) $(CC_OPTS) -c $(<F) -o $@
+	@$(CC) $(CC_OPTS) -c $< -o $@
 
 TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
@@ -113,9 +101,3 @@ TEST_%.e : $(testdir)/TEST_%.f03
 clean :
 	@echo "[CLEAN] Removing build directory"
 	@rm -rf $(builddir)
-
-# depend : $(depfile)
-
-# $(depfile) : $(main_src)
-# 	@echo "Automatically generating module dependencies."
-# 	@$(PYTHON) $(MAKEDEPEND) $(main_src) > $(depfile)
