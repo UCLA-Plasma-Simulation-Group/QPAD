@@ -23,8 +23,6 @@
     "iter_max" : 10,
     "iter_reltol" : 1.0e-3,
     "iter_abstol" : 1.0e-3,
-    "smooth_type" : "none",
-    "smooth_order" : 0,
     "verbose" : 0,
     "if_timing" : false,
     "random_seed" : 0,
