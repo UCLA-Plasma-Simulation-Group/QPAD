@@ -249,8 +249,6 @@ subroutine run_simulation( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call start_tprof( 'total simulation time' )
-
   psi    => this%fields%psi
   vpot   => this%fields%vpot
   e_spe  => this%fields%e_spe
@@ -289,6 +287,8 @@ subroutine run_simulation( this )
     call this%diag%run( 0, this%dt )
 
   endif
+
+  call start_tprof( 'total simulation time' )
 
   do i = this%start3d, this%nstep3d
 
