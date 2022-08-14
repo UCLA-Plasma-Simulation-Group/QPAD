@@ -42,6 +42,7 @@ type species2d
    procedure :: deposit_chi => deposit_chi_species2d
    procedure :: amjdp => amjdp_species2d
    procedure :: push  => push_species2d
+   procedure :: interp_psi => interp_psi_species2d
    procedure :: psend => psend_species2d
    procedure :: precv => precv_species2d
    procedure :: wr    => writehdf5_species2d
@@ -229,7 +230,7 @@ subroutine deposit_chi_species2d( this, chi )
 end subroutine deposit_chi_species2d
 
 ! subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
-subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
+subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -240,7 +241,6 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
-   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
@@ -250,12 +250,12 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
    this%dcu = 0.0
    this%amu = 0.0
    select case ( this%push_type )
+      case (p_push2_std)
+         call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu )
       case ( p_push2_robust )
          call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
       case ( p_push2_robust_pgc )
          call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
-      case ( p_push2_robust_pgc_test )
-         call this%part%amjdeposit_robust_pgc_test( ef, bf, af, this%cu, this%amu, this%dcu, slice_idx )
    end select
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -276,7 +276,7 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, slice_idx )
 
 end subroutine amjdp_species2d
 
-subroutine push_species2d( this, ef, bf, af, slice_idx )
+subroutine push_species2d( this, ef, bf, af )
 ! subroutine push_species2d( this, ef, bf, af )
 
    implicit none
@@ -285,19 +285,18 @@ subroutine push_species2d( this, ef, bf, af, slice_idx )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
-   integer, intent(in) :: slice_idx
    ! local data
    character(len=18), save :: sname = 'push_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    select case ( this%push_type )
+      case ( p_push2_std )
+         call this%part%push_std( ef, bf )
       case ( p_push2_robust )
          call this%part%push_robust( ef, bf )
       case ( p_push2_robust_pgc )
          call this%part%push_robust_pgc( ef, bf, af )
-      case ( p_push2_robust_pgc_test )
-         call this%part%push_robust_pgc_test( ef, bf, af, slice_idx )
    end select
 
    call this%part%update_bound()
@@ -414,5 +413,22 @@ subroutine sort_species2d( this, step2d )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine sort_species2d
+
+subroutine interp_psi_species2d(this, psi)
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   type(field_psi), intent(in) :: psi
+   ! local data
+   character(len=18), save :: sname = 'interp_psi_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   if (this%push_type == p_push2_std) then
+      call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im())
+   endif
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine interp_psi_species2d
 
 end module species2d_class
