@@ -353,7 +353,7 @@ subroutine run_simulation( this )
       enddo
 
       ! TODO: why need to deposit chi here?
-      call this%lasers%deposit_chi( spe, j )
+      ! call this%lasers%deposit_chi( spe, j )
       call psi%solve( q_spe )
       do k = 1, this%nspecies
         call spe(k)%interp_psi(psi)
@@ -388,9 +388,6 @@ subroutine run_simulation( this )
           call neut(k)%amjdp( e, b, cu, amu, acu )
         enddo
 
-        ! TODO: why need to deposit chi here?
-        call this%lasers%deposit_chi( spe, j )
-
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
         call b_spe%solve( cu )
@@ -400,6 +397,9 @@ subroutine run_simulation( this )
         if (rel_res < this%iter_reltol .or. abs_res < this%iter_abstol) exit
 
       enddo ! iteration
+
+      ! deposit chi
+      call this%lasers%deposit_chi( spe, j )
 
       do k = 1, this%nspecies
         call spe(k)%cbq(j)

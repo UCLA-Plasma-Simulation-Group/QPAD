@@ -229,7 +229,6 @@ subroutine deposit_chi_species2d( this, chi )
 
 end subroutine deposit_chi_species2d
 
-! subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
@@ -254,6 +253,8 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
          call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu )
       case ( p_push2_robust )
          call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
+      case ( p_push2_std_pgc )
+         call this%part%amjdeposit_std_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
       case ( p_push2_robust_pgc )
          call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
    end select
@@ -277,7 +278,6 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 end subroutine amjdp_species2d
 
 subroutine push_species2d( this, ef, bf, af )
-! subroutine push_species2d( this, ef, bf, af )
 
    implicit none
 
@@ -295,6 +295,8 @@ subroutine push_species2d( this, ef, bf, af )
          call this%part%push_std( ef, bf )
       case ( p_push2_robust )
          call this%part%push_robust( ef, bf )
+      case ( p_push2_std_pgc )
+         call this%part%push_std_pgc( ef, bf, af )
       case ( p_push2_robust_pgc )
          call this%part%push_robust_pgc( ef, bf, af )
    end select
@@ -424,7 +426,7 @@ subroutine interp_psi_species2d(this, psi)
    character(len=18), save :: sname = 'interp_psi_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   if (this%push_type == p_push2_std) then
+   if (this%push_type == p_push2_std .or. this%push_type == p_push2_std_pgc) then
       call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im())
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')

@@ -127,10 +127,12 @@ subroutine init_sim_plasma( this, input, opts, s )
       push_type = p_push2_std
     case ( 'robust' )
       push_type = p_push2_robust
+    case ( 'standard_pgc' )
+      push_type = p_push2_std_pgc
     case ( 'robust_pgc' )
       push_type = p_push2_robust_pgc
     case default
-      call write_err( 'Invalid pusher type! Only "std", "robust" and "robust_pgc" &
+      call write_err( 'Invalid pusher type! Only "standard", "robust", "standard_pgc" and "robust_pgc" &
         &are supported currently.' )
     end select
 
