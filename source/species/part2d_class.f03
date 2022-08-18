@@ -559,15 +559,16 @@ subroutine amjdeposit_std_part2d( this, ef, bf, cu, amu, dcu )
       u0(2, i) = this%p(2, pp) * cc(i) - this%p(1, pp) * ss(i)
       u0(3, i) = this%p(3, pp)
 
+      ! TODO: There is a strict time-centered scheme and it is left for future work.
+
       ! normalize the E and B fields
       gam = sqrt(1.0 + u0(1, i)**2 + u0(2, i)**2 + u0(3, i)**2)
       qtmh2 = qtmh / (1.0 - this%qbm * this%psi(pp))
       qtmh1 = qtmh2 * gam
-      ep(:, i) = ep(:, i) * qtmh1
       bp(:, i) = bp(:, i) * qtmh2
 
       ! half electric acceleration
-      utmp(:) = u0(:, i) + ep(:, i)
+      utmp(:) = u0(:, i) + ep(:, i) * qtmh1
 
       ! magnetic rotation
       u(1, i) = utmp(1) + utmp(2) * bp(3, i) - utmp(3) * bp(2, i)
@@ -582,7 +583,9 @@ subroutine amjdeposit_std_part2d( this, ef, bf, cu, amu, dcu )
       utmp(3) = utmp(3) + u(1, i) * bp(2, i) - u(2, i) * bp(1, i)
 
       ! half electric acceleration
-      u(:, i) = utmp(:) + ep(:, i)
+      gam = sqrt(1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2)
+      qtmh1 = qtmh2 * gam
+      u(:, i) = utmp(:) + ep(:, i) * qtmh1
 
       pp = pp + 1
     enddo
@@ -807,38 +810,29 @@ subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
       bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
 
     ! calculate wake field
+    pp = ptrcur
     do i = 1, np
       wp(1,i) = ep(1,i) - bp(2,i)
       wp(2,i) = ep(2,i) + bp(1,i)
       wp(3,i) = ep(3,i)
-    enddo
 
-    ! transform momentum from Cartesian to cylindrical coordinates
-    pp = ptrcur
-    do i = 1, np
+      ! transform momentum from Cartesian to cylindrical coordinates
       u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
       u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
       u0(3,i) = this%p(3,pp)
-      pp = pp + 1
-    enddo
 
-    ! half electric acceleration
-    do i = 1, np
+      ! half electric acceleration
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       qtmh1 = qtmh * gam / ( gam - u0(3,i) )
       ep(:,i) = ep(:,i) * qtmh1
       utmp(:,i) = u0(:,i) + ep(:,i)
-    enddo
 
-    ! scale magnetic field
-    do i = 1, np
+      ! scale magnetic field
       gam = sqrt( 1.0 + utmp(1,i)**2 + utmp(2,i)**2 + utmp(3,i)**2 )
       qtmh2 = qtmh / ( gam - utmp(3,i) )
       bp(:,i) = bp(:,i) * qtmh2
-    enddo
 
-    ! magnetic rotation
-    do i = 1, np
+      ! magnetic rotation
       u(1,i) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
       u(2,i) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
       u(3,i) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
@@ -849,11 +843,11 @@ subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
       utmp(1,i) = utmp(1,i) + u(2,i) * bp(3,i) - u(3,i) * bp(2,i)
       utmp(2,i) = utmp(2,i) + u(3,i) * bp(1,i) - u(1,i) * bp(3,i)
       utmp(3,i) = utmp(3,i) + u(1,i) * bp(2,i) - u(2,i) * bp(1,i)
-    enddo
 
-    ! half electric acceleration
-    do i = 1, np
+      ! half electric acceleration
       u(:,i) = utmp(:,i) + ep(:,i)
+
+      pp = pp + 1
     enddo
 
     ! calculate and store time-centered values
@@ -866,9 +860,9 @@ subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
       
       u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
       this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
-      this%psi(pp)   = this%gamma(pp) - u(3,i)
+      ipsi = 1.0 / (this%gamma(pp) - u(3,i))
+      this%psi(pp) = (1.0 - 1.0 / ipsi) / this%qbm
 
-      ipsi = 1.0 / this%psi(pp)
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u(1,i) + wp(2,i) * u(2,i) ) * ipsi )
 
       du(1) = du(1) + u(1,i) * dpsi * ipsi
@@ -1818,7 +1812,7 @@ subroutine push_std_part2d(this, ef, bf)
 
       ! normalize E and B fields
       qtmh1 = qtmh / (1.0 - this%qbm * this%psi(pp))
-      qtmh2 = qtmh1 * gam
+      qtmh2 = qtmh1 * this%gamma(pp)
       ep(:, i) = ep(:, i) * qtmh2
       bp(:, i) = bp(:, i) * qtmh1
 
@@ -1898,61 +1892,36 @@ subroutine push_robust_part2d( this, ef, bf )
 
     pp = ptrcur
     do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      ! qtmh1 = qtmh / this%psi(pp)
-      ! qtmh2 = qtmh1 * this%gamma(pp)
-      qtmh1 = qtmh / ( gam - this%p(3,pp) )
+      gam = sqrt( 1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2 )
+      qtmh1 = qtmh / (gam - this%p(3, pp))
       qtmh2 = qtmh1 * gam
-      ep(:,i) = ep(:,i) * qtmh2
-      bp(:,i) = bp(:,i) * qtmh1
-      pp = pp + 1
-    enddo
+      ep(:, i) = ep(:, i) * qtmh2
+      bp(:, i) = bp(:, i) * qtmh1
 
-    ! first half of electric field acceleration
-    pp = ptrcur
-    do i = 1, np
-      utmp(:,i) = this%p(:,pp) + ep(:,i)
-      pp = pp + 1
-    enddo
+      ! first half of electric field acceleration
+      utmp(:, i) = this%p(:, pp) + ep(:, i)
 
-    ! rotation about magnetic field
-    pp = ptrcur
-    do i = 1, np
-      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
-      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
-      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
-      pp = pp + 1
-    enddo
+      ! rotation about magnetic field
+      this%p(1, pp) = utmp(1, i) + utmp(2, i) * bp(3, i) - utmp(3, i) * bp(2, i)
+      this%p(2, pp) = utmp(2, i) + utmp(3, i) * bp(1, i) - utmp(1, i) * bp(3, i)
+      this%p(3, pp) = utmp(3, i) + utmp(1, i) * bp(2, i) - utmp(2, i) * bp(1, i)
 
-    do i = 1, np
-      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
-      bp(1,i) = bp(1,i) * ostq
-      bp(2,i) = bp(2,i) * ostq
-      bp(3,i) = bp(3,i) * ostq
-    enddo
+      ostq = 2.0 / ( 1.0 + bp(1, i)**2 + bp(2, i)**2 + bp(3, i)**2 )
+      bp(:, i) = bp(:, i) * ostq
 
-    pp = ptrcur
-    do i = 1, np
-      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
-      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
-      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
-      pp = pp + 1
-    enddo
+      utmp(1, i) = utmp(1, i) + this%p(2, pp) * bp(3, i) - this%p(3, pp) * bp(2, i)
+      utmp(2, i) = utmp(2, i) + this%p(3, pp) * bp(1, i) - this%p(1, pp) * bp(3, i)
+      utmp(3, i) = utmp(3, i) + this%p(1, pp) * bp(2, i) - this%p(2, pp) * bp(1, i)
 
-    ! second half of electric field acc.
-    pp = ptrcur
-    do i = 1, np
-      this%p(:,pp) = utmp(:,i) + ep(:,i)
-      pp = pp + 1
-    enddo
+      ! second half of electric field acc.
+      this%p(:, pp) = utmp(:, i) + ep(:, i)
 
-    ! advance particle position
-    pp = ptrcur
-    do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
-      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
+      ! advance particle position
+      gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
+      dtc = this%dt / (gam - this%p(3, pp))
+      this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
+      this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
+
       pp = pp + 1
     enddo
 

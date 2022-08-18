@@ -817,7 +817,7 @@ subroutine add_particles( prof, part, part_add, multi_ion, ion_old, s )
         part%p(2,pp1)   = 0.0
         part%p(3,pp1)   = 0.0
         part%gamma(pp1) = 1.0
-        part%psi(pp1)   = 1.0
+        part%psi(pp1)   = 0.0
 
         ! store the position of ionized particles for ion charge deposition
         part_add%x(1,pp2) = part%x(1,pp1)
