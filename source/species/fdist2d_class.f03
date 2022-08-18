@@ -299,7 +299,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
           p(2,ipart) = this%uth(2) * ranorm()
           p(3,ipart) = this%uth(3) * ranorm()
           gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
-          psi(ipart) = gamma(ipart) - p(3,ipart)
+          psi(ipart) = (1.0 - gamma(ipart) + p(3,ipart)) / this%qm
           
         enddo
       enddo

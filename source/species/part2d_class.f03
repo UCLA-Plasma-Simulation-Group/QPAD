@@ -415,7 +415,8 @@ subroutine deposit_chi_part2d( this, chi )
 
       call spline_linear( pos_norm, wt )
 
-      phase = -1.0 * cmplx( 1.0, 0.0 ) * this%qbm * this%q(pp) / this%psi(pp)
+      ! phase = -1.0 * cmplx( 1.0, 0.0 ) * this%qbm * this%q(pp) / this%psi(pp)
+      phase = -1.0 * cmplx( 1.0, 0.0 ) * this%qbm * this%q(pp) / (1.0 - this%qbm * this%psi(pp))
       ! deposit m = 0 mode
       do j = 0, 1
         chi_re(0)%f1(1,nn+j) = chi_re(0)%f1(1,nn+j) + wt(j) * real(phase)
@@ -1113,6 +1114,8 @@ subroutine amjdeposit_std_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
       wp(2, i) = ep(2, i) + bp(1, i)
       wp(3, i) = ep(3, i)
 
+      ! TODO: There is a strict time-centered scheme for the standard-PGC pusher, which is left for future work.
+
       ! calculate the effective electric fields
       ! note that here the time-centered gamma is unknown, so we approximate it using the initial one.
       tmp = 0.5 * this%qbm / gam
@@ -1120,16 +1123,13 @@ subroutine amjdeposit_std_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
       ep(2, i) = ep(2, i) - tmp * (apr(i) * apr_grad(2, i) + api(i) * api_grad(2, i))
       ep(3, i) = ep(3, i) + tmp * (apr(i) * apr_grad(3, i) + api(i) * api_grad(3, i))
 
-      ! normalize the fields
+      ! half electric acceleration
       qtmh_b = qtmh / (1.0 - this%qbm * this%psi(pp))
       qtmh_e = qtmh_b * gam
-      ep(:, i) = ep(:, i) * qtmh_e
-      bp(:, i) = bp(:, i) * qtmh_b
-
-      ! half electric acceleration
-      utmp(:) = u0(:,i) + ep(:,i)
+      utmp(:) = u0(:, i) + ep(:, i) * qtmh_e
 
       ! magnetic rotation
+      bp(:, i) = bp(:, i) * qtmh_b
       u(1, i) = utmp(1) + utmp(2) * bp(3, i) - utmp(3) * bp(2, i)
       u(2, i) = utmp(2) + utmp(3) * bp(1, i) - utmp(1) * bp(3, i)
       u(3, i) = utmp(3) + utmp(1) * bp(2, i) - utmp(2) * bp(1, i)
@@ -1142,7 +1142,9 @@ subroutine amjdeposit_std_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
       utmp(3) = utmp(3) + u(1, i) * bp(2, i) - u(2, i) * bp(1, i)
 
       ! half electric acceleration
-      u(:, i) = utmp(:) + ep(:, i)
+      gam = sqrt(1.0 + utmp(1)**2 + utmp(2)**2 + utmp(3)**2 + gam_corr)
+      qtmh_e = qtmh_b * gam
+      u(:, i) = utmp(:) + ep(:, i) * qtmh_e
 
       ! calculate and store time-centered values
       ! deposit momentum flux, acceleration density, and current density
@@ -1439,9 +1441,9 @@ subroutine amjdeposit_robust_pgc_part2d( this, ef, bf, af, cu, amu, dcu )
         u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
         ! store the time-centered gamma and (1-(q/m)*psi)
         this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 + gam_corr )
-        this%psi(pp)   = this%gamma(pp) - u(3,i)
+        ipsi = 1.0 / (this%gamma(pp) - u(3,i))
+        this%psi(pp) = (1.0 - 1.0 / ipsi) / this%qbm
   
-        ipsi = 1.0 / this%psi(pp)
         dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u(1,i) + wp(2,i) * u(2,i) ) * ipsi )
   
         du(1) = du(1) + u(1,i) * dpsi * ipsi
@@ -2035,12 +2037,12 @@ subroutine push_robust_pgc_part2d( this, ef, bf, af )
 
       ! half acceleration due to effective electric field
       ! note that this%psi (1 - (q/m)*psi) is already time-centered
-      qtmh_e = qtmh * this%gamma(pp) / this%psi(pp)
+      qtmh_b = qtmh / (1.0 - this%qbm * this%psi(pp))
+      qtmh_e = qtmh_b * this%gamma(pp)
       ep(:,i) = ep(:,i) * qtmh_e
       utmp(:) = this%p(:,pp) + ep(:,i)
 
       ! rotation about magnetic field
-      qtmh_b = qtmh / this%psi(pp)
       bp(:,i) = bp(:,i) * qtmh_b
       this%p(1,pp) = utmp(1) + utmp(2) * bp(3,i) - utmp(3) * bp(2,i)
       this%p(2,pp) = utmp(2) + utmp(3) * bp(1,i) - utmp(1) * bp(3,i)
