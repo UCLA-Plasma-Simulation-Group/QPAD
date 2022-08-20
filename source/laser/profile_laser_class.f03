@@ -30,11 +30,17 @@ type, public :: profile_laser
   ! Position of the lower boundary in the longitudinal direction
   real :: z0
 
+  ! Longitudinal central position
+  real :: lon_center
+
   ! Global intensity
   real :: a0
 
   ! central frequency
   real :: k0
+
+  ! frequency chirp
+  real, dimension(:), allocatable :: chirp_coefs
 
   ! Parameter list of the intensity profiles in 1, 2, 3 directions
   type( kw_list ) :: prof_perp_pars, prof_lon_pars
@@ -56,10 +62,10 @@ type, public :: profile_laser
 end type profile_laser
 
 interface
-  subroutine get_prof_perp_intf( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+  subroutine get_prof_perp_intf( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
     import kw_list
     implicit none
-    real, intent(in) :: r, z, k0
+    real, intent(in) :: r, z, k, k0
     type(kw_list), intent(in) :: prof_pars
     integer, intent(in) :: mode
     real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -162,7 +168,13 @@ subroutine init_profile_laser( this, input, opts, sect_id )
 
   call input%get( trim(sect_name) // '.a0', this%a0 )
   call input%get( trim(sect_name) // '.k0', this%k0 )
+  call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   call input%get( 'simulation.box.z(1)', this%z0 )
+
+  this%chirp_coefs = [0.0]
+  if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then
+    call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
+  endif
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -186,8 +198,8 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   class( profile_laser ), intent(inout) :: this
   class( ufield ), intent(inout), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
 
-  integer :: i, j, m, max_mode
-  real :: r, z, arr, ari, air, aii, env
+  integer :: i, j, m, l, max_mode
+  real :: r, z, k, arr, ari, air, aii, env
   character(len=32), save :: sname = 'launch_profile_laser'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -196,10 +208,17 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   do m = 0, max_mode
     do j = 1, this%nzp
       ! note that here "z" refers to xi = t - z
-      z = ( this%noff_z + j - 1 ) * this%dz + this%z0
+      z = ( this%noff_z + j - 1 ) * this%dz + this%z0 - this%lon_center
+
+      ! longitudinal frequency chirp
+      k = this%k0
+      do l = 1, size(this%chirp_coefs)
+        k = k + this%chirp_coefs(l) * z ** l
+      enddo
+
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
-        call this%get_prof_perp( r, z, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
+        call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         call this%get_prof_lon( z, this%prof_lon_pars, env )
         env = env * this%a0
         ar_re(m)%f2( 1, i, j ) = env * arr

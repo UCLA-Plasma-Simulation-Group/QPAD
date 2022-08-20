@@ -123,18 +123,16 @@ subroutine init_sim_plasma( this, input, opts, s )
     push_type = p_push2_robust
     call input%get( 'species('//num2str(i)//').push_type', str )
     select case ( trim(str) )
+    case ( 'standard' )
+      push_type = p_push2_std
     case ( 'robust' )
       push_type = p_push2_robust
+    case ( 'standard_pgc' )
+      push_type = p_push2_std_pgc
     case ( 'robust_pgc' )
       push_type = p_push2_robust_pgc
-    case ( 'robust_pgc_test' )
-      push_type = p_push2_robust_pgc_test
-    case ( 'clamp' )
-      push_type = p_push2_clamp
-    case ( 'robust-subcycling' )
-      push_type = p_push2_robust_subcyc
     case default
-      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
+      call write_err( 'Invalid pusher type! Only "standard", "robust", "standard_pgc" and "robust_pgc" &
         &are supported currently.' )
     end select
 
@@ -158,14 +156,12 @@ subroutine init_sim_plasma( this, input, opts, s )
     push_type = p_push2_robust
     call input%get( 'neutrals('//num2str(i)//').push_type', str )
     select case ( trim(str) )
+    case ( 'standard' )
+      push_type = p_push2_std
     case ( 'robust' )
       push_type = p_push2_robust
-    case ( 'clamp' )
-      push_type = p_push2_clamp
-    case ( 'robust-subcycling' )
-      push_type = p_push2_robust_subcyc
     case default
-      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
+      call write_err( 'Invalid pusher type! Only "std", "robust" &
         &are supported currently.' )
     end select
 

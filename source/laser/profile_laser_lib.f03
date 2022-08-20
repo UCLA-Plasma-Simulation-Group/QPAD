@@ -45,36 +45,33 @@ subroutine set_prof_perp_gaussian( input, sect_name, prof_pars )
   call prof_pars%append( 'w0', val )
   call input%get( trim(sect_name) // '.focal_distance', val )
   call prof_pars%append( 'f_dist', val )
-  call input%get( trim(sect_name) // '.lon_center', val )
-  call prof_pars%append( 'lon_center', val )
 
 end subroutine set_prof_perp_gaussian
 
-subroutine get_prof_perp_gaussian( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_gaussian( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
-  real, intent(in) :: r, z, k0
+  real, intent(in) :: r, z, k, k0
   type(kw_list), intent(in) :: prof_pars
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
 
-  real :: w0, zr, curv, f_dist, lon_center, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
+  real :: w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
 
   call prof_pars%get( 'w0', w0 )
   call prof_pars%get( 'f_dist', f_dist )
-  call prof_pars%get( 'lon_center', lon_center )
 
   if ( mode == 0 ) then
 
-    z_shift = lon_center - z - f_dist
+    z_shift = -1.0 * (z + f_dist)
     r2 = r * r
     z2 = z_shift * z_shift
-    zr = 0.5 * k0 * w0 * w0
+    zr = 0.5 * k * w0 * w0
     zr2 = zr * zr
     curv = z_shift / ( z2 + zr2 )
     w = w0 * sqrt( 1.0 + z2 / zr2 )
     gouy_shift = atan2( z_shift, zr )
-    phase = 0.5 * k0 * r2 * curv - gouy_shift
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
     amp = w0 / w * exp(-r2 / (w*w))
 
     ar_re = amp * cos(phase)
@@ -110,8 +107,6 @@ subroutine set_prof_perp_laguerre( input, sect_name, prof_pars )
   call prof_pars%append( 'w0', rval )
   call input%get( trim(sect_name) // '.focal_distance', rval )
   call prof_pars%append( 'f_dist', rval )
-  call input%get( trim(sect_name) // '.lon_center', rval )
-  call prof_pars%append( 'lon_center', rval )
   call input%get( trim(sect_name) // '.radial_index', ival )
   call prof_pars%append( 'radial_index', ival )
   call input%get( trim(sect_name) // '.phi_index', ival )
@@ -119,36 +114,35 @@ subroutine set_prof_perp_laguerre( input, sect_name, prof_pars )
 
 end subroutine set_prof_perp_laguerre
 
-subroutine get_prof_perp_laguerre( r, z, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
-  real, intent(in) :: r, z, k0
+  real, intent(in) :: r, z, k, k0
   type(kw_list), intent(in) :: prof_pars
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
 
-  real :: w0, zr, curv, f_dist, lon_center, gouy_shift, z_shift, z2, zr2, phase, w2, r2, r2_iw2, amp
+  real :: w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, phase, w2, r2, r2_iw2, amp
   integer :: p, l
   real, parameter :: sqrt2 = 1.414213562373095
 
   call prof_pars%get( 'w0', w0 )
   call prof_pars%get( 'f_dist', f_dist )
-  call prof_pars%get( 'lon_center', lon_center )
   call prof_pars%get( 'radial_index', p )
   call prof_pars%get( 'phi_index', l )
 
   if ( mode == l ) then
 
-    z_shift = lon_center - z - f_dist
+    z_shift = -1.0 * ( z + f_dist )
     r2 = r * r
     z2 = z_shift * z_shift
-    zr = 0.5 * k0 * w0 * w0
+    zr = 0.5 * k * w0 * w0
     zr2 = zr * zr
     curv = z_shift / ( z2 + zr2 )
     w2 = w0 * w0 * ( 1.0 + z2 / zr2 )
     r2_iw2 = r2 / w2
     gouy_shift = real( 1 + 2 * p + abs(l) ) * atan2( z_shift, zr )
-    phase = 0.5 * k0 * r2 * curv - gouy_shift
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
 
     ! This is the definition from Wikipedia
     ! amp = w0 / sqrt(w2) * exp(-r2_iw2) * ( sqrt2 * sqrt(r2_iw2) ) ** abs(l) &
@@ -202,8 +196,6 @@ subroutine set_prof_lon_sin2( input, sect_name, prof_pars )
 
   real :: val
 
-  call input%get( trim(sect_name) // '.lon_center', val )
-  call prof_pars%append( 'lon_center', val )
   call input%get( trim(sect_name) // '.t_rise', val )
   call prof_pars%append( 't_rise', val )
   call input%get( trim(sect_name) // '.t_flat', val )
@@ -220,15 +212,14 @@ subroutine get_prof_lon_sin2( z, prof_pars, env )
   type(kw_list), intent(in) :: prof_pars
   real, intent(out) :: env
 
-  real :: center, t_rise, t_fall, t_flat, flat_start, flat_end
+  real :: t_rise, t_fall, t_flat, flat_start, flat_end
   real, parameter :: pih = 1.570796326794897
 
-  call prof_pars%get( 'lon_center', center )
   call prof_pars%get( 't_rise', t_rise )
   call prof_pars%get( 't_flat', t_flat )
   call prof_pars%get( 't_fall', t_fall )
-  flat_start = center - 0.5 * t_flat
-  flat_end   = center + 0.5 * t_flat
+  flat_start = - 0.5 * t_flat
+  flat_end   =   0.5 * t_flat
 
   if ( z < flat_start - t_rise ) then
     env = 0.0
@@ -258,8 +249,6 @@ subroutine set_prof_lon_poly( input, sect_name, prof_pars )
 
   real :: val
 
-  call input%get( trim(sect_name) // '.lon_center', val )
-  call prof_pars%append( 'lon_center', val )
   call input%get( trim(sect_name) // '.t_rise', val )
   call prof_pars%append( 't_rise', val )
   call input%get( trim(sect_name) // '.t_flat', val )
@@ -276,14 +265,13 @@ subroutine get_prof_lon_poly( z, prof_pars, env )
   type(kw_list), intent(in) :: prof_pars
   real, intent(out) :: env
 
-  real :: center, t_rise, t_fall, t_flat, flat_start, flat_end, t
+  real :: t_rise, t_fall, t_flat, flat_start, flat_end, t
 
-  call prof_pars%get( 'lon_center', center )
   call prof_pars%get( 't_rise', t_rise )
   call prof_pars%get( 't_flat', t_flat )
   call prof_pars%get( 't_fall', t_fall )
-  flat_start = center - 0.5 * t_flat
-  flat_end   = center + 0.5 * t_flat
+  flat_start = - 0.5 * t_flat
+  flat_end   =   0.5 * t_flat
 
   if ( z < flat_start - t_rise ) then
     env = 0.0

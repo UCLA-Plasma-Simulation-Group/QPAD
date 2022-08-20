@@ -10,7 +10,7 @@ implicit none
 
 private
 
-public :: hdf5file, pwfield, pwfield_pipe, pwpart, wpart, rpart
+public :: hdf5file, pwfield, pwfield_pipe, pwpart, wpart, rpart, prfield
 public :: pwpart_pipe
 public :: detect_precision
 ! public ::  wfield_pipe
@@ -51,6 +51,10 @@ end interface
 interface pwfield
   module procedure pwfield_3d
   module procedure pwfield_2d
+end interface
+
+interface prfield
+  module procedure prfield_2d
 end interface
 
 interface pwfield_pipe
@@ -786,7 +790,68 @@ subroutine wfield_2d_pipe(file,fd,gs,ls,noff,rtag,stag,id,ierr)
  endif
 
 end subroutine wfield_2d_pipe
-!
+
+subroutine prfield_2d(file, fd, gs, ls, noff, ierr)
+
+   implicit none
+  
+   class(hdf5file), intent(in) :: file
+   real, intent(inout), dimension(:,:) :: fd
+   integer, intent(in), dimension(2) :: gs, ls
+   integer, intent(in), dimension(2) :: noff
+   integer, intent(inout) :: ierr
+  
+   integer(hid_t) :: treal,fapl_id, xfer_id, mspace_id
+   integer(hid_t) :: file_id, root_id, dset_id, fspace_id, dtype_id
+   integer(hsize_t), dimension(2) :: gsize, lsize, offset
+   character(len=:), allocatable :: filename
+   character(len=8) :: st
+  
+   filename = trim(file%filename) // trim(file%dataname) // '_' // num2str(file%n, width=8) // '.h5'
+   ierr = 0
+   gsize = gs
+   lsize = ls
+   treal = detect_precision()
+
+   call h5open_f(ierr)
+
+   ! set property for file accessing and data transfer
+   call h5pcreate_f(H5P_FILE_ACCESS_F, fapl_id, ierr)
+   call h5pset_fapl_mpio_f(fapl_id, comm_world(), MPI_INFO_NULL, ierr)
+   call h5pcreate_f(H5P_DATASET_XFER_F, xfer_id, ierr)
+   call h5pset_dxpl_mpio_f(xfer_id, H5FD_MPIO_COLLECTIVE_F, ierr)
+  
+   ! open hdf5 file
+   call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr, fapl_id)
+  
+   ! create dataspaces for dataset in the memory
+   call h5screate_simple_f(2, lsize, mspace_id, ierr)
+
+   ! open root group and dataset
+   call h5gopen_f(file_id, '/', root_id, ierr)
+   call h5dopen_f(root_id, file%dataname, dset_id, ierr)
+   call h5dget_space_f(dset_id, fspace_id, ierr)
+   call h5dget_type_f(dset_id, dtype_id, ierr)
+  
+   ! read dataset from the file
+   offset = noff
+   call h5sselect_hyperslab_f(fspace_id, H5S_SELECT_SET_F, offset, lsize, ierr)
+   call h5dread_f(dset_id, dtype_id, fd(1:lsize(1), 1:lsize(2)), lsize, ierr, &
+      mem_space_id=mspace_id, file_space_id=fspace_id, xfer_prp=xfer_id)
+
+   ! close all the objects
+   call h5sclose_f(mspace_id, ierr)
+   call h5sclose_f(fspace_id, ierr)
+   call h5tclose_f(dtype_id, ierr)
+   call h5pclose_f(xfer_id, ierr)
+   call h5pclose_f(fapl_id, ierr)
+   call h5gclose_f(root_id, ierr)
+   call h5dclose_f(dset_id, ierr)
+   call h5fclose_f(file_id, ierr)
+   call h5close_f(ierr)
+  
+end subroutine prfield_2d
+
 subroutine pwpart_2d(file,x,p,q,npp,dspl,delta,ierr)
 
  implicit none

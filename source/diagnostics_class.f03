@@ -9,6 +9,7 @@ use sim_plasma_class
 use sim_lasers_class
 use field_class
 use field_complex_class
+use field_laser_class
 use beam3d_class
 use species2d_class
 use neutral_class
@@ -70,14 +71,15 @@ type sim_diag
   procedure :: run => run_sim_diag
   procedure :: set_ndump_gcd
   procedure :: to_next, to_head, to_tail, is_tail
-  generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst
+  generic :: add_diag => add_diag_cym, add_diag_raw, add_diag_rst, add_diag_rst_laser
 
-  procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst
+  procedure, private :: add_diag_cym, add_diag_raw, add_diag_rst, add_diag_rst_laser
   procedure, private :: init_diag_beams
   procedure, private :: init_diag_plasma
   procedure, private :: init_diag_fields
   procedure, private :: init_diag_lasers
   procedure, private :: init_diag_rst
+  procedure, private :: init_diag_rst_lasers
 
 end type sim_diag
 
@@ -691,6 +693,31 @@ subroutine init_diag_rst( this, input, beams )
 
 end subroutine init_diag_rst
 
+subroutine init_diag_rst_lasers( this, input, lasers )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  type( input_json ), intent(inout) :: input
+  class( sim_lasers ), intent(in), target :: lasers
+
+  integer :: i, ndump, nlasers, max_mode
+
+  call input%get( 'simulation.ndump_restart', ndump )
+  call input%get( 'simulation.nlasers', nlasers )
+  call input%get( 'simulation.max_mode', max_mode )
+  do i = 1, nlasers
+    call this%add_diag( &
+      obj        = lasers%laser(i), &
+      max_mode   = max_mode, &
+      dump_freq  = ndump, &
+      type_label = 'rst', &
+      filename   = './RST/Laser'//num2str(i,2)//'/', &
+      dataname   = 'RST-laser'//num2str(i,2) )
+  enddo
+
+end subroutine init_diag_rst_lasers
+
 subroutine init_sim_diag( this, input, opts, fields, beams, plasma, lasers )
 
   implicit none
@@ -732,6 +759,7 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma, lasers )
   ! initialize restart file diagnostics
   if (rst) then
     call this%init_diag_rst( input, beams )
+    call this%init_diag_rst_lasers( input, lasers )
   endif
 
   call this%set_ndump_gcd()
@@ -802,11 +830,22 @@ subroutine run_sim_diag( this, tstep, dt )
         call mpi_wait( this%diag%id, istat, ierr )
         call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
 
-      class is ( field_complex )
+      type is ( field_laser )
 
-        rtag = ntag(); stag = rtag
-        call mpi_wait( this%diag%id, istat, ierr )
-        call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
+        select case ( trim( this%diag%type_label ) )
+
+        case ( 'a_cyl_m' )
+
+          rtag = ntag(); stag = rtag
+          call mpi_wait( this%diag%id, istat, ierr )
+          call obj%write_hdf5( this%diag%files, this%diag%dim, rtag, stag, this%diag%id )
+
+        case ( 'rst' )
+
+          rtag = ntag(); stag = rtag
+          call obj%write_rst( this%diag%files, rtag, stag, this%diag%id )
+
+        end select
       
       class is ( beam3d )
 
@@ -1017,6 +1056,67 @@ subroutine add_diag_rst( this, obj, dump_freq, type_label, filename, dataname )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_diag_rst
+
+! add restart file for lasers
+subroutine add_diag_rst_laser( this, obj, max_mode, dump_freq, type_label, filename, dataname )
+
+  implicit none
+
+  class( sim_diag ), intent(inout) :: this
+  class(*), intent(in) :: obj
+  integer, intent(in) :: max_mode, dump_freq
+  character(len=*), intent(in) :: filename, dataname, type_label
+
+  integer :: i
+  character(len=:), allocatable :: cym_str
+  integer, save :: cls_level = 2
+  character(len=32), save :: cls_name = 'sim_diag'
+  character(len=32), save :: sname = 'add_diag_rst_laser'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  if ( .not. associated( this%head ) ) then
+    allocate( this%head )
+    call this%head%new( obj, dump_freq, num_files=4 * max_mode + 2, dim=1 )
+    this%diag => this%head
+  else
+    call this%to_tail()
+    allocate( this%diag%next )
+    this%diag => this%diag%next
+    call this%diag%new( obj, dump_freq, num_files=4 * max_mode + 2, dim=1 )
+  endif
+
+  this%diag%type_label = trim(type_label)
+  call system( 'mkdir -p '//trim(filename) )
+
+  do i = 1, 4 * max_mode + 2
+
+    if ( i == 1 ) then
+      cym_str = 're_re0'
+    elseif ( i == 2 ) then
+      cym_str = 'im_re0'
+    elseif ( mod(i,4) == 3 ) then
+      cym_str = 're_re'// num2str( (i+1)/4 )
+    elseif ( mod(i,4) == 0 ) then
+      cym_str = 're_im'// num2str( i/4 )
+    elseif ( mod(i,4) == 1 ) then
+      cym_str = 'im_re'// num2str( (i-1)/4 )
+    elseif ( mod(i,4) == 2 ) then
+      cym_str = 'im_im'// num2str( (i-2)/4 )
+    endif
+
+    call this%diag%files(i)%new( &
+      ty        = 'restart', &
+      filename  = trim(filename), &
+      dataname  = trim(dataname) // '-' // trim(cym_str) )
+
+  enddo
+
+  this%num_diag = this%num_diag + 1
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine add_diag_rst_laser
 
 ! add raw data for particles
 subroutine add_diag_raw( this, obj, dump_freq, psample, type_label, filename, &

@@ -41,7 +41,7 @@ type simulation
   class( sim_fields ), pointer :: fields => null()
   class( sim_plasma ), pointer :: plasma => null()
   class( sim_beams ),  pointer :: beams  => null()
-  class( sim_lasers ), pointer :: lasers  => null()
+  class( sim_lasers ), pointer :: lasers => null()
   class( sim_diag ),   pointer :: diag   => null()
 
   real :: dr, dxi, dt
@@ -352,9 +352,12 @@ subroutine run_simulation( this )
         call neut(k)%ion_deposit( q_spe )
       enddo
 
-      call this%lasers%deposit_chi( spe, j )
-      ! call q_spe%copy_slice( j, p_copy_1to2 )
+      ! TODO: why need to deposit chi here?
+      ! call this%lasers%deposit_chi( spe, j )
       call psi%solve( q_spe )
+      do k = 1, this%nspecies
+        call spe(k)%interp_psi(psi)
+      enddo
       call b_spe%solve( cu )
 
       call laser_all%zero( only_f1=.true. )
@@ -378,41 +381,25 @@ subroutine run_simulation( this )
         amu = 0.0
 
         do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu, j )
+          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
         enddo
 
         do k = 1, this%nneutrals
           call neut(k)%amjdp( e, b, cu, amu, acu )
         enddo
 
-        call this%lasers%deposit_chi( spe, j )
-
         call dcu%solve( acu, amu )
         call b_spe%solve( dcu, cu )
         call b_spe%solve( cu )
-        ! if ( l == this%iter ) then
-        !   do k = 1, this%nspecies
-        !     call spe(k)%cbq(j)
-        !   enddo
-        !   do k = 1, this%nneutrals
-        !     call neut(k)%cbq(j)
-        !   enddo
-        !   call cu%copy_slice( j, p_copy_1to2 )
-        !   call add_f1( cu, q_spe, (/3/), (/1/) )
-        !   call q_spe%copy_slice( j, p_copy_1to2 )
-        ! endif
 
         ! get the relative error between the old and new Br
         call convergence_tester(b_spe, 2, 'compare', rel_res=rel_res, abs_res=abs_res)
-        if (rel_res < this%iter_reltol .or. abs_res < this%iter_abstol) then
-          ! DEBUG
-          ! if (id_proc_loc() == 0) then
-          !   print *, "    2D step = ", j, ", iter = ", l, ", rel_res = ", rel_res, ", abs_res = ", abs_res
-          ! endif
-          exit
-        endif
+        if (rel_res < this%iter_reltol .or. abs_res < this%iter_abstol) exit
 
       enddo ! iteration
+
+      ! deposit chi
+      call this%lasers%deposit_chi( spe, j )
 
       do k = 1, this%nspecies
         call spe(k)%cbq(j)
@@ -449,8 +436,8 @@ subroutine run_simulation( this )
 
       ! advance species particles
       do k = 1, this%nspecies
-        call spe(k)%push( e, b, laser_all, j )
-        call spe(k)%sort( this%start2d + j - 1 )
+        call spe(k)%push( e, b, laser_all )
+        ! call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
       ! ionize and advance particles of neutrals

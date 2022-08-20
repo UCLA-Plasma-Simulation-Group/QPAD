@@ -817,7 +817,7 @@ subroutine add_particles( prof, part, part_add, multi_ion, ion_old, s )
         part%p(2,pp1)   = 0.0
         part%p(3,pp1)   = 0.0
         part%gamma(pp1) = 1.0
-        part%psi(pp1)   = 1.0
+        part%psi(pp1)   = 0.0
 
         ! store the position of ionized particles for ion charge deposition
         part_add%x(1,pp2) = part%x(1,pp1)
@@ -946,6 +946,8 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   this%dcu = 0.0
   this%amu = 0.0
   select case ( this%push_type )
+    case ( p_push2_std )
+      call this%part%amjdeposit_std( e, b, this%cu, this%amu, this%dcu )
     case ( p_push2_robust )
       call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu )
     ! case ( p_push2_robust_pgc )
@@ -981,6 +983,8 @@ subroutine push_neutral( this, e, b )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%push_type )
+    case ( p_push2_std )
+      call this%part%push_std( e, b )
     case ( p_push2_robust )
       call this%part%push_robust( e, b )
   end select
