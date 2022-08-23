@@ -984,9 +984,11 @@ subroutine push_neutral( this, e, b )
 
   select case ( this%push_type )
     case ( p_push2_std )
-      call this%part%push_std( e, b )
+      call this%part%push_u_std( e, b )
+      call this%part%push_x()
     case ( p_push2_robust )
-      call this%part%push_robust( e, b )
+      call this%part%push_u_robust( e, b )
+      call this%part%push_x()
   end select
 
   call this%part%update_bound()

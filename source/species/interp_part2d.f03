@@ -2,6 +2,7 @@ module interp_part2d
 
 use ufield_class
 use interpolation
+use param
 
 implicit none
 
@@ -31,7 +32,7 @@ subroutine gen_interp_info_part2d(x, dr, noff, np, ptrcur, weight, idx, pcos, ps
     real, intent(in) :: dr
     integer, intent(in) :: noff, np
     integer(kind=LG), intent(in) :: ptrcur
-    real, dimension(0:1, :), intent(out) :: weight
+    real, dimension(0:, :), intent(out) :: weight
     integer, dimension(:), intent(out) :: idx
     real, dimension(:), intent(out) :: pcos, psin
 
@@ -68,7 +69,7 @@ subroutine interp_field_part2d_vector(f_re, f_im, max_mode, weight, idx, pcos, p
     implicit none
     type(ufield), dimension(:), pointer, intent(in) :: f_re, f_im
     integer, intent(in) :: max_mode, np
-    real, dimension(0:1, :), intent(in) :: weight
+    real, dimension(0:, :), intent(in) :: weight
     integer, dimension(:), intent(in) :: idx
     real, dimension(:), intent(in) :: pcos, psin
     real, dimension(:, :), intent(inout) :: fp
@@ -112,7 +113,7 @@ subroutine interp_field_part2d_scalar(f_re, f_im, max_mode, weight, idx, pcos, p
     implicit none
     type(ufield), dimension(:), pointer, intent(in) :: f_re, f_im
     integer, intent(in) :: max_mode, np
-    real, dimension(0:1, :), intent(in) :: weight
+    real, dimension(0:, :), intent(in) :: weight
     integer, dimension(:), intent(in) :: idx
     real, dimension(:), intent(in) :: pcos, psin
     real, dimension(:), intent(inout) :: fp
@@ -142,7 +143,7 @@ subroutine interp_field_part2d_scalar(f_re, f_im, max_mode, weight, idx, pcos, p
             phase(i) = phase(i) * cmplx(pcos(i), psin(i))
             phase_re = 2.0 * real(phase(i))
             phase_im = 2.0 * aimag(phase(i))
-            do j = 0, 1
+            do j = 0, 1                                                             
                 fp(i) = fp(i) + (ptr_f_re(1, idx(i) + j) * phase_re - &
                                  ptr_f_im(1, idx(i) + j) * phase_im) * weight(j, i)
             enddo
@@ -154,7 +155,7 @@ end subroutine interp_field_part2d_scalar
 subroutine transform_to_cartesian(fp, np, pcos, psin)
 
     implicit none
-    real, dimension(:), intent(inout) :: fp
+    real, dimension(:, :), intent(inout) :: fp
     integer, intent(in) :: np
     real, dimension(:), intent(in) :: pcos, psin
 

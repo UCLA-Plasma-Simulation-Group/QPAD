@@ -292,13 +292,17 @@ subroutine push_species2d( this, ef, bf, af )
 
    select case ( this%push_type )
       case ( p_push2_std )
-         call this%part%push_std( ef, bf )
+         call this%part%push_u_std( ef, bf )
+         call this%part%push_x()
       case ( p_push2_robust )
-         call this%part%push_robust( ef, bf )
+         call this%part%push_u_robust( ef, bf )
+         call this%part%push_x()
       case ( p_push2_std_pgc )
-         call this%part%push_std_pgc( ef, bf, af )
+         call this%part%push_u_std_pgc( ef, bf, af )
+         call this%part%push_x()
       case ( p_push2_robust_pgc )
-         call this%part%push_robust_pgc( ef, bf, af )
+         call this%part%push_u_robust_pgc( ef, bf, af )
+         call this%part%push_x()
    end select
 
    call this%part%update_bound()
@@ -427,7 +431,7 @@ subroutine interp_psi_species2d(this, psi)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if (this%push_type == p_push2_std .or. this%push_type == p_push2_std_pgc) then
-      call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im())
+      call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im(), psi%get_max_mode())
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
