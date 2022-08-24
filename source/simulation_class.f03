@@ -381,11 +381,11 @@ subroutine run_simulation( this )
         amu = 0.0
 
         do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu )
+          call spe(k)%amjdp( e, b, laser_all, cu, amu, acu, this%dxi )
         enddo
 
         do k = 1, this%nneutrals
-          call neut(k)%amjdp( e, b, cu, amu, acu )
+          call neut(k)%amjdp( e, b, cu, amu, acu, this%dxi )
         enddo
 
         call dcu%solve( acu, amu )
@@ -436,14 +436,16 @@ subroutine run_simulation( this )
 
       ! advance species particles
       do k = 1, this%nspecies
-        call spe(k)%push( e, b, laser_all )
+        call spe(k)%push_u( e, b, laser_all, this%dxi )
+        call spe(k)%push_x( this%dxi )
         ! call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
       ! ionize and advance particles of neutrals
       do k = 1, this%nneutrals
         call neut(k)%update( e, psi, i*this%dt )
-        call neut(k)%push( e, b )
+        call neut(k)%push_u( e, b, this%dxi )
+        call neut(k)%push_x( this%dxi )
         ! call neut(k)%push( e, b, laser_all )
         ! TODO: add sorting
       enddo

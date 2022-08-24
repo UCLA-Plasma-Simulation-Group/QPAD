@@ -41,7 +41,8 @@ type species2d
    procedure :: qdp   => qdp_species2d
    procedure :: deposit_chi => deposit_chi_species2d
    procedure :: amjdp => amjdp_species2d
-   procedure :: push  => push_species2d
+   procedure :: push_u => push_u_species2d
+   procedure :: push_x => push_x_species2d
    procedure :: interp_psi => interp_psi_species2d
    procedure :: psend => psend_species2d
    procedure :: precv => precv_species2d
@@ -229,7 +230,7 @@ subroutine deposit_chi_species2d( this, chi )
 
 end subroutine deposit_chi_species2d
 
-subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
+subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, dt )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -240,6 +241,7 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
+   real, intent(in) :: dt
    ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
@@ -250,13 +252,13 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
    this%amu = 0.0
    select case ( this%push_type )
       case (p_push2_std)
-         call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu )
+         call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_robust )
-         call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu )
+         call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_std_pgc )
-         call this%part%amjdeposit_std_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
+         call this%part%amjdeposit_std_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_robust_pgc )
-         call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu )
+         call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt )
    end select
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -277,7 +279,7 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine push_species2d( this, ef, bf, af )
+subroutine push_u_species2d(this, ef, bf, af, dt)
 
    implicit none
 
@@ -285,32 +287,44 @@ subroutine push_species2d( this, ef, bf, af )
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    class(field_laser), intent(in) :: af
+   real, intent(in) :: dt
    ! local data
-   character(len=18), save :: sname = 'push_species2d'
+   character(len=18), save :: sname = 'push_u_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   select case ( this%push_type )
-      case ( p_push2_std )
-         call this%part%push_u_std( ef, bf )
-         call this%part%push_x()
-      case ( p_push2_robust )
-         call this%part%push_u_robust( ef, bf )
-         call this%part%push_x()
-      case ( p_push2_std_pgc )
-         call this%part%push_u_std_pgc( ef, bf, af )
-         call this%part%push_x()
-      case ( p_push2_robust_pgc )
-         call this%part%push_u_robust_pgc( ef, bf, af )
-         call this%part%push_x()
+   select case (this%push_type)
+      case (p_push2_std)
+         call this%part%push_u_std(ef, bf, dt)
+      case (p_push2_robust)
+         call this%part%push_u_robust(ef, bf, dt)
+      case (p_push2_std_pgc)
+         call this%part%push_u_std_pgc(ef, bf, af, dt)
+      case (p_push2_robust_pgc)
+         call this%part%push_u_robust_pgc(ef, bf, af, dt)
    end select
 
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_u_species2d
+
+subroutine push_x_species2d(this, dt)
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   real, intent(in) :: dt
+   ! local data
+   character(len=18), save :: sname = 'push_x_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+   call this%part%push_x(dt)
    call this%part%update_bound()
    call move_part2d_comm( this%part )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine push_species2d
+end subroutine push_x_species2d
 
 subroutine psend_species2d(this, tag, id)
 
