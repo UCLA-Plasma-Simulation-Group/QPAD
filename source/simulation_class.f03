@@ -31,6 +31,7 @@ implicit none
 private
 
 public :: simulation
+public :: convergence_tester
 
 integer, parameter :: p_max_tag_num = 32
 
@@ -352,8 +353,6 @@ subroutine run_simulation( this )
         call neut(k)%ion_deposit( q_spe )
       enddo
 
-      ! TODO: why need to deposit chi here?
-      ! call this%lasers%deposit_chi( spe, j )
       call psi%solve( q_spe )
       do k = 1, this%nspecies
         call spe(k)%interp_psi(psi)

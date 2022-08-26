@@ -322,7 +322,7 @@ type neutral
   private
 
   class(fdist2d), pointer :: pf => null()
-  class(part2d), pointer :: part => null()
+  class(part2d), public, pointer :: part => null()
   class(part2d_buf), pointer :: part_add => null()
 
   class(field_rho), allocatable :: q

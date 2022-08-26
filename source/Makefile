@@ -44,6 +44,7 @@ src += simulation_class.f03
 # template project code
 include proj_template/Makefile
 include proj_popas/Makefile
+include proj_subcyc/Makefile
 src += main.f03
 # ------------------------------------------------------------------------------
 

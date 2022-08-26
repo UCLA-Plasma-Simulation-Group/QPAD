@@ -25,7 +25,7 @@ type species2d
 
    private
 
-   class(part2d), pointer :: part => null()
+   class(part2d), public, pointer :: part => null()
    class(field_rho), allocatable :: q, qn
    class(field_jay), allocatable :: cu, amu
    class(field_djdxi), allocatable :: dcu
