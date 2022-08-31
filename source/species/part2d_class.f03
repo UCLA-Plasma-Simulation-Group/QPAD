@@ -72,7 +72,6 @@ type part2d
   procedure :: push_u_std_pgc        => push_u_std_pgc_part2d
   procedure :: push_u_robust_pgc     => push_u_robust_pgc_part2d
   procedure :: push_x                => push_x_part2d
-  ! procedure :: push_x_pgc            => push_x_pgc_part2d
   procedure :: update_bound          => update_bound_part2d
   procedure :: pipesend              => pipesend_part2d
   procedure :: piperecv              => piperecv_part2d
@@ -540,8 +539,6 @@ subroutine amjdeposit_std_part2d(this, ef, bf, cu, amu, dcu, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-    !   bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, ix, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, ix, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, ix, pcos, psin, np, bp)
@@ -810,8 +807,6 @@ subroutine amjdeposit_robust_part2d(this, ef, bf, cu, amu, dcu, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-      ! bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, ix, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, ix, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, ix, pcos, psin, np, bp)
@@ -1391,11 +1386,6 @@ subroutine amjdeposit_robust_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-    !   bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
-    ! call interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, &
-    !   ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im, &
-    !   max_mode, this%x, this%dr, apr, api, apr_grad, api_grad, np, ptrcur, p_cylindrical )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, ix, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, ix, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, ix, pcos, psin, np, bp)
@@ -1839,8 +1829,6 @@ subroutine push_u_std_part2d(this, ef, bf, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d(ef_re, ef_im, bf_re, bf_im, max_mode, &
-    !   this%x, this%dr, bp, ep, np, ptrcur, p_cartesian)
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, idx, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, idx, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, idx, pcos, psin, np, bp)
@@ -1878,12 +1866,6 @@ subroutine push_u_std_part2d(this, ef, bf, dt_)
 
       ! calculate time-centered gamma for push of position
       this%gamma(pp) = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
-
-      ! advance particle position
-      ! gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
-      ! dtc = dt / (gam - this%p(3, pp))
-      ! this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
-      ! this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
 
       pp = pp + 1
     enddo
@@ -1937,8 +1919,6 @@ subroutine push_u_robust_part2d(this, ef, bf, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-    !   bp, ep, np, ptrcur, p_cartesian )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, idx, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, idx, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, idx, pcos, psin, np, bp)
@@ -1973,12 +1953,6 @@ subroutine push_u_robust_part2d(this, ef, bf, dt_)
 
       ! calculate time-centered gamma for push of position
       this%gamma(pp) = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
-
-      ! advance particle position
-      ! gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
-      ! dtc = dt / (gam - this%p(3, pp))
-      ! this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
-      ! this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
 
       pp = pp + 1
     enddo
@@ -2051,11 +2025,6 @@ subroutine push_u_robust_pgc_part2d(this, ef, bf, af, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-    !   bp, ep, np, ptrcur, p_cartesian )
-    ! call interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, &
-    !                           ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im, &
-    !                           max_mode, this%x, this%dr, apr, api, apr_grad, api_grad, np, ptrcur, p_cartesian )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, idx, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, idx, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, idx, pcos, psin, np, bp)
@@ -2112,11 +2081,6 @@ subroutine push_u_robust_pgc_part2d(this, ef, bf, af, dt_)
       tmp = api_grad(3, i) * dt; gam_corr = gam_corr + qbm2_hf * (api(i) + 0.25 * tmp) * tmp
       this%gamma(pp) = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2 + gam_corr)
 
-      ! advance particle position
-      ! gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 + gam_corr )
-      ! dtc = dt / ( gam - this%p(3,pp) )
-      ! this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
-      ! this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc
       pp = pp + 1
     enddo
 
@@ -2187,11 +2151,6 @@ subroutine push_u_std_pgc_part2d(this, ef, bf, af, dt_)
     endif
 
     ! interpolate fields to particles
-    ! call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-    !   bp, ep, np, ptrcur, p_cartesian )
-    ! call interp_laser_part2d( ar_re, ar_im, ai_re, ai_im, &
-    !                           ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im, &
-    !                           max_mode, this%x, this%dr, apr, api, apr_grad, api_grad, np, ptrcur, p_cartesian )
     call gen_interp_info(this%x, this%dr, noff, np, ptrcur, weight, idx, pcos, psin)
     call interp_field(ef_re, ef_im, max_mode, weight, idx, pcos, psin, np, ep)
     call interp_field(bf_re, bf_im, max_mode, weight, idx, pcos, psin, np, bp)
@@ -2249,11 +2208,6 @@ subroutine push_u_std_pgc_part2d(this, ef, bf, af, dt_)
       tmp = api_grad(3, i) * dt; gam_corr = gam_corr + qbm2_hf * (api(i) + 0.25 * tmp) * tmp
       this%gamma(pp) = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2 + gam_corr)
 
-      ! advance particle position
-      ! gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2 + gam_corr)
-      ! dtc = this%dt / (gam - this%p(3, pp))
-      ! this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
-      ! this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
       pp = pp + 1
     enddo
 
@@ -2292,12 +2246,8 @@ subroutine push_x_part2d(this, dt_)
       np = p_cache_size
     endif
 
-    ! note that the gamma and momenta calculated in this subroutine are the ones after averaging.
     pp = ptrcur
     do i = 1, np
-      ! advance particle position
-
-      ! gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
       dtc = dt / (this%gamma(pp) - this%p(3, pp))
       this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
       this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
@@ -2310,52 +2260,6 @@ subroutine push_x_part2d(this, dt_)
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_x_part2d
-
-! subroutine push_x_pgc_part2d(this, dt_)
-
-!   implicit none
-
-!   class(part2d), intent(inout) :: this
-!   real, intent(in) :: dt_
-!   ! local data
-!   character(len=18), save :: sname = 'push_x_pgc_part2d'
-
-!   integer :: i, np
-!   real :: gam, dtc, dt
-!   integer(kind=LG) :: ptrcur, pp
-
-!   call write_dbg(cls_name, sname, cls_level, 'starts')
-!   call start_tprof( 'push 2D particles' )
-
-!   dt = this%dt
-!   if (present(dt_)) dt = dt_
-
-!   do ptrcur = 1, this%npp, p_cache_size
-
-!     ! check if last copy of table and set np
-!     if( ptrcur + p_cache_size > this%npp ) then
-!       np = this%npp - ptrcur + 1
-!     else
-!       np = p_cache_size
-!     endif
-
-!     ! note that the gamma and momenta calculated in this subroutine are the ones after averaging.
-!     pp = ptrcur
-!     do i = 1, np
-!       ! advance particle position
-!       gam = sqrt(1.0 + this%p(1, pp)**2 + this%p(2, pp)**2 + this%p(3, pp)**2)
-!       dtc = dt / (gam - this%p(3, pp))
-!       this%x(1, pp) = this%x(1, pp) + this%p(1, pp) * dtc
-!       this%x(2, pp) = this%x(2, pp) + this%p(2, pp) * dtc
-!       pp = pp + 1
-!     enddo
-
-!   enddo
-
-!   call stop_tprof( 'push 2D particles' )
-!   call write_dbg(cls_name, sname, cls_level, 'ends')
-
-! end subroutine push_x_pgc_part2d
 
 subroutine interp_psi_part2d(this, psi_re, psi_im, max_mode)
 
@@ -2396,43 +2300,6 @@ subroutine interp_psi_part2d(this, psi_re, psi_im, max_mode)
       this%psi(pp) = psip(i)
     enddo
 
-    ! pp = ptrcur
-    ! do i = 1, np
-    !   pos = sqrt(this%x(1, pp)**2 + this%x(2, pp)**2) * idr
-    !   ! cosine and sine
-    !   cc = this%x(1, pp) / pos * idr
-    !   ss = this%x(2, pp) / pos * idr
-    !   phase0 = cmplx(cc, ss)
-
-    !   ! in-cell position
-    !   nn  = int(pos)
-    !   pos = pos - real(nn)
-
-    !   ! cell index
-    !   nn = nn - noff + 1
-
-    !   ! get interpolation weight factor
-    !   call spline_linear(pos, wt)
-
-    !   ! interpolate m=0 mode
-    !   this%psi(pp) = psi_re_ptr(1, nn) * wt(0) + psi_re_ptr(1, nn + 1) * wt(1)
-
-    !   ! interpolate m>0 modes
-    !   phase = cmplx(1.0, 0.0)
-    !   do mode = 1, max_mode
-    !     phase = phase * phase0
-    !     ph_r = 2.0 * real(phase)
-    !     ph_i = 2.0 * aimag(phase)
-
-    !     psi_re_ptr => psi_re(mode)%get_f1()
-    !     psi_im_ptr => psi_im(mode)%get_f1()
-
-    !     this%psi(pp) = (psi_re_ptr(1, nn) * ph_r - psi_im_ptr(1, nn) * ph_i) * wt(0) &
-    !                  + (psi_re_ptr(1, nn + 1) * ph_r - psi_im_ptr(1, nn + 1) * ph_i) * wt(1)
-    !   enddo
-
-      ! pp = pp + 1
-    ! enddo
   enddo
 
 end subroutine interp_psi_part2d
