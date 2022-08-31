@@ -225,12 +225,7 @@ subroutine run_simulation_subcyc(this)
       call get_subcyc_step(exp_fac_max, this%exp_fac_max, this%dxi, &
         this%dt_2d_min, dxi_subcyc, n_subcyc)
 
-      ! DEBUG
-      ! print *, "j = ", j, ", n_subcyc = ", n_subcyc
-
-! ###########################################################################
-! ###########################################################################
-
+      ! begin subcycling
       do i_subcyc = 1, n_subcyc
 
         q_spe = 0.0
@@ -301,7 +296,7 @@ subroutine run_simulation_subcyc(this)
           ! TODO: add sorting
         enddo
 
-      enddo
+      enddo ! subcycling
 
       ! deposit chi
       call this%lasers%deposit_chi(spe, j)
@@ -315,12 +310,6 @@ subroutine run_simulation_subcyc(this)
       call cu%copy_slice(j, p_copy_1to2)
       call add_f1(cu, q_spe, (/3/), (/1/))
       call q_spe%copy_slice(j, p_copy_1to2)
-
-
-      ! call add_f1(b_spe, b_beam, b)
-      ! call e_spe%solve(b_spe, psi)
-      ! call e%solve(cu)
-      ! call e%solve(b, psi)
 
       ! for vector potential diagnostics
       if (this%diag%has_vpotz .or. this%diag%has_vpott) then
@@ -340,22 +329,6 @@ subroutine run_simulation_subcyc(this)
         call b_spe%pipe_send(this%tag_field(4), this%id_field(4), 'forward')
       endif
 
-      ! ! advance species particles
-      ! do k = 1, this%nspecies
-      !   call spe(k)%push_u(e, b, laser_all, dxi_subcyc)
-      !   call spe(k)%push_x(dxi_subcyc)
-      !   ! call spe(k)%sort(this%start2d + j - 1)
-      ! enddo
-
-      ! ! ionize and advance particles of neutrals
-      ! do k = 1, this%nneutrals
-      !   call neut(k)%update(e, psi, i*this%dt)
-      !   call neut(k)%push_u(e, b, dxi_subcyc)
-      !   call neut(k)%push_x(dxi_subcyc)
-      !   ! call neut(k)%push(e, b, laser_all)
-      !   ! TODO: add sorting
-      ! enddo
-
       call e%copy_slice(j, p_copy_1to2)
       call b%copy_slice(j, p_copy_1to2)
       call psi%copy_slice(j, p_copy_1to2)
@@ -374,9 +347,6 @@ subroutine run_simulation_subcyc(this)
       endif
 
     enddo ! 2d loop
-
-! ###########################################################################
-! ###########################################################################
 
     ! pipeline for species
     do k = 1, this%nspecies

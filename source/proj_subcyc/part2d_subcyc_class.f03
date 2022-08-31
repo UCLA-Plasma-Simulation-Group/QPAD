@@ -30,16 +30,16 @@ function get_exp_fac_max_part2d_subcyc(this) result(rst)
   class(part2d_subcyc), intent(inout) :: this
   real :: rst
 
-  real :: gam_pz_min_loc, gam_pz_min
+  real :: exp_fac_max_loc, exp_fac_max
   integer :: ierr
 
   if (this%npp > 0) then
-     gam_pz_min_loc = minval(this%gamma(1:this%npp) - this%p(3, 1:this%npp))
-     call mpi_allreduce(gam_pz_min_loc, gam_pz_min, 1, p_dtype_real, MPI_MIN, comm_loc(), ierr)
+     exp_fac_max_loc = maxval(this%gamma(1:this%npp) / (this%gamma(1:this%npp) - this%p(3, 1:this%npp)))
+     call mpi_allreduce(exp_fac_max_loc, exp_fac_max, 1, p_dtype_real, MPI_MAX, comm_loc(), ierr)
   else
-     gam_pz_min = 1.0
+     exp_fac_max = 1.0
   endif
-  rst = 1.0 / gam_pz_min
+  rst = exp_fac_max
 
 end function get_exp_fac_max_part2d_subcyc
 
