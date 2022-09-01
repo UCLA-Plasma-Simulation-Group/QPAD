@@ -15,6 +15,7 @@ type, extends(neutral) :: neutral_subcyc
   contains
   procedure :: alloc => alloc_neutral_subcyc
   procedure :: get_exp_fac_max => get_exp_fac_max_neutral_subcyc
+  procedure :: clamp_exp_fac => clamp_exp_fac_neutral_subcyc
 end type neutral_subcyc
 
 save
@@ -53,5 +54,22 @@ subroutine get_exp_fac_max_neutral_subcyc(this, rst)
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine get_exp_fac_max_neutral_subcyc
+
+subroutine clamp_exp_fac_neutral_subcyc(this, exp_fac_clamped)
+
+  implicit none
+  class(neutral_subcyc), intent(inout) :: this
+  real, intent(in) :: exp_fac_clamped
+
+  character(len=32), save :: sname = 'clamp_exp_fac_neutral_subcyc'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  select type (obj => this%part)
+     type is (part2d_subcyc)
+        call obj%clamp_exp_fac(exp_fac_clamped)
+  end select
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine clamp_exp_fac_neutral_subcyc
 
 end module neutral_subcyc_class

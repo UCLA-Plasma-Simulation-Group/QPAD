@@ -14,6 +14,7 @@ type, extends(part2d) :: part2d_subcyc
 
   contains
   procedure :: get_exp_fac_max => get_exp_fac_max_part2d_subcyc
+  procedure :: clamp_exp_fac => clamp_exp_fac_part2d_subcyc
 
 end type part2d_subcyc
 
@@ -42,5 +43,27 @@ function get_exp_fac_max_part2d_subcyc(this) result(rst)
   rst = exp_fac_max
 
 end function get_exp_fac_max_part2d_subcyc
+
+subroutine clamp_exp_fac_part2d_subcyc(this, exp_fac_clamped)
+
+  implicit none
+  class(part2d_subcyc), intent(inout) :: this
+  real, intent(in) :: exp_fac_clamped
+
+  integer :: i
+  real :: exp_fac, scale_fac
+
+  do i = 1, this%npp
+    exp_fac = this%gamma(i) / (this%gamma(i) - this%p(3, i))
+    if (exp_fac > exp_fac_clamped) then
+      scale_fac = (exp_fac_clamped - 1.0)**2
+      scale_fac = scale_fac / (exp_fac_clamped**2 * this%p(3, i)**2 - scale_fac * (this%gamma(i)**2 - 1.0))
+      scale_fac = sqrt(scale_fac)
+      this%p(:, i) = this%p(:, i) * scale_fac
+      this%gamma(i) = sqrt(1.0 + this%p(1, i)**2 + this%p(2, i)**2 + this%p(3, i)**2)
+    endif
+  enddo
+
+end subroutine clamp_exp_fac_part2d_subcyc
 
 end module part2d_subcyc_class

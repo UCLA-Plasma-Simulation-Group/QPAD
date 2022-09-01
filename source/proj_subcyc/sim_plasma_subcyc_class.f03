@@ -16,6 +16,7 @@ type, extends(sim_plasma) :: sim_plasma_subcyc
   contains
   procedure :: alloc => alloc_sim_plasma_subcyc
   procedure :: get_exp_fac_max => get_exp_fac_max_sim_plasma_subcyc
+  procedure :: clamp_exp_fac => clamp_exp_fac_sim_plasma_subcyc
 end type sim_plasma_subcyc
 
 character(len=18), save :: cls_name = 'sim_plasma_subcyc'
@@ -79,5 +80,34 @@ subroutine get_exp_fac_max_sim_plasma_subcyc(this, exp_fac_max)
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine get_exp_fac_max_sim_plasma_subcyc
+
+subroutine clamp_exp_fac_sim_plasma_subcyc(this, exp_fac_clamped)
+
+  implicit none
+  class(sim_plasma_subcyc), intent(inout) :: this
+  real, intent(in) :: exp_fac_clamped
+
+  integer :: i
+  character(len=32), save :: sname = 'clamp_exp_fac_sim_plasma_subcyc'
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+
+  do i = 1, this%num_species
+    select type (obj => this%spe(i))
+      type is (species2d_subcyc)
+        call obj%clamp_exp_fac(exp_fac_clamped)
+    end select
+  enddo
+
+  do i = 1, this%num_neutrals
+    select type (obj => this%neut(i))
+      type is (neutral_subcyc)
+        call obj%clamp_exp_fac(exp_fac_clamped)
+    end select
+  enddo
+
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine clamp_exp_fac_sim_plasma_subcyc
 
 end module sim_plasma_subcyc_class

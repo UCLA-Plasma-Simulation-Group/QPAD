@@ -17,7 +17,9 @@ use field_src_class
 use field_laser_class
 use beam3d_class
 use species2d_class
+use species2d_subcyc_class
 use neutral_class
+use neutral_subcyc_class
 
 use input_class
 use sysutil_module
@@ -40,6 +42,8 @@ type, extends(simulation) :: simulation_subcyc
 
   ! maximum expansion factor of time step
   real :: exp_fac_max
+  ! clamped expansion factor
+  real :: exp_fac_clamped
   ! minimum 2D time step
   real :: dt_2d_min
 
@@ -84,7 +88,8 @@ subroutine init_simulation_subcyc(this, input, opts)
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
   call input%get('simulation.dt_2d_min', this%dt_2d_min)
-  call input%get('simulation.expansion_fac_max', this%exp_fac_max)  
+  call input%get('simulation.expansion_fac_max', this%exp_fac_max)
+  call input%get('simulation.expansion_fac_clamped', this%exp_fac_clamped)
   call this%simulation%new(input, opts)
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -225,7 +230,7 @@ subroutine run_simulation_subcyc(this)
         type is (sim_plasma_subcyc)
           call obj%get_exp_fac_max(exp_fac_max)
           ! DEBUG
-          exp_fac_max_3dloop = max(exp_fac_max_3dloop, exp_fac_max)
+          ! exp_fac_max_3dloop = max(exp_fac_max_3dloop, exp_fac_max)
       end select
       call get_subcyc_step(exp_fac_max, this%exp_fac_max, this%dxi, &
         this%dt_2d_min, dxi_subcyc, n_subcyc)
@@ -270,6 +275,11 @@ subroutine run_simulation_subcyc(this)
             call neut(k)%amjdp(e, b, cu, amu, acu, dxi_subcyc)
           enddo
 
+          ! select type (obj => this%plasma)
+          !   type is (sim_plasma_subcyc)
+          !     call obj%clamp_exp_fac(this%exp_fac_clamped)
+          ! end select
+
           call dcu%solve(acu, amu)
           call b_spe%solve(dcu, cu)
           call b_spe%solve(cu)
@@ -288,6 +298,13 @@ subroutine run_simulation_subcyc(this)
         ! advance species particles
         do k = 1, this%nspecies
           call spe(k)%push_u(e, b, laser_all, dxi_subcyc)
+          select type (obj => spe(k))
+            type is (species2d_subcyc)
+              call obj%clamp_exp_fac(this%exp_fac_clamped)
+              ! DEBUG
+              ! call obj%get_exp_fac_max(exp_fac_max)
+              ! exp_fac_max_3dloop = max(exp_fac_max_3dloop, exp_fac_max)
+          end select
           call spe(k)%push_x(dxi_subcyc)
           ! call spe(k)%sort(this%start2d + j - 1)
         enddo
@@ -296,6 +313,10 @@ subroutine run_simulation_subcyc(this)
         do k = 1, this%nneutrals
           call neut(k)%update(e, psi, i*this%dt)
           call neut(k)%push_u(e, b, dxi_subcyc)
+          select type (obj => neut(k))
+            type is (neutral_subcyc)
+              call obj%clamp_exp_fac(this%exp_fac_clamped)
+          end select
           call neut(k)%push_x(dxi_subcyc)
           ! call neut(k)%push(e, b, laser_all)
           ! TODO: add sorting
@@ -354,7 +375,7 @@ subroutine run_simulation_subcyc(this)
     enddo ! 2d loop
 
     ! DEBUG
-    call write_stdout("fac = "//num2str(exp_fac_max_3dloop), only_root=.false.)
+    ! call write_stdout("fac = "//num2str(exp_fac_max_3dloop), only_root=.false.)
 
     ! pipeline for species
     do k = 1, this%nspecies
