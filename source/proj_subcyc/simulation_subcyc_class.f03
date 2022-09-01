@@ -96,7 +96,7 @@ subroutine run_simulation_subcyc(this)
   class(simulation_subcyc), intent(inout) :: this
 
   integer :: i, j, k, l, ierr, n_subcyc, i_subcyc
-  real :: rel_res, abs_res, exp_fac_max, dxi_subcyc
+  real :: rel_res, abs_res, exp_fac_max, dxi_subcyc, exp_fac_max_3dloop
   integer, dimension(MPI_STATUS_SIZE) :: istat
   character(len=32), save :: sname = 'run_simulation_subcyc'
 
@@ -205,6 +205,9 @@ subroutine run_simulation_subcyc(this)
     this%tag_field(4) = ntag()
     call b_spe%pipe_recv(this%tag_field(4), 'forward', 'replace')
 
+    ! DEBUG
+    exp_fac_max_3dloop = 0.0
+
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice(j, p_copy_2to1)
@@ -221,6 +224,8 @@ subroutine run_simulation_subcyc(this)
       select type (obj => this%plasma)
         type is (sim_plasma_subcyc)
           call obj%get_exp_fac_max(exp_fac_max)
+          ! DEBUG
+          exp_fac_max_3dloop = max(exp_fac_max_3dloop, exp_fac_max)
       end select
       call get_subcyc_step(exp_fac_max, this%exp_fac_max, this%dxi, &
         this%dt_2d_min, dxi_subcyc, n_subcyc)
@@ -347,6 +352,9 @@ subroutine run_simulation_subcyc(this)
       endif
 
     enddo ! 2d loop
+
+    ! DEBUG
+    call write_stdout("fac = "//num2str(exp_fac_max_3dloop), only_root=.false.)
 
     ! pipeline for species
     do k = 1, this%nspecies
