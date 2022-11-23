@@ -569,7 +569,7 @@ contains
             end select
 
           call write_dbg(cls_name, sname, cls_level, 'ends')
-          write(2,*) this%q%getresum() , "init"
+!           write(2,*) this%q%getresum() , "init"
 !           write(2,*) this%multi_ion(1)%npp , "ion"
 
     end subroutine init_neutral

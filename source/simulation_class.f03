@@ -331,11 +331,81 @@ subroutine run_simulation( this )
     acu   = 0.0
     amu   = 0.0
 
+do i = this%start3d, this%nstep3d
+
+    this%tstep = i
+    call write_stdout( '3D step = '//num2str(i) )
+
+    call q_beam%as(0.0)
+    call q_spe%as(0.0)
+
+    ! pipeline data transfer for beams
+    do k = 1, this%nbeams
+      this%tag_bq(k) = ntag()
+      call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
+    enddo
+
+    ! pipeline data transfer for species
+    do k = 1, this%nspecies
+      this%tag_spe(k) = ntag()
+      call spe(k)%precv( this%tag_spe(k) )
+    enddo
+
+    ! pipeline data transfer for neutrals
+    do k = 1, this%nneutrals
+      ! tag 1 and 2 are for particle array and ion density transfer respectively
+      this%tag_neut(1,k) = ntag()
+      this%tag_neut(2,k) = ntag()
+      this%tag_neut(3,k) = ntag()
+      this%tag_neut(4,k) = ntag()
+      call neut(k)%precv( this%tag_neut(1:4,k) )
+    enddo
+
+    do k = 1, this%nneutral2s
+      ! tag 1 and 2 are for particle array and ion density transfer respectively
+!       this%tag_neut2(k) = ntag()
+      nlevel = neut2(k)%get_multi_max()
+      v = neut2(k)%get_v()
+      ! + 1 is for neural gas (level 0)
+      do m = 1, nlevel - v + 2
+        this%tag_neut2(k,m) = ntag()
+      end do
+      call neut2(k)%precv(this%tag_neut2(k,:))
+    enddo
+
+    ! pipeline data transfer for current and species B-field
+    this%tag_field(1) = ntag()
+    call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
+    this%tag_field(4) = ntag()
+    call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
+
+    b     = 0.0
+    e     = 0.0
+    e_spe = 0.0
+    psi   = 0.0
+    acu   = 0.0
+    amu   = 0.0
+
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
+      q_spe = 0.0
+      do k = 1, this%nspecies
+        call spe(k)%push( e, b, i )
+      enddo
+
+      do k = 1, this%nneutrals
+        call neut(k)%update( e, psi, i*this%dt )
+        call neut(k)%push( e, b, i )
+      enddo
+
+      do k = 1, this%nneutral2s
+        call neut2(k)%update( e, psi, i*this%dt )
+        call neut2(k)%push( e, b, i )
+      enddo
+
       q_spe = 0.0
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
@@ -352,50 +422,23 @@ subroutine run_simulation( this )
 
       ! call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
-      call b_spe%solve( cu )
 
-      do l = 1, this%iter
+      do k = 1, this%nspecies
+        call spe(k)%gmjdeposit( e, b, cu, amu, gamma )
+      enddo
+      do k = 1, this%nneutrals
+        call neut(k)%gmjdeposit( e, b, cu, amu, gamma )
+      enddo
+      do k = 1, this%nneutral2s
+        call neut2(k)%gmjdeposit( e, b, cu, amu, gamma )
+      enddo
 
-        call add_f1( b_spe, b_beam, b )
-        call e%solve( cu )
-        call e%solve( b, psi )
-        cu = 0.0
-        acu = 0.0
-        amu = 0.0
-        do k = 1, this%nspecies
-          call spe(k)%amjdp( e, b, cu, amu, acu )
-        enddo
-        do k = 1, this%nneutrals
-          call neut(k)%amjdp( e, b, cu, amu, acu )
-        enddo
-        do k = 1, this%nneutral2s
-          call neut2(k)%amjdp( e, b, cu, amu, acu )
-        enddo
+      call e%solve(cu)
+      call b_spe%solve(e,psi,rho,cu,amu,gamma)
+      call e%(b_spe,psi)
 
-        call dcu%solve( acu, amu )
-        call b_spe%solve( dcu, cu )
-        call b_spe%solve( cu )
-        if ( l == this%iter ) then
-          do k = 1, this%nspecies
-            call spe(k)%cbq(j)
-          enddo
-          do k = 1, this%nneutrals
-            call neut(k)%cbq(j)
-          enddo
-          do k = 1, this%nneutral2s
-            call neut2(k)%cbq(j)
-          enddo
-          call cu%copy_slice( j, p_copy_1to2 )
-          call add_f1( cu, q_spe, (/3/), (/1/) )
-          call q_spe%copy_slice( j, p_copy_1to2 )
-        endif
-
-      enddo ! iteration
 
       call add_f1( b_spe, b_beam, b )
-      call e_spe%solve( b_spe, psi )
-      call e%solve( cu )
-      call e%solve( b, psi )
 
       ! for vector potential diagnostics
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
@@ -404,9 +447,6 @@ subroutine run_simulation( this )
         call vpot%copy_slice( j, p_copy_1to2 )
       endif
 
-      call dot_f1( this%dxi, dcu )
-      call add_f1( dcu, cu, (/1,2/), (/1,2/) )
-
       ! send the last slice of current and species B-field to the next stage
       if ( j == this%nstep2d ) then
         call mpi_wait( this%id_field(1), istat, ierr )
@@ -414,26 +454,6 @@ subroutine run_simulation( this )
         call mpi_wait( this%id_field(4), istat, ierr )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
       endif
-
-      ! advance species particles
-      do k = 1, this%nspecies
-        call spe(k)%push( e, b )
-        call spe(k)%sort( this%start2d + j - 1 )
-      enddo
-
-      ! ionize and advance particles of neutrals
-      do k = 1, this%nneutrals
-        call neut(k)%update( e, psi, i*this%dt )
-        call neut(k)%push( e, b )
-        ! TODO: add sorting
-      enddo
-
-     ! ionize and advance particles of neutrals
-      do k = 1, this%nneutral2s
-        call neut2(k)%push( e, b )
-        call neut2(k)%update( e, psi, i*this%dt )
-        ! TODO: add sorting
-      enddo
 
       call e%copy_slice( j, p_copy_1to2 )
       call b%copy_slice( j, p_copy_1to2 )
@@ -506,7 +526,7 @@ subroutine run_simulation( this )
       call neut2(k)%renew( i*this%dt )
     enddo
 
-  enddo ! 3d loop
+enddo ! 3d loop
 
   call stop_tprof( 'total simulation time' )
 

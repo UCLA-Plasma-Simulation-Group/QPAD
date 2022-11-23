@@ -72,14 +72,16 @@ integer, parameter :: p_fk_psi     = 0, &
                       p_fk_bminus  = 5, &
                       p_fk_vpotz   = 6, &
                       p_fk_vpotp   = 7, &
-                      p_fk_vpotm   = 8
+                      p_fk_vpotm   = 8, &
+                      p_fk_bphi    = 9
 
 ! ================================================================
 ! entity of electromagnetic field
 ! ================================================================
 integer, parameter :: p_entity_none       = 0, &
                       p_entity_beam       = 1, &
-                      p_entity_plasma     = 2
+                      p_entity_plasma     = 2, &
+                      p_entity_bphi       = 3
 
 ! ================================================================
 ! HYPRE parameters

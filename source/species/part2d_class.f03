@@ -37,9 +37,9 @@ type part2d
    integer :: part_dim
 
    ! array for particle position
-   real, dimension(:,:), allocatable :: x
+   real, dimension(:,:), allocatable :: x,x_l,x_r
    ! array for particle momenta
-   real, dimension(:,:), allocatable :: p
+   real, dimension(:,:), allocatable :: p,p_l
    ! array for time-centered gamma
    real, dimension(:), allocatable :: gamma
    ! array for particle charge
@@ -65,11 +65,13 @@ type part2d
    procedure :: renew                    => renew_part2d
    procedure :: del                      => end_part2d
    procedure :: qdeposit                 => qdeposit_part2d
+   procedure :: gmjdeposit               => gmjdeposit_part2d
    procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
    procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
    procedure :: ionize                   => ionize_part2d
    procedure :: add_particles            => add_particles_part2d
+   procedure :: push_explicit            => push_explicit_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
@@ -130,8 +132,11 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
    
+   allocate( this%x_l( 2, npmax ) )
    allocate( this%x( 2, npmax ) )
+   allocate( this%x_r( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
+   allocate( this%p_l( p_p_dim, npmax ) )
    allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ), this%w( npmax ), this%w0( npmax ) )
    allocate( this%pbuf( this%part_dim * npmax ) )
 
@@ -141,7 +146,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -157,7 +162,7 @@ subroutine end_part2d(this)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   deallocate( this%x, this%p, this%gamma, this%q, this%psi, this%w )
+   deallocate( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -182,6 +187,21 @@ subroutine realloc_part2d( this, ratio )
   this%tmp2 = 0.0
   this%tmp2( 1:2, 1:this%npp ) = this%x( 1:2, 1:this%npp )
   call move_alloc( this%tmp2, this%x )
+
+  allocate( this%tmp2( 2, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:2, 1:this%npp ) = this%x_l( 1:2, 1:this%npp )
+  call move_alloc( this%tmp2, this%x_l )
+
+  allocate( this%tmp2( 2, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:2, 1:this%npp ) = this%x_r( 1:2, 1:this%npp )
+  call move_alloc( this%tmp2, this%x_r )
+
+  allocate( this%tmp2( p_p_dim, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p_l( 1:p_p_dim, 1:this%npp )
+  call move_alloc( this%tmp2, this%p_l )
 
   allocate( this%tmp2( p_p_dim, npmax ) )
   this%tmp2 = 0.0
@@ -242,7 +262,7 @@ subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    if ( present( if_empty ) ) empty = if_empty
    if ( present( ionization ) ) ionize = ionization
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -376,6 +396,229 @@ subroutine qdeposit_part2d( this, q )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine qdeposit_part2d
+
+subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
+! deposit the current, momentum flux， and gamma
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: cu, amu, gamma
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=32), save :: sname = 'amjdeposit_robust_part2d'
+  type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+  type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+  type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
+  type(ufield), dimension(:), pointer :: gamma_re => null(), gamma_im => null()
+  type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
+
+  real, dimension(:,:), pointer :: cu0 => null(), gamma0 => null(), amu0 => null()
+  real, dimension(:,:), pointer :: cur => null(), gammar => null(), amur => null()
+  real, dimension(:,:), pointer :: cui => null(), gammai => null(), amui => null()
+
+  integer(kind=LG) :: ptrcur, pp
+  integer :: i, j, nn, noff, nrp, np, mode, max_mode
+  integer, dimension(p_cache_size) :: ix
+  real :: idr, dr
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
+  real, dimension(0:1, p_cache_size) :: wt
+  real, dimension(p_cache_size) :: cc, ss
+  real, dimension(p_p_dim) :: du, u2
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
+  complex(kind=DB) :: phase, phase0
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'deposit 2D particles' )
+
+  ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
+  bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
+  cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
+  gamma_re => gamma%get_rf_re(); gamma_im => gamma%get_rf_im()
+  amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
+
+  idr = 1.0 / this%dr
+  idt = 1.0 / this%dt
+  qtmh = 0.5 * this%qbm * this%dt
+  max_mode = ef%get_max_mode()
+
+  noff = cu_re(0)%get_noff(1)
+  nrp  = cu_re(0)%get_ndp(1)
+
+  cu0  => cu_re(0)%get_f1()
+  gamma0 => gamma_re(0)%get_f1()
+  amu0 => amu_re(0)%get_f1()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+
+
+    ! transform momentum from Cartesian to cylindrical coordinates
+    pp = ptrcur
+    do i = 1, np
+      u(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+      u(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+      u(3,i) = this%p(3,pp)
+      pp = pp + 1
+    enddo
+
+    ! calculate and store time-centered values
+    ! deposit momentum flux, gamma, and current density
+    pp = ptrcur
+    do i = 1, np
+
+      this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
+      this%psi(pp)   = this%gamma(pp) - u(3,i)
+
+      ipsi = 1.0 / this%psi(pp)
+
+      u2(1) = u(1,i) * u(1,i) * ipsi
+      u2(2) = u(1,i) * u(2,i) * ipsi
+      u2(3) = u(2,i) * u(2,i) * ipsi
+
+      phase0 = cmplx( cc(i), -ss(i) )
+      phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+
+      ! deposit m = 0 mode
+      do j = 0, 1
+        w = wt(j,i) * real(phase)
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
+        gamma0( ix(i)+j ) = gamma0( ix(i)+j ) + w * gamma(pp)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
+      enddo
+
+      ! deposit m > 0 mode
+!       do mode = 1, max_mode
+
+!         cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+!         gammar => dcu_re(mode)%get_f1(); dcui => gammaim(mode)%get_f1()
+!         amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+!         phase = phase * phase0
+
+!         do j = 0, 1
+!           w = wt(j,i) * real(phase)
+!           cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
+!           gammar( 1:2, ix(i)+j ) = gammar( 1:2, ix(i)+j ) + w * gamma(1:2)
+!           amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
+
+!           w = wt(j,i) * aimag(phase)
+!           cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
+!           dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
+!           amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
+!         enddo
+
+!       enddo
+
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  if ( noff == 0 ) then
+
+    ! guard cells on the axis are useless
+    cu0(1:3,0)  = 0.0
+    gamma0(0) = 0.0
+    amu0(1:3,0) = 0.0
+
+    cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
+    gamma0(1) = 0.0
+    amu0(1:3,1) = 0.0
+
+!     do mode = 1, max_mode
+
+!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+!       ! guard cells on the axis are useless
+!       cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
+!       dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
+!       amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
+       
+!       if ( mode == 1 ) then
+!         cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
+!         dcur(1:2,1) = 8.0 * dcur(1:2,1)
+!         amur(1:3,1) = 0.0
+!         cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+!         dcui(1:2,1) = 8.0 * dcui(1:2,1)
+!         amui(1:3,1) = 0.0
+!       elseif ( mode == 2 ) then
+!         cur(1:3,1)  = 0.0
+!         dcur(1:2,1) = 0.0
+!         amur(1:3,1) = 8.0 * amur(1:3,1)
+!         cui(1:3,1)  = 0.0
+!         dcui(1:2,1) = 0.0
+!         amui(1:3,1) = 8.0 * amui(1:3,1)
+!       else
+!         cur(1:3,1)  = 0.0
+!         dcur(1:2,1) = 0.0
+!         amur(1:3,1) = 0.0
+!         cui(1:3,1)  = 0.0
+!         dcui(1:2,1) = 0.0
+!         amui(1:3,1) = 0.0
+!        endif
+!     enddo
+
+    do j = 2, nrp + 1
+      ir = 1.0 / ( j + noff - 1 )
+      cu0(1:3,j)  = cu0(1:3,j)  * ir
+      gamma0(j) = gamma0(j) * ir
+      amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+!     do mode = 1, max_mode
+
+!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+!       do j = 2, nrp + 1
+!         ir = 1.0 / ( j + noff - 1 )
+!         cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+!         dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+!         amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+!       enddo
+!     enddo
+
+  else
+
+    do j = 0, nrp + 1
+       ir = 1.0 / ( j + noff - 1 )
+       cu0(1:3,j)  = cu0(1:3,j)  * ir
+       gamma0(j) = gamma0(j) * ir
+       amu0(1:3,j) = amu0(1:3,j) * ir
+    enddo
+
+!     do mode = 1, max_mode
+!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+
+!       do j = 0, nrp+1
+!         ir = 1.0 / ( j + noff - 1 )
+!         cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+!         dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+!         amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+!       enddo
+!     enddo
+
+  endif
+
+  call stop_tprof( 'deposit 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine gmjdeposit_part2d
 
 subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
@@ -1731,6 +1974,89 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
     call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_particles_part2d
+
+subroutine push_explicit_part2d( this, ef, bf, 3dstep)
+
+  implicit none
+
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  integer(in) :: 3dstep
+  ! local data
+  character(len=18), save :: sname = 'push_robust_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, gam, psi_1, ipsi_1, dtc, p_l
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+  qtmh = this%qbm * this%dt
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+
+    
+    if( 3dstep .eq. 1 ) then
+      pp = ptrcur
+      do i = 1, np
+        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+        dtc = this%dt / ( gam - this%p(3,pp) )
+        this%x_r(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
+        this%x(1,pp) = 0.5*(this%x_r(1,pp) + this%x(1,pp))
+        pp = pp + 1
+      enddo
+    else
+      pp = ptrcur
+      do i = 1, np
+        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+        psi_1 = gam - this%p(3,pp)
+        ipsi_1 = 1/psi_1
+        ep(1,i) = ep(1,i) * gam * ipsi_1
+        bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
+        pp = pp + 1
+        p_l = this%p(1,pp)
+        !2*xi
+        this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*this%dt+bp(1,i)*this%dt
+        this%p_l(1,pp) = p_l
+      enddo
+
+      pp = ptrcur
+      do i = 1, np
+        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+        dtc = this%dt / ( gam - this%p(3,pp) )
+        this%x_l(1,pp) = this%x_r(1,pp)
+        this%x_r(1,pp) = this%x_r(1,pp) + this%p(1,pp) * dtc
+        this%x(1,pp) = 0.5*(this%x_r(1,pp) + this%x_l(1,pp))
+        pp = pp + 1
+      enddo
+    endif
+
+  enddo
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_explicit_part2d
 
 
 subroutine push_robust_part2d( this, ef, bf )

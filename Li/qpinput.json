@@ -1,0 +1,200 @@
+{
+"simulation" : 
+{
+    "nodes" : [1, 1], 
+    "grid" : [512, 512],
+    "box" : {
+        "r" : [0.0, 6.0],
+        "z" : [0.0, 12.0]},
+    "field_boundary" : "open",
+    "max_mode" : 2,
+    "interpolation" : "linear",
+    "n0" : 5.0e16,
+    "time" : 10.1,
+    "dt" : 10.0,
+    "nbeams" : 2,
+    "nspecies" : 0,
+    "nneutrals" : 0,
+    "nneutral2s" : 1,
+    "dump_restart" : false,
+    "ndump_restart" : 1,
+    "read_restart" : false,
+    "restart_timestep" : 1,
+    "iter" : 1,
+    "smooth_type" : "none",
+    "smooth_order" : 0,
+    "verbose" : 2,
+    "if_timing" : true,
+    "random_seed" : 10,
+    "algorithm" : "standard"
+},
+
+"beam" :
+[
+    {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
+    "evolution" : false,
+    "push_type" : "reduced",
+    "has_spin" : false,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 4000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "density" : 100,
+    "quiet_start" : true,
+    "gauss_center" : [0.0, 0.0, 4.0],
+    "gauss_sigma" : [0.1, 0.1, 0.8],
+    "perp_offset_x":[0.0,0.0,0.0],
+    "perp_offset_y":[0.0,0.0,0.0],
+    "range1" : [-0.5, 0.5],
+    "range2" : [-0.5, 0.5],
+    "range3" : [0.0, 8.0],
+    "uth" : [0.0, 0.0, 0.0],
+    "den_min" : 1e-10,
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    },
+     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
+    "evolution" : false,
+    "push_type" : "reduced",
+    "has_spin" : false,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 4000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "density" : 600,
+    "quiet_start" : true,
+    "gauss_center" : [0.0, 0.0, 8.0],
+    "gauss_sigma" : [0.041, 0.041, 0.8],
+    "perp_offset_x":[0.0,0.0,0.0],
+    "perp_offset_y":[0.0,0.0,0.0],
+    "range1" : [-0.205, 0.205],
+    "range2" : [-0.205, 0.205],
+    "range3" : [4.0, 12.0],
+    "uth" : [0.0, 0.0, 0.0],
+    "den_min" : 1e-10,
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    }
+],
+
+"species" :
+[
+    {
+    "profile" : ["uniform", "uniform"],
+    "ppc" : [2,2],
+    "num_theta" : 32,
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "neutralized": false,
+    "push_type" : "robust",
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+    	{
+    	"name" : ["raw"],
+    	"ndump" : 1,
+    	"psample" : 10
+    	}
+    ]    
+    }
+],
+
+"neutrals" :
+[
+    {
+    "profile" : ["uniform", "uniform"],
+    "ppc" : [2,2],
+    "num_theta" : 4,
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "element" : 55,
+    "ion_max" : 2,
+    "push_type" : "robust",
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m", "ion_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    }
+],
+
+"neutral2s" :
+[
+    {
+    "profile" : ["uniform", "uniform"],
+    "ppc" : [2,2],
+    "num_theta" : 4,
+    "q" : -1.0,
+    "m" : 1.0,
+    "mi" : 12747.1465,
+    "v" : 0,
+    "sec":4,
+    "density" : 1.0,
+    "element" : 3,
+    "ion_max" : 1,
+    "push_type" : "robust",
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["ion_cyl_m"],
+        "ndump" : 1
+        }
+    ]    
+    }
+],
+
+"field" :
+{
+    "diag" :
+    [
+        {
+            "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m"],
+            "ndump": 1
+        }
+    ]
+}
+}

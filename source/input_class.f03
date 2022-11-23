@@ -71,7 +71,7 @@ subroutine read_input_json(this)
          ! if (.not. stat) then
          !    call write_err( error_msg )
          ! end if
-         call this%input%check_for_errors(stat,error_msg)
+         call this%input%check_for_errors(stat)
          if (.not. stat) then
             call write_err( 'read input file error!' )
          end if

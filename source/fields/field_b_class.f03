@@ -26,6 +26,7 @@ type, extends( field ) :: field_b
 
   class( field_solver ), dimension(:), pointer :: solver_bz      => null()
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
+  class( field_solver ), dimension(:), pointer :: solver_bphi    => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
 
@@ -35,7 +36,7 @@ type, extends( field ) :: field_b
 
   contains
 
-  generic :: solve => solve_field_bz, solve_field_bt, solve_field_bt_iter
+  generic :: solve => solve_field_bz, solve_field_bt, solve_field_bt_iter,solve_field_bphi
   generic :: new   => init_field_b
 
   procedure :: init_field_b
@@ -43,12 +44,15 @@ type, extends( field ) :: field_b
   procedure :: alloc => alloc_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
+  procedure, private :: set_source_bphi
   procedure, private :: set_source_bt_iter
   procedure, private :: get_solution_bz
   procedure, private :: get_solution_bt
+  procedure, private :: get_solution_bphi
   procedure, private :: get_solution_bt_iter
   procedure, private :: solve_field_bz
   procedure, private :: solve_field_bt
+  procedure, private :: solve_field_bphi
   procedure, private :: solve_field_bt_iter
 
 end type field_b
@@ -131,6 +135,8 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
         bnd=boundary, stype=p_hypre_cycred )
       call this%solver_bminus(i)%new( opts, i, dr, kind=p_fk_bminus, &
         bnd=boundary, stype=p_hypre_cycred )
+      call this%solver_bphi(i)%new( opts, i, dr, kind=p_fk_bphi, &
+        bnd=boundary, stype=p_hypre_cycred )
     enddo
 
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
@@ -183,6 +189,15 @@ subroutine end_field_b( this )
       call this%solver_bt(i)%del()
     enddo
     deallocate( this%solver_bt )
+
+  case ( p_entity_bphi )
+    do i = 0, this%max_mode
+      if( i==0 ) then
+        call this%solver_bphi(i)%del()
+      endif
+    enddo
+    deallocate( this%solver_bphi )
+    
   end select
 
   if ( associated( this%buf1_re ) ) deallocate( this%buf1_re )
@@ -351,6 +366,113 @@ subroutine set_source_bt( this, mode, q_re, q_im )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bt
+
+subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, gamma_re, cu_im, amu_im, gamma_im )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( field_e ), intent(in) :: ef
+  class( field_psi ), intent(in) :: psi
+  class( ufield ), intent(in) :: cu_re, amu_re, gamma_re
+  class( ufield ), intent(in), optional :: cu_im, amu_im, gamma_im
+  integer, intent(in) :: mode
+
+  integer :: i, nrp, nvp, idproc, noff
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
+  real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
+  real, dimension(:,:), pointer :: f4_re => null(), f4_im => null()
+  real, dimension(:,:), pointer :: f5_re => null(), f5_im => null()
+  real, dimension(:,:), pointer :: f6_re => null(), f6_im => null()
+  real, dimension(:,:), pointer :: f7_re => null(), f7_im => null()
+  real :: idrh, idr, ir
+  real :: n!n*
+  real :: s1_re, s1_im, s2_re, s2_im, s3_re, s3_im, s4_re, s4_im, s5_re, s5_im, s6_re, s6_im
+  character(len=20), save :: sname = 'set_source_bphi'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bphi' )
+
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
+  nrp    = jay_re%get_ndp(1)
+  noff   = jay_re%get_noff(1)
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+
+  f1_re => cu_re%get_f1()
+  f2_re => amu_re%get_f1()
+  f3_re => gamma_re%get_f1()
+  f4_re => ef%rf_re(mode)%get_f1()
+  f5_re => psi%rf_re(mode)%get_f1()
+  f6_re => rho_re%get_f1()
+  !f7_re => this%rf_re(mode)%get_f1()
+  this%buf1_re = 0.0
+  !this%buf2_re = 0.0
+
+  if ( present(cu_im) .and. present(amu_im) .and. present(gamma_im) ) then
+    f1_im => cu_im%get_f1()
+    f2_im => amu_im%get_f1()
+    f3_im => gamma_im%get_f1()
+    f4_im => ef%rf_im(mode)%get_f1()
+    f5_re => psi%rf_im(mode)%get_f1()
+    f6_re => rho_im%get_f1()
+    f7_im => this%rf_im(mode)%get_f1()
+    this%buf1_im = 0.0
+    !this%buf2_im = 0.0
+  endif
+
+  if ( mode == 0 ) then
+
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
+      n = 1 - f6_re(1,i)
+      ipsi = 1 / (1 + f5_re(1,i))
+      this%buf1_re(i) = -idrh*(f1_re(3,i+1)-f1_re(3,i-1)) + n*idrh*(f2_re(1,i+1)-f2_re(1,i-1))&
+                        +n*ir*f2_re(1,i) + n*ipsi*f4_re(3,i) + n*ipsi*(amu_re(1,i) - f3_re(1,i)*ipsi)&
+                        *idrh*(f5_re(1,i+1) - f5_re(1,i - 1)) + n*ipsi*f7_im(2,i)
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    if ( idproc == 0 ) then
+      this%buf1_re(1) = 0.0
+      ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
+      ! calculated using forward difference
+      ir = idr / real(2+noff-1)
+      n = 1 - f6_re(1,2)
+      ipsi = 1 / (1 + f5_re(1,2))
+      this%buf1_re(2) =  -idr*(f1_re(3,3)-f1_re(3,2)) + n*idr*(f2_re(1,3)-f2_re(1,2))&
+                        +n*ir*f2_re(1,2) + n*ipsi*f4_re(3,2) + n*ipsi*(amu_re(1,2) - f3_re(1,2)*ipsi)&
+                        *idr*(f5_re(1,3) - f5_re(1,2)) + n*ipsi*f7_im(2,2)
+    else
+      ir = idr / real(1+noff-1)
+      n = 1 - f6_re(1,1)
+      ipsi = 1 / (1 + f5_re(1,1))
+      this%buf1_re(1) = -idrh*(f1_re(3,2)-f1_re(3,0)) + n*idrh*(f2_re(1,2)-f2_re(1,0))&
+                        +n*ir*f2_re(1,1) + n*ipsi*f4_re(3,1) + n*ipsi*(amu_re(1,1) - f3_re(1,1)*ipsi)&
+                        *idrh*(f5_re(1,2) - f5_re(1,0)) + n*ipsi*f7_im(2,1)
+    endif
+
+    if ( idproc == nvp-1 ) then
+      ir = idr / real(nrp+noff-1)
+      n = 1 - f6_re(1,nrp)
+      ipsi = 1 / (1 + f5_re(1,nrp))
+      this%buf1_re(nrp) = -idrh*(3.0*f1_re(3,nrp)-4.0*f1_re(3,nrp-1)+f1_re(3,nrp-2)) + n*idrh*(3.0*f2_re(1,nrp)-4.0*f2_re(1,nrp-1)+f2_re(1,nrp-2))&
+                        +n*ir*f2_re(1,nrp) + n*ipsi*f4_re(3,nrp) + n*ipsi*(amu_re(1,nrp) - f3_re(1,nrp)*ipsi)&
+                        *idrh*(3.0*f5_re(1,nrp) - 4.0*f5_re(1,nrp - 1)+f5_re(1,nrp-2)) + n*ipsi*f7_im(2,nrp)
+    endif
+
+  else
+
+    call write_err( 'Invalid input arguments!' )
+
+  endif
+
+  call stop_tprof( 'solve plasma bphi' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine set_source_bphi
 
 subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
@@ -748,6 +870,42 @@ subroutine get_solution_bt_iter( this, mode )
 
 end subroutine get_solution_bt_iter
 
+subroutine get_solution_bphi( this, mode )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  integer, intent(in) :: mode
+
+  integer :: i, nrp, idproc
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  character(len=20), save :: sname = 'get_solution_bphi'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bphi' )
+
+  nrp    = this%rf_re(mode)%get_ndp(1)
+  idproc = id_proc_loc()
+
+  if ( mode == 0 ) then
+
+    f1_re => this%rf_re(mode)%get_f1()
+    do i = 1, nrp
+      f1_re(2,i) = this%buf1_re(i) ! Re(Bphi)
+    enddo
+
+    if ( idproc == 0 ) then
+      f1_re(2,1) = 0.0
+    endif
+
+  endif
+
+  call stop_tprof( 'solve plasma bt' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine get_solution_bphi
+
+
 subroutine solve_field_bz( this, jay )
 
   implicit none
@@ -823,6 +981,59 @@ subroutine solve_field_bt( this, rho )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine solve_field_bt
+
+subroutine solve_field_bphi( this, e, psi, rho, cu, amu, gamma )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( field_e ), intent(inout) :: ef
+  class( field_psi ), intent(inout) :: psi
+  class( field_rho ), intent(inout) :: rho
+  class( field_jay ), intent(inout) :: cu
+  class( field_jay ), intent(inout) :: amu
+  class( field_rho ), intent(inout) :: gamma
+
+  type( ufield ), dimension(:), pointer :: cu_re => null(), cu_im => null()
+  type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
+  type( ufield ), dimension(:), pointer :: gamma_re => null(), gamma_im => null()
+  type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
+
+  integer :: i
+  character(len=20), save :: sname = 'solve_field_bphi'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  cu_re => cu%get_rf_re()
+  cu_im => cu%get_rf_im()
+  amu_re => amu%get_rf_re()
+  amu_im => amu%get_rf_im()
+  gamma_re => gamma%get_rf_re()
+  gamma_im => gamma%get_rf_im()
+  rho_re => rho%get_rf_re()
+  rho_im => rho%get_rf_im()
+
+  do i = 0, this%max_mode
+
+    if ( i == 0 ) then
+      call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gamma_re(i) )
+      call this%solver_bphi(i)%solve( this%buf1_re )
+      call this%get_solution_bphi(i)
+      cycle
+    endif
+
+!     call this%set_source_bt( i, cu_re(i), amu_re(i), gamma_re(i), cu_im(i), amu_im(i), gamma_im(i) )
+!     call this%solver_bphi(i)%solve( this%buf1_re )
+!     call this%solver_bphi(i)%solve( this%buf1_im )
+!     call this%get_solution_bphi(i)
+
+  enddo
+
+  call this%copy_gc_f1()
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine solve_field_bphi
 
 subroutine solve_field_bt_iter( this, djdxi, jay )
 

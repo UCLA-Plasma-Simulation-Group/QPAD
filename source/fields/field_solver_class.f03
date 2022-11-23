@@ -161,6 +161,8 @@ subroutine solve_equation( this, src_sol )
     call start_tprof( 'solve plasma bt' )
   case ( p_fk_vpotz, p_fk_vpotp, p_fk_vpotm )
     call start_tprof( 'solve plasma A' )
+  case ( p_fk_bphi)
+    call start_tprof( 'solve plasma bphi' )
   end select
 
   call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
@@ -183,6 +185,8 @@ subroutine solve_equation( this, src_sol )
     call stop_tprof( 'solve plasma bt' )
   case ( p_fk_vpotz, p_fk_vpotp, p_fk_vpotm )
     call stop_tprof( 'solve plasma A' )
+  case ( p_fk_bphi)
+    call stop_tprof( 'solve plasma bphi' )
   end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -456,6 +460,36 @@ subroutine set_struct_matrix( this, opts, dr )
       HYPRE_BUF(1) = 1.0 - 0.5 / j
       HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
+
+    endif
+  case ( p_fk_bphi )
+
+    ! set from the second grid point of each partition
+    j = real(noff)
+    do i = 4, local_vol, this%num_stencil
+      j = j + 1.0
+      HYPRE_BUF(i)   = dr
+      HYPRE_BUF(i+1) = -2.0*dr - (1/j)**2
+      HYPRE_BUF(i+2) = dr
+    enddo
+
+    ! set the first grid point of each partition
+    if (lidproc == 0) then
+
+      ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
+      ! is not singular. The vanishing of element 4 indicates the on-axis field
+      ! value is zero.
+      HYPRE_BUF(1) = 0.0
+      HYPRE_BUF(2) = 1.0
+      HYPRE_BUF(3) = 0.0
+      HYPRE_BUF(4) = 0.0
+
+    else
+
+      j = real(noff)
+      HYPRE_BUF(1) = dr
+      HYPRE_BUF(2) = -2.0*dr - (1/j)**2
+      HYPRE_BUF(3) = dr
 
     endif
 

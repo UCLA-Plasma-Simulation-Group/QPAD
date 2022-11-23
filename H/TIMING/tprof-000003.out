@@ -1,0 +1,28 @@
+ ==================================================
+                         EVENT     ELAPSE TIME (s)
+ --------------------------------------------------
+                     solve psi          0.9757E-01
+                      solve bz          0.1720E+00
+                 solve beam bt          0.2016E+00
+               solve plasma bt          0.1798E+00
+                      solve ez          0.2019E+00
+                 solve beam et          0.0000E+00
+               solve plasma et          0.6707E-02
+                solve plasma A          0.0000E+00
+                        smooth          0.0000E+00
+              copy guard cells          0.1531E+00
+        copy & add guard cells          0.5742E+00
+                   copy slices          0.3898E-01
+                      pipeline         -0.3525E+01
+          deposit 2D particles          0.1439E+00
+             push 2D particles          0.1907E-01
+             move 2D particles          0.2038E+00
+             sort 2D particles          0.0000E+00
+          deposit 3D particles          0.1566E-02
+             push 3D particles          0.0000E+00
+             move 3D particles          0.3024E-01
+                   extract psi          0.0000E+00
+                   arithmetics          0.4440E-01
+                    write hdf5          0.6702E+00
+         total simulation time          0.3980E+01
+ ==================================================
