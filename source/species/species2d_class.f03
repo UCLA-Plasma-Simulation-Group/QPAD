@@ -6,8 +6,7 @@ use sysutil_module
 use options_class
 use fdist2d_class
 use field_psi_class
-use field_e_class
-use field_b_class
+use field_em_class
 use field_src_class
 use field_class
 use part2d_class
@@ -27,6 +26,7 @@ type species2d
    class(part2d), pointer :: part => null()
    class(field_rho), allocatable :: q, qn
    class(field_jay), allocatable :: cu, amu
+   class(field_rho), allocatable :: gamma
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
    integer :: push_type
@@ -39,7 +39,9 @@ type species2d
    procedure :: del   => end_species2d
    procedure :: qdp   => qdp_species2d
    procedure :: amjdp => amjdp_species2d
+   procedure :: gmjdp => gmjdp_species2d
    procedure :: push  => push_species2d
+   procedure :: epush => push_species2d_explicit
    procedure :: psend => psend_species2d
    procedure :: precv => precv_species2d
    procedure :: wr    => writehdf5_species2d
@@ -253,6 +255,45 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
+subroutine gmjdp_species2d( this, ef, bf, cu, amu, gamma )
+! deposit the current, acceleration and momentum flux
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   class(field_jay), intent(inout) :: cu, amu
+   class(field_rho), intent(inout) :: gamma
+   class(field_e), intent(in) :: ef
+   class(field_b), intent(in) :: bf
+   ! local data
+   character(len=18), save :: sname = 'amjdp_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   this%cu = 0.0
+   this%gamma = 0.0
+   this%amu = 0.0
+   
+   call this%part%gmjdeposit( ef, bf, cu, amu, gamma )
+
+   call this%cu%acopy_gc_f1( dir=p_mpi_forward )
+   call this%gamma%acopy_gc_f1( dir=p_mpi_forward )
+   call this%amu%acopy_gc_f1( dir=p_mpi_forward )
+   call this%cu%smooth_f1()
+   call this%gamma%smooth_f1()
+   call this%amu%smooth_f1()
+   call this%cu%copy_gc_f1()
+   call this%gamma%copy_gc_f1()
+   call this%amu%copy_gc_f1()
+
+   call add_f1( this%cu, cu )
+   call add_f1( this%gamma, gamma )
+   call add_f1( this%amu, amu )
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine gmjdp_species2d
+
 subroutine push_species2d(this,ef,bf)
 
    implicit none
@@ -280,6 +321,37 @@ subroutine push_species2d(this,ef,bf)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_species2d
+
+subroutine push_species2d_explicit(this,ef,bf,i)
+
+   implicit none
+
+   class(species2d), intent(inout) :: this
+   class(field_e), intent(in) :: ef
+   class(field_b), intent(in) :: bf
+   integer, intent(in) :: i 
+   ! local data
+   character(len=18), save :: sname = 'push_species2d'
+
+   call write_dbg(cls_name, sname, cls_level, 'starts')
+
+   select case ( this%push_type )
+      case ( p_push2_robust )
+         call this%part%push_robust( ef, bf )
+      case ( p_push2_clamp )
+         call this%part%push_clamp( ef, bf )
+      case ( p_push2_robust_subcyc )
+         call this%part%push_robust_subcyc( ef, bf )
+      case( p_push2_explicit )
+         call this%part%epush( ef, bf, i)
+   end select
+
+   call this%part%update_bound()
+   call move_part2d_comm( this%part )
+
+   call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine push_species2d_explicit
 
 subroutine psend_species2d(this, tag, id)
 

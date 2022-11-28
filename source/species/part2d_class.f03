@@ -71,7 +71,7 @@ type part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
    procedure :: ionize                   => ionize_part2d
    procedure :: add_particles            => add_particles_part2d
-   procedure :: push_explicit            => push_explicit_part2d
+   procedure :: epush                    => epush_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
@@ -146,7 +146,8 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, &
+    this%w, this%w0, this%npp, s, ionize )
 
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -262,7 +263,8 @@ subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    if ( present( if_empty ) ) empty = if_empty
    if ( present( ionization ) ) ionize = ionization
-   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%x_r, this%p_l, this%p, this%gamma, &
+    this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -425,8 +427,8 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
-  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
-  complex(kind=DB) :: phase, phase0
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, w1, w2, igamma
+  complex(kind=DB) :: phase, phase0, phase1, phase2
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
   call start_tprof( 'deposit 2D particles' )
@@ -480,6 +482,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
       this%psi(pp)   = this%gamma(pp) - u(3,i)
 
       ipsi = 1.0 / this%psi(pp)
+      igamma = 1.0 / this%gamma(pp)
 
       u2(1) = u(1,i) * u(1,i) * ipsi
       u2(2) = u(1,i) * u(2,i) * ipsi
@@ -487,13 +490,17 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+      phase1 = cmplx( 1.0, 0.0 ) * this%gamma(pp) * ipsi
+      phase2 = cmplx( 1.0, 0.0 ) * igamma * ipsi
 
       ! deposit m = 0 mode
       do j = 0, 1
         w = wt(j,i) * real(phase)
+        w1 = wt(j,i) * real(phase1)
+        w2 = wt(j,i) * real(phase2)
         cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
-        gamma0( ix(i)+j ) = gamma0( ix(i)+j ) + w * gamma(pp)
-        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
+        gamma0( 1, ix(i)+j ) = gamma0( 1, ix(i)+j ) + w1 * this%gamma(pp)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w2 * u2(1:3)
       enddo
 
       ! deposit m > 0 mode
@@ -528,11 +535,11 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
 
     ! guard cells on the axis are useless
     cu0(1:3,0)  = 0.0
-    gamma0(0) = 0.0
+    gamma0(1,0) = 0.0
     amu0(1:3,0) = 0.0
 
     cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
-    gamma0(1) = 0.0
+    gamma0(1,1) = 0.0
     amu0(1:3,1) = 0.0
 
 !     do mode = 1, max_mode
@@ -573,7 +580,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       cu0(1:3,j)  = cu0(1:3,j)  * ir
-      gamma0(j) = gamma0(j) * ir
+      gamma0(1,j) = gamma0(1,j) * ir
       amu0(1:3,j) = amu0(1:3,j) * ir
     enddo
 
@@ -596,7 +603,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
     do j = 0, nrp + 1
        ir = 1.0 / ( j + noff - 1 )
        cu0(1:3,j)  = cu0(1:3,j)  * ir
-       gamma0(j) = gamma0(j) * ir
+       gamma0(1,j) = gamma0(1,j) * ir
        amu0(1:3,j) = amu0(1:3,j) * ir
     enddo
 
@@ -1968,22 +1975,23 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
      enddo
      ppart1%npp = pp1
      ppart2%npp = pp2
-!     write(2,*) pp1, "add_particles"
-    write(2,*) pp1, "add_particles_ion"
-    write(2,*) pp2, "add_particles_e"
+    !write(2,*) pp1, "add_particles"
+    !write(2,*) pp1, "add_particles_ion"
+    !write(2,*) pp2, "add_particles_e"
     call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine add_particles_part2d
 
-subroutine push_explicit_part2d( this, ef, bf, 3dstep)
+subroutine epush_part2d( this, ef, bf, step3d )
 
-  implicit none
+    implicit none
+    class(part2d), intent(inout) :: this
+    class(field), intent(in) :: ef
+    class(field), intent(in) :: bf
+    integer, intent(in) :: step3d
 
-  class(part2d), intent(inout) :: this
-  class(field), intent(in) :: ef, bf
-  integer(in) :: 3dstep
   ! local data
-  character(len=18), save :: sname = 'push_robust_part2d'
+  character(len=18), save :: sname = 'push_explicit_part2d'
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
@@ -1992,7 +2000,7 @@ subroutine push_explicit_part2d( this, ef, bf, 3dstep)
   integer(kind=LG) :: ptrcur, pp
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
-  call start_tprof( 'push 2D particles' )
+  call start_tprof( 'epush 2D particles' )
 
   qtmh = this%qbm * this%dt
   max_mode = ef%get_max_mode()
@@ -2015,8 +2023,9 @@ subroutine push_explicit_part2d( this, ef, bf, 3dstep)
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cartesian )
 
-    
-    if( 3dstep .eq. 1 ) then
+  
+    if( step3d .eq. 1 ) then
+
       pp = ptrcur
       do i = 1, np
         gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
@@ -2033,11 +2042,11 @@ subroutine push_explicit_part2d( this, ef, bf, 3dstep)
         ipsi_1 = 1/psi_1
         ep(1,i) = ep(1,i) * gam * ipsi_1
         bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
-        pp = pp + 1
-        p_l = this%p(1,pp)
+        this%p_l = this%p(1,pp)
         !2*xi
         this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*this%dt+bp(1,i)*this%dt
         this%p_l(1,pp) = p_l
+        pp = pp + 1
       enddo
 
       pp = ptrcur
@@ -2053,10 +2062,10 @@ subroutine push_explicit_part2d( this, ef, bf, 3dstep)
 
   enddo
 
-  call stop_tprof( 'push 2D particles' )
+  call stop_tprof( 'epush 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine push_explicit_part2d
+end subroutine epush_part2d
 
 
 subroutine push_robust_part2d( this, ef, bf )

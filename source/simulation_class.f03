@@ -9,8 +9,7 @@ use diagnostics_class
 use field_class
 use field_psi_class
 use field_vpot_class
-use field_b_class
-use field_e_class
+use field_em_class
 use field_src_class
 use beam3d_class
 use species2d_class
@@ -228,7 +227,7 @@ subroutine run_simulation( this )
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
   type(field_jay), pointer :: cu, amu
-  type(field_rho), pointer :: q_spe, q_beam
+  type(field_rho), pointer :: q_spe, q_beam, gamma
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
@@ -251,8 +250,9 @@ subroutine run_simulation( this )
   amu    => this%fields%amu
   q_spe  => this%fields%q_spe
   q_beam => this%fields%q_beam
-  dcu    => this%fields%dcu
-  acu    => this%fields%acu
+  gamma  => this%fields%gamma
+!   dcu    => this%fields%dcu
+!   acu    => this%fields%acu
 
   beam => this%beams%beam
   spe  => this%plasma%spe
@@ -328,62 +328,7 @@ subroutine run_simulation( this )
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
-    acu   = 0.0
-    amu   = 0.0
-
-do i = this%start3d, this%nstep3d
-
-    this%tstep = i
-    call write_stdout( '3D step = '//num2str(i) )
-
-    call q_beam%as(0.0)
-    call q_spe%as(0.0)
-
-    ! pipeline data transfer for beams
-    do k = 1, this%nbeams
-      this%tag_bq(k) = ntag()
-      call beam(k)%qdp( q_beam, this%tag_bq(k), this%id_bq(k) )
-    enddo
-
-    ! pipeline data transfer for species
-    do k = 1, this%nspecies
-      this%tag_spe(k) = ntag()
-      call spe(k)%precv( this%tag_spe(k) )
-    enddo
-
-    ! pipeline data transfer for neutrals
-    do k = 1, this%nneutrals
-      ! tag 1 and 2 are for particle array and ion density transfer respectively
-      this%tag_neut(1,k) = ntag()
-      this%tag_neut(2,k) = ntag()
-      this%tag_neut(3,k) = ntag()
-      this%tag_neut(4,k) = ntag()
-      call neut(k)%precv( this%tag_neut(1:4,k) )
-    enddo
-
-    do k = 1, this%nneutral2s
-      ! tag 1 and 2 are for particle array and ion density transfer respectively
-!       this%tag_neut2(k) = ntag()
-      nlevel = neut2(k)%get_multi_max()
-      v = neut2(k)%get_v()
-      ! + 1 is for neural gas (level 0)
-      do m = 1, nlevel - v + 2
-        this%tag_neut2(k,m) = ntag()
-      end do
-      call neut2(k)%precv(this%tag_neut2(k,:))
-    enddo
-
-    ! pipeline data transfer for current and species B-field
-    this%tag_field(1) = ntag()
-    call cu%pipe_recv( this%tag_field(1), 'forward', 'replace' )
-    this%tag_field(4) = ntag()
-    call b_spe%pipe_recv( this%tag_field(4), 'forward', 'replace' )
-
-    b     = 0.0
-    e     = 0.0
-    e_spe = 0.0
-    psi   = 0.0
-    acu   = 0.0
+!     acu   = 0.0
     amu   = 0.0
 
     do j = 1, this%nstep2d
@@ -393,17 +338,17 @@ do i = this%start3d, this%nstep3d
       call b_beam%solve( q_beam )
       q_spe = 0.0
       do k = 1, this%nspecies
-        call spe(k)%push( e, b, i )
+        call spe(k)%epush( e, b, this%tstep )
       enddo
 
       do k = 1, this%nneutrals
-        call neut(k)%update( e, psi, i*this%dt )
-        call neut(k)%push( e, b, i )
+!         call neut(k)%update( e, psi, i*this%dt )
+!         call neut(k)%push( e, b )
       enddo
 
       do k = 1, this%nneutral2s
-        call neut2(k)%update( e, psi, i*this%dt )
-        call neut2(k)%push( e, b, i )
+!         call neut2(k)%update( e, psi, i*this%dt )
+!         call neut2(k)%push( e, b)
       enddo
 
       q_spe = 0.0
@@ -424,20 +369,18 @@ do i = this%start3d, this%nstep3d
       call psi%solve( q_spe )
 
       do k = 1, this%nspecies
-        call spe(k)%gmjdeposit( e, b, cu, amu, gamma )
+        call spe(k)%gmjdp( e, b, cu, amu, gamma )
       enddo
       do k = 1, this%nneutrals
-        call neut(k)%gmjdeposit( e, b, cu, amu, gamma )
+!         call neut(k)%gmjdp( e, b, cu, amu, gamma )
       enddo
       do k = 1, this%nneutral2s
-        call neut2(k)%gmjdeposit( e, b, cu, amu, gamma )
+!         call neut2(k)%gmjdp( e, b, cu, amu, gamma )
       enddo
 
       call e%solve(cu)
-      call b_spe%solve(e,psi,rho,cu,amu,gamma)
-      call e%(b_spe,psi)
-
-
+      call b_spe%solve(e,psi,q_spe,cu,amu,gamma)
+      call e%solve(b_spe,psi)
       call add_f1( b_spe, b_beam, b )
 
       ! for vector potential diagnostics
@@ -471,7 +414,7 @@ do i = this%start3d, this%nstep3d
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
       endif
-    write(2,*) j, "2dstep"
+
     enddo ! 2d loop
 
     ! pipeline for species
@@ -526,7 +469,7 @@ do i = this%start3d, this%nstep3d
       call neut2(k)%renew( i*this%dt )
     enddo
 
-enddo ! 3d loop
+  enddo ! 3d loop
 
   call stop_tprof( 'total simulation time' )
 

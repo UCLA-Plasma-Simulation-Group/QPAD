@@ -2,8 +2,7 @@ module beam3d_tmplt_class
 
 use parallel_module
 use sysutil_module
-use field_e_class
-use field_b_class
+use field_em_class
 use beam3d_class
 use part3d_comm
 use part3d_class

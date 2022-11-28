@@ -40,7 +40,7 @@ integer, dimension(2) :: send_cnt = 0
 integer, dimension(2) :: recv_cnt = 0
 
 ! max dimension of particle coordinates
-integer :: dim_max = 8
+integer :: dim_max = 10
 
 ! current buffer size, same for send and receive buffers
 integer :: buf_size = 0
@@ -333,16 +333,23 @@ subroutine unpack_relay_particles( part )
 
       stay_cnt = stay_cnt + 1
 
-      part%x( 1, npp + stay_cnt )  = recv_buf_lower( 1 + stride )
-      part%x( 2, npp + stay_cnt )  = recv_buf_lower( 2 + stride )
-      part%p( 1, npp + stay_cnt )  = recv_buf_lower( 3 + stride )
-      part%p( 2, npp + stay_cnt )  = recv_buf_lower( 4 + stride )
-      part%p( 3, npp + stay_cnt )  = recv_buf_lower( 5 + stride )
-      part%gamma( npp + stay_cnt ) = recv_buf_lower( 6 + stride )
-      part%psi( npp + stay_cnt )   = recv_buf_lower( 7 + stride )
-      part%q( npp + stay_cnt )     = recv_buf_lower( 8 + stride )
-      part%w( npp + stay_cnt )     = recv_buf_lower( 9 + stride )
-      part%w0( npp + stay_cnt )     = recv_buf_lower( 10 + stride )
+      part%x_l( 1, npp + stay_cnt )  = recv_buf_lower( 1 + stride )
+      part%x_l( 2, npp + stay_cnt )  = recv_buf_lower( 2 + stride )
+      part%x( 1, npp + stay_cnt )  = recv_buf_lower( 3 + stride )
+      part%x( 2, npp + stay_cnt )  = recv_buf_lower( 4 + stride )
+      part%x_r( 1, npp + stay_cnt )  = recv_buf_lower( 5 + stride )
+      part%x_r( 2, npp + stay_cnt )  = recv_buf_lower( 6 + stride )
+      part%p_l( 1, npp + stay_cnt )  = recv_buf_lower( 7 + stride )
+      part%p_l( 2, npp + stay_cnt )  = recv_buf_lower( 8 + stride )
+      part%p_l( 3, npp + stay_cnt )  = recv_buf_lower( 9 + stride )
+      part%p( 1, npp + stay_cnt )  = recv_buf_lower( 10 + stride )
+      part%p( 2, npp + stay_cnt )  = recv_buf_lower( 11 + stride )
+      part%p( 3, npp + stay_cnt )  = recv_buf_lower( 12 + stride )
+      part%gamma( npp + stay_cnt ) = recv_buf_lower( 13 + stride )
+      part%psi( npp + stay_cnt )   = recv_buf_lower( 14 + stride )
+      part%q( npp + stay_cnt )     = recv_buf_lower( 15 + stride )
+      part%w( npp + stay_cnt )     = recv_buf_lower( 16 + stride )
+      part%w0( npp + stay_cnt )     = recv_buf_lower( 17 + stride )
 
     ! check if particle goes to the outward neighbor node
     elseif ( goto_des( x, redge, p_owd ) ) then
@@ -386,16 +393,23 @@ subroutine unpack_relay_particles( part )
 
       stay_cnt = stay_cnt + 1
 
-      part%x( 1, npp + stay_cnt )  = recv_buf_upper( 1 + stride )
-      part%x( 2, npp + stay_cnt )  = recv_buf_upper( 2 + stride )
-      part%p( 1, npp + stay_cnt )  = recv_buf_upper( 3 + stride )
-      part%p( 2, npp + stay_cnt )  = recv_buf_upper( 4 + stride )
-      part%p( 3, npp + stay_cnt )  = recv_buf_upper( 5 + stride )
-      part%gamma( npp + stay_cnt ) = recv_buf_upper( 6 + stride )
-      part%psi( npp + stay_cnt )   = recv_buf_upper( 7 + stride )
-      part%q( npp + stay_cnt )     = recv_buf_upper( 8 + stride )
-      part%w( npp + stay_cnt )     = recv_buf_upper( 9 + stride )
-      part%w0( npp + stay_cnt )    = recv_buf_upper( 10 + stride )
+      part%x_l( 1, npp + stay_cnt )  = recv_buf_upper( 1 + stride )
+      part%x_l( 2, npp + stay_cnt )  = recv_buf_upper( 2 + stride )
+      part%x( 1, npp + stay_cnt )  = recv_buf_upper( 3 + stride )
+      part%x( 2, npp + stay_cnt )  = recv_buf_upper( 4 + stride )
+      part%x_r( 1, npp + stay_cnt )  = recv_buf_upper( 5 + stride )
+      part%x_r( 2, npp + stay_cnt )  = recv_buf_upper( 6 + stride )
+      part%p_l( 1, npp + stay_cnt )  = recv_buf_upper( 7 + stride )
+      part%p_l( 2, npp + stay_cnt )  = recv_buf_upper( 8 + stride )
+      part%p_l( 3, npp + stay_cnt )  = recv_buf_upper( 9 + stride )
+      part%p( 1, npp + stay_cnt )  = recv_buf_upper( 10 + stride )
+      part%p( 2, npp + stay_cnt )  = recv_buf_upper( 11 + stride )
+      part%p( 3, npp + stay_cnt )  = recv_buf_upper( 12 + stride )
+      part%gamma( npp + stay_cnt ) = recv_buf_upper( 13 + stride )
+      part%psi( npp + stay_cnt )   = recv_buf_upper( 14 + stride )
+      part%q( npp + stay_cnt )     = recv_buf_upper( 15 + stride )
+      part%w( npp + stay_cnt )     = recv_buf_upper( 16 + stride )
+      part%w0( npp + stay_cnt )    = recv_buf_upper( 17 + stride )
 
     ! check if particle goes to the inward neighbor node
     elseif ( goto_des( x, redge, p_iwd ) ) then
@@ -454,16 +468,23 @@ subroutine pack_particles( part )
     if ( goto_des( x, redge, p_iwd ) ) then
 
       stride = send_cnt(p_iwd) * part_dim
-      send_buf_lower( 1 + stride ) = part%x(1,i)
-      send_buf_lower( 2 + stride ) = part%x(2,i)
-      send_buf_lower( 3 + stride ) = part%p(1,i)
-      send_buf_lower( 4 + stride ) = part%p(2,i)
-      send_buf_lower( 5 + stride ) = part%p(3,i)
-      send_buf_lower( 6 + stride ) = part%gamma(i)
-      send_buf_lower( 7 + stride ) = part%psi(i)
-      send_buf_lower( 8 + stride ) = part%q(i)
-      send_buf_lower( 9 + stride ) = part%w(i)
-      send_buf_lower( 10 + stride ) = part%w0(i)
+      send_buf_lower( 1 + stride ) = part%x_l(1,i)
+      send_buf_lower( 2 + stride ) = part%x_l(2,i)
+      send_buf_lower( 3 + stride ) = part%x(1,i)
+      send_buf_lower( 4 + stride ) = part%x(2,i)
+      send_buf_lower( 5 + stride ) = part%x_r(1,i)
+      send_buf_lower( 6 + stride ) = part%x_r(2,i)
+      send_buf_lower( 7 + stride ) = part%p_l(1,i)
+      send_buf_lower( 8 + stride ) = part%p_l(2,i)
+      send_buf_lower( 9 + stride ) = part%p_l(3,i)
+      send_buf_lower( 10 + stride ) = part%p(1,i)
+      send_buf_lower( 11 + stride ) = part%p(2,i)
+      send_buf_lower( 12 + stride ) = part%p(3,i)
+      send_buf_lower( 13 + stride ) = part%gamma(i)
+      send_buf_lower( 14 + stride ) = part%psi(i)
+      send_buf_lower( 15 + stride ) = part%q(i)
+      send_buf_lower( 16 + stride ) = part%w(i)
+      send_buf_lower( 17 + stride ) = part%w0(i)
 
       send_cnt(p_iwd) = send_cnt(p_iwd) + 1
       go_cnt = go_cnt + 1
@@ -473,8 +494,15 @@ subroutine pack_particles( part )
     elseif ( goto_des( x, redge, p_owd ) ) then
 
       stride = send_cnt(p_owd) * part_dim
+      send_buf_upper( 1 + stride ) = part%x_l(1,i)
+      send_buf_upper( 2 + stride ) = part%x_l(2,i)
       send_buf_upper( 1 + stride ) = part%x(1,i)
       send_buf_upper( 2 + stride ) = part%x(2,i)
+      send_buf_upper( 5 + stride ) = part%x_r(1,i)
+      send_buf_upper( 6 + stride ) = part%x_r(2,i)
+      send_buf_upper( 7 + stride ) = part%p_l(1,i)
+      send_buf_upper( 8 + stride ) = part%p_l(2,i)
+      send_buf_upper( 9 + stride ) = part%p_l(3,i)
       send_buf_upper( 3 + stride ) = part%p(1,i)
       send_buf_upper( 4 + stride ) = part%p(2,i)
       send_buf_upper( 5 + stride ) = part%p(3,i)
@@ -528,7 +556,10 @@ subroutine pack_particles( part )
   ! fill the holes inversely
   do i = go_cnt, 1, -1
 
+    part%x_l( 1:2, ihole(i) ) = part%x_l( 1:2, npp )
     part%x( 1:2, ihole(i) ) = part%x( 1:2, npp )
+    part%x_r( 1:2, ihole(i) ) = part%x_r( 1:2, npp )
+    part%p_l( 1:3, ihole(i) ) = part%p_l( 1:3, npp )
     part%p( 1:3, ihole(i) ) = part%p( 1:3, npp )
     part%gamma( ihole(i) )  = part%gamma(npp)
     part%psi( ihole(i) )    = part%psi(npp)

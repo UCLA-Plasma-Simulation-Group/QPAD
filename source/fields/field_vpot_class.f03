@@ -3,7 +3,7 @@ module field_vpot_class
 use parallel_module
 use options_class
 use field_class
-use field_b_class
+use field_em_class
 use field_psi_class
 use field_src_class
 use field_solver_class

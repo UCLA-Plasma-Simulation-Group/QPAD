@@ -3,8 +3,7 @@ module sim_fields_class
 use parallel_module
 use options_class
 use field_psi_class
-use field_e_class
-use field_b_class
+use field_em_class
 use field_vpot_class
 use field_src_class
 use sysutil_module
@@ -25,9 +24,9 @@ type sim_fields
   class( field_vpot ), pointer :: vpot => null() ! just for diagnostic
   class( field_b ), pointer :: b_spe => null(), b_beam => null(), b => null()
   class( field_e ), pointer :: e_spe => null(), e_beam => null(), e => null()
-  class( field_jay ), pointer :: cu => null(), amu => null(), gamma => null()
-  class( field_rho ), pointer :: q_spe => null(), q_beam => null()
-  !class( field_djdxi ), pointer :: dcu => null(), acu => null()
+  class( field_jay ), pointer :: cu => null(), amu => null()
+  class( field_rho ), pointer :: q_spe => null(), q_beam => null(), gamma => null()
+  class( field_djdxi ), pointer :: dcu => null(), acu => null()
 
   contains
 
@@ -66,8 +65,8 @@ subroutine alloc_sim_fields( this, input )
   if ( .not. associated( this%gamma ) )  allocate( field_rho :: this%gamma)
   if ( .not. associated( this%q_spe ) )  allocate( field_rho :: this%q_spe )
   if ( .not. associated( this%q_beam ) ) allocate( field_rho :: this%q_beam )
-!   if ( .not. associated( this%dcu ) )    allocate( field_djdxi :: this%dcu )
-!   if ( .not. associated( this%acu ) )    allocate( field_djdxi :: this%acu )
+  if ( .not. associated( this%dcu ) )    allocate( field_djdxi :: this%dcu )
+  if ( .not. associated( this%acu ) )    allocate( field_djdxi :: this%acu )
 
   call input%get( 'simulation.max_mode', max_mode )
 
@@ -83,8 +82,8 @@ subroutine alloc_sim_fields( this, input )
   call this%gamma%alloc( max_mode )
   call this%q_spe%alloc( max_mode )
   call this%q_beam%alloc( max_mode )
-!   call this%dcu%alloc( max_mode )
-!   call this%acu%alloc( max_mode )
+  call this%dcu%alloc( max_mode )
+  call this%acu%alloc( max_mode )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -151,8 +150,8 @@ subroutine init_sim_fields( this, input, opts )
   call this%q_spe%new(  opts, max_mode, ps, sm_type, sm_ord )
   call this%q_beam%new( opts, max_mode, ps, sm_type, sm_ord )
   call this%cu%new(     opts, max_mode, ps, sm_type, sm_ord )
-!   call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
-!   call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
   call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord )
   call this%gamma%new(    opts, max_mode, ps, sm_type, sm_ord )
   entity = p_entity_plasma
@@ -184,8 +183,8 @@ subroutine end_sim_fields( this )
   call this%e_beam%del()
   call this%b_beam%del()
   call this%cu%del()
-!   call this%dcu%del()
-!   call this%acu%del()
+  call this%dcu%del()
+  call this%acu%del()
   call this%amu%del()
   call this%gamma%del()
   call this%q_spe%del()

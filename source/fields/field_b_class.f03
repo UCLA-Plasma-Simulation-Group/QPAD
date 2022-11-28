@@ -26,7 +26,6 @@ type, extends( field ) :: field_b
 
   class( field_solver ), dimension(:), pointer :: solver_bz      => null()
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
-  class( field_solver ), dimension(:), pointer :: solver_bphi    => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
 
@@ -36,7 +35,7 @@ type, extends( field ) :: field_b
 
   contains
 
-  generic :: solve => solve_field_bz, solve_field_bt, solve_field_bt_iter,solve_field_bphi
+  generic :: solve => solve_field_bz, solve_field_bt, solve_field_bt_iter
   generic :: new   => init_field_b
 
   procedure :: init_field_b
@@ -44,15 +43,12 @@ type, extends( field ) :: field_b
   procedure :: alloc => alloc_field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
-  procedure, private :: set_source_bphi
   procedure, private :: set_source_bt_iter
   procedure, private :: get_solution_bz
   procedure, private :: get_solution_bt
-  procedure, private :: get_solution_bphi
   procedure, private :: get_solution_bt_iter
   procedure, private :: solve_field_bz
   procedure, private :: solve_field_bt
-  procedure, private :: solve_field_bphi
   procedure, private :: solve_field_bt_iter
 
 end type field_b
@@ -367,15 +363,14 @@ subroutine set_source_bt( this, mode, q_re, q_im )
 
 end subroutine set_source_bt
 
-subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, gamma_re, cu_im, amu_im, gamma_im )
+subroutine set_source_bphi( this, mode, ef_re, ef_im, psi_re, psi_im, rho_re, rho_im, &
+  cu_re, amu_re, gamma_re, cu_im, amu_im, gamma_im )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
-  class( field_e ), intent(in) :: ef
-  class( field_psi ), intent(in) :: psi
-  class( ufield ), intent(in) :: cu_re, amu_re, gamma_re
-  class( ufield ), intent(in), optional :: cu_im, amu_im, gamma_im
+  class( ufield ), intent(in) :: cu_re, amu_re, gamma_re, ef_re, psi_re, rho_re
+  class( ufield ), intent(in), optional :: cu_im, amu_im, gamma_im, ef_im, psi_im, rho_im
   integer, intent(in) :: mode
 
   integer :: i, nrp, nvp, idproc, noff
@@ -387,7 +382,7 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, 
   real, dimension(:,:), pointer :: f6_re => null(), f6_im => null()
   real, dimension(:,:), pointer :: f7_re => null(), f7_im => null()
   real :: idrh, idr, ir
-  real :: n!n*
+  real :: n, ipsi
   real :: s1_re, s1_im, s2_re, s2_im, s3_re, s3_im, s4_re, s4_im, s5_re, s5_im, s6_re, s6_im
   character(len=20), save :: sname = 'set_source_bphi'
 
@@ -396,16 +391,16 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, 
 
   nvp    = num_procs_loc()
   idproc = id_proc_loc()
-  nrp    = jay_re%get_ndp(1)
-  noff   = jay_re%get_noff(1)
+  nrp    = cu_re%get_ndp(1)
+  noff   = cu_re%get_noff(1)
   idr    = 1.0 / this%dr
   idrh   = 0.5 * idr
 
   f1_re => cu_re%get_f1()
   f2_re => amu_re%get_f1()
   f3_re => gamma_re%get_f1()
-  f4_re => ef%rf_re(mode)%get_f1()
-  f5_re => psi%rf_re(mode)%get_f1()
+  f4_re => ef_re%get_f1()
+  f5_re => psi_re%get_f1()
   f6_re => rho_re%get_f1()
   !f7_re => this%rf_re(mode)%get_f1()
   this%buf1_re = 0.0
@@ -415,8 +410,8 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, 
     f1_im => cu_im%get_f1()
     f2_im => amu_im%get_f1()
     f3_im => gamma_im%get_f1()
-    f4_im => ef%rf_im(mode)%get_f1()
-    f5_re => psi%rf_im(mode)%get_f1()
+    f4_im => ef_im%get_f1()
+    f5_re => psi_im%get_f1()
     f6_re => rho_im%get_f1()
     f7_im => this%rf_im(mode)%get_f1()
     this%buf1_im = 0.0
@@ -429,9 +424,9 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, 
       ir = idr / real(i+noff-1)
       n = 1 - f6_re(1,i)
       ipsi = 1 / (1 + f5_re(1,i))
-      this%buf1_re(i) = -idrh*(f1_re(3,i+1)-f1_re(3,i-1)) + n*idrh*(f2_re(1,i+1)-f2_re(1,i-1))&
-                        +n*ir*f2_re(1,i) + n*ipsi*f4_re(3,i) + n*ipsi*(amu_re(1,i) - f3_re(1,i)*ipsi)&
-                        *idrh*(f5_re(1,i+1) - f5_re(1,i - 1)) + n*ipsi*f7_im(2,i)
+      this%buf1_re(i) = -idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) + n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
+                        +n * ir * f2_re(1,i) + n * ipsi * f4_re(3,i) + n * ipsi * ( f2_re(1,i) - &
+                        f3_re(1,i)*ipsi) * idrh * ( f5_re(1,i+1) - f5_re(1,i - 1) ) + n * ipsi * f7_im(2,i)
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -442,25 +437,27 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, cu_re, amu_re, 
       ir = idr / real(2+noff-1)
       n = 1 - f6_re(1,2)
       ipsi = 1 / (1 + f5_re(1,2))
-      this%buf1_re(2) =  -idr*(f1_re(3,3)-f1_re(3,2)) + n*idr*(f2_re(1,3)-f2_re(1,2))&
-                        +n*ir*f2_re(1,2) + n*ipsi*f4_re(3,2) + n*ipsi*(amu_re(1,2) - f3_re(1,2)*ipsi)&
-                        *idr*(f5_re(1,3) - f5_re(1,2)) + n*ipsi*f7_im(2,2)
+      this%buf1_re(2) =  - idr * ( f1_re(3,3) - f1_re(3,2) ) + n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
+                         + n * ir * f2_re(1,2) + n * ipsi * f4_re(3,2) + n * ipsi * ( f2_re(1,2) - &
+                         f3_re(1,2) * ipsi ) * idr * ( f5_re(1,3) - f5_re(1,2) ) + n * ipsi * f7_im(2,2)
     else
       ir = idr / real(1+noff-1)
       n = 1 - f6_re(1,1)
       ipsi = 1 / (1 + f5_re(1,1))
-      this%buf1_re(1) = -idrh*(f1_re(3,2)-f1_re(3,0)) + n*idrh*(f2_re(1,2)-f2_re(1,0))&
-                        +n*ir*f2_re(1,1) + n*ipsi*f4_re(3,1) + n*ipsi*(amu_re(1,1) - f3_re(1,1)*ipsi)&
-                        *idrh*(f5_re(1,2) - f5_re(1,0)) + n*ipsi*f7_im(2,1)
+      this%buf1_re(1) = - idrh * ( f1_re(3,2)-f1_re(3,0) ) + n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
+                        + n * ir * f2_re(1,1) + n * ipsi * f4_re(3,1) + n * ipsi * ( f2_re(1,1) - &
+                        f3_re(1,1)*ipsi) * idrh * ( f5_re(1,2) - f5_re(1,0) ) + n * ipsi * f7_im(2,1)
     endif
 
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
       n = 1 - f6_re(1,nrp)
       ipsi = 1 / (1 + f5_re(1,nrp))
-      this%buf1_re(nrp) = -idrh*(3.0*f1_re(3,nrp)-4.0*f1_re(3,nrp-1)+f1_re(3,nrp-2)) + n*idrh*(3.0*f2_re(1,nrp)-4.0*f2_re(1,nrp-1)+f2_re(1,nrp-2))&
-                        +n*ir*f2_re(1,nrp) + n*ipsi*f4_re(3,nrp) + n*ipsi*(amu_re(1,nrp) - f3_re(1,nrp)*ipsi)&
-                        *idrh*(3.0*f5_re(1,nrp) - 4.0*f5_re(1,nrp - 1)+f5_re(1,nrp-2)) + n*ipsi*f7_im(2,nrp)
+      this%buf1_re(nrp) = -idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2) ) + &
+                          n * idrh * ( 3.0 * f2_re(1,nrp) - 4.0 * f2_re(1,nrp-1) + f2_re(1,nrp-2) ) &
+                          + n * ir * f2_re(1,nrp) + n * ipsi * f4_re(3,nrp) + n * ipsi * ( f2_re(1,nrp) &
+                          - f3_re(1,nrp) * ipsi) * idrh * ( 3.0 * f5_re(1,nrp) - 4.0 * f5_re(1,nrp - 1) + &
+                          f5_re(1,nrp-2)) + n*ipsi*f7_im(2,nrp)
     endif
 
   else
@@ -982,7 +979,7 @@ subroutine solve_field_bt( this, rho )
 
 end subroutine solve_field_bt
 
-subroutine solve_field_bphi( this, e, psi, rho, cu, amu, gamma )
+subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gamma )
 
   implicit none
 
@@ -998,6 +995,8 @@ subroutine solve_field_bphi( this, e, psi, rho, cu, amu, gamma )
   type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
   type( ufield ), dimension(:), pointer :: gamma_re => null(), gamma_im => null()
   type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
+  type( ufield ), dimension(:), pointer :: ef_re => null(), ef_im => null()
+  type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
 
   integer :: i
   character(len=20), save :: sname = 'solve_field_bphi'
@@ -1016,7 +1015,12 @@ subroutine solve_field_bphi( this, e, psi, rho, cu, amu, gamma )
   do i = 0, this%max_mode
 
     if ( i == 0 ) then
-      call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gamma_re(i) )
+
+      ef_re = ef%rf_re(0)%get_rf_re()
+      ef_im = ef%rf_im(0)%get_rf_im()
+      psi_re = psi%rf_re(0)%get_rf_re()
+      psi_im = psi%rf_im(0)%get_rf_im()
+      call this%set_source_bphi( i, ef_re, psi_re, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gamma_re(i) )
       call this%solver_bphi(i)%solve( this%buf1_re )
       call this%get_solution_bphi(i)
       cycle

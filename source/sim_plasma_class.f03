@@ -158,6 +158,8 @@ subroutine init_sim_plasma( this, input, opts, s )
       push_type = p_push2_clamp
     case ( 'robust-subcycling' )
       push_type = p_push2_robust_subcyc
+    case ( 'explicit' )
+      push_type = p_push2_explicit
     case default
       call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
         &are supported currently.' )
