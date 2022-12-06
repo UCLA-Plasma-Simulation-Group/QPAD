@@ -144,6 +144,7 @@ subroutine init_sim_fields( this, input, opts )
   case default
     call write_err( 'Invalid smooth type! Only "binomial" and "compensated" are supported currently.' )
   end select
+
   call input%get( 'simulation.smooth_order', sm_ord )
 
   call this%psi%new(    opts, max_mode, ps, bnd )
@@ -153,7 +154,7 @@ subroutine init_sim_fields( this, input, opts )
   call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
   call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
   call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%gamma%new(    opts, max_mode, ps, sm_type, sm_ord )
+  call this%gamma%new(  opts, max_mode, ps, sm_type, sm_ord )
   entity = p_entity_plasma
   call this%e_spe%new(  opts, max_mode, ps, bnd, entity )
   call this%b_spe%new(  opts, max_mode, ps, bnd, entity )

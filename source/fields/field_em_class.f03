@@ -108,6 +108,10 @@ subroutine alloc_field_b( this, max_mode )
     allocate( field_solver :: this%solver_bminus(0:max_mode) )
   endif
 
+  if ( .not. associated( this%solver_bphi ) ) then
+    allocate( field_solver :: this%solver_bphi(0:max_mode) )
+  endif
+
 end subroutine alloc_field_b
 
 subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
@@ -205,25 +209,18 @@ subroutine end_field_b( this )
       call this%solver_bz(i)%del()
       call this%solver_bplus(i)%del()
       call this%solver_bminus(i)%del()
+      call this%solver_bphi(i)%del()
     enddo
     deallocate( this%solver_bz )
     deallocate( this%solver_bplus )
     deallocate( this%solver_bminus )
+    deallocate( this%solver_bphi )
 
   case ( p_entity_beam )
     do i = 0, this%max_mode
       call this%solver_bt(i)%del()
     enddo
-    deallocate( this%solver_bt )
-
-  case ( p_entity_bphi )
-    do i = 0, this%max_mode
-      if( i==0 ) then
-        call this%solver_bphi(i)%del()
-      endif
-    enddo
-    deallocate( this%solver_bphi )
-    
+    deallocate( this%solver_bt )    
   end select
 
   if ( associated( this%buf1_re ) ) deallocate( this%buf1_re )

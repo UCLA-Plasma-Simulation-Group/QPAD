@@ -80,8 +80,7 @@ integer, parameter :: p_fk_psi     = 0, &
 ! ================================================================
 integer, parameter :: p_entity_none       = 0, &
                       p_entity_beam       = 1, &
-                      p_entity_plasma     = 2, &
-                      p_entity_bphi       = 3
+                      p_entity_plasma     = 2
 
 ! ================================================================
 ! HYPRE parameters
