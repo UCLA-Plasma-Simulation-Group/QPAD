@@ -36,12 +36,14 @@ type :: field_solver ! class for HYPRE solver
   contains
 
   procedure :: new => init_field_solver
+  procedure :: init => init_field_solver_bphi
   procedure :: del => end_field_solver
   procedure :: solve => solve_equation
   procedure, private :: set_struct_solver
   procedure, private :: set_struct_grid
   procedure, private :: set_struct_stencil
   procedure, private :: set_struct_matrix
+  procedure, private :: set_struct_matrix_bphi
 
 end type field_solver
 
@@ -89,6 +91,45 @@ subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_field_solver
+
+subroutine init_field_solver_bphi( this, opts, mode, dr, kind, bnd, stype, coef )
+
+  implicit none
+
+  class( field_solver ), intent(inout) :: this
+  type( options ), intent(in) :: opts
+  real, intent(in), dimension(:), pointer :: coef
+  integer, intent(in) :: kind, stype, mode, bnd
+  real, intent(in) :: dr
+
+  integer :: ierr, comm
+  character(len=32), save :: sname = "init_field_solver"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  this%stype = stype
+  this%mode  = mode
+  this%kind  = kind
+  this%bnd   = bnd
+
+  ! setup HYPRE grid
+  comm = comm_loc()
+
+  call this%set_struct_grid( opts )
+  call this%set_struct_stencil()
+  call this%set_struct_matrix_bphi( opts, dr, coef )
+
+  call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
+  call HYPRE_StructVectorInitialize( this%b, ierr )
+
+  call HYPRE_StructVectorCreate( comm, this%grid, this%x, ierr )
+  call HYPRE_StructVectorInitialize( this%x, ierr )
+
+  call this%set_struct_solver()
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine init_field_solver_bphi
 
 subroutine end_field_solver( this )
 
@@ -462,36 +503,6 @@ subroutine set_struct_matrix( this, opts, dr )
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
-  case ( p_fk_bphi )
-
-    ! set from the second grid point of each partition
-    j = real(noff)
-    do i = 4, local_vol, this%num_stencil
-      j = j + 1.0
-      HYPRE_BUF(i)   = dr
-      HYPRE_BUF(i+1) = -2.0*dr - (1/j)**2
-      HYPRE_BUF(i+2) = dr
-    enddo
-
-    ! set the first grid point of each partition
-    if (lidproc == 0) then
-
-      ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
-      ! is not singular. The vanishing of element 4 indicates the on-axis field
-      ! value is zero.
-      HYPRE_BUF(1) = 0.0
-      HYPRE_BUF(2) = 1.0
-      HYPRE_BUF(3) = 0.0
-      HYPRE_BUF(4) = 0.0
-
-    else
-
-      j = real(noff)
-      HYPRE_BUF(1) = dr
-      HYPRE_BUF(2) = -2.0*dr - (1/j)**2
-      HYPRE_BUF(3) = dr
-
-    endif
 
   end select
 
@@ -569,5 +580,148 @@ subroutine set_struct_matrix( this, opts, dr )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_struct_matrix
+
+subroutine set_struct_matrix_bphi( this, opts, dr, coef )
+
+  implicit none
+
+  class( field_solver ), intent(inout) :: this
+  type( options ), intent(in) :: opts
+  real, intent(in), dimension(:), pointer :: coef
+  real, intent(in) :: dr
+
+  integer :: i, ierr, local_vol, nr, noff, m
+  integer :: comm, lidproc, lnvp
+  real :: dr2, m2, j, jmax
+  character(len=32), save :: sname = "set_struct_matrix"
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  comm    = comm_loc()
+  lidproc = id_proc_loc()
+  lnvp    = num_procs_loc()
+  noff    = opts%get_noff(1)
+
+  dr2 = dr*dr
+  m = this%mode
+  m2 = real(m*m)
+  nr = this%iupper - this%ilower + 1
+  local_vol = nr * this%num_stencil
+
+  if ( .not. associated( HYPRE_BUF ) ) then
+    allocate( HYPRE_BUF( local_vol ) )
+  elseif ( size(HYPRE_BUF) < local_vol ) then
+    deallocate( HYPRE_BUF )
+    allocate( HYPRE_BUF( local_vol ) )
+  endif
+
+  call HYPRE_StructMatrixCreate( comm, this%grid, this%stencil, this%A, ierr )
+  call HYPRE_StructMatrixInitialize( this%A, ierr )
+
+  ! set the matrix element and lower boundary
+
+  ! set from the second grid point of each partition
+  j = real(noff)
+  do i = 4, local_vol, this%num_stencil
+    j = j + 1.0
+    HYPRE_BUF(i)   = dr
+    HYPRE_BUF(i+1) = -2.0*dr - (1/j)**2 - coef(i+1)*dr2
+    HYPRE_BUF(i+2) = dr
+  enddo
+
+  ! set the first grid point of each partition
+  if (lidproc == 0) then
+
+    ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
+    ! is not singular. The vanishing of element 4 indicates the on-axis field
+    ! value is zero.
+    HYPRE_BUF(1) = 0.0
+    HYPRE_BUF(2) = 1.0
+    HYPRE_BUF(3) = 0.0
+    HYPRE_BUF(4) = 0.0
+
+  else
+
+    j = real(noff)
+    HYPRE_BUF(1) = dr
+    HYPRE_BUF(2) = -2.0*dr - (1/j)**2 - coef(2)*dr2
+    HYPRE_BUF(3) = dr
+
+  endif
+
+  ! set the upper boundary
+  if ( lidproc == lnvp-1 ) then
+
+    select case ( this%bnd )
+
+    ! to be deleted
+    case ( p_bnd_zero )
+
+      HYPRE_BUF(local_vol) = 0.0
+
+    case ( p_bnd_open )
+
+      jmax = real(noff + nr)
+
+      select case ( this%kind )
+
+      case ( p_fk_psi, p_fk_vpotz )
+
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+
+      case ( p_fk_bt )
+
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0+1.0/(jmax*log(jmax*dr))) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+
+      case ( p_fk_ez, p_fk_bz )
+
+        if ( this%mode == 0 ) then
+          HYPRE_BUF(local_vol) = 0.0
+        else
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol) = 0.0
+        endif
+
+      case ( p_fk_bplus, p_fk_vpotp )
+
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol) = 0.0
+
+      case ( p_fk_bminus, p_fk_vpotm )
+
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol) = 0.0
+
+      case default
+        call write_err( 'Invalid field type!' )
+      end select
+
+    case default
+      call write_err( 'Invalid boundary condition!' )
+    end select
+
+  endif
+
+  HYPRE_BUF = HYPRE_BUF / dr2
+
+  call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
+    this%stencil_idx, HYPRE_BUF, ierr )
+
+  call HYPRE_StructMatrixAssemble( this%A, ierr )
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine set_struct_matrix_bphi
 
 end module field_solver_class
