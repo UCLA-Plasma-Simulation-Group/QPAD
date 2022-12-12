@@ -397,15 +397,15 @@ subroutine set_source_bt( this, mode, q_re, q_im )
 end subroutine set_source_bt
 
 subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
-  cu_re, amu_re, gamma_re, cu_im, amu_im, gamma_im )
+  cu_re, amu_re, gam_re, cu_im, amu_im, gam_im )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
   class( field_e ), intent(in) :: ef
   class( field_psi ), intent(in) :: psi
-  class( ufield ), intent(in) :: cu_re, amu_re, gamma_re, rho_re
-  class( ufield ), intent(in), optional :: cu_im, amu_im, gamma_im, rho_im
+  class( ufield ), intent(in) :: cu_re, amu_re, gam_re, rho_re
+  class( ufield ), intent(in), optional :: cu_im, amu_im, gam_im, rho_im
   integer, intent(in) :: mode
 
   integer :: i, nrp, nvp, idproc, noff
@@ -433,7 +433,7 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
 
   f1_re => cu_re%get_f1()
   f2_re => amu_re%get_f1()
-  f3_re => gamma_re%get_f1()
+  f3_re => gam_re%get_f1()
   f4_re => ef%rf_re(mode)%get_f1()
   f5_re => psi%rf_re(mode)%get_f1()
   f6_re => rho_re%get_f1()
@@ -442,10 +442,10 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
   this%buf2_re = 0.0
   !this%buf2_re = 0.0
 
-  if ( present(cu_im) .and. present(amu_im) .and. present(gamma_im) ) then
+  if ( present(cu_im) .and. present(amu_im) .and. present(gam_im) ) then
     f1_im => cu_im%get_f1()
     f2_im => amu_im%get_f1()
-    f3_im => gamma_im%get_f1()
+    f3_im => gam_im%get_f1()
     f4_im => ef%rf_im(mode)%get_f1()
     f5_re => psi%rf_im(mode)%get_f1()
     f6_re => rho_im%get_f1()
@@ -1019,7 +1019,7 @@ subroutine solve_field_bt( this, rho )
 
 end subroutine solve_field_bt
 
-subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gamma )
+subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam )
 
   implicit none
 
@@ -1029,11 +1029,11 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gamma )
   class( field_rho ), intent(inout) :: rho
   class( field_jay ), intent(inout) :: cu
   class( field_jay ), intent(inout) :: amu
-  class( field_rho ), intent(inout) :: gamma
+  class( field_rho ), intent(inout) :: gam
 
   type( ufield ), dimension(:), pointer :: cu_re => null(), cu_im => null()
   type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
-  type( ufield ), dimension(:), pointer :: gamma_re => null(), gamma_im => null()
+  type( ufield ), dimension(:), pointer :: gam_re => null(), gam_im => null()
   type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
   type( ufield ), dimension(:), pointer :: ef_re => null(), ef_im => null()
   type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
@@ -1048,8 +1048,8 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gamma )
   cu_im => cu%get_rf_im()
   amu_re => amu%get_rf_re()
   amu_im => amu%get_rf_im()
-  gamma_re => gamma%get_rf_re()
-  gamma_im => gamma%get_rf_im()
+  gam_re => gam%get_rf_re()
+  gam_im => gam%get_rf_im()
   rho_re => rho%get_rf_re()
   rho_im => rho%get_rf_im()
 
@@ -1059,14 +1059,14 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gamma )
 
     if ( i == 0 ) then
 
-      call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gamma_re(i) )
+      call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gam_re(i) )
       call this%solver_bphi(i)%init( this%opts, i, dr, kind=p_fk_bphi, bnd=this%boundary, stype=p_hypre_cycred, coef=this%buf2_re )
       call this%solver_bphi(i)%solve( this%buf1_re )
       call this%get_solution_bphi(i)
       cycle
     endif
 
-!     call this%set_source_bt( i, cu_re(i), amu_re(i), gamma_re(i), cu_im(i), amu_im(i), gamma_im(i) )
+!     call this%set_source_bphi( i, cu_re(i), amu_re(i), gam_re(i), cu_im(i), amu_im(i), gam_im(i) )
 !     call this%solver_bphi(i)%solve( this%buf1_re )
 !     call this%solver_bphi(i)%solve( this%buf1_im )
 !     call this%get_solution_bphi(i)

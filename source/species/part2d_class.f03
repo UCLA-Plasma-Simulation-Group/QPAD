@@ -64,13 +64,13 @@ type part2d
    procedure :: new                      => init_part2d
    procedure :: renew                    => renew_part2d
    procedure :: del                      => end_part2d
-   procedure :: qdeposit                 => qdeposit_part2d
-   procedure :: gmjdeposit               => gmjdeposit_part2d
+   procedure :: qdeposit                 => qdeposit_part2d 
    procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
    procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
    procedure :: ionize                   => ionize_part2d
    procedure :: add_particles            => add_particles_part2d
+   procedure :: edeposit                 => edeposit_part2d
    procedure :: epush                    => epush_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
@@ -399,25 +399,25 @@ subroutine qdeposit_part2d( this, q )
 
 end subroutine qdeposit_part2d
 
-subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
+subroutine edeposit_part2d( this, ef, bf, cu, amu, gam )
 ! deposit the current, momentum flux， and gamma
 
   implicit none
 
   class(part2d), intent(inout) :: this
-  class(field), intent(in) :: cu, amu, gamma
+  class(field), intent(in) :: cu, amu, gam
   class(field), intent(in) :: ef, bf
   ! local data
-  character(len=32), save :: sname = 'amjdeposit_robust_part2d'
+  character(len=32), save :: sname = 'edeposit_robust_part2d'
   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
   type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
   type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
-  type(ufield), dimension(:), pointer :: gamma_re => null(), gamma_im => null()
+  type(ufield), dimension(:), pointer :: gam_re => null(), gam_im => null()
   type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
 
-  real, dimension(:,:), pointer :: cu0 => null(), gamma0 => null(), amu0 => null()
-  real, dimension(:,:), pointer :: cur => null(), gammar => null(), amur => null()
-  real, dimension(:,:), pointer :: cui => null(), gammai => null(), amui => null()
+  real, dimension(:,:), pointer :: cu0 => null(), gam0 => null(), amu0 => null()
+  real, dimension(:,:), pointer :: cur => null(), gamr => null(), amur => null()
+  real, dimension(:,:), pointer :: cui => null(), gami => null(), amui => null()
 
   integer(kind=LG) :: ptrcur, pp
   integer :: i, j, nn, noff, nrp, np, mode, max_mode
@@ -427,7 +427,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
-  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, w1, w2, igamma
+  real :: qtmh, qtmh1, qtmh2, idt, ostq, ipsi, dpsi, w, ir, w1, w2, igamma
   complex(kind=DB) :: phase, phase0, phase1, phase2
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -436,7 +436,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
   ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
   bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
   cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
-  gamma_re => gamma%get_rf_re(); gamma_im => gamma%get_rf_im()
+  gam_re => gam%get_rf_re(); gam_im => gam%get_rf_im()
   amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
 
   idr = 1.0 / this%dr
@@ -448,7 +448,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
   nrp  = cu_re(0)%get_ndp(1)
 
   cu0  => cu_re(0)%get_f1()
-  gamma0 => gamma_re(0)%get_f1()
+  gam0 => gam_re(0)%get_f1()
   amu0 => amu_re(0)%get_f1()
 
   do ptrcur = 1, this%npp, p_cache_size
@@ -499,7 +499,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
         w1 = wt(j,i) * real(phase1)
         w2 = wt(j,i) * real(phase2)
         cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
-        gamma0( 1, ix(i)+j ) = gamma0( 1, ix(i)+j ) + w1 * this%gamma(pp)
+        gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w1 * this%gamma(pp)
         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w2 * u2(1:3)
       enddo
 
@@ -535,11 +535,11 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
 
     ! guard cells on the axis are useless
     cu0(1:3,0)  = 0.0
-    gamma0(1,0) = 0.0
+    gam0(1,0) = 0.0
     amu0(1:3,0) = 0.0
 
     cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
-    gamma0(1,1) = 0.0
+    gam0(1,1) = 0.0
     amu0(1:3,1) = 0.0
 
 !     do mode = 1, max_mode
@@ -580,7 +580,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       cu0(1:3,j)  = cu0(1:3,j)  * ir
-      gamma0(1,j) = gamma0(1,j) * ir
+      gam0(1,j) = gam0(1,j) * ir
       amu0(1:3,j) = amu0(1:3,j) * ir
     enddo
 
@@ -603,7 +603,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
     do j = 0, nrp + 1
        ir = 1.0 / ( j + noff - 1 )
        cu0(1:3,j)  = cu0(1:3,j)  * ir
-       gamma0(1,j) = gamma0(1,j) * ir
+       gam0(1,j) = gam0(1,j) * ir
        amu0(1:3,j) = amu0(1:3,j) * ir
     enddo
 
@@ -625,7 +625,7 @@ subroutine gmjdeposit_part2d( this, ef, bf, cu, amu, gamma )
   call stop_tprof( 'deposit 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
-end subroutine gmjdeposit_part2d
+end subroutine edeposit_part2d
 
 subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
@@ -2040,11 +2040,12 @@ subroutine epush_part2d( this, ef, bf, step3d )
         gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
         psi_1 = gam - this%p(3,pp)
         ipsi_1 = 1/psi_1
+        dtc = this%dt / ( gam - this%p(3,pp) )
         ep(1,i) = ep(1,i) * gam * ipsi_1
         bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
-        this%p_l = this%p(1,pp)
+        p_l = this%p(1,pp)
         !2*xi
-        this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*this%dt+bp(1,i)*this%dt
+        this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*dtc+bp(1,i)*dtc
         this%p_l(1,pp) = p_l
         pp = pp + 1
       enddo

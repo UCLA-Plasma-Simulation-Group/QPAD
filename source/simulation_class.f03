@@ -227,7 +227,7 @@ subroutine run_simulation( this )
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
   type(field_jay), pointer :: cu, amu
-  type(field_rho), pointer :: q_spe, q_beam, gamma
+  type(field_rho), pointer :: q_spe, q_beam, gam
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
@@ -250,7 +250,7 @@ subroutine run_simulation( this )
   amu    => this%fields%amu
   q_spe  => this%fields%q_spe
   q_beam => this%fields%q_beam
-  gamma  => this%fields%gamma
+  gam    => this%fields%gam
 !   dcu    => this%fields%dcu
 !   acu    => this%fields%acu
 
@@ -279,6 +279,7 @@ subroutine run_simulation( this )
   do i = this%start3d, this%nstep3d
 
     this%tstep = i
+    write(2,*) i, "start3d"
     call write_stdout( '3D step = '//num2str(i) )
 
     call q_beam%as(0.0)
@@ -328,27 +329,29 @@ subroutine run_simulation( this )
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
-!     acu   = 0.0
-    amu   = 0.0
+    amu   = 0.0 
+    cu    = 0.0
+    gam   = 0.0
 
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
-      q_spe = 0.0
+
       do k = 1, this%nspecies
         call spe(k)%epush( e, b, this%tstep )
+        call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
       do k = 1, this%nneutrals
-!         call neut(k)%update( e, psi, i*this%dt )
-!         call neut(k)%push( e, b )
+        call neut(k)%update( e, psi, i*this%dt )
+        call neut(k)%push( e, b )
       enddo
 
       do k = 1, this%nneutral2s
-!         call neut2(k)%update( e, psi, i*this%dt )
-!         call neut2(k)%push( e, b)
+        call neut2(k)%update( e, psi, i*this%dt )
+        call neut2(k)%push( e, b)
       enddo
 
       q_spe = 0.0
@@ -369,17 +372,18 @@ subroutine run_simulation( this )
       call psi%solve( q_spe )
 
       do k = 1, this%nspecies
-        call spe(k)%gmjdp( e, b, cu, amu, gamma )
+        call spe(k)%edp( e, b, cu, amu, gam )
       enddo
+
       do k = 1, this%nneutrals
-!         call neut(k)%gmjdp( e, b, cu, amu, gamma )
+!         call neut(k)%gmjdp( e, b, cu, amu, gam )
       enddo
       do k = 1, this%nneutral2s
-!         call neut2(k)%gmjdp( e, b, cu, amu, gamma )
+!         call neut2(k)%gmjdp( e, b, cu, amu, gam )
       enddo
 
       call e%solve(cu)
-      call b_spe%solve(e,psi,q_spe,cu,amu,gamma)
+      call b_spe%solve(e,psi,q_spe,cu,amu,gam)
       call e%solve(b_spe,psi)
       call add_f1( b_spe, b_beam, b )
 
