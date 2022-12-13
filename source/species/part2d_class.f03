@@ -408,7 +408,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam )
   class(field), intent(in) :: cu, amu, gam
   class(field), intent(in) :: ef, bf
   ! local data
-  character(len=32), save :: sname = 'edeposit_robust_part2d'
+  character(len=32), save :: sname = 'edeposit_part2d'
   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
   type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
   type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
