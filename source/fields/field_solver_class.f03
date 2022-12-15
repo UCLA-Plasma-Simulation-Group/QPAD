@@ -114,9 +114,11 @@ subroutine init_field_solver_bphi( this, opts, mode, dr, kind, bnd, stype, coef 
 
   ! setup HYPRE grid
   comm = comm_loc()
-
+  write(2,*) "solve_bphi_init_1"
   call this%set_struct_grid( opts )
+  write(2,*) "solve_bphi_init_2"
   call this%set_struct_stencil()
+  write(2,*) "solve_bphi_init_3"
   call this%set_struct_matrix_bphi( opts, dr, coef )
 
   call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
@@ -702,6 +704,11 @@ subroutine set_struct_matrix_bphi( this, opts, dr, coef )
 
         HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
         HYPRE_BUF(local_vol) = 0.0
+
+      case ( p_fk_bphi )
+
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol) = 0.0 
 
       case default
         call write_err( 'Invalid field type!' )

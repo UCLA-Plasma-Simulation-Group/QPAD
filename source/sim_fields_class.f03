@@ -25,8 +25,9 @@ type sim_fields
   class( field_b ), pointer :: b_spe => null(), b_beam => null(), b => null()
   class( field_e ), pointer :: e_spe => null(), e_beam => null(), e => null()
   class( field_jay ), pointer :: cu => null(), amu => null()
-  class( field_rho ), pointer :: q_spe => null(), q_beam => null(), gam => null()
+  class( field_rho ), pointer :: q_spe => null(), q_beam => null()
   class( field_djdxi ), pointer :: dcu => null(), acu => null()
+  class( field_gam ), pointer :: gam => null()
 
   contains
 
@@ -62,7 +63,7 @@ subroutine alloc_sim_fields( this, input )
   if ( .not. associated( this%e ) )      allocate( field_e :: this%e )
   if ( .not. associated( this%cu ) )     allocate( field_jay :: this%cu )
   if ( .not. associated( this%amu ) )    allocate( field_jay :: this%amu )
-  if ( .not. associated( this%gam ) )    allocate( field_rho :: this%gam)
+  if ( .not. associated( this%gam ) )    allocate( field_gam :: this%gam)
   if ( .not. associated( this%q_spe ) )  allocate( field_rho :: this%q_spe )
   if ( .not. associated( this%q_beam ) ) allocate( field_rho :: this%q_beam )
   if ( .not. associated( this%dcu ) )    allocate( field_djdxi :: this%dcu )

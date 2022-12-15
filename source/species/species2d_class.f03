@@ -26,7 +26,7 @@ type species2d
    class(part2d), pointer :: part => null()
    class(field_rho), allocatable :: q, qn
    class(field_jay), allocatable :: cu, amu
-   class(field_rho), allocatable :: gam
+   class(field_gam), allocatable :: gam
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
    integer :: push_type
@@ -112,6 +112,7 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
 
    this%q  = 0.0
    this%cu = 0.0
+   this%gam = 0.0
 
    ! deposit charge
    call this%part%qdeposit( this%q )
@@ -265,11 +266,11 @@ subroutine edp_species2d( this, ef, bf, cu, amu, gam )
 
    class(species2d), intent(inout) :: this
    class(field_jay), intent(inout) :: cu, amu
-   class(field_rho), intent(inout) :: gam
+   class(field_gam), intent(inout) :: gam
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
    ! local data
-   character(len=18), save :: sname = 'gmjdp_species2d'
+   character(len=18), save :: sname = 'edp_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
@@ -293,7 +294,7 @@ subroutine edp_species2d( this, ef, bf, cu, amu, gam )
    call add_f1( this%cu, cu )
    call add_f1( this%gam, gam )
    call add_f1( this%amu, amu )
-
+   
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine edp_species2d

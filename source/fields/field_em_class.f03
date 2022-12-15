@@ -460,10 +460,10 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
       ir = idr / real(i+noff-1)
       n = 1 - f6_re(1,i)
       ipsi = 1 / (1 + f5_re(1,i))
-      this%buf1_re(i) = -idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) + n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
-                        +n * ir * f2_re(1,i) + n * ipsi * f4_re(3,i) + n * ipsi * ( f2_re(1,i) - &
+      this%buf1_re(i) = idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) - n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
+                        -n * ir * f2_re(1,i) - n * ipsi * f4_re(3,i) - n * ipsi * ( f2_re(1,i) - &
                         f3_re(1,i)*ipsi) * idrh * ( f5_re(1,i+1) - f5_re(1,i - 1) ) 
-      this%buf2_re(i) = n*ipsi
+      this%buf2_re(i) = -n*ipsi
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -474,30 +474,30 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
       ir = idr / real(2+noff-1)
       n = 1 - f6_re(1,2)
       ipsi = 1 / (1 + f5_re(1,2))
-      this%buf1_re(2) =  - idr * ( f1_re(3,3) - f1_re(3,2) ) + n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
-                         + n * ir * f2_re(1,2) + n * ipsi * f4_re(3,2) + n * ipsi * ( f2_re(1,2) - &
+      this%buf1_re(2) =   idr * ( f1_re(3,3) - f1_re(3,2) ) - n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
+                         - n * ir * f2_re(1,2) - n * ipsi * f4_re(3,2) - n * ipsi * ( f2_re(1,2) - &
                          f3_re(1,2) * ipsi ) * idr * ( f5_re(1,3) - f5_re(1,2) ) 
-      this%buf2_re(2) = n*ipsi
+      this%buf2_re(2) = -n*ipsi
     else
       ir = idr / real(1+noff-1)
       n = 1 - f6_re(1,1)
       ipsi = 1 / (1 + f5_re(1,1))
-      this%buf1_re(1) = - idrh * ( f1_re(3,2)-f1_re(3,0) ) + n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
-                        + n * ir * f2_re(1,1) + n * ipsi * f4_re(3,1) + n * ipsi * ( f2_re(1,1) - &
+      this%buf1_re(1) =  idrh * ( f1_re(3,2)-f1_re(3,0) ) - n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
+                        - n * ir * f2_re(1,1) - n * ipsi * f4_re(3,1) - n * ipsi * ( f2_re(1,1) - &
                         f3_re(1,1)*ipsi) * idrh * ( f5_re(1,2) - f5_re(1,0) ) 
-      this%buf2_re(1) = n*ipsi
+      this%buf2_re(1) = -n*ipsi
     endif
 
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
       n = 1 - f6_re(1,nrp)
       ipsi = 1 / (1 + f5_re(1,nrp))
-      this%buf1_re(nrp) = -idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2) ) + &
+      this%buf1_re(nrp) = idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) - f1_re(3,nrp-2) ) - &
                           n * idrh * ( 3.0 * f2_re(1,nrp) - 4.0 * f2_re(1,nrp-1) + f2_re(1,nrp-2) ) &
-                          + n * ir * f2_re(1,nrp) + n * ipsi * f4_re(3,nrp) + n * ipsi * ( f2_re(1,nrp) &
-                          - f3_re(1,nrp) * ipsi) * idrh * ( 3.0 * f5_re(1,nrp) - 4.0 * f5_re(1,nrp - 1) + &
+                          - n * ir * f2_re(1,nrp) - n * ipsi * f4_re(3,nrp) - n * ipsi * ( f2_re(1,nrp) &
+                          + f3_re(1,nrp) * ipsi) * idrh * ( 3.0 * f5_re(1,nrp) - 4.0 * f5_re(1,nrp - 1) + &
                           f5_re(1,nrp-2)) 
-      this%buf2_re(nrp) = n*ipsi
+      this%buf2_re(nrp) = -n*ipsi
     endif
 
   else
@@ -1029,7 +1029,7 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam )
   class( field_rho ), intent(inout) :: rho
   class( field_jay ), intent(inout) :: cu
   class( field_jay ), intent(inout) :: amu
-  class( field_rho ), intent(inout) :: gam
+  class( field_gam ), intent(inout) :: gam
 
   type( ufield ), dimension(:), pointer :: cu_re => null(), cu_im => null()
   type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
@@ -1058,11 +1058,15 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam )
   do i = 0, this%max_mode
 
     if ( i == 0 ) then
-
+      write(2,*) "solve_bphi_1"
       call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gam_re(i) )
+      write(2,*) "solve_bphi_2"
       call this%solver_bphi(i)%init( this%opts, i, dr, kind=p_fk_bphi, bnd=this%boundary, stype=p_hypre_cycred, coef=this%buf2_re )
+      write(2,*) "solve_bphi_3"
       call this%solver_bphi(i)%solve( this%buf1_re )
+      write(2,*) "solve_bphi_4"
       call this%get_solution_bphi(i)
+      write(2,*) "solve_bphi_5"
       cycle
     endif
 
@@ -1392,14 +1396,15 @@ subroutine solve_field_ez( this, jay )
     if ( i == 0 ) then
       call this%set_source_ez( i, jay_re(i) )
       call this%solver_ez(i)%solve( this%buf_re )
-      call this%get_solution_ez(i)
-      cycle
-    endif
+      call this%get_solution_ez(i) 
+    endif 
+!       cycle
+    
 
-    call this%set_source_ez( i, jay_re(i), jay_im(i) )
-    call this%solver_ez(i)%solve( this%buf_re )
-    call this%solver_ez(i)%solve( this%buf_im )
-    call this%get_solution_ez(i)
+!     call this%set_source_ez( i, jay_re(i), jay_im(i) )
+!     call this%solver_ez(i)%solve( this%buf_re )
+!     call this%solver_ez(i)%solve( this%buf_im )
+!     call this%get_solution_ez(i)
 
   enddo
 

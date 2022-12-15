@@ -227,7 +227,8 @@ subroutine run_simulation( this )
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
   type(field_jay), pointer :: cu, amu
-  type(field_rho), pointer :: q_spe, q_beam, gam
+  type(field_rho), pointer :: q_spe, q_beam
+  type(field_gam), pointer :: gam
   type(field_djdxi), pointer :: dcu, acu
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
@@ -382,7 +383,9 @@ subroutine run_simulation( this )
 !         call neut2(k)%gmjdp( e, b, cu, amu, gam )
       enddo
 
+      write(2,*) "solve_e"
       call e%solve(cu)
+      write(2,*) "solve_ez_fieldem"
       call b_spe%solve(e,psi,q_spe,cu,amu,gam)
       call e%solve(b_spe,psi)
       call add_f1( b_spe, b_beam, b )
