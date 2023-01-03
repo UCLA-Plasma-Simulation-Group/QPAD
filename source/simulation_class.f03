@@ -333,29 +333,73 @@ subroutine run_simulation( this )
     amu   = 0.0 
     cu    = 0.0
     gam   = 0.0
+!>>>> x in half \xi step
+!     do j = 1, this%nstep2d
 
+!       call q_beam%copy_slice( j, p_copy_2to1 )
+!       call q_beam%smooth_f1()
+!       call b_beam%solve( q_beam )
+
+!       write(2,*)  q_spe%getresum(), "q_epush"
+!       do k = 1, this%nspecies
+!         call spe(k)%epush( e, b, this%tstep )
+!         call spe(k)%sort( this%start2d + j - 1 )
+!       enddo
+
+!       write(2,*)  q_spe%getresum(), "q_epush2"
+!       do k = 1, this%nneutrals
+!         call neut(k)%update( e, psi, i*this%dt )
+!         call neut(k)%push( e, b )
+!       enddo
+
+!       do k = 1, this%nneutral2s
+!         call neut2(k)%update( e, psi, i*this%dt )
+!         call neut2(k)%push( e, b)
+!       enddo
+
+!       write(2,*)  q_spe%getresum(), "q_spe2"
+!       q_spe = 0.0
+!       do k = 1, this%nspecies
+!         call spe(k)%qdp( q_spe )
+!       enddo
+
+!       do k = 1, this%nneutrals
+!         call neut(k)%qdp( q_spe )
+!         call neut(k)%ion_deposit( q_spe )
+!       enddo
+
+!       do k = 1, this%nneutral2s
+!         call neut2(k)%qdp( q_spe )
+!       enddo
+
+!       write(2,*)  q_spe%getresum(), "q_spe2"
+!       ! call q_spe%copy_slice( j, p_copy_1to2 )
+!       call psi%solve( q_spe )
+
+!       do k = 1, this%nspecies
+!         call spe(k)%edp( e, b, cu, amu, gam )
+!       enddo
+
+!       do k = 1, this%nneutrals
+! !         call neut(k)%gmjdp( e, b, cu, amu, gam )
+!       enddo
+!       do k = 1, this%nneutral2s
+! !         call neut2(k)%gmjdp( e, b, cu, amu, gam )
+!       enddo
+
+!       write(2,*) "solve_e"
+!       call e%solve(cu)
+!       write(2,*) "solve_ez_fieldem"
+!       call b_spe%solve(e,psi,q_spe,cu,amu,gam)
+!       call e%solve(b_spe,psi)
+!       call add_f1( b_spe, b_beam, b )
+!>>>> x,p,psi in integer \xi step
     do j = 1, this%nstep2d
 
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
-
-      do k = 1, this%nspecies
-        call spe(k)%epush( e, b, this%tstep )
-        call spe(k)%sort( this%start2d + j - 1 )
-      enddo
-
-      do k = 1, this%nneutrals
-        call neut(k)%update( e, psi, i*this%dt )
-        call neut(k)%push( e, b )
-      enddo
-
-      do k = 1, this%nneutral2s
-        call neut2(k)%update( e, psi, i*this%dt )
-        call neut2(k)%push( e, b)
-      enddo
-
-      q_spe = 0.0
+      q_spe = 0.0 
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
       enddo
@@ -371,24 +415,39 @@ subroutine run_simulation( this )
 
       ! call q_spe%copy_slice( j, p_copy_1to2 )
       call psi%solve( q_spe )
+      !call b_spe%solve( cu )
 
+      cu = 0.0
+      acu = 0.0
+      gam = 0.0
       do k = 1, this%nspecies
         call spe(k)%edp( e, b, cu, amu, gam )
       enddo
-
-      do k = 1, this%nneutrals
-!         call neut(k)%gmjdp( e, b, cu, amu, gam )
+!         do k = 1, this%nneutrals
+!           call neut(k)%amjdp( e, b, cu, amu, acu )
+!         enddo
+!         do k = 1, this%nneutral2s
+!           call neut2(k)%amjdp( e, b, cu, amu, acu )
+!         enddo
+      do k = 1, this%nspecies
+        call spe(k)%cbq(j)
       enddo
-      do k = 1, this%nneutral2s
-!         call neut2(k)%gmjdp( e, b, cu, amu, gam )
-      enddo
+!         do k = 1, this%nneutrals
+!           call neut(k)%cbq(j)
+!         enddo
+!         do k = 1, this%nneutral2s
+!           call neut2(k)%cbq(j)
+!         enddo
+      call cu%copy_slice( j, p_copy_1to2 )
+      call add_f1( cu, q_spe, (/3/), (/1/) )
+      call q_spe%copy_slice( j, p_copy_1to2 ) 
 
-      write(2,*) "solve_e"
-      call e%solve(cu)
-      write(2,*) "solve_ez_fieldem"
-      call b_spe%solve(e,psi,q_spe,cu,amu,gam)
-      call e%solve(b_spe,psi)
-      call add_f1( b_spe, b_beam, b )
+      call e_spe%solve(cu) 
+      call b_spe%solve(e_spe,psi,q_spe,cu,amu,gam)
+      call e_spe%solve( b_spe, psi )
+      call add_f1( b_spe, b_beam, b ) 
+      call e%solve( cu )
+      call e%solve( b, psi )
 
       ! for vector potential diagnostics
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
@@ -404,6 +463,26 @@ subroutine run_simulation( this )
         call mpi_wait( this%id_field(4), istat, ierr )
         call b_spe%pipe_send( this%tag_field(4), this%id_field(4), 'forward' )
       endif
+
+      ! advance species particles
+      do k = 1, this%nspecies
+        call spe(k)%epush( e, b )
+        call spe(k)%sort( this%start2d + j - 1 )
+      enddo
+
+!       ! ionize and advance particles of neutrals
+!       do k = 1, this%nneutrals
+!         call neut(k)%update( e, psi, i*this%dt )
+!         call neut(k)%push( e, b )
+!         ! TODO: add sorting
+!       enddo
+
+!      ! ionize and advance particles of neutrals
+!       do k = 1, this%nneutral2s
+!         call neut2(k)%push( e, b )
+!         call neut2(k)%update( e, psi, i*this%dt )
+!         ! TODO: add sorting
+!       enddo
 
       call e%copy_slice( j, p_copy_1to2 )
       call b%copy_slice( j, p_copy_1to2 )

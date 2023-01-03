@@ -284,8 +284,8 @@ subroutine inject_fdist2d( this, x_l, x, x_r, p_l, p, gamma, psi, q, w, w0, npp,
             if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
             ipart = ipart + 1
-            x_l(1,ipart) = 0
-            x_l(2,ipart) = 0
+            x_l(1,ipart) = x_tmp(1)
+            x_l(2,ipart) = x_tmp(1)
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
             x_r(1,ipart) = 0

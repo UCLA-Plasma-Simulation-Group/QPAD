@@ -72,6 +72,7 @@ type part2d
    procedure :: add_particles            => add_particles_part2d
    procedure :: edeposit                 => edeposit_part2d
    procedure :: epush                    => epush_part2d
+   procedure :: expush                   => expush_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
@@ -490,17 +491,15 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam )
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
-      phase1 = cmplx( 1.0, 0.0 ) * this%gamma(pp) * ipsi
-      phase2 = cmplx( 1.0, 0.0 ) * igamma * ipsi
+      phase1 = cmplx( 1.0, 0.0 ) 
 
       ! deposit m = 0 mode
       do j = 0, 1
         w = wt(j,i) * real(phase)
         w1 = wt(j,i) * real(phase1)
-        w2 = wt(j,i) * real(phase2)
-        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i) 
         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w1 * this%gamma(pp)
-        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w2 * u2(1:3)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w1 * u2(1:3)
       enddo
 
       ! deposit m > 0 mode
@@ -2067,6 +2066,82 @@ subroutine epush_part2d( this, ef, bf, step3d )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine epush_part2d
+
+subroutine expush_part2d( this, ef, bf )
+
+    implicit none
+    class(part2d), intent(inout) :: this
+    class(field), intent(in) :: ef
+    class(field), intent(in) :: bf
+
+  ! local data
+  character(len=18), save :: sname = 'push_explicit_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, gam, psi_1, ipsi_1, dtc, p_l, x_l
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'epush 2D particles' )
+
+  qtmh = this%qbm * this%dt
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+
+      pp = ptrcur
+      do i = 1, np
+        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+        dtc = this%dt / ( gam - this%p(3,pp) )
+        x_l = this%x(1,pp)
+        this%x(1,pp) = this%x_l(1,pp) + 2 * this%p(1,pp) * dtc
+        this%x_l(1,pp) = x_l
+        x_l = this%x(2,pp)
+        this%x(2,pp) = this%x_l(2,pp) + 2 * this%p(2,pp) * dtc
+        this%x_l(2,pp) = x_l
+        pp = pp + 1
+      enddo
+
+       pp = ptrcur
+      do i = 1, np
+        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+        psi_1 = gam - this%p(3,pp)
+        ipsi_1 = 1/psi_1
+        dtc = this%dt / ( gam - this%p(3,pp) )
+        ep(1,i) = ep(1,i) * gam * ipsi_1
+        bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
+        p_l = this%p(1,pp)
+        !2*xi
+        this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*dtc + 2*bp(1,i)*dtc
+        this%p_l(1,pp) = p_l
+        this%p(3,pp) = 0.5*(1+this%p(1,pp)**2-psi_1**1)*ipsi_1
+        pp = pp + 1
+      enddo
+
+  enddo
+
+  call stop_tprof( 'epush 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine expush_part2d
 
 
 subroutine push_robust_part2d( this, ef, bf )

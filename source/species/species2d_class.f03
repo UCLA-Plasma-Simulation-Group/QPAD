@@ -208,7 +208,9 @@ subroutine qdp_species2d(this,q)
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
    call add_f1( this%q, q )
+   write(2,*)  this%q%getresum(), "q"
    if ( this%pf%neutralized ) call add_f1( this%qn, q )
+   write(2,*)  q%getresum(), "q2"
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -327,14 +329,13 @@ subroutine push_species2d(this,ef,bf)
 
 end subroutine push_species2d
 
-subroutine push_species2d_explicit(this,ef,bf,i)
+subroutine push_species2d_explicit(this,ef,bf)
 
    implicit none
 
    class(species2d), intent(inout) :: this
    class(field_e), intent(in) :: ef
-   class(field_b), intent(in) :: bf
-   integer, intent(in) :: i 
+   class(field_b), intent(in) :: bf 
    ! local data
    character(len=18), save :: sname = 'push_species2d'
 
@@ -348,7 +349,7 @@ subroutine push_species2d_explicit(this,ef,bf,i)
       case ( p_push2_robust_subcyc )
          call this%part%push_robust_subcyc( ef, bf )
       case( p_push2_explicit )
-         call this%part%epush( ef, bf, i)
+         call this%part%expush( ef, bf)
    end select
 
    call this%part%update_bound()
