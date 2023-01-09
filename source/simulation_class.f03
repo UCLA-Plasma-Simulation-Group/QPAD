@@ -226,7 +226,7 @@ subroutine run_simulation( this )
   type(field_vpot), pointer :: vpot
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
-  type(field_jay), pointer :: cu, amu
+  type(field_jay), pointer :: cu, amu, ve
   type(field_rho), pointer :: q_spe, q_beam
   type(field_gam), pointer :: gam
   type(field_djdxi), pointer :: dcu, acu
@@ -249,6 +249,7 @@ subroutine run_simulation( this )
   b      => this%fields%b
   cu     => this%fields%cu
   amu    => this%fields%amu
+  ve     => this%fields%ve
   q_spe  => this%fields%q_spe
   q_beam => this%fields%q_beam
   gam    => this%fields%gam
@@ -332,6 +333,7 @@ subroutine run_simulation( this )
     psi   = 0.0
     amu   = 0.0 
     cu    = 0.0
+    ve    = 0.0
     gam   = 0.0
 !>>>> x in half \xi step
 !     do j = 1, this%nstep2d
@@ -396,6 +398,7 @@ subroutine run_simulation( this )
 !>>>> x,p,psi in integer \xi step
     do j = 1, this%nstep2d
 
+      write(2,*) j, "start2d"
       call q_beam%copy_slice( j, p_copy_2to1 )
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
@@ -418,10 +421,11 @@ subroutine run_simulation( this )
       !call b_spe%solve( cu )
 
       cu = 0.0
-      acu = 0.0
+      ve = 0.0
+      amu = 0.0
       gam = 0.0
       do k = 1, this%nspecies
-        call spe(k)%edp( e, b, cu, amu, gam )
+        call spe(k)%edp( e, b, cu, amu, gam, ve )
       enddo
 !         do k = 1, this%nneutrals
 !           call neut(k)%amjdp( e, b, cu, amu, acu )
@@ -431,7 +435,7 @@ subroutine run_simulation( this )
 !         enddo
       do k = 1, this%nspecies
         call spe(k)%cbq(j)
-      enddo
+      enddo 
 !         do k = 1, this%nneutrals
 !           call neut(k)%cbq(j)
 !         enddo
@@ -443,7 +447,7 @@ subroutine run_simulation( this )
       call q_spe%copy_slice( j, p_copy_1to2 ) 
 
       call e_spe%solve(cu) 
-      call b_spe%solve(e_spe,psi,q_spe,cu,amu,gam)
+      call b_spe%solve(e_spe,psi,q_spe,cu,amu,gam,ve)
       call e_spe%solve( b_spe, psi )
       call add_f1( b_spe, b_beam, b ) 
       call e%solve( cu )

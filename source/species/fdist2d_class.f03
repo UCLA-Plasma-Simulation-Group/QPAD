@@ -235,12 +235,12 @@ subroutine end_fdist2d( this )
 
 end subroutine end_fdist2d
 
-subroutine inject_fdist2d( this, x_l, x, x_r, p_l, p, gamma, psi, q, w, w0, npp, s, ionization )
+subroutine inject_fdist2d( this, x_l, x, p_l, p, gamma, psi, q, w, w0, npp, s, ionization )
 
   implicit none
 
   class( fdist2d ), intent(inout) :: this
-  real, intent(inout), dimension(:,:) :: x_l, x, x_r, p_l, p
+  real, intent(inout), dimension(:,:) :: x_l, x, p_l, p
   real, intent(inout), dimension(:) :: gamma, psi, q, w, w0
   integer(kind=LG), intent(inout) :: npp
   real, intent(in) :: s
@@ -285,11 +285,11 @@ subroutine inject_fdist2d( this, x_l, x, x_r, p_l, p, gamma, psi, q, w, w0, npp,
 
             ipart = ipart + 1
             x_l(1,ipart) = x_tmp(1)
-            x_l(2,ipart) = x_tmp(1)
+            x_l(2,ipart) = x_tmp(2)
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
-            x_r(1,ipart) = 0
-            x_r(2,ipart) = 0
+!             x_r(1,ipart) = 0
+!             x_r(2,ipart) = 0
             q(ipart) = rn * den_perp * den_lon * this%density * coef
 !             q(ipart) = -this%qm
 !             write(2,*) q(ipart), "fdist2d_q"
@@ -331,12 +331,12 @@ subroutine inject_fdist2d( this, x_l, x, x_r, p_l, p, gamma, psi, q, w, w0, npp,
             if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
             ipart = ipart + 1
-            x_l(1,ipart) = 0
-            x_l(2,ipart) = 0
+            x_l(1,ipart) = x_tmp(1)
+            x_l(2,ipart) = x_tmp(2)
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
-            x_r(1,ipart) = 0
-            x_r(2,ipart) = 0
+!             x_r(1,ipart) = 0
+!             x_r(2,ipart) = 0
             q(ipart) = rn * den_perp * den_lon * this%density * coef
 !             write(2,*) q(ipart), "fdist2d_q"
             p_l(1,ipart) = 0
