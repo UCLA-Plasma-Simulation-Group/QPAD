@@ -424,7 +424,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
   integer(kind=LG) :: ptrcur, pp
   integer :: i, j, nn, noff, nrp, np, mode, max_mode
   integer, dimension(p_cache_size) :: ix
-  real :: idr, dr
+  real :: idr, dr, p1, p2, p3, gam2
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
@@ -492,6 +492,8 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
 !       u2(2) = u(1,i) * u(2,i) * ipsi
 !       u2(3) = u(2,i) * u(2,i) * ipsi
 
+!       gam2 = this%gamma(pp) * this%gamma(pp)
+
       u2(1) = u(1,i) * u(1,i) * igamma * igamma 
       u2(2) = u(1,i) * u(2,i) * igamma * igamma 
       u2(3) = u(2,i) * u(2,i) * igamma * igamma 
@@ -506,14 +508,17 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
         w1 = wt(j,i) * real(phase1)
         cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i) 
 !         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w1 * this%gamma(pp)
-!         ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w1 * u(1:3,i) * igamma
-        ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + wt(j,i) * u(1:3,i)
+!         ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w1 * u(1:3,i) 
+        ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + wt(j,i) * u(1:3,i) * igamma
 !         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w1 * u2(1:3)
         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + wt(j,i) * u2(1:3)
-!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + sqrt( 1 + ve0(1, ix(i)+j) **2 + &
-!                             ve0(2, ix(i)+j) **2 + ve0(3, ix(i)+j) **2 )
+!         p1= ve0(1, ix(i)+j) * this%gamma(pp)
+!         p2= ve0(2, ix(i)+j) * this%gamma(pp)
+!         p3= ve0(3, ix(i)+j) * this%gamma(pp)
+!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + sqrt( 1 + p1 **2 + p2 **2 + p3 **2 )
+!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w1 * gam2
         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + wt(j,i) * this%gamma(pp)
-        
+
       enddo
 
       ! deposit m > 0 mode
@@ -2143,7 +2148,7 @@ subroutine expush_part2d( this, ef, bf )
         gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
         psi_1 = gam - this%p(3,pp)
         ipsi_1 = 1/psi_1
-        dtc = this%dt / ( gam - this%p(3,pp) )
+        dtc = this%dt 
         ep(1,i) = ep(1,i) * gam * ipsi_1
         bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
         p_l = this%p(1,pp)
