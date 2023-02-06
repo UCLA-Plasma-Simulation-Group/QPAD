@@ -30,3 +30,10 @@ After the QPAD simulation is finished, copy this script ``merge_mode`` into the 
     ./merge_mode -a <angle_in_degree> -t <data_type>
 
 will generate the merged data stored in the ``Merged`` folder. The argument following the ``-a`` option refers to the azimuthal angle of the output slices in the unit of degree. If not given, the default value is zero. The argument following the ``-t`` option configures the type of data to be merged. There are two options, ``s`` and ``c``, corresponding to the scalar field (including the component of a vector field in z-direction) and the cylindrical components of a vector field respectively.
+
+Correction of on-axis charge density
+------------------------------------
+
+QPAD uses different numerical definitions for charge and current density in the on-axis cell (the first cell in r-direction) and others to correctly solve the electromagnetic fields. However, this makes the visualization of output data a bit odd -- the charge and current density "look" discontinuous on the axis. Despite it is correct in the sense of numerical calculation, we always want to correctly visualize the data in the physical sense. One can manually do the correction by multiplying the on-axis density value by the factor :math:`3n^2/[2(1+2n^2)]` where :math:`n` is the particle number per cell in r-direction (the first component of ``ppc`` of species or beam). Only :math:`\rho(m=0)` and :math:`J_z(m=0)` need to be corrected. For the density of beams which are intialized from the ``random`` type, the above correction method does not work.
+
+This functionality will be implemented in the future. 

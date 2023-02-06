@@ -42,4 +42,5 @@ The input file "qpinput.json" consists of ``simulation``, ``beam``, ``species``,
    session_beam
    session_species
    session_neutral
+   session_laser
    session_field
