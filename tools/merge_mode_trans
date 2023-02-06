@@ -1,0 +1,267 @@
+#!/usr/bin/python3
+import glob
+import os
+import h5py
+import numpy as np
+import sys
+import getopt
+from copy import deepcopy
+
+def get_max_mode():
+
+    real_dirs = glob.glob('Re*')
+    imag_dirs = glob.glob('Im*')
+    num_real_dirs = 0
+    num_imag_dirs = 0
+
+    for obj in real_dirs:
+        if os.path.isdir(obj):
+            num_real_dirs += 1
+        
+    for obj in imag_dirs:
+        if os.path.isdir(obj):
+            num_imag_dirs += 1
+    
+    assert num_real_dirs - 1 == num_imag_dirs, 'Wrong number of folders!'
+
+    return num_real_dirs - 1
+
+
+def get_file_list():
+
+    file_list = glob.glob('Re0/*_*.h5')
+    file_list = [os.path.basename(file) for file in file_list]
+    return file_list
+
+def print_help_info():
+    print(
+'''
+Usage: merge_mode_trans -z <longitudinal location> -t <type of variable> 
+Parameter:
+    -z: The longitudinal location of the transverse slice (in fact \xi) in plasma skin depth.
+    -t, --type: Type of the data. The options include 'c' (cylindrical variables) and 's' (scalar).
+                For example, the r and phi components of a vector are type 'c' while a scalar of 
+                the z component of a vector are type 's'. The outputs of a type 'c' vector are deposited 
+                to a Cartesian coordinate whose z = - xi, x = r in phi = 0, y = r in phi = 90.
+'''
+    )
+    return
+
+
+if __name__ == '__main__':
+
+    # check input arguments
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],'hz:t:',['help', 'z=', 'type='])
+    except getopt.GetoptError:
+        print_help_info()
+        sys.exit(2)
+
+    # read input arguments
+    z = 0
+    sign = 1
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            print_help_info()
+            sys.exit(2)
+        elif opt in ('-z'):
+            z = int(arg)
+        elif opt in ('-t', '--type'):
+            if arg == 'c' :
+                sign = -1
+            elif arg == 's':
+                sign = 1
+    
+    max_mode = get_max_mode()
+    file_list = get_file_list()
+    num_files = len(file_list)
+
+    filename = 'Re0/' + file_list[0]
+    with h5py.File(filename, 'r') as h5file:
+        # read file attributes
+        file_attrs = {name: value for name, value in h5file.attrs.items()}
+        # read dataset name and attributes
+        dset_name = list(h5file.keys())[1]
+        h5dset = h5file[dset_name]
+        dset_attrs = {name: value for name, value in h5dset.attrs.items()}
+        dset_size = h5dset.shape
+
+        # read axes and their attributes
+        h5axis1 = h5file['AXIS']['AXIS1']
+        h5axis2 = h5file['AXIS']['AXIS2']
+        axis1 = np.array(h5axis1)
+        axis2 = np.array(h5axis2)
+        axis1[0] = -axis1[1]
+        axis1_attrs = {name: value for name, value in h5axis1.attrs.items()}
+        axis2_attrs = {name: value for name, value in h5axis2.attrs.items()}
+
+        assert z >= axis2[0] and z <= axis2[1], 'Wrong z location!'
+        z_index = (z - axis2[0]) / (axis2[1] - axis2[0]) * dset_size[0]
+        z_index = int(z_index)
+    
+        if not os.path.exists('Longitudinal_location_'+str(z)):
+            os.mkdir('Longitudinal_location_'+str(z))
+        
+        if sign == 1:
+            # print((file_attrs['NAME'][0].decode('utf-8')))
+            assert ('phi' not in file_attrs['NAME'][0].decode('utf-8')) and ('r' not in file_attrs['NAME'][0].decode('utf-8')), 'Not scalar variables!'
+        if sign == -1:
+            assert 'phi' in file_attrs['NAME'][0].decode('utf-8') or 'r' in file_attrs['NAME'][0].decode('utf-8'), 'Not cylindrical variables!'
+            if not os.path.exists('Longitudinal_location_'+str(z)+'/x'):
+                os.mkdir('Longitudinal_location_'+str(z)+'/x')
+            if not os.path.exists('Longitudinal_location_'+str(z)+'/y'):
+                os.mkdir('Longitudinal_location_'+str(z)+'/y')
+
+    ind_arra = np.arange(-dset_size[1] + 1, dset_size[1])
+    x_matrix = np.expand_dims(ind_arra,0).repeat(dset_size[1] *2 - 1, axis=0)
+    y_matrix = np.expand_dims(ind_arra[::-1],1).repeat(dset_size[1] *2 - 1, axis=1)
+    pos_matrix = x_matrix + 1j*y_matrix
+    R_matrix = np.abs(pos_matrix)
+    R_matrix = np.round(R_matrix).astype(int)
+    R_matrix = np.where(R_matrix >= dset_size[1], dset_size[1], R_matrix)
+    Phi_matrix = np.angle(pos_matrix)
+
+    for filename in file_list:
+
+        print('Merging file ' + filename + '...')
+        
+        # initialize merged dataset
+        merged_dset = np.zeros_like(R_matrix)
+
+        # add m = 0 mode to  the merged dataset
+        with h5py.File('Re0/' + filename, 'r') as h5file:
+            
+            # read file attributes
+            file_attrs = {name: value for name, value in h5file.attrs.items()}
+
+            dset = np.array(h5file[dset_name])
+            slice_data = dset[z_index]
+            slice_data = np.concatenate((slice_data, [0]), axis=0)
+            merged_dset = slice_data[R_matrix]
+        
+        # add m > 0 modes to the merged dataset
+        for mode in np.arange(1, max_mode + 1):
+
+            with h5py.File('Re' + str(mode) + '/' +filename, 'r') as h5file:
+                dset = np.array(h5file[dset_name])
+                slice_data = dset[z_index]
+                slice_data = np.concatenate((slice_data, [0]), axis=0)
+                merged_dset += slice_data[R_matrix] * 2 * np.cos(mode * Phi_matrix)            
+
+            with h5py.File('Im' + str(mode) + '/' +filename, 'r') as h5file:
+                dset = np.array(h5file[dset_name])
+                slice_data = dset[z_index]
+                slice_data = np.concatenate((slice_data, [0]), axis=0)
+                merged_dset -= slice_data[R_matrix] * 2 * np.sin(mode * Phi_matrix)        
+        
+        # deposite results to a Cartesian coordinate whose z = - \xi,x = r in phi = 0, y = r in phi = 90
+        if sign == 1:
+            # write to the h5 files directly
+            with h5py.File('Longitudinal_location_'+str(z)+'/'+filename, 'w') as h5file:
+                # write file attributes
+                for key, val in file_attrs.items():
+                    h5file.attrs[key] = val
+                
+                # create new dataset and write the attributes
+                h5dset = h5file.create_dataset(dset_name, data=merged_dset, dtype='f8')
+                for key, val in dset_attrs.items():
+                    h5dset.attrs[key] = val
+                
+                # create group for axis and write the informations
+                h5axis = h5file.create_group('AXIS')
+                h5axis1 = h5axis.create_dataset('AXIS1', data=axis1)
+                h5axis2 = h5axis.create_dataset('AXIS2', data=axis1)
+                axis1_attrs_x = deepcopy(axis1_attrs)
+                axis1_attrs_x['NAME'][0] = axis1_attrs_x['NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_x['LONG_NAME'][0] = axis1_attrs_x['LONG_NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_y = deepcopy(axis1_attrs)
+                axis1_attrs_y['NAME'][0] = axis1_attrs_y['NAME'][0].decode('utf-8').replace('r', 'y')
+                axis1_attrs_y['LONG_NAME'][0] = axis1_attrs_y['LONG_NAME'][0].decode('utf-8').replace('r', 'y')
+                for key, val in axis1_attrs_x.items():
+                    h5axis1.attrs[key] = val
+                for key, val in axis1_attrs_y.items():
+                    h5axis2.attrs[key] = val
+        
+        elif sign == -1:
+
+            Theta_matrix = np.zeros_like(Phi_matrix)
+            if 'phi' in file_attrs['NAME'][0].decode('utf-8'):
+                Theta_matrix = Phi_matrix + np.pi/2
+            elif 'r' in file_attrs['NAME'][0].decode('utf-8'):
+                Theta_matrix = Phi_matrix
+            
+            # calculate the x and y components by Theta_matrix
+            merged_dset_x = merged_dset * np.cos(Theta_matrix)
+            merged_dset_y = merged_dset * np.sin(Theta_matrix)
+
+            # write the x components to the h5 files
+            with h5py.File('Longitudinal_location_'+str(z)+'/x'+'/'+filename, 'w') as h5file:
+                # write file attributes
+                file_attrs_x = deepcopy(file_attrs)
+                file_attrs_x['NAME'][0] = file_attrs_x['NAME'][0].decode('utf-8').replace('phi', 'x')
+                file_attrs_x['NAME'][0] = file_attrs_x['NAME'][0].decode('utf-8').replace('r', 'x')
+                for key, val in file_attrs_x.items():
+                    h5file.attrs[key] = val
+                
+                # create new dataset and write the attributes
+                dset_name_x = dset_name.replace('phi', 'x')
+                dset_name_x = dset_name.replace('r', 'x')
+                h5dset = h5file.create_dataset(dset_name_x, data=merged_dset_x, dtype='f8')
+                dset_attrs_x = deepcopy(dset_attrs)
+                dset_attrs_x['LONG_NAME'][0] = dset_attrs_x['LONG_NAME'][0].decode('utf-8').replace('\phi', 'x')
+                dset_attrs_x['LONG_NAME'][0] = dset_attrs_x['LONG_NAME'][0].decode('utf-8').replace('r', 'x')
+                for key, val in dset_attrs_x.items():
+                    h5dset.attrs[key] = val
+                
+                # create group for axis and write the informations
+                h5axis = h5file.create_group('AXIS')
+                h5axis1 = h5axis.create_dataset('AXIS1', data=axis1)
+                h5axis2 = h5axis.create_dataset('AXIS2', data=axis1)
+                axis1_attrs_x = deepcopy(axis1_attrs)
+                axis1_attrs_x['NAME'][0] = axis1_attrs_x['NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_x['LONG_NAME'][0] = axis1_attrs_x['LONG_NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_y = deepcopy(axis1_attrs)
+                axis1_attrs_y['NAME'][0] = axis1_attrs_y['NAME'][0].decode('utf-8').replace('r', 'y')
+                axis1_attrs_y['LONG_NAME'][0] = axis1_attrs_y['LONG_NAME'][0].decode('utf-8').replace('r', 'y')
+                for key, val in axis1_attrs_x.items():
+                    h5axis1.attrs[key] = val
+                for key, val in axis1_attrs_y.items():
+                    h5axis2.attrs[key] = val
+   
+            # write the y components to the h5 files
+            with h5py.File('Longitudinal_location_'+str(z)+'/y'+'/'+filename, 'w') as h5file:
+                # write file attributes
+                file_attrs_y = deepcopy(file_attrs)
+                file_attrs_y['NAME'][0] = file_attrs_y['NAME'][0].decode('utf-8').replace('phi', 'y')
+                file_attrs_y['NAME'][0] = file_attrs_y['NAME'][0].decode('utf-8').replace('r', 'y')
+                for key, val in file_attrs_y.items():
+                    h5file.attrs[key] = val
+                
+                # create new dataset and write the attributes
+                dset_name_y = dset_name.replace('phi', 'y')
+                dset_name_y = dset_name.replace('r', 'y')
+                h5dset = h5file.create_dataset(dset_name_y, data=merged_dset_y, dtype='f8')
+                dset_attrs_y = deepcopy(dset_attrs)
+                dset_attrs_y['LONG_NAME'][0] = dset_attrs_y['LONG_NAME'][0].decode('utf-8').replace('\phi', 'y')
+                dset_attrs_y['LONG_NAME'][0] = dset_attrs_y['LONG_NAME'][0].decode('utf-8').replace('r', 'y')
+                for key, val in dset_attrs_y.items():
+                    h5dset.attrs[key] = val
+                
+                # create group for axis and write the informations
+                h5axis = h5file.create_group('AXIS')
+                h5axis1 = h5axis.create_dataset('AXIS1', data=axis1)
+                h5axis2 = h5axis.create_dataset('AXIS2', data=axis1)
+                axis1_attrs_x = deepcopy(axis1_attrs)
+                axis1_attrs_x['NAME'][0] = axis1_attrs_x['NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_x['LONG_NAME'][0] = axis1_attrs_x['LONG_NAME'][0].decode('utf-8').replace('r', 'x')
+                axis1_attrs_y = deepcopy(axis1_attrs)
+                axis1_attrs_y['NAME'][0] = axis1_attrs_y['NAME'][0].decode('utf-8').replace('r', 'y')
+                axis1_attrs_y['LONG_NAME'][0] = axis1_attrs_y['LONG_NAME'][0].decode('utf-8').replace('r', 'y')
+                for key, val in axis1_attrs_x.items():
+                    h5axis1.attrs[key] = val
+                for key, val in axis1_attrs_y.items():
+                    h5axis2.attrs[key] = val
+
+                        
+
+         

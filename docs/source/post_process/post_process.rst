@@ -23,13 +23,19 @@ The users should modify this line according to their own system.
 How to Use
 ----------
 
-After the QPAD simulation is finished, copy this script ``merge_mode`` into the folder that has sub-folders named like ``Re0``, ``Re1``, ``Im1``... Running the script by typing the command
+After the QPAD simulation is finished, copy this script ``merge_mode`` amd ``merge_mode_trans`` into the folder that has sub-folders named like ``Re0``, ``Re1``, ``Im1``... Running the script by typing the command
 
 .. code-block:: bash
 
     ./merge_mode -a <angle_in_degree> -t <data_type>
+    ./merge_mode_trans -z <longitudinal_location> -t <data_type>
 
-will generate the merged data stored in the ``Merged`` folder. The argument following the ``-a`` option refers to the azimuthal angle of the output slices in the unit of degree. If not given, the default value is zero. The argument following the ``-t`` option configures the type of data to be merged. There are two options, ``s`` and ``c``, corresponding to the scalar field (including the component of a vector field in z-direction) and the cylindrical components of a vector field respectively.
+will generate the merged data stored in the ``Merged`` folder.
+
+The argument of ``merge_mode`` following the ``-a`` option refers to the azimuthal angle of the output slices in the unit of degree. If not given, the default value is zero. The argument following the ``-t`` option configures the type of data to be merged. There are two options, ``s`` and ``c``, corresponding to the scalar field (including the component of a vector field in z-direction) and the cylindrical components of a vector field respectively.
+
+The ``merge_mode_trans`` script will generate the data in a transverse slice at a specific longitudinal location. The argument following the ``-z`` option refers to the longitudinal location (:math:`\xi`) of the transverse slice in the unit of :math:`c/\omega_p`. If not given, the default value is zero. The cylindrical components will be deposited into to x and y components in the Cartesian coordinate, and the data are stored in the ``x`` and ``y`` sub-folders of the ``Merged`` folder. Noting that the script assumes that the ``s`` type data all have ``'phi'`` or ``'r'`` strings in the name like ``Bphi``, ``Ez``…
+
 
 Correction of on-axis charge density
 ------------------------------------
