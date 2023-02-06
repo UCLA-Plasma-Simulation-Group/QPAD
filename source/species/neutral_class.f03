@@ -322,7 +322,7 @@ type neutral
   private
 
   class(fdist2d), pointer :: pf => null()
-  class(part2d), pointer :: part => null()
+  class(part2d), public, pointer :: part => null()
   class(part2d_buf), pointer :: part_add => null()
 
   class(field_rho), allocatable :: q
@@ -360,7 +360,8 @@ type neutral
   procedure :: del    => end_neutral
   procedure :: qdp    => qdeposit_neutral
   procedure :: amjdp  => amjdeposit_neutral
-  procedure :: push   => push_neutral
+  procedure :: push_u => push_u_neutral
+  procedure :: push_x => push_x_neutral
   procedure :: psend  => psend_neutral
   procedure :: precv  => precv_neutral
   procedure :: wr     => writehdf5_neutral
@@ -928,7 +929,7 @@ subroutine ion_deposit_neutral( this, q_tot )
 
 end subroutine ion_deposit_neutral
 
-subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
+subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu, dt )
 
   implicit none
   
@@ -937,6 +938,7 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   class(field_djdxi), intent(inout) :: dcu
   class(field_e), intent(in) :: e
   class(field_b), intent(in) :: b
+  real, intent(in) :: dt
   ! local data
   character(len=18), save :: sname = 'amjdeposit_neutral'
 
@@ -947,9 +949,9 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   this%amu = 0.0
   select case ( this%push_type )
     case ( p_push2_std )
-      call this%part%amjdeposit_std( e, b, this%cu, this%amu, this%dcu )
+      call this%part%amjdeposit_std( e, b, this%cu, this%amu, this%dcu, dt )
     case ( p_push2_robust )
-      call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu )
+      call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu, dt )
     ! case ( p_push2_robust_pgc )
   end select
   
@@ -970,31 +972,48 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu )
   
 end subroutine amjdeposit_neutral
 
-subroutine push_neutral( this, e, b )
+subroutine push_u_neutral( this, e, b, dt )
   
   implicit none
   
   class(neutral), intent(inout) :: this
   class(field_e), intent(in) :: e
   class(field_b), intent(in) :: b
+  real, intent(in) :: dt
 ! local data
-  character(len=18), save :: sname = 'push_neutral'
+  character(len=18), save :: sname = 'push_u_neutral'
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   select case ( this%push_type )
     case ( p_push2_std )
-      call this%part%push_std( e, b )
+      call this%part%push_u_std( e, b, dt )
     case ( p_push2_robust )
-      call this%part%push_robust( e, b )
+      call this%part%push_u_robust( e, b, dt )
   end select
 
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+     
+end subroutine push_u_neutral
+
+subroutine push_x_neutral( this, dt )
+  
+  implicit none
+  
+  class(neutral), intent(inout) :: this
+  real, intent(in) :: dt
+! local data
+  character(len=18), save :: sname = 'push_x_neutral'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  call this%part%push_x(dt)
   call this%part%update_bound()
   call move_part2d_comm( this%part )
   
   call write_dbg( cls_name, sname, cls_level, 'ends' )
      
-end subroutine push_neutral
+end subroutine push_x_neutral
 
 subroutine end_neutral( this )
 

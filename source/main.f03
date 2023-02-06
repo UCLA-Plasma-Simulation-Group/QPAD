@@ -53,6 +53,10 @@ function create_simulation(opts) result(sim)
   use simulation_popas_class
 #endif
 
+#ifdef ENABLE_SUBCYC
+  use simulation_subcyc_class
+#endif
+
   implicit none
 
   type(options), intent(in) :: opts
@@ -60,23 +64,35 @@ function create_simulation(opts) result(sim)
 
   ! allocate simulation object according to algorithm
   select case ( opts%algorithm )
-  case ( p_sim_standard )
-    allocate( simulation :: sim )
-  case ( p_sim_popas )
+
+    case ( p_sim_standard )
+      allocate( simulation :: sim )
+
+    case ( p_sim_popas )
 #ifdef ENABLE_POPAS
-      allocate( simulation_popas :: sim )
+        allocate( simulation_popas :: sim )
 #else
-      call error_and_die( '[ERROR] The requested module (POPAS) is not compiled.' )
+        call error_and_die( '[ERROR] The requested module (POPAS) is not compiled.' )
 #endif
-  case ( p_sim_tmplt )
+
+    case ( p_sim_subcyc )
+#ifdef ENABLE_SUBCYC
+      allocate( simulation_subcyc :: sim )
+#else
+      call error_and_die( '[ERROR] The requested module (SUBCYC) is not compiled.' )
+#endif
+
+    case ( p_sim_tmplt )
 #ifdef ENABLE_TEMPLATE
       allocate( simulation_tmplt :: sim )
 #else
       call error_and_die( '[ERROR] The requested module (TEMPLATE) is not compiled.' )
 #endif
-  case default
-    call error_and_die( '[ERROR] Invalid simulation mode, only "standard" and &
-      &"popas" are currently supported.' )
+
+    case default
+      call error_and_die( '[ERROR] Invalid simulation mode, only "standard" and &
+        &"popas" are currently supported.' )
+
   end select
 
 end function create_simulation
