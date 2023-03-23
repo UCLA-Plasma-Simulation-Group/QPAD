@@ -458,12 +458,14 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
 
     do i = 2, nrp
       ir = idr / real(i+noff-1)
-      n = 1 - f6_re(1,i) + f1_re(3,i)
+      n = 1 - f6_re(1,i) 
       ipsi = 1 / (1 + f5_re(1,i))
-      this%buf1_re(i) = idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) - n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
-                        -n * ir * f2_re(1,i) - n * ipsi * f7_re(1,i) * f4_re(3,i) - n * ipsi * ( f2_re(1,i) - &
+      this%buf1_re(i) = idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) + n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
+                        + n * ir * f2_re(1,i) + n * ipsi * f7_re(1,i) * f4_re(3,i) + n * ipsi * ( f2_re(1,i) - &
                         f3_re(1,i)*ipsi) * idrh * ( f5_re(1,i+1) - f5_re(1,i - 1) ) 
       this%buf2_re(i) = n*ipsi
+!       this%buf1_re(i) = 0.0
+!       this%buf2_re(i) = 0.0
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -473,32 +475,38 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
       ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
       ! calculated using forward difference
       ir = idr / real(2+noff-1)
-      n = 1 - f6_re(1,2) + f1_re(3,2)
+      n = 1 - f6_re(1,2) 
       ipsi = 1 / (1 + f5_re(1,2))
-      this%buf1_re(2) =   idr * ( f1_re(3,3) - f1_re(3,2) ) - n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
-                         - n * ir * f2_re(1,2) - n * ipsi * f7_re(1,2) * f4_re(3,2) - n * ipsi * ( f2_re(1,2) - &
+      this%buf1_re(2) =   idr * ( f1_re(3,3) - f1_re(3,2) ) + n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
+                         + n * ir * f2_re(1,2) + n * ipsi * f7_re(1,2) * f4_re(3,2) + n * ipsi * ( f2_re(1,2) - &
                          f3_re(1,2) * ipsi ) * idr * ( f5_re(1,3) - f5_re(1,2) ) 
       this%buf2_re(2) = n*ipsi
+!       this%buf1_re(2) = 0.0
+!       this%buf2_re(2) = 0.0
     else
       ir = idr / real(1+noff-1)
-      n = 1 - f6_re(1,1) + f1_re(3,1)
+      n = 1 - f6_re(1,1) 
       ipsi = 1 / (1 + f5_re(1,1))
-      this%buf1_re(1) =  idrh * ( f1_re(3,2)-f1_re(3,0) ) - n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
-                        - n * ir * f2_re(1,1) - n * ipsi * f7_re(1,1) * f4_re(3,1) - n * ipsi * ( f2_re(1,1) - &
+      this%buf1_re(1) =  idrh * ( f1_re(3,2)-f1_re(3,0) ) + n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
+                        + n * ir * f2_re(1,1) + n * ipsi * f7_re(1,1) * f4_re(3,1) + n * ipsi * ( f2_re(1,1) - &
                         f3_re(1,1)*ipsi) * idrh * ( f5_re(1,2) - f5_re(1,0) ) 
       this%buf2_re(1) = n*ipsi
+!       this%buf1_re(1) = 0.0
+!       this%buf2_re(1) = 0.0
     endif
 
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
-      n = 1 - f6_re(1,nrp) + f1_re(3,nrp)
+      n = 1 - f6_re(1,nrp) 
       ipsi = 1 / (1 + f5_re(1,nrp))
-      this%buf1_re(nrp) = idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) - f1_re(3,nrp-2) ) - &
+      this%buf1_re(nrp) = idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2) ) + &
                           n * idrh * ( 3.0 * f2_re(1,nrp) - 4.0 * f2_re(1,nrp-1) + f2_re(1,nrp-2) ) &
-                          - n * ir * f2_re(1,nrp) - n * ipsi * f7_re(1,nrp) * f4_re(3,nrp) - n * ipsi * ( f2_re(1,nrp) &
+                          + n * ir * f2_re(1,nrp) + n * ipsi * f7_re(1,nrp) * f4_re(3,nrp) + n * ipsi * ( f2_re(1,nrp) &
                           + f3_re(1,nrp) * ipsi) * idrh * ( 3.0 * f5_re(1,nrp) - 4.0 * f5_re(1,nrp - 1) + &
                           f5_re(1,nrp-2)) 
       this%buf2_re(nrp) = n*ipsi
+!       this%buf1_re(nrp) = 0.0
+!       this%buf2_re(nrp) = 0.0
     endif
 
   else

@@ -626,9 +626,9 @@ subroutine set_struct_matrix_bphi( this, opts, dr, coef )
   j = real(noff)
   do i = 4, local_vol, this%num_stencil
     j = j + 1.0
-    HYPRE_BUF(i)   = dr
-    HYPRE_BUF(i+1) = -2.0*dr - (1/j)**2 - coef(i+1)*dr2
-    HYPRE_BUF(i+2) = dr
+    HYPRE_BUF(i)   = 1.0
+    HYPRE_BUF(i+1) = -2.0 - (1/j)**2 - coef(i+1)*dr2
+    HYPRE_BUF(i+2) = 1.0
   enddo
 
   ! set the first grid point of each partition
@@ -645,9 +645,9 @@ subroutine set_struct_matrix_bphi( this, opts, dr, coef )
   else
 
     j = real(noff)
-    HYPRE_BUF(1) = dr
-    HYPRE_BUF(2) = -2.0*dr - (1/j)**2 - coef(2)*dr2
-    HYPRE_BUF(3) = dr
+    HYPRE_BUF(1) = 1.0
+    HYPRE_BUF(2) = -2.0 - (1/j)**2 - coef(2)*dr2
+    HYPRE_BUF(3) = 1.0
 
   endif
 
@@ -708,6 +708,7 @@ subroutine set_struct_matrix_bphi( this, opts, dr, coef )
       case ( p_fk_bphi )
 
         HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+!         HYPRE_BUF(local_vol-1) = 0.0
         HYPRE_BUF(local_vol) = 0.0 
 
       case default

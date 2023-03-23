@@ -417,40 +417,37 @@ subroutine run_simulation( this )
       enddo
 
       ! call q_spe%copy_slice( j, p_copy_1to2 )
-      call psi%solve( q_spe )
-      !call b_spe%solve( cu )
+      !first psi
+      call psi%solve( q_spe ) 
+      !br
+!       call b_spe%solve( cu )
+!       call add_f1( b_spe, b_beam, b )
+      !second ez
+      call e%solve( cu )
+!       call e%solve( b, psi )
 
       cu = 0.0
       ve = 0.0
       amu = 0.0
       gam = 0.0
       do k = 1, this%nspecies
+        !deposit e,b for interpolation cof wt
         call spe(k)%edp( e, b, cu, amu, gam, ve )
-      enddo
-!         do k = 1, this%nneutrals
-!           call neut(k)%amjdp( e, b, cu, amu, acu )
-!         enddo
-!         do k = 1, this%nneutral2s
-!           call neut2(k)%amjdp( e, b, cu, amu, acu )
-!         enddo
+      enddo 
+      ! third bphi
+      call b_spe%solve(e,psi,q_spe,cu,amu,gam,ve)
+      !calculate real q (rho - jz --> rho)
       do k = 1, this%nspecies
         call spe(k)%cbq(j)
-      enddo 
-!         do k = 1, this%nneutrals
-!           call neut(k)%cbq(j)
-!         enddo
-!         do k = 1, this%nneutral2s
-!           call neut2(k)%cbq(j)
-!         enddo
+      enddo  
       call cu%copy_slice( j, p_copy_1to2 )
       call add_f1( cu, q_spe, (/3/), (/1/) )
       call q_spe%copy_slice( j, p_copy_1to2 ) 
 
-      call e_spe%solve(cu) 
-      call b_spe%solve(e_spe,psi,q_spe,cu,amu,gam,ve)
-      call e_spe%solve( b_spe, psi )
-      call add_f1( b_spe, b_beam, b ) 
-      call e%solve( cu )
+      !sum b
+      call add_f1( b_spe, b_beam, b )
+      ! last er 
+      call e_spe%solve( b_spe, psi ) 
       call e%solve( b, psi )
 
       ! for vector potential diagnostics

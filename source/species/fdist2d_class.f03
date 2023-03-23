@@ -338,13 +338,13 @@ subroutine inject_fdist2d( this, x_l, x, p_l, p, gamma, psi, q, w, w0, npp, s, i
 !             x_r(1,ipart) = 0
 !             x_r(2,ipart) = 0
             q(ipart) = rn * den_perp * den_lon * this%density * coef
-!             write(2,*) q(ipart), "fdist2d_q"
-            p_l(1,ipart) = 0
-            p_l(2,ipart) = 0
-            p_l(3,ipart) = 0
+!             write(2,*) q(ipart), "fdist2d_q" 
             p(1,ipart) = this%uth(1) * ranorm()
             p(2,ipart) = this%uth(2) * ranorm()
             p(3,ipart) = this%uth(3) * ranorm()
+            p_l(1,ipart) = p(1,ipart)
+            p_l(2,ipart) = p(2,ipart)
+            p_l(3,ipart) = p(3,ipart)
             gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
             w(ipart) = 0
             w0(ipart) = 1.0
