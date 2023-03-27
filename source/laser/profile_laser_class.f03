@@ -45,14 +45,21 @@ type, public :: profile_laser
   ! Parameter list of the intensity profiles in 1, 2, 3 directions
   type( kw_list ) :: prof_perp_pars, prof_lon_pars
 
+  ! Parameter list of longitudinal intensity profile in piecewise linear/cubic spline
+  real, dimension(:), pointer :: prof_lon_pars_lin => null()
+  real, dimension(:), pointer :: prof_lon_pars_cub => null()
+
   ! Procedure of setting the density profiles
   procedure( set_prof_intf ), nopass, pointer :: set_prof_perp => null()
   procedure( set_prof_intf ), nopass, pointer :: set_prof_lon => null()
+  procedure( set_prof_intf_lin ), nopass, pointer :: set_prof_lon_lin => null()
+  procedure( set_prof_intf_cub ), nopass, pointer :: set_prof_lon_cub => null()
 
   ! Procedure of getting the beam density
   procedure( get_prof_perp_intf ), nopass, pointer :: get_prof_perp => null()
   procedure( get_prof_lon_intf ), nopass, pointer :: get_prof_lon => null()
-
+  procedure( get_prof_lon_intf_lin ), nopass, pointer :: get_prof_lon_lin => null()
+  procedure( get_prof_lon_intf_cub ), nopass, pointer :: get_prof_lon_cub => null()
   contains
 
   procedure :: new => init_profile_laser
@@ -79,6 +86,20 @@ interface
     real, intent(out) :: envelope
   end subroutine get_prof_lon_intf
 
+  subroutine get_prof_lon_intf_lin( z, prof_pars, envelope)
+    implicit none
+    real, intent(in) :: z
+    real, intent(in), dimension(:), pointer :: prof_pars
+    real, intent(out) :: envelope
+  end subroutine get_prof_lon_intf_lin
+
+  subroutine get_prof_lon_intf_cub( z, prof_pars, envelope)
+    implicit none
+    real, intent(in) :: z
+    real, intent(in), dimension(:), pointer :: prof_pars
+    real, intent(out) :: envelope
+  end subroutine get_prof_lon_intf_cub
+
   subroutine set_prof_intf( input, sect_name, prof_pars )
     import input_json, kw_list
     implicit none
@@ -86,12 +107,31 @@ interface
     character(len=*), intent(in) :: sect_name
     type(kw_list), intent(inout) :: prof_pars
   end subroutine set_prof_intf
+
+  subroutine set_prof_intf_lin( input, sect_name, prof_pars )
+    import input_json
+    implicit none
+    type( input_json ), intent(inout) :: input
+    character(len=*), intent(in) :: sect_name
+    real, intent(inout), dimension(:), pointer :: prof_pars
+  end subroutine set_prof_intf_lin
+
+  subroutine set_prof_intf_cub( input, sect_name, prof_pars )
+    import input_json
+    implicit none
+    type( input_json ), intent(inout) :: input
+    character(len=*), intent(in) :: sect_name
+    real, intent(inout), dimension(:), pointer :: prof_pars
+  end subroutine set_prof_intf_cub 
+
 end interface
 
 integer, parameter, public :: p_prof_laser_gaussian = 0
 integer, parameter, public :: p_prof_laser_laguerre = 1
 integer, parameter, public :: p_prof_laser_sin2 = 100
 integer, parameter, public :: p_prof_laser_poly = 101
+integer, parameter, public :: p_prof_laser_pw_linear = 1000
+integer, parameter, public :: p_prof_laser_cubic_spline = 1001
 
 character(len=32), save :: cls_name = 'profile_laser'
 integer, save :: cls_level = 2
@@ -156,15 +196,31 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%set_prof_lon => set_prof_lon_poly
       this%get_prof_lon => get_prof_lon_poly
 
+    case ('piecewise_linear')
+      this%prof_type(2)  = p_prof_laser_pw_linear
+      this%set_prof_lon_lin => set_prof_lon_pw_linear
+      this%get_prof_lon_lin => get_prof_lon_pw_linear
+    
+    case ('cubic_spline')
+      this%prof_type(2)  = p_prof_laser_cubic_spline
+      this%set_prof_lon_cub => set_prof_lon_cubic_spline
+      this%get_prof_lon_cub => get_prof_lon_cubic_spline     
+    
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
-        &Currently available include "sin2" and "polynomial".' )
+        &Currently available include "sin2", "polynomial", "piecewise_linear"and"cubic_spline".' )
 
   end select
 
   ! read and store the profile parameters into the parameter lists
   call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
-  call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
+  if ( this%prof_type(2) == 1000 ) then
+    call this%set_prof_lon_lin( input, trim(sect_name), this%prof_lon_pars_lin )
+  else if ( this%prof_type(2) == 1001) then
+    call this%set_prof_lon_cub( input, trim(sect_name), this%prof_lon_pars_cub ) 
+  else 
+    call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
+  endif
 
   call input%get( trim(sect_name) // '.a0', this%a0 )
   call input%get( trim(sect_name) // '.k0', this%k0 )
@@ -219,7 +275,14 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
         call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
-        call this%get_prof_lon( z, this%prof_lon_pars, env )
+        if ( this%prof_type(2) == 1000 ) then
+          call this%get_prof_lon_lin( z, this%prof_lon_pars_lin, env )
+        else if ( this%prof_type(2) == 1001) then 
+          call this%get_prof_lon_cub( z, this%prof_lon_pars_cub, env )
+        else 
+          call this%get_prof_lon( z, this%prof_lon_pars, env )
+
+        endif
         env = env * this%a0
         ar_re(m)%f2( 1, i, j ) = env * arr
         ai_re(m)%f2( 1, i, j ) = env * air
