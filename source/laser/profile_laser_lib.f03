@@ -12,6 +12,8 @@ public :: set_prof_perp_gaussian, get_prof_perp_gaussian
 public :: set_prof_perp_laguerre, get_prof_perp_laguerre
 public :: set_prof_lon_sin2, get_prof_lon_sin2
 public :: set_prof_lon_poly, get_prof_lon_poly
+public :: set_prof_lon_pw_linear, get_prof_lon_pw_linear
+public :: set_prof_lon_cubic_spline, get_prof_lon_cubic_spline
 
 integer, parameter :: laguerre_p_max = 5
 integer, parameter :: laguerre_l_max = 5
@@ -265,7 +267,7 @@ subroutine get_prof_lon_poly( z, prof_pars, env )
   type(kw_list), intent(in) :: prof_pars
   real, intent(out) :: env
 
-  real :: t_rise, t_fall, t_flat, flat_start, flat_end, t
+  real :: t_rise, t_fall, t_flat, flat_start, flat_end, t     
 
   call prof_pars%get( 't_rise', t_rise )
   call prof_pars%get( 't_flat', t_flat )
@@ -288,5 +290,173 @@ subroutine get_prof_lon_poly( z, prof_pars, env )
   endif
 
 end subroutine get_prof_lon_poly
+
+
+! ------------------------------------------------------------------------------
+! ARBITRARY LONGITUDINAL PROFILES PIECEWISE LINEAR
+! ------------------------------------------------------------------------------
+subroutine set_prof_lon_pw_linear( input, sect_name, prof_pars )
+
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  real, intent(inout), dimension(:), pointer :: prof_pars
+
+  integer :: len_t, i
+  real, dimension(:), allocatable :: ft, t
+
+  call input%get( trim(sect_name)//'.piecewise_ft', ft )
+  call input%get( trim(sect_name)//'.piecewise_t', t )
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  len_t = size(t)
+  do i = 2, len_t
+    if ( t(i) <= t(i-1) ) then
+      call write_err( 'Array of longitudinal position must be monotonically increasing!' )
+    endif
+  enddo
+
+  allocate( prof_pars( 2 * len_t ) )
+
+  do i = 1, len_t
+    prof_pars(i) = t(i)
+    prof_pars(len_t+i) = ft(i)
+  enddo
+
+  deallocate( ft, t )
+
+end subroutine set_prof_lon_pw_linear
+
+subroutine get_prof_lon_pw_linear( z, prof_pars, env )
+
+  implicit none
+  real, intent(in) :: z
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: env
+  
+  integer :: len_t, i
+  real, dimension(:), pointer :: t_array => null(), ft_array => null()
+
+  len_t = size( prof_pars ) / 2
+
+  ! use pointer to associate with the segment of data to avoid hard-copy
+  t_array  => prof_pars( 1 : len_t )
+  ft_array => prof_pars( len_t+1 : 2*len_t )
+
+  if ( z <= t_array(1) .or. z > t_array(len_t) ) then
+    env = 0.0
+  else
+    env = 0.0
+    do i = 2, len_t
+      if ( z <= t_array(i) ) then
+        env = ft_array(i-1) + ( ft_array(i) - ft_array(i-1) ) / &
+          ( t_array(i) - t_array(i-1) ) * ( z - t_array(i-1) )
+        exit
+      endif
+    enddo
+  endif
+
+end subroutine get_prof_lon_pw_linear
+
+! ------------------------------------------------------------------------------
+! ARBITRARY LONGITUDINAL PROFILES CUBIC SPLINE
+! ------------------------------------------------------------------------------
+subroutine set_prof_lon_cubic_spline( input, sect_name, prof_pars )
+
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  real, intent(inout), dimension(:), pointer :: prof_pars
+
+  integer :: i, n
+  real, dimension(:), allocatable :: t, ft, diag, off_diag_lower, off_diag_upper, rhs, d
+  character(len=:), allocatable :: kind
+
+  call input%get( trim(sect_name)//'.piecewise_ft', ft )
+  call input%get( trim(sect_name)//'.piecewise_t', t )
+  call input%get( trim(sect_name)//'.endpoints_type', kind )
+
+  n = size(ft)
+  do i = 2, n
+    if ( t(i) <= t(i-1) ) then
+      call write_err( 'Array of longitudinal position must be monotonically increasing!' )
+    endif
+  enddo
+  ! note that the first element of off_diag_lower and the last element of off_diag_upper are useless.
+  allocate(d(n), diag(n), off_diag_lower(n), off_diag_upper(n), rhs(n))
+  diag = 4.0
+  off_diag_lower = 1.0
+  off_diag_upper = 1.0
+  rhs(2:n-1) = 3.0 * (ft(3:n) - ft(1:n-2))
+
+  ! solve the derivatives of cubic spline function at each points
+  select case (kind)
+    case ('natural')
+      ! The second-order derivatives of the endpoints are zero
+      diag(1) = 2.0; diag(n) = 2.0
+      rhs(1) = 3.0 * (ft(2) - ft(1))
+      rhs(n) = 3.0 * (ft(n) - ft(n-1))
+      call tdma(n, off_diag_lower, diag, off_diag_upper, rhs, d)
+    case ('clamped')
+      ! The first-order derivatives of the endpoints are zero
+      call tdma(n-2, off_diag_lower(2:n-1), diag(2:n-1), off_diag_upper(2:n-1), rhs(2:n-1), d(2:n-1))
+      d(1) = 0.0; d(n) = 0.0
+    case ('not-a-knot')
+      ! The third-order derivatives of the endpoints are equal to those of the adjacent points.
+      diag(1) = 2.0; diag(n) = 2.0
+      off_diag_lower(n) = 4.0
+      off_diag_upper(1) = 4.0
+      rhs(1) = -5.0 * ft(1) + 4.0 * ft(2) + ft(3)
+      rhs(n) = -5.0 * ft(n-2) + 4.0 * ft(n-1) + ft(n)
+      call tdma(n, off_diag_lower, diag, off_diag_upper, rhs, d)
+    case default
+      call write_err("Invaild endpoints type of cubic spline profile.")
+  end select
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+  allocate( prof_pars(3 * n) )
+  prof_pars(    1:  n) = t
+  prof_pars(  n+1:2*n) = ft
+  prof_pars(2*n+1:3*n) = d
+
+end subroutine set_prof_lon_cubic_spline
+
+subroutine get_prof_lon_cubic_spline( z, prof_pars, env )
+
+  implicit none
+  real, intent(in) :: z
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: env
+  
+  integer :: i, n
+  real :: t_norm, a, b, c, d
+  real, dimension(:), pointer :: t_ptr => null(), ft_ptr => null(), dft_ptr => null()
+
+  n = size(prof_pars) / 3
+  ! use pointer to associate with the segment of data to avoid hard-copy
+  t_ptr   => prof_pars(    1:  n)
+  ft_ptr  => prof_pars(  n+1:2*n)
+  dft_ptr => prof_pars(2*n+1:3*n)
+
+  env = 0.0
+  if ( z <= t_ptr(1) .or. z > t_ptr(n) ) then
+    env = 0.0
+  else
+    env = 0.0
+    do i = 1, n-1
+      if ( z <= t_ptr(i+1) ) then
+        t_norm = (z - t_ptr(i)) / (t_ptr(i+1) - t_ptr(i))
+        env = ft_ptr(i) + dft_ptr(i) * t_norm &
+          + ( 3.0 * (ft_ptr(i+1) - ft_ptr(i)) - 2.0 * dft_ptr(i) - dft_ptr(i+1) ) * t_norm**2 &
+          + ( 2.0 * (ft_ptr(i) - ft_ptr(i+1)) + dft_ptr(i) + dft_ptr(i+1) ) * t_norm**3
+        exit
+      endif
+    enddo
+  endif
+
+end subroutine get_prof_lon_cubic_spline
 
 end module profile_laser_lib
