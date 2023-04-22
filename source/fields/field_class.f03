@@ -87,6 +87,7 @@ type :: field
   generic :: as            => assign_f2
 
   procedure, private :: assign_f1, assign_f2
+  procedure ::  getresum, getimsum
 
 end type field
 
@@ -1494,5 +1495,37 @@ subroutine sub_f2_unitary( a1, a2 )
   enddo
 
 end subroutine sub_f2_unitary
+
+function getresum(this)
+
+  implicit none
+
+  class(field), intent(in) :: this
+  real :: getresum
+
+  integer :: i
+
+  
+  do i = 0, this%max_mode
+    getresum = getresum + sum(this%rf_re(i)%get_f1())
+  enddo
+
+end function getresum
+
+function getimsum(this)
+
+  implicit none
+
+  class(field), intent(in) :: this
+  real :: getimsum
+
+  integer :: i
+
+  
+  do i = 0, this%max_mode
+    getimsum = getimsum + sum(this%rf_im(i)%get_f1())
+  enddo
+
+end function getimsum
 
 end module field_class

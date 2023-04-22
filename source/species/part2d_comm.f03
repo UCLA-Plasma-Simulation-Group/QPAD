@@ -341,6 +341,8 @@ subroutine unpack_relay_particles( part )
       part%gamma( npp + stay_cnt ) = recv_buf_lower( 6 + stride )
       part%psi( npp + stay_cnt )   = recv_buf_lower( 7 + stride )
       part%q( npp + stay_cnt )     = recv_buf_lower( 8 + stride )
+      part%w( npp + stay_cnt )     = recv_buf_lower( 9 + stride )
+      part%w0( npp + stay_cnt )     = recv_buf_lower( 10 + stride )
 
     ! check if particle goes to the outward neighbor node
     elseif ( goto_des( x, redge, p_owd ) ) then
@@ -392,6 +394,8 @@ subroutine unpack_relay_particles( part )
       part%gamma( npp + stay_cnt ) = recv_buf_upper( 6 + stride )
       part%psi( npp + stay_cnt )   = recv_buf_upper( 7 + stride )
       part%q( npp + stay_cnt )     = recv_buf_upper( 8 + stride )
+      part%w( npp + stay_cnt )     = recv_buf_upper( 9 + stride )
+      part%w0( npp + stay_cnt )    = recv_buf_upper( 10 + stride )
 
     ! check if particle goes to the inward neighbor node
     elseif ( goto_des( x, redge, p_iwd ) ) then
@@ -458,6 +462,8 @@ subroutine pack_particles( part )
       send_buf_lower( 6 + stride ) = part%gamma(i)
       send_buf_lower( 7 + stride ) = part%psi(i)
       send_buf_lower( 8 + stride ) = part%q(i)
+      send_buf_lower( 9 + stride ) = part%w(i)
+      send_buf_lower( 10 + stride ) = part%w0(i)
 
       send_cnt(p_iwd) = send_cnt(p_iwd) + 1
       go_cnt = go_cnt + 1
@@ -475,6 +481,8 @@ subroutine pack_particles( part )
       send_buf_upper( 6 + stride ) = part%gamma(i)
       send_buf_upper( 7 + stride ) = part%psi(i)
       send_buf_upper( 8 + stride ) = part%q(i)
+      send_buf_upper( 9 + stride ) = part%w(i)
+      send_buf_upper( 10 + stride ) = part%w0(i)
 
       send_cnt(p_owd) = send_cnt(p_owd) + 1
       go_cnt = go_cnt + 1
@@ -525,7 +533,10 @@ subroutine pack_particles( part )
     part%gamma( ihole(i) )  = part%gamma(npp)
     part%psi( ihole(i) )    = part%psi(npp)
     part%q( ihole(i) )      = part%q(npp)
-    
+    part%w( ihole(i) )      = part%w(npp)
+    part%w0( ihole(i) )     = part%w0(npp)
+
+
     npp = npp - 1
 
   enddo

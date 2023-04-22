@@ -46,6 +46,8 @@ type part2d
    real, dimension(:), allocatable :: q
    ! array for psi
    real, dimension(:), allocatable :: psi
+   real, dimension(:), allocatable :: w
+   real, dimension(:), allocatable :: w0
    ! particle upper boundaries
    real :: edge
    ! particle buffer
@@ -66,6 +68,8 @@ type part2d
    procedure :: amjdeposit_robust        => amjdeposit_robust_part2d
    procedure :: amjdeposit_clamp         => amjdeposit_clamp_part2d
    procedure :: amjdeposit_robust_subcyc => amjdeposit_robust_subcyc_part2d
+   procedure :: ionize                   => ionize_part2d
+   procedure :: add_particles            => add_particles_part2d
    procedure :: push_robust              => push_robust_part2d
    procedure :: push_clamp               => push_clamp_part2d
    procedure :: push_robust_subcyc       => push_robust_subcyc_part2d
@@ -77,7 +81,7 @@ type part2d
    procedure :: realloc                  => realloc_part2d
    procedure :: sort                     => sort_part2d
 
-end type
+end type part2d
 
 save
 
@@ -94,7 +98,7 @@ real, parameter :: p_buf_incr = 1.5
 
 contains
 
-subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
+subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
 
    implicit none
 
@@ -103,11 +107,13 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
    logical, intent(in), optional :: if_empty
+   logical, intent(in), optional :: ionization
 
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax
    logical :: empty = .false.
+   logical :: ionize = .false.
 
    call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -115,7 +121,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    this%dt  = dt
    this%dt_eff_max = pf%dt_eff_max
    this%fac_clamp = pf%fac_clamp
-   this%part_dim = 2 + p_p_dim + 3
+   this%part_dim = 2 + p_p_dim + 5
 
    npmax      = pf%npmax
    this%npmax = npmax
@@ -126,15 +132,17 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
-   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ) )
+   allocate( this%gamma( npmax ), this%q( npmax ), this%psi( npmax ), this%w( npmax ), this%w0( npmax ) )
    allocate( this%pbuf( this%part_dim * npmax ) )
 
    recv_buf_size = max( recv_buf_size, npmax )
 
    if ( present( if_empty ) ) empty = if_empty
+   if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -149,7 +157,7 @@ subroutine end_part2d(this)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   deallocate( this%x, this%p, this%gamma, this%q, this%psi )
+   deallocate( this%x, this%p, this%gamma, this%q, this%psi, this%w )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -190,6 +198,17 @@ subroutine realloc_part2d( this, ratio )
   this%tmp1( 1:this%npp ) = this%psi( 1:this%npp )
   call move_alloc( this%tmp1, this%psi )
 
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%w( 1:this%npp )
+  call move_alloc( this%tmp1, this%w )
+
+  allocate( this%tmp1( npmax ) )
+  this%tmp1 = 0.0
+  this%tmp1( 1:this%npp ) = this%w0( 1:this%npp )
+  call move_alloc( this%tmp1, this%w0 )
+
   allocate( this%tmp1( npmax ) )
   this%tmp1 = 0.0
   this%tmp1( 1:this%npp ) = this%q( 1:this%npp )
@@ -202,7 +221,7 @@ subroutine realloc_part2d( this, ratio )
 
 end subroutine realloc_part2d
 
-subroutine renew_part2d( this, pf, s, if_empty )
+subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    implicit none
 
@@ -210,9 +229,11 @@ subroutine renew_part2d( this, pf, s, if_empty )
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: s
    logical, intent(in), optional :: if_empty
+   logical, intent(in), optional :: ionization
 
    ! local data
-   logical :: empty
+   logical :: empty = .false.
+   logical :: ionize = .false.
    character(len=18), save :: sname = 'renew_part2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -220,7 +241,8 @@ subroutine renew_part2d( this, pf, s, if_empty )
    this%npp = 0
    empty = .false.   
    if ( present( if_empty ) ) empty = if_empty
-   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%npp, s )
+   if ( present( ionization ) ) ionize = ionization
+   if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -1381,6 +1403,336 @@ subroutine interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, x, dr, bp, e
 
 end subroutine interp_emf_part2d
 
+subroutine interp_ef_part2d( ef_re, ef_im, max_mode, x, dr, ep, np, ptrcur, &
+  geom, weight, ix, pcos, psin )
+
+  implicit none
+
+   type(ufield), dimension(:), pointer, intent(in) :: ef_re, ef_im
+   integer, intent(in) :: max_mode, np, geom
+   real, intent(in) :: dr
+   real, dimension(:,:), intent(in) :: x
+   real, dimension(:,:), intent(inout) :: ep
+   integer(kind=LG), intent(in) :: ptrcur
+   real, dimension(:,:), intent(out), optional :: weight
+   integer, dimension(:), intent(out), optional :: ix
+   real, dimension(:), intent(out), optional :: pcos, psin
+
+   real, dimension(:,:), pointer :: e0, er, ei
+   integer :: noff, i, j, nn, mode
+   integer(kind=LG) :: pp
+   real :: pos, idr, ph_r, ph_i, cc, ss
+   real, dimension(0:1) :: wt
+   complex(kind=DB) :: phase0, phase
+
+   idr = 1.0 / dr
+   noff = ef_re(0)%get_noff(1)
+
+   e0 => ef_re(0)%get_f1()
+  
+   ep = 0.0
+
+   pp = ptrcur
+   do i = 1, np
+      pos = sqrt( x(1,pp)**2 + x(2,pp)**2 ) * idr
+      ! cosine and sine
+      cc = x(1,pp) / pos * idr
+      ss = x(2,pp) / pos * idr
+      phase0 = cmplx( cc, ss )
+
+      ! in-cell position
+      nn  = int( pos )
+      pos = pos - real(nn)
+
+      ! cell index
+      nn = nn - noff + 1
+
+      ! get interpolation weight factor
+      call spline_linear( pos, wt )
+
+      if ( present(weight) ) weight(:,i) = wt
+      if ( present(ix) ) ix(i) = nn
+      if ( present(pcos) ) then
+        pcos(i) = cc
+        psin(i) = ss
+      endif
+
+      ! interpolate m=0 mode
+      do j = 0, 1
+        ep(:,i) = ep(:,i) + e0(:,nn+j) * wt(j)
+      enddo
+
+      ! interpolate m>0 modes
+      phase = cmplx( 1.0, 0.0 )
+      do mode = 1, max_mode
+         phase = phase * phase0
+         ph_r = 2.0 * real(phase)
+         ph_i = 2.0 * aimag(phase)
+
+         er => ef_re(mode)%get_f1()
+         ei => ef_im(mode)%get_f1()
+
+         do j = 0, 1
+            ep(:,i) = ep(:,i) + ( er(:,nn+j) * ph_r - ei(:,nn+j) * ph_i ) * wt(j)
+         enddo
+      enddo
+
+      ! transform from cylindrical geometry to Cartesian geometry
+      if ( geom == p_cartesian ) then
+        ! ph_r, ph_i are temporary variables here
+        ph_r = ep(1,i) * cc - ep(2,i) * ss
+        ph_i = ep(1,i) * ss + ep(2,i) * cc
+        ep(1,i) = ph_r
+        ep(2,i) = ph_i
+
+      endif
+
+      pp = pp + 1
+    enddo
+
+end subroutine interp_ef_part2d
+
+subroutine ionize_part2d( this, prof, ef, wp, dt, adk_coef )
+
+   implicit none
+   
+   class(part2d), intent(inout) :: this
+   class(fdist2d), intent(inout) :: prof
+   double precision, dimension(:,:), intent(in) :: adk_coef
+   class(field), intent(in) :: ef
+   real, intent(in) :: wp, dt
+  ! local data
+   character(len=18), save :: sname = 'ionize_neutral'
+   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+   real, dimension(:,:), pointer :: ef0 => null()
+   real :: rn, dr, w_ion, cons, eff,esum,r
+   integer :: noff, i, j, k, l, nn, mode, max_mode, np, nrp
+   real, dimension(p_cache_size) :: cc, ss
+   real, dimension(p_cache_size) :: pcos, psin
+   integer(kind=LG) :: ptrcur, pp
+   real :: idr
+   integer, dimension(p_cache_size) :: ix
+   real, dimension(0:1, p_cache_size) :: wt
+   real, dimension(p_p_dim, p_cache_size) :: ep
+   complex(kind=DB) :: phase0, phase
+   
+  idr = 1.0 / this%dr
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+
+  max_mode = ef%get_max_mode()
+
+  noff = ef_re(0)%get_noff(1)
+  nrp  = ef_re(0)%get_ndp(1)
+  ef0  => ef_re(0)%get_f1()
+  esum = 0.0
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    call interp_ef_part2d( ef_re, ef_im, max_mode, this%x, this%dr, ep, np, &
+      ptrcur, p_cylindrical)
+!     write(2,*) wp, "ionize_part2d"
+    pp = ptrcur
+      do i = 1, np
+        eff = sqrt(ep(1,i)**2 + ep(2,i)**2 + ep(3,i)**2)
+        eff = eff * wp * 1.708e-12
+!         write(2,*) eff, "ionize_part2d"
+        if ((eff .gt. 1.0e-6) .and. (this%q(pp) .gt. 1.0e-6 )) then 
+          w_ion = adk_coef(1,1)*eff**(-adk_coef(3,1))*exp(-adk_coef(2,1)/eff&
+            &)/wp 
+
+                ! w_ion is in normalized unit now
+                !2nd rk (dn/dt==n*w_ion)
+                !>>>>>> w_ion* dt/(1.0 + 0.5 * w_ion * dt) could be larger than 1. 
+                !>>>>>> should add:
+          cons = w_ion* dt
+          cons = cons/(1.0 + 0.5 * cons)
+          cons = cons*this%gamma(pp)/(this%gamma(pp) - this%p(3,pp))
+          this%w(pp) = (1.0-this%w(pp))*cons+this%w(pp)
+          ! write(2,*) "ionize_part2d",this%w(pp),dt
+          if (this%w(pp) .gt. 1.0) this%w(pp) = 1.0
+        endif
+!         r = sqrt(this%x(1,pp)**2 + this%x(2,pp)**2)
+!         if ((r .gt. 4.5).and.(r .lt. 5)) then
+! !           write(2,*) w_ion, "w_ion"
+!           write(2,*) eff, "eff"
+!           write(2,*) w_ion, "w_ion"
+!           write(2,*) r, "particle_r"
+!         endif
+        pp = pp + 1
+        esum = esum + eff
+      enddo
+  enddo
+  write(2,*) esum, "ionize_part2d_esum"
+end subroutine ionize_part2d
+
+subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, s)
+
+    implicit none
+    class(part2d), intent(inout) :: this
+    class(fdist2d), intent(inout) :: prof
+    class(part2d), intent(inout) :: ppart1
+    class(part2d), intent(inout) :: ppart2
+    real, intent(in) :: s
+    integer, intent(in) :: multi_max, m, sec
+
+    ! local
+    character(len=18), save :: sname = 'add_particles'
+    integer :: noff, i, j, k, pp1, pp2, m1, m2, np, l
+    integer(kind=LG) :: ptrcur, pp
+    real :: dxp, ww, a, b
+
+    call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+      if ( m .le. 2 ) then
+        m1 = 1
+        m2 = m
+      else
+        m1 = m - 1
+        m2 = m
+      end if
+      write(2,*) m1,m2,"m1,m2"
+      pp1 = ppart1%npp
+      pp2 = ppart2%npp
+!       write(2,*) pp2, "particles_e"
+     do ptrcur = 1, this%npp, p_cache_size
+
+        ! check if last copy of table and set np
+        if( ptrcur + p_cache_size > this%npp ) then
+          np = this%npp - ptrcur + 1
+        else
+          np = p_cache_size
+        endif
+
+        pp = ptrcur
+        do i = 1, np
+          !Adding particles in segments according to the gain of ionization rate
+          if (sec.ge.2) then
+            ww = this%w(pp) - this%w0(pp)
+            if ( this%w(pp) .ge. 0.95) then
+
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = sqrt( 1.0 + ppart1%p(1,pp1)**2 + ppart1%p(2,pp1)**2 + ppart1%p(3,pp1)**2 )
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
+
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = sqrt( 1.0 + ppart2%p(1,pp2)**2 + ppart2%p(2,pp2)**2 + ppart2%p(3,pp2)**2 )
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp2) = 0.0
+                  ppart2%w0(pp2) = 0.0
+
+                  this%q(pp) = 0.0
+                  this%w0(pp) = 1.0
+                  this%w(pp) = 0.0
+
+            else
+
+                do l = 1, sec - 1
+                  b = l/real(sec)
+                  a = 1 - b
+                  if( ww .ge. a) then
+                    dxp = this%q(pp)/m1
+                    pp1 = pp1 + 1
+                    pp2 = pp2 + 1
+
+                    ppart1%x(1,pp1)   = this%x(1,pp)
+                    ppart1%x(2,pp1)   = this%x(2,pp)
+                    ppart1%q(pp1)     = dxp*m2*a/(1-this%w0(pp))
+  !                   ppart1%q(pp1)     = dxp*m2*0.75
+                    ppart1%p(1,pp1)   = this%p(1,pp)
+                    ppart1%p(2,pp1)   = this%p(2,pp)
+                    ppart1%p(3,pp1)   = this%p(3,pp)
+                    ppart1%gamma(pp1) = sqrt( 1.0 + ppart1%p(1,pp1)**2 + ppart1%p(2,pp1)**2 + ppart1%p(3,pp1)**2 )
+                    ppart1%psi(pp1) = 1.0
+                    ppart1%w(pp1) = 0.0
+                    ppart1%w0(pp1) = 0.0
+
+                    ppart2%x(1,pp2)   = this%x(1,pp)
+                    ppart2%x(2,pp2)   = this%x(2,pp)
+                    ppart2%q(pp2)     = -dxp*a/(1-this%w0(pp))
+                    ppart2%p(1,pp2)   = this%p(1,pp)
+                    ppart2%p(2,pp2)   = this%p(2,pp)
+                    ppart2%p(3,pp2)   = this%p(3,pp)
+                    ppart2%gamma(pp2) = sqrt( 1.0 + ppart2%p(1,pp2)**2 + ppart2%p(2,pp2)**2 + ppart2%p(3,pp2)**2 )
+                    ppart2%psi(pp2) = 1.0
+                    ppart2%w(pp2) = 0.0
+                    ppart2%w0(pp2) = 0.0
+
+                    this%q(pp) = this%q(pp)*((1-this%w0(pp)-a)/(1-this%w0(pp)))
+                    this%w0(pp) = a + this%w0(pp)
+                    exit
+                  endif
+                enddo
+            endif
+          elseif (sec.le.1) then
+            if ( this%w(pp) .ge. 0.95) then
+
+                  dxp = this%q(pp)/m1
+                  pp1 = pp1 + 1
+                  pp2 = pp2 + 1
+                  ppart1%x(1,pp1)   = this%x(1,pp)
+                  ppart1%x(2,pp1)   = this%x(2,pp)
+                  ppart1%q(pp1)     = dxp*m2
+                  ppart1%p(1,pp1)   = this%p(1,pp)
+                  ppart1%p(2,pp1)   = this%p(2,pp)
+                  ppart1%p(3,pp1)   = this%p(3,pp)
+                  ppart1%gamma(pp1) = sqrt( 1.0 + ppart1%p(1,pp1)**2 + ppart1%p(2,pp1)**2 + ppart1%p(3,pp1)**2 )
+                  ppart1%psi(pp1) = 1.0
+                  ppart1%w(pp1) = 0.0
+                  ppart1%w0(pp1) = 0.0
+
+                  ppart2%x(1,pp2)   = this%x(1,pp)
+                  ppart2%x(2,pp2)   = this%x(2,pp)
+                  ppart2%q(pp2)     = -dxp
+                  ppart2%p(1,pp2)   = this%p(1,pp)
+                  ppart2%p(2,pp2)   = this%p(2,pp)
+                  ppart2%p(3,pp2)   = this%p(3,pp)
+                  ppart2%gamma(pp2) = sqrt( 1.0 + ppart2%p(1,pp2)**2 + ppart2%p(2,pp2)**2 + ppart2%p(3,pp2)**2 )
+                  ppart2%psi(pp2) = 1.0
+                  ppart2%w(pp2) = 0.0
+                  ppart2%w0(pp2) = 0.0
+
+                  this%q(pp) = 0.0
+                  this%w0(pp) = 1.0
+                  this%w(pp) = 0.0
+            endif
+          endif
+
+          pp = pp + 1
+        enddo
+     enddo
+     ppart1%npp = pp1
+     ppart2%npp = pp2
+!     write(2,*) pp1, "add_particles"
+    write(2,*) pp1, "add_particles_ion"
+    write(2,*) pp2, "add_particles_e"
+    call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine add_particles_part2d
+
+
 subroutine push_robust_part2d( this, ef, bf )
 
   implicit none
@@ -1837,6 +2189,8 @@ subroutine update_bound_part2d( this )
          this%gamma(i) = this%gamma(this%npp)
          this%psi(i)   = this%psi(this%npp)
          this%q(i)     = this%q(this%npp)
+         this%w(i)     = this%w(this%npp)
+         this%w0(i)    = this%w0(this%npp)
          this%npp = this%npp - 1
          cycle
       endif

@@ -2,6 +2,7 @@ module sim_plasma_class
 
 use species2d_class
 use neutral_class
+use neutral2_class
 use parallel_module
 use options_class
 use fdist2d_class
@@ -20,9 +21,10 @@ type sim_plasma
 
   class( species2d ), dimension(:), pointer :: spe => null()
   class( neutral ), dimension(:), pointer :: neut => null()
-  type( fdist2d ), dimension(:), pointer :: pf_spe => null(), pf_neut => null()
+  class( neutral2 ), dimension(:), pointer :: neut2 => null()
+  type( fdist2d ), dimension(:), pointer :: pf_spe => null(), pf_neut => null(),pf_neut2 => null()
 
-  integer :: num_species, num_neutrals
+  integer :: num_species, num_neutrals, num_neutral2s
 
   contains
 
@@ -48,9 +50,11 @@ subroutine alloc_sim_plasma( this, input )
 
   call input%get( 'simulation.nspecies', this%num_species )
   call input%get( 'simulation.nneutrals', this%num_neutrals )
+  call input%get( 'simulation.nneutral2s', this%num_neutral2s )
 
   if ( .not. associated( this%spe ) ) allocate( species2d :: this%spe( this%num_species ) )
   if ( .not. associated( this%neut ) ) allocate( neutral :: this%neut( this%num_neutrals ) )
+  if ( .not. associated( this%neut2 ) ) allocate( neutral2 :: this%neut2( this%num_neutral2s ) )
 
   do i = 1, this%num_species
     call this%spe(i)%alloc()
@@ -59,6 +63,10 @@ subroutine alloc_sim_plasma( this, input )
   do i = 1, this%num_neutrals
     call this%neut(i)%alloc()
   enddo
+
+!   do i = 1, this%num_neutral2s
+!     call this%neut2(i)%alloc()
+!   enddo
 
 end subroutine alloc_sim_plasma
 
@@ -73,8 +81,8 @@ subroutine init_sim_plasma( this, input, opts, s )
 
   ! local data
   character(len=18), save :: sname = 'init_sim_plasma'
-  real :: qm, qbm, omega_p, np
-  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type
+  real :: qm, qbme, qbm, qbmi, omega_p, np
+  integer :: i, ps, sm_type, sm_ord, max_mode, npf, part_dim, elem, ion_max, push_type, v, sec
   character(len=:), allocatable :: str
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -107,7 +115,7 @@ subroutine init_sim_plasma( this, input, opts, s )
   call input%get( 'simulation.smooth_order', sm_ord )
 
   ! initialize profiles of species and neutrals
-  allocate( this%pf_spe( this%num_species ), this%pf_neut( this%num_neutrals ) )
+  allocate( this%pf_spe( this%num_species ), this%pf_neut( this%num_neutrals ), this%pf_neut2( this%num_neutral2s) )
 
   do i = 1, this%num_species
     call this%pf_spe(i)%new( input, opts, 'species', i )
@@ -115,6 +123,10 @@ subroutine init_sim_plasma( this, input, opts, s )
 
   do i = 1, this%num_neutrals
     call this%pf_neut(i)%new( input, opts, 'neutrals', i )
+  enddo
+
+  do i = 1, this%num_neutral2s
+    call this%pf_neut2(i)%new( input, opts, 'neutral2s', i )
   enddo
 
   ! initialize 2D particle manager
@@ -125,6 +137,9 @@ subroutine init_sim_plasma( this, input, opts, s )
   enddo
   do i = 1, this%num_neutrals
     call set_part2d_comm( part_dim, npmax = this%pf_neut(i)%npmax )
+  enddo
+  do i = 1, this%num_neutral2s
+    call set_part2d_comm( part_dim, npmax = this%pf_neut2(i)%npmax )
   enddo
   call init_part2d_comm( opts )
 
@@ -180,6 +195,37 @@ subroutine init_sim_plasma( this, input, opts, s )
 
   enddo
 
+  do i = 1, this%num_neutral2s
+
+    call input%get( 'neutral2s('//num2str(i)//').q', qm )
+    call input%get( 'neutral2s('//num2str(i)//').m', qbm )
+    call input%get( 'neutral2s('//num2str(i)//').mi', qbmi)
+    call input%get( 'neutral2s('//num2str(i)//').element', elem )
+    call input%get( 'neutral2s('//num2str(i)//').ion_max', ion_max )
+    call input%get( 'neutral2s('//num2str(i)//').v', v )
+    call input%get( 'neutral2s('//num2str(i)//').sec', sec )
+    qbme = qm / qbm
+    qbm = -qm/qbmi
+
+    push_type = p_push2_robust
+    call input%get( 'neutral2s('//num2str(i)//').push_type', str )
+    select case ( trim(str) )
+    case ( 'robust' )
+      push_type = p_push2_robust
+    case ( 'clamp' )
+      push_type = p_push2_clamp
+    case ( 'robust-subcycling' )
+      push_type = p_push2_robust_subcyc
+    case default
+      call write_err( 'Invalid pusher type! Only "robust", "clamp" and "robust-subcycling" &
+        &are supported currently.' )
+    end select
+
+    call this%neut2(i)%new( opts, this%pf_neut2(i), max_mode, elem, ion_max, v, sec, &
+      qbm, qbme, omega_p, s, push_type, sm_type, sm_ord )
+
+  enddo
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_sim_plasma
@@ -201,6 +247,10 @@ subroutine end_sim_plasma( this )
 
   do i = 1, this%num_neutrals
     call this%neut(i)%del()
+  enddo
+
+  do i = 1, this%num_neutral2s
+    call this%neut2(i)%del()
   enddo
 
   call end_part2d_comm()
