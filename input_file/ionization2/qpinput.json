@@ -1,20 +1,19 @@
+"simulation" : 
 {
-"simulation" : !note
-{
-    "nodes" : [1, 2], 
-    "grid" : [500, 1000],
+    "nodes" : [1, 1], 
+    "grid" : [512, 512],
     "box" : {
-        "r" : [0.0, 5.0],
-        "z" : [0.0, 10.0]},
+        "r" : [0.0, 6.0],
+        "z" : [0.0, 12.0]},
     "field_boundary" : "open",
-    "max_mode" : 1,
+    "max_mode" : 2,
     "interpolation" : "linear",
-    "n0" : 1.0e17,
+    "n0" : 5.0e16,
     "time" : 10.1,
     "dt" : 10.0,
-    "nbeams" : 1,
-    "nspecies" : 0,
-    "nneutrals" : 1,
+    "nbeams" : 2,
+    "nspecies" : 1,
+    "nneutrals" : 0,
     "nneutral2s" : 1,
     "dump_restart" : false,
     "ndump_restart" : 1,
@@ -34,23 +33,61 @@
     {
     "geometry" : "cartesian",
     "profile" : ["gaussian", "gaussian", "gaussian"],
-    "evolution" : true,
+    "evolution" : false,
     "push_type" : "reduced",
     "has_spin" : false,
     "ppc" : [1, 1, 1],
     "num_theta" : 16,
-    "npmax" : 2000000,
+    "npmax" : 4000000,
     "q" : -1.0,
     "m" : 1.0,
     "gamma" : 20000,
-    "density" : 4.0,
+    "density" : 3.56,
     "quiet_start" : true,
-    "gauss_center" : [0.0, 0.0, 2.5],
-    "gauss_sigma" : [0.25, 0.25, 0.5],
-    "range1" : [-1.25, 1.25],
-    "range2" : [-1.25, 1.25],
-    "range3" : [0.0, 5.0],
-    "uth" : [5.0, 5.0, 0.0],
+    "gauss_center" : [0.0, 0.0, 4.0],
+    "gauss_sigma" : [0.42, 0.42, 1.43],
+    "perp_offset_x":[0.0,0.0,0.0],
+    "perp_offset_y":[0.0,0.0,0.0],
+    "range1" : [-2.1, 2.1],
+    "range2" : [-2.1, 2.1],
+    "range3" : [-3.15, 11.15],
+    "uth" : [0.0, 0.0, 0.0],
+    "den_min" : 1e-10,
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 1
+        },
+        {
+        "name" : ["raw"],
+        "ndump" : 1,
+        "psample" : 10
+        }
+    ]    
+    },
+     {
+    "geometry" : "cartesian",
+    "profile" : ["gaussian", "gaussian", "gaussian"],
+    "evolution" : false,
+    "push_type" : "reduced",
+    "has_spin" : false,
+    "ppc" : [1, 1, 1],
+    "num_theta" : 16,
+    "npmax" : 4000000,
+    "q" : -1.0,
+    "m" : 1.0,
+    "gamma" : 20000,
+    "density" : 67.032,
+    "quiet_start" : true,
+    "gauss_center" : [0.0, 0.0, 8.5],
+    "gauss_sigma" : [0.1, 0.1, 0.8],
+    "perp_offset_x":[0.0,0.0,0.0],
+    "perp_offset_y":[0.0,0.0,0.0],
+    "range1" : [-0.5, 0.5],
+    "range2" : [-0.5, 0.5],
+    "range3" : [4.5, 12.5],
+    "uth" : [0.0, 0.0, 0.0],
     "den_min" : 1e-10,
     "diag" :
     [
@@ -71,11 +108,12 @@
 [
     {
     "profile" : ["uniform", "uniform"],
-    "ppc" : [2, 2],
+    "ppc" : [2,2],
     "num_theta" : 32,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
+    "neutralized": false,
     "push_type" : "robust",
     "diag" :
     [
@@ -96,13 +134,13 @@
 [
     {
     "profile" : ["uniform", "uniform"],
-    "ppc" : [8,8],
-    "num_theta" : 32,
+    "ppc" : [2,2],
+    "num_theta" : 4,
     "q" : -1.0,
     "m" : 1.0,
     "density" : 1.0,
-    "element" : 3,
-    "ion_max" : 3,
+    "element" : 55,
+    "ion_max" : 2,
     "push_type" : "robust",
     "diag" :
     [
@@ -123,26 +161,26 @@
 [
     {
     "profile" : ["uniform", "uniform"],
-    "ppc" : [8,8],
-    "num_theta" : 32,
+    "ppc" : [2,2],
+    "num_theta" : 4,
     "q" : -1.0,
     "m" : 1.0,
-    "mi" : 12747.1465,
-    "v" : 0,
+    "mi" : 243863.2,
+    "v" : 1,
+    "sec":4,
     "density" : 1.0,
-    "element" : 3,
-    "ion_max" : 3,
+    "element" : 55,
+    "ion_max" : 2,
     "push_type" : "robust",
     "diag" :
     [
         {
-        "name" : ["charge_cyl_m", "ion_cyl_m"],
+        "name" : ["charge_cyl_m"],
         "ndump" : 1
         },
         {
-        "name" : ["raw"],
-        "ndump" : 1,
-        "psample" : 10
+        "name" : ["ion_cyl_m"],
+        "ndump" : 1
         }
     ]    
     }
@@ -154,7 +192,7 @@
     [
         {
             "name" : ["psi_cyl_m","er_cyl_m","bphi_cyl_m","ez_cyl_m"],
-            "ndump" : 1
+            "ndump": 1
         }
     ]
 }
