@@ -226,7 +226,7 @@ subroutine run_simulation( this )
   type(field_vpot), pointer :: vpot
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
-  type(field_jay), pointer :: cu, amu, ve
+  type(field_jay), pointer :: cu, amu, ve, vv
   type(field_rho), pointer :: q_spe, q_beam
   type(field_gam), pointer :: gam
   type(field_djdxi), pointer :: dcu, acu
@@ -249,12 +249,13 @@ subroutine run_simulation( this )
   b      => this%fields%b
   cu     => this%fields%cu
   amu    => this%fields%amu
+  vv     => this%fields%vv
   ve     => this%fields%ve
   q_spe  => this%fields%q_spe
   q_beam => this%fields%q_beam
   gam    => this%fields%gam
-!   dcu    => this%fields%dcu
-!   acu    => this%fields%acu
+  dcu    => this%fields%dcu
+  acu    => this%fields%acu
 
   beam => this%beams%beam
   spe  => this%plasma%spe
@@ -331,7 +332,9 @@ subroutine run_simulation( this )
     e     = 0.0
     e_spe = 0.0
     psi   = 0.0
+    acu   = 0.0
     amu   = 0.0 
+    vv    = 0.0 
     cu    = 0.0
     ve    = 0.0
     gam   = 0.0
@@ -427,15 +430,19 @@ subroutine run_simulation( this )
 !       call e%solve( b, psi )
 
       cu = 0.0
+      acu = 0.0
       ve = 0.0
       amu = 0.0
       gam = 0.0
       do k = 1, this%nspecies
         !deposit e,b for interpolation cof wt
-        call spe(k)%edp( e, b, cu, amu, gam, ve )
+!         call spe(k)%edp( e, b, cu, amu, gam, ve, vv)
+        call spe(k)%amjdp(e, b, cu, amu, acu)
       enddo 
       ! third bphi
-      call b_spe%solve(e,psi,q_spe,cu,amu,gam,ve)
+!       call b_spe%solve(e,psi,q_spe,cu,amu,gam,ve, vv)
+      call dcu%solve( acu, amu )
+      call b_spe%solve(dcu, cu, psi, q_spe)
       !calculate real q (rho - jz --> rho)
       do k = 1, this%nspecies
         call spe(k)%cbq(j)

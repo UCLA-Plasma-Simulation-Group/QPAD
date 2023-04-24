@@ -25,7 +25,7 @@ type species2d
 
    class(part2d), pointer :: part => null()
    class(field_rho), allocatable :: q, qn
-   class(field_jay), allocatable :: cu, amu, ve
+   class(field_jay), allocatable :: cu, amu, ve, vv
    class(field_gam), allocatable :: gam
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
@@ -93,7 +93,7 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    this%push_type = push_type
    ntd            = pf%neutralized
 
-   allocate( this%q, this%cu, this%amu, this%dcu, this%gam, this%ve )
+   allocate( this%q, this%cu, this%amu, this%vv, this%dcu, this%gam, this%ve )
 
    if ( present(smooth_type) .and. present(smooth_order) ) then
       call this%q%new(opts,max_mode,part_shape,smooth_type,smooth_order)
@@ -102,6 +102,7 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
       call this%dcu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
       call this%gam%new(opts,max_mode,part_shape,smooth_type,smooth_order)
       call this%amu%new(opts,max_mode,part_shape,smooth_type,smooth_order)
+      call this%vv%new(opts,max_mode,part_shape,smooth_type,smooth_order)
    else
       call this%q%new(opts,max_mode,part_shape)
       call this%gam%new(opts,max_mode,part_shape)       
@@ -109,6 +110,7 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
       call this%ve%new(opts,max_mode,part_shape)
       call this%dcu%new(opts,max_mode,part_shape)
       call this%amu%new(opts,max_mode,part_shape)
+      call this%vv%new(opts,max_mode,part_shape)
    endif
    call this%part%new(opts,pf,qbm,dt,s)
 
@@ -158,6 +160,7 @@ subroutine end_species2d(this)
    call this%ve%del()
    call this%dcu%del()
    call this%amu%del()
+   call this%vv%del()
    if ( allocated( this%qn ) ) call this%qn%del()
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -266,13 +269,13 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine edp_species2d( this, ef, bf, cu, amu, gam, ve )
+subroutine edp_species2d( this, ef, bf, cu, amu, gam, ve, vv )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
 
    class(species2d), intent(inout) :: this
-   class(field_jay), intent(inout) :: cu, amu, ve
+   class(field_jay), intent(inout) :: cu, amu, ve, vv
    class(field_gam), intent(inout) :: gam
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
@@ -284,10 +287,11 @@ subroutine edp_species2d( this, ef, bf, cu, amu, gam, ve )
    this%cu = 0.0
    this%gam = 0.0
    this%amu = 0.0
+   this%vv = 0.0
    this%ve = 0.0
    
 
-   call this%part%edeposit( ef, bf, this%cu, this%amu, this%gam, this%ve )
+   call this%part%edeposit( ef, bf, this%cu, this%amu, this%gam, this%ve, this%vv)
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%gam%acopy_gc_f1( dir=p_mpi_forward )
@@ -295,15 +299,18 @@ subroutine edp_species2d( this, ef, bf, cu, amu, gam, ve )
    call this%cu%smooth_f1()
    call this%gam%smooth_f1()
    call this%amu%smooth_f1()
+   call this%vv%smooth_f1()
    call this%ve%smooth_f1()
    call this%cu%copy_gc_f1()
    call this%gam%copy_gc_f1()
    call this%amu%copy_gc_f1()
+   call this%vv%copy_gc_f1()
    call this%ve%copy_gc_f1()
 
    call add_f1( this%cu, cu )
    call add_f1( this%gam, gam )
    call add_f1( this%amu, amu )
+   call add_f1( this%vv, vv )
    call add_f1( this%ve, ve )
    
    call write_dbg(cls_name, sname, cls_level, 'ends')

@@ -400,13 +400,13 @@ subroutine qdeposit_part2d( this, q )
 
 end subroutine qdeposit_part2d
 
-subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
+subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
 ! deposit the current, momentum flux， and gamma
 
   implicit none
 
   class(part2d), intent(inout) :: this
-  class(field), intent(in) :: cu, amu, gam, ve
+  class(field), intent(in) :: cu, amu, gam, ve, vv
   class(field), intent(in) :: ef, bf
   ! local data
   character(len=32), save :: sname = 'edeposit_part2d'
@@ -416,10 +416,11 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
   type(ufield), dimension(:), pointer :: ve_re => null(), ve_im => null()
   type(ufield), dimension(:), pointer :: gam_re => null(), gam_im => null()
   type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
+  type(ufield), dimension(:), pointer :: vv_re => null(), vv_im => null()
 
-  real, dimension(:,:), pointer :: cu0 => null(), gam0 => null(), amu0 => null(), ve0 => null()
-  real, dimension(:,:), pointer :: cur => null(), gamr => null(), amur => null(), ver => null()
-  real, dimension(:,:), pointer :: cui => null(), gami => null(), amui => null(), vei => null()
+  real, dimension(:,:), pointer :: cu0 => null(), gam0 => null(), amu0 => null(), ve0 => null(), vv0 => null()
+  real, dimension(:,:), pointer :: cur => null(), gamr => null(), amur => null(), ver => null(), vvr => null()
+  real, dimension(:,:), pointer :: cui => null(), gami => null(), amui => null(), vei => null(), vvi => null()
 
   integer(kind=LG) :: ptrcur, pp
   integer :: i, j, nn, noff, nrp, np, mode, max_mode
@@ -441,6 +442,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
   ve_re  => ve%get_rf_re();  ve_im  => ve%get_rf_im()
   gam_re => gam%get_rf_re(); gam_im => gam%get_rf_im()
   amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
+  vv_re => vv%get_rf_re(); vv_im => vv%get_rf_im()
 
   idr = 1.0 / this%dr
   idt = 1.0 / this%dt
@@ -452,6 +454,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
 
   cu0  => cu_re(0)%get_f1()
   ve0  => ve_re(0)%get_f1()
+  vv0  => ve_re(0)%get_f1()
   gam0 => gam_re(0)%get_f1()
   amu0 => amu_re(0)%get_f1()
 
@@ -499,20 +502,23 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
-      phase1 = cmplx( 1.0, 0.0 ) * ipsi
-!       phase2 = cmplx( 1.0, 0.0 ) * ipsi**2
-      phase3 = cmplx( 1.0, 0.0 ) 
+      phase1 = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi * ipsi
+      phase3 = cmplx( 1.0, 0.0 ) * ipsi 
+      phase2 = cmplx( 1.0, 0.0 ) * ipsi * ipsi 
       ! deposit m = 0 mode
       do j = 0, 1
         w = wt(j,i) * real(phase)
-        w1 = wt(j,i) * real(phase1)
-!         w2 = wt(j,i) * real(phase2)
+        w1 = wt(j,i) * real(phase1) 
         w3 = wt(j,i) * real(phase3)
-        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i) * 0.45
-        ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w1 * u(1:3,i)  
-        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w1 * u2(1:3) 
-!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + this%psi(pp) - w3*u(3,i)
-        gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w3 * this%gamma(pp) * 0.1
+        w2 = wt(j,i) * real(phase2)
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
+!         ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w * u(1:3,i)  
+!         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3) 
+!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w3 * this%gamma(pp)
+        ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w2 * u(1:3,i)  
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3) 
+        vv0( 1:3, ix(i)+j ) = vv0( 1:3, ix(i)+j ) + w3 * u2(1:3) 
+        gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w2 * this%gamma(pp)
 !         write(2,*) gam0, "gamma"
 
 !         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + sqrt(1 + ve0(1, ix(i)+j)**2 + ve0(2, ix(i)+j)**2 + ve0(3, ix(i)+j)**2)
@@ -554,11 +560,13 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
     gam0(1,0) = 0.0
     amu0(1:3,0) = 0.0
     ve0(1:3,0) = 0.0
+    vv0(1:3,0) = 0.0
 
     cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
     gam0(1,1) = 0.0
     amu0(1:3,1) = 0.0
     ve0(1:3,1) = 0.0
+    vv0(1:3,1) = 0.0
 
 !     do mode = 1, max_mode
 
@@ -601,6 +609,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
       gam0(1,j) = gam0(1,j) * ir
       amu0(1:3,j) = amu0(1:3,j) * ir
       ve0(1:3,j) = ve0(1:3,j) * ir
+      vv0(1:3,j) = vv0(1:3,j) * ir
     enddo
 
 !     do mode = 1, max_mode
@@ -625,6 +634,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve )
        gam0(1,j) = gam0(1,j) * ir
        amu0(1:3,j) = amu0(1:3,j) * ir
        ve0(1:3,j) = ve0(1:3,j) * ir
+       vv0(1:3,j) = vv0(1:3,j) * ir
     enddo
 
 !     do mode = 1, max_mode
@@ -765,8 +775,8 @@ subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
     pp = ptrcur
     do i = 1, np
 
-      du(1) = idt * ( u(1,i) - u0(1,i) )
-      du(2) = idt * ( u(2,i) - u0(2,i) )
+      du(1) = idt * ( u(1,i) - u0(1,i) ) - this%qbm*bp(2,i)
+      du(2) = idt * ( u(2,i) - u0(2,i) ) + this%qbm*bp(1,i)
       
       u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
       this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
@@ -2002,20 +2012,20 @@ subroutine add_particles_part2d( this, prof, ppart1, ppart2, multi_max, m, sec, 
 
 end subroutine add_particles_part2d
 
-subroutine epush_part2d( this, ef, bf, step3d )
+subroutine epush_part2d( this, ef, bf)
 
     implicit none
     class(part2d), intent(inout) :: this
     class(field), intent(in) :: ef
     class(field), intent(in) :: bf
-    integer, intent(in) :: step3d
+!     integer, intent(in) :: step3d
 
   ! local data
   character(len=18), save :: sname = 'push_explicit_part2d'
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
-  real :: qtmh, gam, psi_1, ipsi_1, dtc, p_l
+  real :: qtmh, gam, psi, ipsi, dtc, p_l, x_l
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
   integer(kind=LG) :: ptrcur, pp
 
@@ -2043,43 +2053,33 @@ subroutine epush_part2d( this, ef, bf, step3d )
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cartesian )
 
-  
-    if( step3d .eq. 1 ) then
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      dtc = this%dt / ( gam - this%p(3,pp) )
+      x_l = this%x(1,pp)
+      this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
+      this%x_l(1,pp) = x_l
+      x_l = this%x(2,pp)
+      this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc
+      this%x_l(2,pp) = x_l
+      pp = pp + 1
+    enddo
 
-      pp = ptrcur
-      do i = 1, np
-        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-        dtc = this%dt / ( gam - this%p(3,pp) )
-        this%x_r(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc
-        this%x(1,pp) = 0.5*(this%x_r(1,pp) + this%x(1,pp))
-        pp = pp + 1
-      enddo
-    else
-      pp = ptrcur
-      do i = 1, np
-        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-        psi_1 = gam - this%p(3,pp)
-        ipsi_1 = 1/psi_1
-        dtc = this%dt / ( gam - this%p(3,pp) )
-        ep(1,i) = ep(1,i) * gam * ipsi_1
-        bp(2,i) = bp(2,i) * (gam - psi_1) * ipsi_1
-        p_l = this%p(1,pp)
-        !2*xi
-        this%p(1,pp) = this%p_l(1,pp) + 2*ep(1,i)*dtc+bp(1,i)*dtc
-        this%p_l(1,pp) = p_l
-        pp = pp + 1
-      enddo
-
-      pp = ptrcur
-      do i = 1, np
-        gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-        dtc = this%dt / ( gam - this%p(3,pp) )
-        this%x_l(1,pp) = this%x_r(1,pp)
-        this%x_r(1,pp) = this%x_r(1,pp) + this%p(1,pp) * dtc
-        this%x(1,pp) = 0.5*(this%x_r(1,pp) + this%x_l(1,pp))
-        pp = pp + 1
-      enddo
-    endif
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      psi = gam - this%p(3,pp)
+      ipsi = 1/( gam - this%p(3,pp) )
+      dtc = this%dt / ( gam - this%p(3,pp) )
+      ep(1,i) = ep(1,i) * gam * ipsi
+      bp(2,i) = bp(2,i) * (gam * ipsi - 1)
+      p_l = this%p(1,pp)
+      !2*xi
+      this%p(1,pp) = this%p_l(1,pp) - ep(1,i)*dtc+bp(2,i)*dtc
+      this%p_l(1,pp) = p_l
+      pp = pp + 1
+    enddo
 
   enddo
 
@@ -2106,7 +2106,7 @@ subroutine expush_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
 !   qtmh = this%qbm * this%dt 
-  qtmh = 2*this%qbm * this%dt 
+  qtmh = this%qbm * this%dt * 0.5
 !   write(2,*) this%qbm, "qbm"
   max_mode = ef%get_max_mode()
 
@@ -2131,8 +2131,8 @@ subroutine expush_part2d( this, ef, bf )
     ! advance particle position
     pp = ptrcur
     do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      dtc = 2 * this%dt / ( gam - this%p(3,pp) )
+      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      dtc = this%dt / ( gam - this%p(3,pp) )
       x_l = this%x(1,pp)
       this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
       this%x_l(1,pp) = x_l

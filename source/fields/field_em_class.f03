@@ -48,6 +48,7 @@ type, extends( field ) :: field_b
   procedure, private :: set_source_bz
   procedure, private :: set_source_bt
   procedure, private :: set_source_bphi
+  procedure, private :: set_source_bphi0
   procedure, private :: set_source_bt_iter
   procedure, private :: get_solution_bz
   procedure, private :: get_solution_bt
@@ -396,16 +397,16 @@ subroutine set_source_bt( this, mode, q_re, q_im )
 
 end subroutine set_source_bt
 
-subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
-  cu_re, amu_re, gam_re, ve_re, cu_im, amu_im, gam_im, ve_im )
+subroutine set_source_bphi( this, mode, ef, psi, rho_re, &
+  cu_re, amu_re, gam_re, ve_re, vv_re, rho_im, cu_im, amu_im, gam_im, ve_im, vv_im )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
   class( field_e ), intent(in) :: ef
   class( field_psi ), intent(in) :: psi
-  class( ufield ), intent(in) :: cu_re, amu_re, gam_re, rho_re,ve_re
-  class( ufield ), intent(in), optional :: cu_im, amu_im, gam_im, rho_im, ve_im
+  class( ufield ), intent(in) :: cu_re, amu_re, gam_re, rho_re,ve_re,vv_re
+  class( ufield ), intent(in), optional :: cu_im, amu_im, gam_im, rho_im, ve_im, vv_im
   integer, intent(in) :: mode
 
   integer :: i, nrp, nvp, idproc, noff
@@ -416,8 +417,9 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
   real, dimension(:,:), pointer :: f5_re => null(), f5_im => null()
   real, dimension(:,:), pointer :: f6_re => null(), f6_im => null()
   real, dimension(:,:), pointer :: f7_re => null(), f7_im => null()
+  real, dimension(:,:), pointer :: f8_re => null(), f8_im => null()
   real :: idrh, idr, ir
-  real :: n, ipsi
+  real :: n, ipsi, S1, S2, S3, S4, S5, Q
   real :: s1_re, s1_im, s2_re, s2_im, s3_re, s3_im, s4_re, s4_im, s5_re, s5_im, s6_re, s6_im
   character(len=20), save :: sname = 'set_source_bphi'
 
@@ -438,6 +440,7 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
   f5_re => psi%rf_re(mode)%get_f1()
   f6_re => rho_re%get_f1()
   f7_re => ve_re%get_f1()
+  f8_re => vv_re%get_f1()
   this%buf1_re = 0.0
   this%buf2_re = 0.0
 
@@ -450,6 +453,7 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
     f5_im => psi%rf_im(mode)%get_f1()
     f6_im => rho_im%get_f1()
     f7_im => ve_im%get_f1()
+    f8_im => vv_im%get_f1()
     this%buf1_im = 0.0
     this%buf2_im = 0.0
   endif
@@ -458,11 +462,22 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
 
     do i = 2, nrp
       ir = idr / real(i+noff-1)
-      n = 1 - f6_re(1,i) 
+      n = 1- f6_re(1,i)  
+!       n = 1 - f6_re(1,i) 
+      Q = 1/(f6_re(1,i) + f1_re(1,i))
       ipsi = 1 / (1 + f5_re(1,i))
-      this%buf1_re(i) = idrh * ( f1_re(3,i+1) - f1_re(3,i-1) ) + n * idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) &
-                        + n * ir * f2_re(1,i) + n * ipsi * f7_re(1,i) * f4_re(3,i) + n * ipsi * ( f2_re(1,i) - &
-                        f3_re(1,i)*ipsi) * idrh * ( f5_re(1,i+1) - f5_re(1,i - 1) ) 
+      S1 = idrh * ( f1_re(3,i+1) - f1_re(3,i-1) )
+      S2 = idrh * ( f2_re(1,i+1) - f2_re(1,i-1) ) + ir * f2_re(1,i)
+      S3 = f8_re(1,i)*idrh * (f1_re(3,i+1) - f1_re(3,i-1)) + (1+f1_re(1,i))*idrh * (f8_re(1,i+1) - f8_re(1,i-1))&
+      + (1+f1_re(3,i))*f8_re(1,i)*ir
+      S4 = n * (f3_re(1,i) * idrh * (f5_re(1,i+1) - f5_re(1,i-1)) - f7_re(1,i) * f4_re(3,i) &
+      - f8_re(1,i) * ipsi * idrh * (f5_re(1,i+1) - f5_re(1,i-1)))
+!       S4 = (f3_re(1,i) * idrh * (f5_re(1,i+1) - f5_re(1,i-1)) - f7_re(1,i) * f4_re(3,i) &
+!       - f8_re(1,i) * ipsi * idrh * (f5_re(1,i+1) - f5_re(1,i-1)))
+!       S5 = -(1+f1_re(3,i)) * S4 * Q
+      this%buf1_re(i) = S1 - S2 + 2*S3 - S4
+!       this%buf1_re(i) = S1 - S2 + 2*S3 - S4 
+!       this%buf1_re(i) = S1 - S2 + 2*S3 + S4 - S5
       this%buf2_re(i) = n*ipsi
 !       this%buf1_re(i) = 0.0
 !       this%buf2_re(i) = 0.0
@@ -476,20 +491,38 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
       ! calculated using forward difference
       ir = idr / real(2+noff-1)
       n = 1 - f6_re(1,2) 
+      Q = 1/(f6_re(1,2) + f1_re(1,2))
       ipsi = 1 / (1 + f5_re(1,2))
-      this%buf1_re(2) =   idr * ( f1_re(3,3) - f1_re(3,2) ) + n * idr * ( f2_re(1,3) - f2_re(1,2) ) &
-                         + n * ir * f2_re(1,2) + n * ipsi * f7_re(1,2) * f4_re(3,2) + n * ipsi * ( f2_re(1,2) - &
-                         f3_re(1,2) * ipsi ) * idr * ( f5_re(1,3) - f5_re(1,2) ) 
+      S1 = idr * ( f1_re(3,3) - f1_re(3,2) )
+      S2 = idr * ( f2_re(1,3) - f2_re(1,2) ) + ir * f2_re(1,2)
+      S3 = f8_re(1,2)*idr * (f1_re(3,3) - f1_re(3,2)) + (1+f1_re(1,2))*idr * (f8_re(1,3) - f8_re(1,2))&
+      + (1+f1_re(3,2))*f8_re(1,2)*ir
+      S4 = n * (f3_re(1,2) * idr * (f5_re(1,3) - f5_re(1,2)) - f7_re(1,2)* f4_re(3,2) &
+      - f8_re(1,2) * ipsi * idr * (f5_re(1,3) - f5_re(1,2)))
+!       S4 = (f3_re(1,2) * idr * (f5_re(1,3) - f5_re(1,2)) - f7_re(1,2)* f4_re(3,2) &
+!       - f8_re(1,2) * ipsi * idr * (f5_re(1,3) - f5_re(1,2)))
+!       S5 = -(1+f1_re(3,2)) * S4 * Q
+      this%buf1_re(2) = S1 - S2 + 2*S3 - S4 
+!       this%buf1_re(2) = S1 - S2 + 2*S3 + S4 - S5
       this%buf2_re(2) = n*ipsi
 !       this%buf1_re(2) = 0.0
 !       this%buf2_re(2) = 0.0
     else
       ir = idr / real(1+noff-1)
       n = 1 - f6_re(1,1) 
+      Q = 1/(f6_re(1,1) + f1_re(1,1))
       ipsi = 1 / (1 + f5_re(1,1))
-      this%buf1_re(1) =  idrh * ( f1_re(3,2)-f1_re(3,0) ) + n * idrh * ( f2_re(1,2) - f2_re(1,0) ) &
-                        + n * ir * f2_re(1,1) + n * ipsi * f7_re(1,1) * f4_re(3,1) + n * ipsi * ( f2_re(1,1) - &
-                        f3_re(1,1)*ipsi) * idrh * ( f5_re(1,2) - f5_re(1,0) ) 
+      S1 = idrh * ( f1_re(3,2) - f1_re(3,0) )
+      S2 = idrh * ( f2_re(1,2) - f2_re(1,0) ) + ir * f2_re(1,1)
+      S3 = f8_re(1,1)*idrh * (f1_re(3,2) - f1_re(3,0)) + (1+f1_re(1,1))*idrh * (f8_re(1,2) - f8_re(1,0))&
+      + (1+f1_re(3,1))*f8_re(1,1)*ir
+      S4 = n * (f3_re(1,1) * idrh * (f5_re(1,2) - f5_re(1,0)) - f7_re(1,1) * f4_re(3,1) &
+      - f8_re(1,1) * ipsi * idrh * (f5_re(1,2) - f5_re(1,0)))
+!       S4 = (f3_re(1,1) * idrh * (f5_re(1,2) - f5_re(1,0)) - f7_re(1,1) * f4_re(3,1) &
+!       - f8_re(1,1) * ipsi * idrh * (f5_re(1,2) - f5_re(1,0)))
+!       S5 = -(1+f1_re(3,1)) * S4 * Q
+      this%buf1_re(1) = S1 - S2 + 2*S3 - S4
+!       this%buf1_re(1) = S1 - S2 + 2*S3 + S4 - S5
       this%buf2_re(1) = n*ipsi
 !       this%buf1_re(1) = 0.0
 !       this%buf2_re(1) = 0.0
@@ -498,12 +531,22 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
     if ( idproc == nvp-1 ) then
       ir = idr / real(nrp+noff-1)
       n = 1 - f6_re(1,nrp) 
+      Q = 1/(f6_re(1,nrp) + f1_re(1,nrp))
       ipsi = 1 / (1 + f5_re(1,nrp))
-      this%buf1_re(nrp) = idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2) ) + &
-                          n * idrh * ( 3.0 * f2_re(1,nrp) - 4.0 * f2_re(1,nrp-1) + f2_re(1,nrp-2) ) &
-                          + n * ir * f2_re(1,nrp) + n * ipsi * f7_re(1,nrp) * f4_re(3,nrp) + n * ipsi * ( f2_re(1,nrp) &
-                          + f3_re(1,nrp) * ipsi) * idrh * ( 3.0 * f5_re(1,nrp) - 4.0 * f5_re(1,nrp - 1) + &
-                          f5_re(1,nrp-2)) 
+      S1 = idrh * ( 3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2))
+      S2 = idrh * ( 3.0 * f2_re(1,nrp) - 4.0 * f2_re(1,nrp-1) + f2_re(1,nrp-2) ) + ir * f2_re(1,nrp)
+      S3 = f8_re(1,nrp)*idrh * (3.0 * f1_re(3,nrp) - 4.0 * f1_re(3,nrp-1) + f1_re(3,nrp-2)) &
+      + (1+f1_re(1,nrp))*idrh * (3.0*f8_re(1,nrp) - 4.0*f8_re(1,nrp-1) + f8_re(1,nrp-2))&
+      + (1+f1_re(3,nrp))*f8_re(1,nrp)*ir
+      S4 = n * (f3_re(1,nrp) * idrh * (3.0 * f5_re(1,nrp)- 4.0 * f5_re(1,nrp-1) + f5_re(1,nrp-2)) &
+        - f7_re(1,nrp) * f4_re(3,nrp) &
+        - f8_re(1,nrp) * ipsi * idrh * (3.0 * f5_re(1,nrp)- 4.0 * f5_re(1,nrp-1) + f5_re(1,nrp-2)))
+!       S4 = (f3_re(1,nrp) * idrh * (3.0 * f5_re(1,nrp)- 4.0 * f5_re(1,nrp-1) + f5_re(1,nrp-2)) &
+!         - f7_re(1,nrp) * f4_re(3,nrp) &
+!         - f8_re(1,nrp) * ipsi * idrh * (3.0 * f5_re(1,nrp)- 4.0 * f5_re(1,nrp-1) + f5_re(1,nrp-2)))
+!       S5 = -(1+f1_re(3,nrp)) * S4 * Q
+      this%buf1_re(nrp) = S1 - S2 + 2*S3 - S4
+!       this%buf1_re(nrp) = S1 - S2 + 2*S3 + S4 -S5
       this%buf2_re(nrp) = n*ipsi
 !       this%buf1_re(nrp) = 0.0
 !       this%buf2_re(nrp) = 0.0
@@ -519,6 +562,152 @@ subroutine set_source_bphi( this, mode, ef, psi, rho_re, rho_im, &
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_source_bphi
+
+subroutine set_source_bphi0( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
+
+  implicit none
+
+  class( field_b ), intent(inout) :: this
+  class( ufield ), intent(in) :: djdxi_re, jay_re
+  class( ufield ), intent(in), optional :: djdxi_im, jay_im
+  integer, intent(in) :: mode
+
+  integer :: i, nrp, nvp, idproc, noff
+  real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
+  real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
+  real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
+  real :: idrh, idr, ir
+  real :: s1_re, s1_im, s2_re, s2_im
+  character(len=20), save :: sname = 'set_source_bt_iter'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+  call start_tprof( 'solve plasma bt' )
+
+  nvp    = num_procs_loc()
+  idproc = id_proc_loc()
+  nrp    = jay_re%get_ndp(1)
+  noff   = jay_re%get_noff(1)
+  idr    = 1.0 / this%dr
+  idrh   = 0.5 * idr
+
+  f1_re => djdxi_re%get_f1()
+  f2_re => jay_re%get_f1()
+  f3_re => this%rf_re(mode)%get_f1()
+  this%buf1_re = 0.0
+  this%buf2_re = 0.0
+
+  if ( present(djdxi_im) .and. present(jay_im) ) then
+    f1_im => djdxi_im%get_f1()
+    f2_im => jay_im%get_f1()
+    f3_im => this%rf_im(mode)%get_f1()
+    this%buf1_im = 0.0
+    this%buf2_im = 0.0
+  endif
+
+  if ( mode == 0 ) then
+
+    do i = 2, nrp
+      this%buf1_re(i) = -f1_re(2,i) ! Re(Br)
+      this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) ! Re(Bphi)
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    if ( idproc == 0 ) then
+      this%buf1_re(1) = 0.0
+      this%buf2_re(1) = 0.0
+      ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
+      ! calculated using forward difference
+      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) )
+    else
+      this%buf1_re(1) = -f1_re(2,1) 
+      this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) )
+    endif
+
+    if ( idproc == nvp-1 ) then
+      this%buf1_re(nrp) = -f1_re(2,nrp)
+      this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) )
+    endif
+
+  elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
+
+    do i = 2, nrp
+      ir = idr / real(i+noff-1)
+      s1_re = -f1_re(2,i) + mode * f2_im(3,i) * ir
+      s1_im = -f1_im(2,i) - mode * f2_re(3,i) * ir
+      s2_re =  f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) )
+      s2_im =  f1_im(1,i) + idrh * ( f2_im(3,i+1) - f2_im(3,i-1) )
+      this%buf1_re(i) = s1_re - s2_im - f3_re(1,i) + f3_im(2,i) ! Re(B_plus)
+      this%buf1_im(i) = s1_im + s2_re - f3_im(1,i) - f3_re(2,i) ! Im(B_plus)
+      this%buf2_re(i) = s1_re + s2_im - f3_re(1,i) - f3_im(2,i) ! Re(B_minus)
+      this%buf2_im(i) = s1_im - s2_re - f3_im(1,i) + f3_re(2,i) ! Im(B_minus)
+    enddo
+
+    ! calculate the derivatives at the boundary and axis
+    if ( idproc == 0 ) then
+
+      if ( mode == 1 ) then
+        s1_re = -f1_re(2,1) + idr * mode * f2_im(3,2)
+        s1_im = -f1_im(2,1) - idr * mode * f2_re(3,2)
+        s2_re =  f1_re(1,1) + idr * f2_re(3,2)
+        s2_im =  f1_im(1,1) + idr * f2_im(3,2)
+      else
+        if ( mod(mode,2) == 0 ) then
+          s1_re = 0.0
+          s1_im = 0.0
+          s2_re = 0.0
+          s2_im = 0.0
+        else
+          s1_re = idr * mode * f2_im(3,2)
+          s1_im = idr * mode * f2_re(3,2)
+          s2_re = idr * f2_re(3,2)
+          s2_im = idr * f2_im(3,2)
+        endif
+      endif
+
+      this%buf1_re(1) = s1_re - s2_im - f3_re(1,1) + f3_im(2,1) ! Re(B_plus)
+      this%buf1_im(1) = s1_im + s2_re - f3_im(1,1) - f3_re(2,1) ! Im(B_plus)
+      this%buf2_re(1) = s1_re + s2_im - f3_re(1,1) - f3_im(2,1) ! Re(B_minus)
+      this%buf2_im(1) = s1_im - s2_re - f3_im(1,1) + f3_re(2,1) ! Im(B_minus)
+
+    else
+
+      ir = idr / real(noff)
+      s1_re = -f1_re(2,1) + mode * f2_im(3,1) * ir
+      s1_im = -f1_im(2,1) - mode * f2_re(3,1) * ir
+      s2_re =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) )
+      s2_im =  f1_im(1,1) + idrh * ( f2_im(3,2) - f2_im(3,0) )
+
+      this%buf1_re(1) = s1_re - s2_im - f3_re(1,1) + f3_im(2,1) ! Re(B_plus)
+      this%buf1_im(1) = s1_im + s2_re - f3_im(1,1) - f3_re(2,1) ! Im(B_plus)
+      this%buf2_re(1) = s1_re + s2_im - f3_re(1,1) - f3_im(2,1) ! Re(B_minus)
+      this%buf2_im(1) = s1_im - s2_re - f3_im(1,1) + f3_re(2,1) ! Im(B_minus)
+
+    endif
+
+    if ( idproc == nvp-1 ) then
+
+      ir = idr / real(nrp+noff-1)
+      s1_re = -f1_re(2,nrp) + mode * f2_im(3,nrp) * ir
+      s1_im = -f1_im(2,nrp) - mode * f2_re(3,nrp) * ir
+      s2_re =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) )
+      s2_im =  f1_im(1,nrp) + idrh * ( 3.0 * f2_im(3,nrp) - 4.0 * f2_im(3,nrp-1) + f2_im(3,nrp-2) )
+      this%buf1_re(nrp) = s1_re - s2_im - f3_re(1,nrp) + f3_im(2,nrp) ! Re(B_plus)
+      this%buf1_im(nrp) = s1_im + s2_re - f3_im(1,nrp) - f3_re(2,nrp) ! Im(B_plus)
+      this%buf2_re(nrp) = s1_re + s2_im - f3_re(1,nrp) - f3_im(2,nrp) ! Re(B_minus)
+      this%buf2_im(nrp) = s1_im - s2_re - f3_im(1,nrp) + f3_re(2,nrp) ! Im(B_minus)
+
+    endif
+
+  else
+
+    call write_err( 'Invalid input arguments!' )
+
+  endif
+
+  call stop_tprof( 'solve plasma bt' )
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine set_source_bphi0
 
 subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
@@ -1028,7 +1217,7 @@ subroutine solve_field_bt( this, rho )
 
 end subroutine solve_field_bt
 
-subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve )
+subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve, vv )
 
   implicit none
 
@@ -1039,10 +1228,12 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve )
   class( field_jay ), intent(inout) :: cu
   class( field_jay ), intent(inout) :: amu
   class( field_jay ), intent(inout) :: ve
+  class( field_jay ), intent(inout) :: vv
   class( field_gam ), intent(inout) :: gam
 
   type( ufield ), dimension(:), pointer :: cu_re => null(), cu_im => null()
   type( ufield ), dimension(:), pointer :: ve_re => null(), ve_im => null()
+  type( ufield ), dimension(:), pointer :: vv_re => null(), vv_im => null()
   type( ufield ), dimension(:), pointer :: amu_re => null(), amu_im => null()
   type( ufield ), dimension(:), pointer :: gam_re => null(), gam_im => null()
   type( ufield ), dimension(:), pointer :: rho_re => null(), rho_im => null()
@@ -1059,6 +1250,8 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve )
   cu_im => cu%get_rf_im()
   ve_re => ve%get_rf_re()
   ve_im => ve%get_rf_im()
+  vv_re => vv%get_rf_re()
+  vv_im => vv%get_rf_im()
   amu_re => amu%get_rf_re()
   amu_im => amu%get_rf_im()
   gam_re => gam%get_rf_re()
@@ -1071,7 +1264,7 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve )
   do i = 0, this%max_mode
 
     if ( i == 0 ) then 
-      call this%set_source_bphi( i, ef, psi, rho_re(i), rho_im(i), cu_re(i), amu_re(i), gam_re(i), ve_re(i))
+      call this%set_source_bphi( i, ef, psi, rho_re(i), cu_re(i), amu_re(i), gam_re(i), ve_re(i), vv_re(i))
       call this%solver_bphi(i)%init( this%opts, i, dr, kind=p_fk_bphi, bnd=this%boundary, stype=p_hypre_cycred, coef=this%buf2_re ) 
       call this%solver_bphi(i)%solve( this%buf1_re ) 
       call this%get_solution_bphi(i) 
@@ -1091,16 +1284,22 @@ subroutine solve_field_bphi( this, ef, psi, rho, cu, amu, gam, ve )
 
 end subroutine solve_field_bphi
 
-subroutine solve_field_bt_iter( this, djdxi, jay )
+subroutine solve_field_bt_iter( this, djdxi, jay, psi, q )
 
   implicit none
 
   class( field_b ), intent(inout) :: this
   class( field_djdxi ), intent(in) :: djdxi
   class( field_jay ), intent(inout) :: jay
+  class( field_psi), intent(inout) :: psi
+  class( field_rho), intent(inout) :: q
 
   type( ufield ), dimension(:), pointer :: jay_re => null(), jay_im => null()
   type( ufield ), dimension(:), pointer :: djdxi_re => null(), djdxi_im => null()
+  type( ufield ), dimension(:), pointer :: psi_re => null(), psi_im => null()
+  type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
+  type( ufield ), pointer :: psi_re1 => null(), psi_im1 => null()
+  type( ufield ), pointer :: q_re1 => null(), q_im1 => null()
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
 
@@ -1110,13 +1309,20 @@ subroutine solve_field_bt_iter( this, djdxi, jay )
   djdxi_im => djdxi%get_rf_im()
   jay_re => jay%get_rf_re()
   jay_im => jay%get_rf_im()
+  psi_re => psi%get_rf_re()
+  psi_im => psi%get_rf_im()
+  q_re => q%get_rf_re()
+  q_im => q%get_rf_im()
 
   do i = 0, this%max_mode
 
     if ( i == 0 ) then
-      call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
-      call this%solver_bplus(i)%solve( this%buf1_re )
-      call this%solver_bminus(i)%solve( this%buf2_re )
+      call this%set_source_bphi0( i, djdxi_re(i), jay_re(i) )
+!       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
+      psi_re1 => psi_re(i)
+      q_re1 => q_re(i)
+      call this%solver_bplus(i)%solve( this%buf1_re, psi_re=psi_re1, q_re=q_re1)
+      call this%solver_bminus(i)%solve( this%buf2_re, psi_re=psi_re1, q_re=q_re1)
       call this%get_solution_bt_iter(i)
       cycle
     endif
