@@ -642,16 +642,29 @@ subroutine get_solution_bt( this, mode )
 
     if ( idproc == 0 ) then
 
-      if ( modulo(mode,2) == 0 ) then
-        f1_re(1,1) = 0.0
-        f1_im(1,1) = 0.0
-        f1_re(2,1) = 0.0
-        f1_im(2,1) = 0.0
-      else
+      ! This boundary condition should be carefully checked to see why it doesn't work for mode_max >= 3.
+      ! if ( modulo(mode,2) == 0 ) then
+      !   f1_re(1,1) = 0.0
+      !   f1_im(1,1) = 0.0
+      !   f1_re(2,1) = 0.0
+      !   f1_im(2,1) = 0.0
+      ! else
+      !   f1_re(1,1) = -idr * mode * this%buf1_im(2)
+      !   f1_im(1,1) =  idr * mode * this%buf1_re(2)
+      !   f1_re(2,1) = -idr * this%buf1_re(2)
+      !   f1_im(2,1) = -idr * this%buf1_im(2)
+      ! endif
+
+      if ( mode == 1 ) then
         f1_re(1,1) = -idr * mode * this%buf1_im(2)
         f1_im(1,1) =  idr * mode * this%buf1_re(2)
         f1_re(2,1) = -idr * this%buf1_re(2)
         f1_im(2,1) = -idr * this%buf1_im(2)
+      else
+        f1_re(1,1) = 0.0
+        f1_im(1,1) = 0.0
+        f1_re(2,1) = 0.0
+        f1_im(2,1) = 0.0
       endif
 
     else
