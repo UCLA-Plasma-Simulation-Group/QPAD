@@ -345,9 +345,9 @@ subroutine get_prof_lon_pw_linear( z, prof_pars, env )
   t_array  => prof_pars( 1 : len_t )
   ft_array => prof_pars( len_t+1 : 2*len_t )
 
-  if ( z <= t_array(1) .or. z > t_array(len_t) ) then
+  if ( z < t_array(1) .or. z > t_array(len_t) ) then
     env = 0.0
-  else
+  else 
     env = 0.0
     do i = 2, len_t
       if ( z <= t_array(i) ) then
