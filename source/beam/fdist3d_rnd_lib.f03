@@ -221,7 +221,15 @@ subroutine get_rndpos_pw_linear( prof_pars, pos )
       a = 0.5 * ( pdf(i) - pdf(i-1) ) / ( x(i) - x(i-1) )
       b = pdf(i-1)
       c = cdf(i-1) - dice
-      pos = 0.5 * ( sqrt( b*b - 4.0*a*c ) - b ) / a + x(i-1)
+      if ( a < epsilon(1.0) ) then
+        if ( b < epsilon(1.0) ) then
+          pos = x(i-1)
+        else
+          pos = -c / b + c**2 * a / b**3 + x(i-1)
+        endif
+      else
+        pos = 0.5 * ( sqrt( b*b - 4.0*a*c ) - b ) / a + x(i-1)
+      endif
       exit
     endif
   enddo
