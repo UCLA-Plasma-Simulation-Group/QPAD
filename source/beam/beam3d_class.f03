@@ -7,7 +7,8 @@ use sysutil_module
 use options_class
 use field_src_class
 use field_class
-use field_em_class
+use field_e_class
+use field_b_class
 use part3d_class
 use part3d_comm
 use hdf5io_class

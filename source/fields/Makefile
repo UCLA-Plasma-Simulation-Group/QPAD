@@ -1,12 +1,13 @@
 # This is meant to be included by the parent Makefile
 
-src += field_solver_class.f03
 src += ufield_class.f03
+src += field_solver_class.f03
 src += ufield_smooth_class.f03
 src += field_class.f03
 src += field_src_class.f03
 src += field_psi_class.f03
-src += field_em_class.f03
+src += field_b_class.f03
+src += field_e_class.f03
 src += field_vpot_class.f03
 
 # Add local path to vpath

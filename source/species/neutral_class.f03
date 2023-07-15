@@ -8,7 +8,8 @@ use fdist2d_class
 use part2d_class
 use part2d_comm
 use field_class
-use field_em_class
+use field_e_class
+use field_b_class
 use field_psi_class
 use field_src_class
 use hdf5io_class

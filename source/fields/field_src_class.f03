@@ -13,7 +13,7 @@ implicit none
 
 private
 
-public :: field_rho, field_jay, field_djdxi, field_gam
+public :: field_rho, field_jay, field_djdxi
 
 type, extends( field ) :: field_rho
 
@@ -24,16 +24,7 @@ type, extends( field ) :: field_rho
   generic :: new => init_field_rho
   procedure, private :: init_field_rho
 
-end type field_rho
-
-type, extends( field ) :: field_gam
-
-  contains
-
-  generic :: new => init_field_gam
-  procedure, private :: init_field_gam
-
-end type field_gam
+end type field_rho 
 
 type, extends( field ) :: field_jay
 
@@ -124,62 +115,7 @@ subroutine init_field_rho( this, opts, max_mode, part_shape, &
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
-end subroutine init_field_rho
-
-subroutine init_field_gam( this, opts, max_mode, part_shape, &
-  smth_type, smth_order, has_2d )
-
-  implicit none
-
-  class( field_gam ), intent(inout) :: this
-  type( options ), intent(in) :: opts
-  integer, intent(in) :: max_mode, part_shape
-  integer, intent(in), optional :: smth_type, smth_order
-  logical, intent(in), optional :: has_2d
-
-  integer, dimension(2,2) :: gc_num
-  integer :: dim, smth_type_, smth_order_
-  logical :: has_2d_
-  character(len=20), save :: cls_name = "field_rho"
-  integer, parameter :: cls_level = 3
-  character(len=20), save :: sname = "init_field_rho"
-
-  call write_dbg( cls_name, sname, cls_level, 'starts' )
-
-  select case ( part_shape )
-
-  case ( p_ps_linear )
-
-    gc_num(:,1) = (/1, 1/)
-    gc_num(:,2) = (/0, 1/)
-
-  case ( p_ps_quadratic )
-
-    call write_err( "Quadratic particle shape not implemented." )
-
-  case default
-
-    call write_err( "Invalid particle shape." )
-
-  end select
-
-  dim = 1
-  smth_type_  = p_smooth_none
-  smth_order_ = 0
-  has_2d_     = .true.
-  if ( present(smth_type) ) smth_type_ = smth_type
-  if ( present(smth_order) ) smth_order_ = smth_order
-  if ( present(has_2d) ) has_2d_ = has_2d
-
-  gc_num(1,1) = max( gc_num(1,1), smth_order_ )
-  gc_num(2,1) = max( gc_num(2,1), smth_order_ )
-
-  call this%field%new( opts, dim, max_mode, gc_num, &
-      smooth_type=smth_type_, smooth_order=smth_order_, has_2d=has_2d_ )
-
-  call write_dbg( cls_name, sname, cls_level, 'ends' )
-
-end subroutine init_field_gam
+end subroutine init_field_rho 
 
 subroutine init_field_jay( this, opts, max_mode, part_shape, &
   smooth_type, smooth_order )

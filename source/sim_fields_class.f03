@@ -3,7 +3,8 @@ module sim_fields_class
 use parallel_module
 use options_class
 use field_psi_class
-use field_em_class
+use field_e_class
+use field_b_class
 use field_vpot_class
 use field_src_class
 use sysutil_module
@@ -24,10 +25,9 @@ type sim_fields
   class( field_vpot ), pointer :: vpot => null() ! just for diagnostic
   class( field_b ), pointer :: b_spe => null(), b_beam => null(), b => null()
   class( field_e ), pointer :: e_spe => null(), e_beam => null(), e => null()
-  class( field_jay ), pointer :: cu => null(), amu => null(), ve => null(), vv => null()
+  class( field_jay ), pointer :: cu => null(), amu => null()
   class( field_rho ), pointer :: q_spe => null(), q_beam => null()
-  class( field_djdxi ), pointer :: dcu => null(), acu => null()
-  class( field_gam ), pointer :: gam => null()
+  class( field_djdxi ), pointer :: dcu => null(), acu => null() 
 
   contains
 
@@ -62,10 +62,7 @@ subroutine alloc_sim_fields( this, input )
   if ( .not. associated( this%e_beam ) ) allocate( field_e :: this%e_beam )
   if ( .not. associated( this%e ) )      allocate( field_e :: this%e )
   if ( .not. associated( this%cu ) )     allocate( field_jay :: this%cu )
-  if ( .not. associated( this%amu ) )    allocate( field_jay :: this%amu )
-  if ( .not. associated( this%vv ) )     allocate( field_jay :: this%vv )
-  if ( .not. associated( this%ve ) )     allocate( field_jay :: this%ve )
-  if ( .not. associated( this%gam ) )    allocate( field_gam :: this%gam)
+  if ( .not. associated( this%amu ) )    allocate( field_jay :: this%amu ) 
   if ( .not. associated( this%q_spe ) )  allocate( field_rho :: this%q_spe )
   if ( .not. associated( this%q_beam ) ) allocate( field_rho :: this%q_beam )
   if ( .not. associated( this%dcu ) )    allocate( field_djdxi :: this%dcu )
@@ -81,10 +78,7 @@ subroutine alloc_sim_fields( this, input )
   call this%e_beam%alloc( max_mode )
   call this%e%alloc( max_mode )
   call this%cu%alloc( max_mode )
-  call this%amu%alloc( max_mode )
-  call this%vv%alloc( max_mode )
-  call this%gam%alloc( max_mode )
-  call this%ve%alloc( max_mode )
+  call this%amu%alloc( max_mode ) 
   call this%q_spe%alloc( max_mode )
   call this%q_beam%alloc( max_mode )
   call this%dcu%alloc( max_mode )
@@ -158,10 +152,7 @@ subroutine init_sim_fields( this, input, opts )
   call this%cu%new(     opts, max_mode, ps, sm_type, sm_ord )
   call this%dcu%new(    opts, max_mode, ps, sm_type, sm_ord )
   call this%acu%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%vv%new(    opts, max_mode, ps, sm_type, sm_ord )
-  call this%ve%new(     opts, max_mode, ps, sm_type, sm_ord )
-  call this%gam%new(  opts, max_mode, ps, sm_type, sm_ord )
+  call this%amu%new(    opts, max_mode, ps, sm_type, sm_ord ) 
   entity = p_entity_plasma
   call this%e_spe%new(  opts, max_mode, ps, bnd, entity )
   call this%b_spe%new(  opts, max_mode, ps, bnd, entity )
@@ -193,10 +184,7 @@ subroutine end_sim_fields( this )
   call this%cu%del()
   call this%dcu%del()
   call this%acu%del()
-  call this%amu%del()
-  call this%vv%del()
-  call this%ve%del()
-  call this%gam%del()
+  call this%amu%del() 
   call this%q_spe%del()
   call this%q_beam%del()
 

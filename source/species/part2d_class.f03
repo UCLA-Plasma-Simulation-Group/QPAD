@@ -400,38 +400,35 @@ subroutine qdeposit_part2d( this, q )
 
 end subroutine qdeposit_part2d
 
-subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
-! deposit the current, momentum flux， and gamma
+subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
+! deposit the current, acceleration and momentum flux
 
   implicit none
 
   class(part2d), intent(inout) :: this
-  class(field), intent(in) :: cu, amu, gam, ve, vv
+  class(field), intent(in) :: cu, amu, dcu
   class(field), intent(in) :: ef, bf
   ! local data
   character(len=32), save :: sname = 'edeposit_part2d'
   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
   type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
   type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
-  type(ufield), dimension(:), pointer :: ve_re => null(), ve_im => null()
-  type(ufield), dimension(:), pointer :: gam_re => null(), gam_im => null()
+  type(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
   type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
-  type(ufield), dimension(:), pointer :: vv_re => null(), vv_im => null()
 
-  real, dimension(:,:), pointer :: cu0 => null(), gam0 => null(), amu0 => null(), ve0 => null(), vv0 => null()
-  real, dimension(:,:), pointer :: cur => null(), gamr => null(), amur => null(), ver => null(), vvr => null()
-  real, dimension(:,:), pointer :: cui => null(), gami => null(), amui => null(), vei => null(), vvi => null()
+  real, dimension(:,:), pointer :: cu0 => null(), dcu0 => null(), amu0 => null()
+  real, dimension(:,:), pointer :: cur => null(), dcur => null(), amur => null()
+  real, dimension(:,:), pointer :: cui => null(), dcui => null(), amui => null()
 
   integer(kind=LG) :: ptrcur, pp
-  integer :: i, j, nn, noff, nrp, np, mode, max_mode
+  integer :: i, j, noff, nrp, np, mode, max_mode
   integer, dimension(p_cache_size) :: ix
-  real :: idr, dr, p1, p2, p3, gam2
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
-  real :: qtmh, qtmh1, qtmh2, idt, ostq, ipsi, dpsi, w, ir, w1, w2, w3, igamma
-  complex(kind=DB) :: phase, phase0, phase1, phase2, phase3
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir
+  complex(kind=DB) :: phase, phase0
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
   call start_tprof( 'deposit 2D particles' )
@@ -439,12 +436,9 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
   ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
   bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
   cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
-  ve_re  => ve%get_rf_re();  ve_im  => ve%get_rf_im()
-  gam_re => gam%get_rf_re(); gam_im => gam%get_rf_im()
+  dcu_re => dcu%get_rf_re(); dcu_im => dcu%get_rf_im()
   amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
-  vv_re => vv%get_rf_re(); vv_im => vv%get_rf_im()
 
-  idr = 1.0 / this%dr
   idt = 1.0 / this%dt
   qtmh = 0.5 * this%qbm * this%dt
   max_mode = ef%get_max_mode()
@@ -453,9 +447,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
   nrp  = cu_re(0)%get_ndp(1)
 
   cu0  => cu_re(0)%get_f1()
-  ve0  => ve_re(0)%get_f1()
-  vv0  => ve_re(0)%get_f1()
-  gam0 => gam_re(0)%get_f1()
+  dcu0 => dcu_re(0)%get_f1()
   amu0 => amu_re(0)%get_f1()
 
   do ptrcur = 1, this%npp, p_cache_size
@@ -467,86 +459,119 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
       np = p_cache_size
     endif
 
+    ! interpolate fields to particles
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
 
+    ! calculate wake field
+    do i = 1, np
+      wp(1,i) = ep(1,i) 
+      wp(2,i) = ep(2,i) 
+      wp(3,i) = ep(3,i)
+    enddo
 
     ! transform momentum from Cartesian to cylindrical coordinates
     pp = ptrcur
     do i = 1, np
-      u(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
-      u(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
-      u(3,i) = this%p(3,pp)
+      u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+      u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+      u0(3,i) = this%p(3,pp)
       pp = pp + 1
     enddo
 
+    ! half electric acceleration
+    do i = 1, np
+      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
+      qtmh1 = qtmh * gam / ( gam - u0(3,i) )
+      ep(:,i) = ep(:,i) * qtmh1
+!       utmp(:,i) = u0(:,i) + ep(:,i)
+    enddo
+
+    ! scale magnetic field
+    do i = 1, np
+!       qtmh2 = qtmh / ( gam - utmp(3,i) )
+      qtmh2 = qtmh / ( gam - u0(3,i) )
+      bp(:,i) = bp(:,i) * qtmh2
+    enddo
+
+    ! magnetic rotation
+    do i = 1, np
+      u(1,i) = -u0(2,i) * bp(3,i) 
+      u(2,i) = u0(1,i) * bp(3,i)
+
+!       ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+!       bp(:,i) = bp(:,i) * ostq
+
+!       utmp(1,i) = utmp(1,i) + u(2,i) * bp(3,i) 
+!       utmp(2,i) = utmp(2,i) - u(1,i) * bp(3,i)
+    enddo
+
+    ! half electric acceleration
+!     do i = 1, np
+!       u(1,i) = utmp(1,i) + ep(1,i)
+!       u(2,i) = utmp(2,i) + ep(2,i)
+!     enddo
+
     ! calculate and store time-centered values
-    ! deposit momentum flux, gamma, and current density
+    ! deposit momentum flux, acceleration density, and current density
     pp = ptrcur
     do i = 1, np
 
-      this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
+!       du(1) = idt * ( u(1,i) - u0(1,i) ) 
+!       du(2) = idt * ( u(2,i) - u0(2,i) ) 
+      du(1) = ep(1,i) + u(1,i)
+      du(2) = ep(2,i) + u(2,i)
+      
+      u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+      u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+      u0(3,i) = this%p(3,pp)
+      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
+      this%gamma(pp) = gam
       this%psi(pp)   = this%gamma(pp) - u(3,i)
 
-      ipsi = 1.0 / this%psi(pp) 
+      ipsi = 1.0 / this%psi(pp)
+      dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
-!       u2(1) = u(1,i) * u(1,i) * ipsi
-!       u2(2) = u(1,i) * u(2,i) * ipsi
-!       u2(3) = u(2,i) * u(2,i) * ipsi
+      du(1) = du(1) + u0(1,i) * dpsi * ipsi
+      du(2) = du(2) + u0(2,i) * dpsi * ipsi
 
-!       gam2 = this%gamma(pp) * this%gamma(pp)
-
-      u2(1) = u(1,i) * u(1,i) * ipsi 
-      u2(2) = u(1,i) * u(2,i) * ipsi
-      u2(3) = u(2,i) * u(2,i) * ipsi
+      u2(1) = u0(1,i) * u0(1,i) * ipsi
+      u2(2) = u0(1,i) * u0(2,i) * ipsi
+      u2(3) = u0(2,i) * u0(2,i) * ipsi
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
-      phase1 = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi * ipsi
-      phase3 = cmplx( 1.0, 0.0 ) * ipsi 
-      phase2 = cmplx( 1.0, 0.0 ) * ipsi * ipsi 
+
       ! deposit m = 0 mode
       do j = 0, 1
         w = wt(j,i) * real(phase)
-        w1 = wt(j,i) * real(phase1) 
-        w3 = wt(j,i) * real(phase3)
-        w2 = wt(j,i) * real(phase2)
-        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u(1:3,i)
-!         ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w * u(1:3,i)  
-!         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3) 
-!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w3 * this%gamma(pp)
-        ve0(1:3, ix(i)+j) = ve0(1:3, ix(i)+j) + w2 * u(1:3,i)  
-        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3) 
-        vv0( 1:3, ix(i)+j ) = vv0( 1:3, ix(i)+j ) + w3 * u2(1:3) 
-        gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + w2 * this%gamma(pp)
-!         write(2,*) gam0, "gamma"
-
-!         gam0( 1, ix(i)+j ) = gam0( 1, ix(i)+j ) + sqrt(1 + ve0(1, ix(i)+j)**2 + ve0(2, ix(i)+j)**2 + ve0(3, ix(i)+j)**2)
-
+        cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u0(1:3,i) 
+        dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
+        amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
       enddo
 
       ! deposit m > 0 mode
-!       do mode = 1, max_mode
+      do mode = 1, max_mode
 
-!         cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
-!         gammar => dcu_re(mode)%get_f1(); dcui => gammaim(mode)%get_f1()
-!         amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+        cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+        dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+        amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
 
-!         phase = phase * phase0
+        phase = phase * phase0
 
-!         do j = 0, 1
-!           w = wt(j,i) * real(phase)
-!           cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
-!           gammar( 1:2, ix(i)+j ) = gammar( 1:2, ix(i)+j ) + w * gamma(1:2)
-!           amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
+        do j = 0, 1
+          w = wt(j,i) * real(phase)
+          cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
+          dcur( 1:2, ix(i)+j ) = dcur( 1:2, ix(i)+j ) + w * du(1:2)
+          amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
 
-!           w = wt(j,i) * aimag(phase)
-!           cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
-!           dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
-!           amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
-!         enddo
+          w = wt(j,i) * aimag(phase)
+          cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
+          dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
+          amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
+        enddo
 
-!       enddo
+      enddo
 
       pp = pp + 1
     enddo
@@ -557,98 +582,90 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, gam, ve, vv )
 
     ! guard cells on the axis are useless
     cu0(1:3,0)  = 0.0
-    gam0(1,0) = 0.0
+    dcu0(1:2,0) = 0.0
     amu0(1:3,0) = 0.0
-    ve0(1:3,0) = 0.0
-    vv0(1:3,0) = 0.0
 
     cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
-    gam0(1,1) = 0.0
+    dcu0(1:2,1) = 0.0
     amu0(1:3,1) = 0.0
-    ve0(1:3,1) = 0.0
-    vv0(1:3,1) = 0.0
 
-!     do mode = 1, max_mode
+    do mode = 1, max_mode
 
-!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
-!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
-!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
 
-!       ! guard cells on the axis are useless
-!       cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
-!       dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
-!       amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
+      ! guard cells on the axis are useless
+      cur(1:3,0)  = 0.0; cui(1:3,0)  = 0.0
+      dcur(1:2,0) = 0.0; dcui(1:2,0) = 0.0
+      amur(1:3,0) = 0.0; amui(1:3,0) = 0.0
        
-!       if ( mode == 1 ) then
-!         cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
-!         dcur(1:2,1) = 8.0 * dcur(1:2,1)
-!         amur(1:3,1) = 0.0
-!         cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
-!         dcui(1:2,1) = 8.0 * dcui(1:2,1)
-!         amui(1:3,1) = 0.0
-!       elseif ( mode == 2 ) then
-!         cur(1:3,1)  = 0.0
-!         dcur(1:2,1) = 0.0
-!         amur(1:3,1) = 8.0 * amur(1:3,1)
-!         cui(1:3,1)  = 0.0
-!         dcui(1:2,1) = 0.0
-!         amui(1:3,1) = 8.0 * amui(1:3,1)
-!       else
-!         cur(1:3,1)  = 0.0
-!         dcur(1:2,1) = 0.0
-!         amur(1:3,1) = 0.0
-!         cui(1:3,1)  = 0.0
-!         dcui(1:2,1) = 0.0
-!         amui(1:3,1) = 0.0
-!        endif
-!     enddo
+      if ( mode == 1 ) then
+        cur(1:2,1)  = 8.0 * cur(1:2,1); cur(3,1) = 0.0
+        dcur(1:2,1) = 8.0 * dcur(1:2,1)
+        amur(1:3,1) = 0.0
+        cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+        dcui(1:2,1) = 8.0 * dcui(1:2,1)
+        amui(1:3,1) = 0.0
+      elseif ( mode == 2 ) then
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 8.0 * amur(1:3,1)
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 8.0 * amui(1:3,1)
+      else
+        cur(1:3,1)  = 0.0
+        dcur(1:2,1) = 0.0
+        amur(1:3,1) = 0.0
+        cui(1:3,1)  = 0.0
+        dcui(1:2,1) = 0.0
+        amui(1:3,1) = 0.0
+       endif
+    enddo
 
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       cu0(1:3,j)  = cu0(1:3,j)  * ir
-      gam0(1,j) = gam0(1,j) * ir
+      dcu0(1:2,j) = dcu0(1:2,j) * ir
       amu0(1:3,j) = amu0(1:3,j) * ir
-      ve0(1:3,j) = ve0(1:3,j) * ir
-      vv0(1:3,j) = vv0(1:3,j) * ir
     enddo
 
-!     do mode = 1, max_mode
+    do mode = 1, max_mode
 
-!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
-!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
-!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
 
-!       do j = 2, nrp + 1
-!         ir = 1.0 / ( j + noff - 1 )
-!         cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
-!         dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
-!         amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
-!       enddo
-!     enddo
+      do j = 2, nrp + 1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
 
   else
 
     do j = 0, nrp + 1
        ir = 1.0 / ( j + noff - 1 )
        cu0(1:3,j)  = cu0(1:3,j)  * ir
-       gam0(1,j) = gam0(1,j) * ir
+       dcu0(1:2,j) = dcu0(1:2,j) * ir
        amu0(1:3,j) = amu0(1:3,j) * ir
-       ve0(1:3,j) = ve0(1:3,j) * ir
-       vv0(1:3,j) = vv0(1:3,j) * ir
     enddo
 
-!     do mode = 1, max_mode
-!       cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
-!       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
-!       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
+    do mode = 1, max_mode
+      cur  => cu_re(mode)%get_f1();  cui  => cu_im(mode)%get_f1()
+      dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
+      amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
 
-!       do j = 0, nrp+1
-!         ir = 1.0 / ( j + noff - 1 )
-!         cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
-!         dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
-!         amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
-!       enddo
-!     enddo
+      do j = 0, nrp+1
+        ir = 1.0 / ( j + noff - 1 )
+        cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
+        dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+        amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+      enddo
+    enddo
 
   endif
 
@@ -2106,7 +2123,7 @@ subroutine expush_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
 !   qtmh = this%qbm * this%dt 
-  qtmh = this%qbm * this%dt * 0.5
+  qtmh = this%qbm * this%dt * 2
 !   write(2,*) this%qbm, "qbm"
   max_mode = ef%get_max_mode()
 
@@ -2131,7 +2148,7 @@ subroutine expush_part2d( this, ef, bf )
     ! advance particle position
     pp = ptrcur
     do i = 1, np
-      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
       x_l = this%x(1,pp)
       this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
@@ -2144,10 +2161,10 @@ subroutine expush_part2d( this, ef, bf )
 
     pp = ptrcur
     do i = 1, np
-      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       ! qtmh1 = qtmh / this%psi(pp)
       ! qtmh2 = qtmh1 * this%gamma(pp)
-      qtmh1 = qtmh / ( gam - this%p_l(3,pp) )
+      qtmh1 = qtmh / ( gam - this%p(3,pp) )
       qtmh2 = qtmh1 * gam
       ep(:,i) = ep(:,i) * qtmh2
       bp(:,i) = bp(:,i) * qtmh1
@@ -2158,6 +2175,9 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np
       utmp(:,i) = this%p_l(:,pp) + ep(:,i)
+!       p_l = this%p(1,pp)
+!       this%p_l(:,pp) = p_l
+      this%p_l(:,pp) = this%p(1,pp)
       pp = pp + 1
     enddo
 
@@ -2187,10 +2207,9 @@ subroutine expush_part2d( this, ef, bf )
 
     ! second half of electric field acc.
     pp = ptrcur
-    do i = 1, np
-      p_l = this%p(1,pp)
+    do i = 1, np 
       this%p(:,pp) = utmp(:,i) + ep(:,i)
-      this%p_l(:,pp) = p_l
+!       this%p_l(:,pp) = p_l
       pp = pp + 1
     enddo
 

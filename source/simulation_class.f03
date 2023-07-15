@@ -9,7 +9,8 @@ use diagnostics_class
 use field_class
 use field_psi_class
 use field_vpot_class
-use field_em_class
+use field_b_class
+use field_e_class
 use field_src_class
 use beam3d_class
 use species2d_class
@@ -226,10 +227,9 @@ subroutine run_simulation( this )
   type(field_vpot), pointer :: vpot
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
-  type(field_jay), pointer :: cu, amu, ve, vv
+  type(field_jay), pointer :: cu, amu
   type(field_rho), pointer :: q_spe, q_beam
-  type(field_gam), pointer :: gam
-  type(field_djdxi), pointer :: dcu, acu
+  type(field_djdxi), pointer :: dcu, acu 
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
   type(neutral), dimension(:), pointer :: neut
@@ -248,13 +248,10 @@ subroutine run_simulation( this )
   b_beam => this%fields%b_beam
   b      => this%fields%b
   cu     => this%fields%cu
-  amu    => this%fields%amu
-  vv     => this%fields%vv
-  ve     => this%fields%ve
-  q_spe  => this%fields%q_spe
+  amu    => this%fields%amu 
+  q_spe  => this%fields%q_spe 
   q_beam => this%fields%q_beam
-  gam    => this%fields%gam
-  dcu    => this%fields%dcu
+  dcu    => this%fields%dcu 
   acu    => this%fields%acu
 
   beam => this%beams%beam
@@ -282,8 +279,7 @@ subroutine run_simulation( this )
   do i = this%start3d, this%nstep3d
 
     this%tstep = i
-    write(2,*) i, "start3d"
-    call write_stdout( '3D step = '//num2str(i) )
+    call write_stdout( '3D step = '//num2str(i) ) 
 
     call q_beam%as(0.0)
     call q_spe%as(0.0)
@@ -333,79 +329,14 @@ subroutine run_simulation( this )
     e_spe = 0.0
     psi   = 0.0
     acu   = 0.0
-    amu   = 0.0 
-    vv    = 0.0 
-    cu    = 0.0
-    ve    = 0.0
-    gam   = 0.0
-!>>>> x in half \xi step
-!     do j = 1, this%nstep2d
+    amu   = 0.0
 
-!       call q_beam%copy_slice( j, p_copy_2to1 )
-!       call q_beam%smooth_f1()
-!       call b_beam%solve( q_beam )
-
-!       write(2,*)  q_spe%getresum(), "q_epush"
-!       do k = 1, this%nspecies
-!         call spe(k)%epush( e, b, this%tstep )
-!         call spe(k)%sort( this%start2d + j - 1 )
-!       enddo
-
-!       write(2,*)  q_spe%getresum(), "q_epush2"
-!       do k = 1, this%nneutrals
-!         call neut(k)%update( e, psi, i*this%dt )
-!         call neut(k)%push( e, b )
-!       enddo
-
-!       do k = 1, this%nneutral2s
-!         call neut2(k)%update( e, psi, i*this%dt )
-!         call neut2(k)%push( e, b)
-!       enddo
-
-!       write(2,*)  q_spe%getresum(), "q_spe2"
-!       q_spe = 0.0
-!       do k = 1, this%nspecies
-!         call spe(k)%qdp( q_spe )
-!       enddo
-
-!       do k = 1, this%nneutrals
-!         call neut(k)%qdp( q_spe )
-!         call neut(k)%ion_deposit( q_spe )
-!       enddo
-
-!       do k = 1, this%nneutral2s
-!         call neut2(k)%qdp( q_spe )
-!       enddo
-
-!       write(2,*)  q_spe%getresum(), "q_spe2"
-!       ! call q_spe%copy_slice( j, p_copy_1to2 )
-!       call psi%solve( q_spe )
-
-!       do k = 1, this%nspecies
-!         call spe(k)%edp( e, b, cu, amu, gam )
-!       enddo
-
-!       do k = 1, this%nneutrals
-! !         call neut(k)%gmjdp( e, b, cu, amu, gam )
-!       enddo
-!       do k = 1, this%nneutral2s
-! !         call neut2(k)%gmjdp( e, b, cu, amu, gam )
-!       enddo
-
-!       write(2,*) "solve_e"
-!       call e%solve(cu)
-!       write(2,*) "solve_ez_fieldem"
-!       call b_spe%solve(e,psi,q_spe,cu,amu,gam)
-!       call e%solve(b_spe,psi)
-!       call add_f1( b_spe, b_beam, b )
-!>>>> x,p,psi in integer \xi step
     do j = 1, this%nstep2d
 
-      write(2,*) j, "start2d"
-      call q_beam%copy_slice( j, p_copy_2to1 )
+      call q_beam%copy_slice( j, p_copy_2to1 ) 
       call q_beam%smooth_f1()
       call b_beam%solve( q_beam )
-      q_spe = 0.0 
+      q_spe = 0.0
       do k = 1, this%nspecies
         call spe(k)%qdp( q_spe )
       enddo
@@ -420,42 +351,32 @@ subroutine run_simulation( this )
       enddo
 
       ! call q_spe%copy_slice( j, p_copy_1to2 )
-      !first psi
-      call psi%solve( q_spe ) 
-      !br
+      call psi%solve( q_spe )
 !       call b_spe%solve( cu )
-!       call add_f1( b_spe, b_beam, b )
-      !second ez
-      call e%solve( cu )
-!       call e%solve( b, psi )
-
-      cu = 0.0
-      acu = 0.0
-      ve = 0.0
-      amu = 0.0
-      gam = 0.0
+      call e%solve( b, psi ) 
+      call add_f1( b_spe, b_beam, b ) 
+      cu = 0.0 
+      acu = 0.0 
+      amu = 0.0 
       do k = 1, this%nspecies
-        !deposit e,b for interpolation cof wt
-!         call spe(k)%edp( e, b, cu, amu, gam, ve, vv)
-        call spe(k)%amjdp(e, b, cu, amu, acu)
-      enddo 
-      ! third bphi
-!       call b_spe%solve(e,psi,q_spe,cu,amu,gam,ve, vv)
+        call spe(k)%edp( e, b, cu, amu, acu )
+      enddo
+      call e%solve( cu ) 
+      call b_spe%solve( cu )
       call dcu%solve( acu, amu )
-      call b_spe%solve(dcu, cu, psi, q_spe)
-      !calculate real q (rho - jz --> rho)
+      call b_spe%solve( dcu, cu, psi, q_spe )
+!       call b_spe%solve( cu )
       do k = 1, this%nspecies
         call spe(k)%cbq(j)
-      enddo  
+      enddo
+
       call cu%copy_slice( j, p_copy_1to2 )
       call add_f1( cu, q_spe, (/3/), (/1/) )
-      call q_spe%copy_slice( j, p_copy_1to2 ) 
+      call q_spe%copy_slice( j, p_copy_1to2 )
 
-      !sum b
-      call add_f1( b_spe, b_beam, b )
-      ! last er 
-      call e_spe%solve( b_spe, psi ) 
-      call e%solve( b, psi )
+      call add_f1( b_spe, b_beam, b ) 
+      call e_spe%solve( b_spe, psi )
+      call e%solve( b, psi ) 
 
       ! for vector potential diagnostics
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
@@ -463,6 +384,9 @@ subroutine run_simulation( this )
         if ( this%diag%has_vpott ) call vpot%solve_vpott( cu )
         call vpot%copy_slice( j, p_copy_1to2 )
       endif
+
+      call dot_f1( this%dxi, dcu )
+      call add_f1( dcu, cu, (/1,2/), (/1,2/) )
 
       ! send the last slice of current and species B-field to the next stage
       if ( j == this%nstep2d ) then
@@ -478,19 +402,19 @@ subroutine run_simulation( this )
         call spe(k)%sort( this%start2d + j - 1 )
       enddo
 
-!       ! ionize and advance particles of neutrals
-!       do k = 1, this%nneutrals
-!         call neut(k)%update( e, psi, i*this%dt )
-!         call neut(k)%push( e, b )
-!         ! TODO: add sorting
-!       enddo
+      ! ionize and advance particles of neutrals
+      do k = 1, this%nneutrals
+        call neut(k)%update( e, psi, i*this%dt )
+        call neut(k)%push( e, b )
+        ! TODO: add sorting
+      enddo
 
-!      ! ionize and advance particles of neutrals
-!       do k = 1, this%nneutral2s
-!         call neut2(k)%push( e, b )
-!         call neut2(k)%update( e, psi, i*this%dt )
-!         ! TODO: add sorting
-!       enddo
+     ! ionize and advance particles of neutrals
+      do k = 1, this%nneutral2s
+        call neut2(k)%push( e, b )
+        call neut2(k)%update( e, psi, i*this%dt )
+        ! TODO: add sorting
+      enddo
 
       call e%copy_slice( j, p_copy_1to2 )
       call b%copy_slice( j, p_copy_1to2 )
@@ -508,7 +432,7 @@ subroutine run_simulation( this )
         this%tag_field(3) = ntag()
         call e%pipe_send( this%tag_field(3), this%id_field(3), 'backward', 'inner' )
       endif
-
+    write(2,*) j, "2dstep"
     enddo ! 2d loop
 
     ! pipeline for species
