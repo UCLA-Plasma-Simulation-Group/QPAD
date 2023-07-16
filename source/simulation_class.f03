@@ -351,19 +351,33 @@ subroutine run_simulation( this )
       enddo
 
       ! call q_spe%copy_slice( j, p_copy_1to2 )
+!..............psi.........................
       call psi%solve( q_spe )
-!       call b_spe%solve( cu )
-      call e%solve( b, psi ) 
-      call add_f1( b_spe, b_beam, b ) 
+!       call b_spe%solve( cu ) 
+!.............cu...........................
       cu = 0.0 
       acu = 0.0 
       amu = 0.0 
       do k = 1, this%nspecies
         call spe(k)%edp( e, b, cu, amu, acu )
       enddo
+!............ez/bz.........................
       call e%solve( cu ) 
       call b_spe%solve( cu )
+      cu = 0.0 
+      acu = 0.0 
+      amu = 0.0
+!..........divergence of psi ..............
+      call e%solve( b, psi ) 
+!...........sum of bz .....................
+      call add_f1( b_spe, b_beam, b ) 
+!............amu/dcu.......................
+      do k = 1, this%nspecies
+        call spe(k)%edp( e, b, cu, amu, acu )
+      enddo
+!............dj/dxi........................
       call dcu%solve( acu, amu )
+!............bperp.........................
       call b_spe%solve( dcu, cu, psi, q_spe )
 !       call b_spe%solve( cu )
       do k = 1, this%nspecies
@@ -373,8 +387,9 @@ subroutine run_simulation( this )
       call cu%copy_slice( j, p_copy_1to2 )
       call add_f1( cu, q_spe, (/3/), (/1/) )
       call q_spe%copy_slice( j, p_copy_1to2 )
-
+!............sum of b.......................
       call add_f1( b_spe, b_beam, b ) 
+!..............eperp........................
       call e_spe%solve( b_spe, psi )
       call e%solve( b, psi ) 
 

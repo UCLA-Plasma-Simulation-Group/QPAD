@@ -440,7 +440,9 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
   amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
 
   idt = 1.0 / this%dt
-  qtmh = 0.5 * this%qbm * this%dt
+  qtmh = this%qbm
+!   write(2,*) qtmh,"qbm" 
+!   qtmh = 0.5 * this%qbm * this%dt
   max_mode = ef%get_max_mode()
 
   noff = cu_re(0)%get_noff(1)
@@ -496,8 +498,8 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
     ! magnetic rotation
     do i = 1, np
-      u(1,i) = -u0(2,i) * bp(3,i) 
-      u(2,i) = u0(1,i) * bp(3,i)
+      u(1,i) = u0(2,i) * bp(3,i) 
+      u(2,i) = -u0(1,i) * bp(3,i)
 
 !       ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
 !       bp(:,i) = bp(:,i) * ostq
@@ -527,7 +529,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       u0(3,i) = this%p(3,pp)
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       this%gamma(pp) = gam
-      this%psi(pp)   = this%gamma(pp) - u(3,i)
+      this%psi(pp)   = this%gamma(pp) - u0(3,i)
 
       ipsi = 1.0 / this%psi(pp)
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
@@ -561,12 +563,12 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
         do j = 0, 1
           w = wt(j,i) * real(phase)
-          cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u(1:3,i)
+          cur( 1:3, ix(i)+j )  = cur( 1:3, ix(i)+j )  + w * u0(1:3,i)
           dcur( 1:2, ix(i)+j ) = dcur( 1:2, ix(i)+j ) + w * du(1:2)
           amur( 1:3, ix(i)+j ) = amur( 1:3, ix(i)+j ) + w * u2(1:3)
 
           w = wt(j,i) * aimag(phase)
-          cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u(1:3,i)
+          cui( 1:3, ix(i)+j )  = cui( 1:3, ix(i)+j )  + w * u0(1:3,i)
           dcui( 1:2, ix(i)+j ) = dcui( 1:2, ix(i)+j ) + w * du(1:2)
           amui( 1:3, ix(i)+j ) = amui( 1:3, ix(i)+j ) + w * u2(1:3)
         enddo
@@ -2111,7 +2113,7 @@ subroutine expush_part2d( this, ef, bf )
   class(part2d), intent(inout) :: this
   class(field), intent(in) :: ef, bf
   ! local data
-  character(len=18), save :: sname = 'push_robust_part2d'
+  character(len=18), save :: sname = 'expush_part2d'
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
@@ -2123,7 +2125,7 @@ subroutine expush_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
 !   qtmh = this%qbm * this%dt 
-  qtmh = this%qbm * this%dt * 2
+  qtmh = this%qbm * this%dt * 4.15
 !   write(2,*) this%qbm, "qbm"
   max_mode = ef%get_max_mode()
 
