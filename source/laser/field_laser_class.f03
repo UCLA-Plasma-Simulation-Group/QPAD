@@ -1039,9 +1039,21 @@ subroutine read_rst_field_laser( this, files )
   class(field_laser), intent(inout) :: this
   class(hdf5file), intent(in), dimension(:) :: files
 
+  type(ppmsg) :: msg
+
   character(len=32), save :: sname = 'read_rst_field_laser'
   call write_dbg(cls_name, sname, cls_level, 'starts')
+
   call this%read_hdf5(files, 1)
+
+  call this%copy_gc_f2()
+  call this%pipe_send( msg, 'forward', 'inner', this%gc_num(1,2) )
+  call this%pipe_recv( msg, 'forward', 'guard', 'replace', this%gc_num(1,2) )
+  call msg%wait_task()
+  call this%pipe_send( msg, 'backward', 'inner', this%gc_num(2,2) )
+  call this%pipe_recv( msg, 'backward', 'guard', 'replace', this%gc_num(2,2) )
+  call msg%wait_task()
+
   call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine read_rst_field_laser
 
