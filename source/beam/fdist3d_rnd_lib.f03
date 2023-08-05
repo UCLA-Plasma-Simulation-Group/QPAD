@@ -93,7 +93,7 @@ subroutine get_rndpos_gaussian( prof_pars, pos )
 
   mu    = prof_pars(1)  
   sigma = prof_pars(2)
-  pos   = ranorm() * sigma + mu
+  pos   = rand_norm() * sigma + mu
 
 end subroutine get_rndpos_gaussian
 

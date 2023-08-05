@@ -418,9 +418,9 @@ subroutine inject_fdist3d_rnd( this, part )
     end select
 
     ! momentum initialization uses Cartesian geometry
-    part%p(1, ip) = this%uth(1) * ranorm()
-    part%p(2, ip) = this%uth(2) * ranorm()
-    part%p(3, ip) = this%uth(3) * ranorm() + this%gamma
+    part%p(1, ip) = this%uth(1) * rand_norm()
+    part%p(2, ip) = this%uth(2) * rand_norm()
+    part%p(3, ip) = this%uth(3) * rand_norm() + this%gamma
     part%p(3, ip) = sqrt( part%p(3, ip)**2 - part%p(1, ip)**2 - part%p(2, ip)**2 - 1 )
 
     ! spin initialization has not yet implemented
