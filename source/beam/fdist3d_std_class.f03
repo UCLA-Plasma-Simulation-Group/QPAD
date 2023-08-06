@@ -144,6 +144,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof1    => set_prof_gaussian
       this%get_den1     => get_den_gaussian
 
+    case ( 'super-gaussian' )
+      this%prof_type(1) = p_prof_super_gauss
+      this%set_prof1    => set_prof_super_gauss
+      this%get_den1     => get_den_super_gauss
+
     case ( 'parabolic' )
       this%prof_type(1) = p_prof_parabolic
       this%set_prof1    => set_prof_parabolic
@@ -161,7 +166,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 1! Currently available &
-        &include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
+        &include "uniform", "gaussian", "super-gaussian", "parabolic", "rational" and "piecewise-linear".' )
 
   end select
 
@@ -177,6 +182,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%prof_type(2) = p_prof_gaussian
       this%set_prof2    => set_prof_gaussian
       this%get_den2     => get_den_gaussian
+
+    case ( 'super-gaussian' )
+      this%prof_type(2) = p_prof_super_gauss
+      this%set_prof2    => set_prof_super_gauss
+      this%get_den2     => get_den_super_gauss
 
     case ( 'parabolic' )
       this%prof_type(2) = p_prof_parabolic
@@ -195,7 +205,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 2! Currently available &
-        &include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
+        &include "uniform", "gaussian", "super-gaussian", "parabolic", "rational" and "piecewise-linear".' )
 
   end select
 
@@ -211,6 +221,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%prof_type(3) = p_prof_gaussian
       this%set_prof3    => set_prof_gaussian
       this%get_den3     => get_den_gaussian
+
+    case ( 'super-gaussian' )
+      this%prof_type(3) = p_prof_super_gauss
+      this%set_prof3    => set_prof_super_gauss
+      this%get_den3     => get_den_super_gauss
 
     case ( 'parabolic' )
       this%prof_type(3) = p_prof_parabolic
@@ -229,7 +244,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
-        &include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
+        &include "uniform", "gaussian", "super-gaussian", "parabolic", "rational" and "piecewise-linear".' )
 
   end select
 
