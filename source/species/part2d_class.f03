@@ -2125,7 +2125,7 @@ subroutine expush_part2d( this, ef, bf )
   call start_tprof( 'push 2D particles' )
 
 !   qtmh = this%qbm * this%dt 
-  qtmh = this%qbm * this%dt * 4.15
+  qtmh = this%qbm * this%dt 
 !   write(2,*) this%qbm, "qbm"
   max_mode = ef%get_max_mode()
 

@@ -40,7 +40,7 @@ integer, dimension(2) :: send_cnt = 0
 integer, dimension(2) :: recv_cnt = 0
 
 ! max dimension of particle coordinates
-integer :: dim_max = 10
+integer :: dim_max = 9
 
 ! current buffer size, same for send and receive buffers
 integer :: buf_size = 0
