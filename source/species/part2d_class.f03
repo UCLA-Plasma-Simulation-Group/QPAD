@@ -2153,10 +2153,10 @@ subroutine expush_part2d( this, ef, bf )
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
       x_l = this%x(1,pp)
-      this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
+      this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc * 2
       this%x_l(1,pp) = x_l
       x_l = this%x(2,pp)
-      this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc
+      this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc * 2
       this%x_l(2,pp) = x_l
       pp = pp + 1
     enddo
@@ -2169,7 +2169,7 @@ subroutine expush_part2d( this, ef, bf )
       qtmh1 = qtmh / ( gam - this%p(3,pp) )
       qtmh2 = qtmh1 * gam
       ep(:,i) = ep(:,i) * qtmh2
-      bp(:,i) = bp(:,i) * qtmh1
+      bp(:,i) = bp(:,i) * qtmh1 * 2
       pp = pp + 1
     enddo
 
