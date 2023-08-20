@@ -638,6 +638,10 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j))
+!       write(2,*) q_re(1,j)/(1+psi_re(1,j)), 'coefficient ratio'
+!       write(2,*) q_re(1,j), 'q_re'
+!       write(2,*) psi_re(1,j), 'psi_re'
+!       write(2,*) dr2, 'dr2'
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 

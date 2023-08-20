@@ -485,42 +485,21 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     do i = 1, np
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       qtmh1 = qtmh * gam / ( gam - u0(3,i) )
-      ep(:,i) = ep(:,i) * qtmh1
-!       utmp(:,i) = u0(:,i) + ep(:,i)
-    enddo
-
-    ! scale magnetic field
-    do i = 1, np
-!       qtmh2 = qtmh / ( gam - utmp(3,i) )
+      ep(:,i) = ep(:,i) * qtmh1 
       qtmh2 = qtmh / ( gam - u0(3,i) )
       bp(:,i) = bp(:,i) * qtmh2
     enddo
 
-    ! magnetic rotation
     do i = 1, np
-      u(1,i) = u0(2,i) * bp(3,i) 
+      u(1,i) = u0(2,i) * bp(3,i)
       u(2,i) = -u0(1,i) * bp(3,i)
-
-!       ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
-!       bp(:,i) = bp(:,i) * ostq
-
-!       utmp(1,i) = utmp(1,i) + u(2,i) * bp(3,i) 
-!       utmp(2,i) = utmp(2,i) - u(1,i) * bp(3,i)
     enddo
-
-    ! half electric acceleration
-!     do i = 1, np
-!       u(1,i) = utmp(1,i) + ep(1,i)
-!       u(2,i) = utmp(2,i) + ep(2,i)
-!     enddo
 
     ! calculate and store time-centered values
     ! deposit momentum flux, acceleration density, and current density
     pp = ptrcur
     do i = 1, np
 
-!       du(1) = idt * ( u(1,i) - u0(1,i) ) 
-!       du(2) = idt * ( u(2,i) - u0(2,i) ) 
       du(1) = ep(1,i) + u(1,i)
       du(2) = ep(2,i) + u(2,i)
       
@@ -532,6 +511,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       this%psi(pp)   = this%gamma(pp) - u0(3,i)
 
       ipsi = 1.0 / this%psi(pp)
+      !wp(1)andwp(2) is - laplace_perp psi_perp
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
       du(1) = du(1) + u0(1,i) * dpsi * ipsi

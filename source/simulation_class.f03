@@ -363,6 +363,7 @@ subroutine run_simulation( this )
       enddo
 !............ez/bz.........................
       call e%solve( cu ) 
+      cu = 0.0
       call b_spe%solve( cu )
       cu = 0.0 
       acu = 0.0 
@@ -378,6 +379,8 @@ subroutine run_simulation( this )
 !............dj/dxi........................
       call dcu%solve( acu, amu )
 !............bperp.........................
+!       dcu = 0.0 
+!       cu =0.0
       call b_spe%solve( dcu, cu, psi, q_spe )
 !       call b_spe%solve( cu )
       do k = 1, this%nspecies
