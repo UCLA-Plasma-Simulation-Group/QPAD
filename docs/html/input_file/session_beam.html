@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beam Session &mdash; QPAD 0.1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Species Session" href="session_species.html" />
+    <link rel="prev" title="Simulation Session" href="session_simulation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> QPAD
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview/overview.html">Overview of QPAD algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="overview.html">Input File</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="overview.html#format-of-input-file">Format of Input File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#parameter-unit">Parameter Unit</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="overview.html#sessions-of-input-file">Sessions of Input File</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="session_simulation.html">Simulation Session</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Beam Session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#lattice-like-initialization">Lattice-like Initialization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#initialization-using-probability-distribution-function">Initialization using probability distribution function</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#importing-particles-from-a-hdf5-file">Importing particles from a HDF5 file</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="session_species.html">Species Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_neutral.html">Neutral Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_field.html">Field Session</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../post_process/post_process.html">Post-processing Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/contribution.html">Contribute to QPAD</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">QPAD</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="overview.html">Input File</a> &raquo;</li>
+      <li>Beam Session</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/input_file/session_beam.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="beam-session">
+<h1>Beam Session<a class="headerlink" href="#beam-session" title="Permalink to this heading"></a></h1>
+<p>In the input file, each component in the <code class="docutils literal notranslate"><span class="pre">beam</span></code> session is a session that defines the parameters related to each particle beam. Currently, there are three types of beam sources configured through <code class="docutils literal notranslate"><span class="pre">profile_type</span></code> parameter in the <code class="docutils literal notranslate"><span class="pre">beam</span></code> session. They are <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code> which correspond to</p>
+<ul class="simple">
+<li><p>“Lattice-like” initialization of macro-particles with varying charge</p></li>
+<li><p>Initialization using probability distribution function with fixed charge</p></li>
+<li><p>Read macro-particles from files</p></li>
+</ul>
+<section id="lattice-like-initialization">
+<h2>Lattice-like Initialization<a class="headerlink" href="#lattice-like-initialization" title="Permalink to this heading"></a></h2>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">profile_type</span></code> to be <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code> enables the “Lattice-like” initialization of beam particles. This method initially inject a fixed number of macro-particles into the simulation box with even spacing in r-, <span class="math notranslate nohighlight">\(\phi\)</span>- and <span class="math notranslate nohighlight">\(\xi\)</span>-directions. The charge carried by each macro-particle varies according the local beam density.</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">profile_type</span></code>, string</dt><dd><p>Source type of the beam particles. Available options include <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code>. Here it should be set as <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">geometry</span></code>, string, optional, default <code class="docutils literal notranslate"><span class="pre">&quot;cartesian&quot;</span></code></dt><dd><p>Geometry for the particle initialization, including <code class="docutils literal notranslate"><span class="pre">&quot;cartesian&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;cylindrical&quot;</span></code>. The initialization assumes the beam density distribution is variable-separable in three directions, i.e., 1-, 2- and 3-direction. Note that the choice of the value will affect the configuration of some of the following parameters. Setting <code class="docutils literal notranslate"><span class="pre">geometry</span></code> to be <code class="docutils literal notranslate"><span class="pre">&quot;cartesian&quot;</span></code> means the 1-, 2- and 3-directions correspond to x-, y- and <span class="math notranslate nohighlight">\(\xi\)</span>-directions, or otherwise r-, <span class="math notranslate nohighlight">\(\phi\)</span>- and <span class="math notranslate nohighlight">\(\xi\)</span>-directions if <code class="docutils literal notranslate"><span class="pre">&quot;cylindrical&quot;</span></code> is selected.</p>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><code class="docutils literal notranslate"><span class="pre">profile</span></code>, string array(3)</dt><dd><p>Profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include <code class="docutils literal notranslate"><span class="pre">&quot;uniform&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;gaussian&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;parabolic&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;rational&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;piecewise-linear&quot;</span></code>. The <code class="docutils literal notranslate"><span class="pre">&quot;uniform&quot;</span></code> option does not need extra parameters while the other types do.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;gaussian&quot;</span></code> type defines a Gaussian beam profile, and the following characteristic parameters need to be provided</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">gauss_center</span></code>, real array (3)</dt><dd><p>The centers in 1-, 2- and 3-direction.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">gauss_sigma</span></code>, real array (3)</dt><dd><p>The rms sizes in 1-, 2- and 3-direction.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;parabolic&quot;</span></code> type defines a parabolic beam profile like <span class="math notranslate nohighlight">\(1-(x-x_0)^2/a^2\)</span> when <span class="math notranslate nohighlight">\(|x|&lt;a\)</span> (a is the radius). The following characteristic parameters need to be provided.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">parabolic_center</span></code>, real array(3)</dt><dd><p>The center <span class="math notranslate nohighlight">\(x_0\)</span> in 1-, 2- and 3-direction.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">parabolic_radius</span></code>, real array(3)</dt><dd><p>The radius a in 1-, 2- and 3-direction.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;rational&quot;</span></code> type defines a rational beam profile like <span class="math notranslate nohighlight">\(\sum_k a_k(x-x_0)^k / \sum_k b_k(x-x_0)^k\)</span>. The following characteristic parameters need to be provided</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">poly_numerator1</span></code>, <code class="docutils literal notranslate"><span class="pre">poly_numerator2</span></code>, <code class="docutils literal notranslate"><span class="pre">poly_numerator3</span></code>, real array (*)</dt><dd><p>The arrays of polynomial coeffcients <span class="math notranslate nohighlight">\((a_0, a_1, a_2, \cdots)\)</span> in 1-, 2- and 3-direction respectively.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">poly_denominator1</span></code>, <code class="docutils literal notranslate"><span class="pre">poly_denominator2</span></code>, <code class="docutils literal notranslate"><span class="pre">poly_denominator3</span></code>, real array (*)</dt><dd><p>The arrays of polynomial coeffcients <span class="math notranslate nohighlight">\((b_0, b_1, b_2, \cdots)\)</span> in 1-, 2- and 3-direction respectively.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">poly_x0</span></code>: real array (3)</dt><dd><p>The center <span class="math notranslate nohighlight">\(x_0\)</span> in 1-, 2- and 3-direction.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;piecewise-linear&quot;</span></code> defines a piecewise linear function according to which the beam density will be initialized. The following parameters are needed</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">piecewise_x1</span></code>, <code class="docutils literal notranslate"><span class="pre">piecewise_x2</span></code>, <code class="docutils literal notranslate"><span class="pre">piecewise_x3</span></code>: real array(*)</dt><dd><p>The arrays of position of the piecewise linear function in 1-, 2- and 3-direction respectively. They must be a monotonically increasing array.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">piecewise_fx1</span></code>, <code class="docutils literal notranslate"><span class="pre">piecewise_fx2</span></code>, <code class="docutils literal notranslate"><span class="pre">piecewise_fx3</span></code>: real array(*)</dt><dd><p>The density defined on each points defined by <code class="docutils literal notranslate"><span class="pre">piecewise_x1</span></code>, <code class="docutils literal notranslate"><span class="pre">piecewise_x2</span></code> and <code class="docutils literal notranslate"><span class="pre">piecewise_x3</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">evolution</span></code>, logical, optional, default <code class="docutils literal notranslate"><span class="pre">&quot;true&quot;</span></code></dt><dd><p>If it is true, the code will update the momentum of beam particles every time step.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">push_type</span></code>, string, optional, default <code class="docutils literal notranslate"><span class="pre">&quot;reduced&quot;</span></code></dt><dd><p>Type of particle pusher. The available options are <code class="docutils literal notranslate"><span class="pre">&quot;reduced&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;boris&quot;</span></code>. The former is a reduced pusher in which the beam particles are assumed to travel at the speed of light. The latter is the standard full Boris algorithm but is slightly less efficient than the reduced pusher.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ppc</span></code>, integer array (3)</dt><dd><p>The numbers of particles per “virtual” cell in the cylindrical coordinate, i.e. <span class="math notranslate nohighlight">\((\Delta r, \Delta\phi, \Delta z)\)</span>. Note it is not affected by the choice of <code class="docutils literal notranslate"><span class="pre">geometry</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">num_theta</span></code>, integer</dt><dd><p>Numbers of “virtual” cells distributed azimuthally, i.e. <span class="math notranslate nohighlight">\(\Delta\phi=2\pi\)</span>/<code class="docutils literal notranslate"><span class="pre">num_theta</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">npmax</span></code>, integer, optional</dt><dd><p>Number of particles allowed for this MPI partition. If not given, the program will automatically calculate an initial guess for this parameter. If <code class="docutils literal notranslate"><span class="pre">npmax</span></code> is not large enough during the initialization, the program will automatically resize the particle buffers.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Manually setting <code class="docutils literal notranslate"><span class="pre">npmax</span></code> to be sufficiently large value can avoid frequent buffer reallocation which may slow down the simulation. However, for some memory-intense tasks, letting the code automatically determine the initial <code class="docutils literal notranslate"><span class="pre">npmax</span></code> may more effciently exploit the memory.</p>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">den_min</span></code>, real, optional, default <code class="docutils literal notranslate"><span class="pre">1.0d-10</span></code></dt><dd><p>It specifies the minimum density for injecting particles. Particles are only injected when the specified density is above this threshold.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">range1</span></code>, <code class="docutils literal notranslate"><span class="pre">range2</span></code>, <code class="docutils literal notranslate"><span class="pre">range3</span></code>, real array(2)</dt><dd><p>The three arrays specifies the lower and upper boundaries in 1-, 2- and 3-direction within which the particles are injected. The particles beyond this region will not be initialized.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">has_spin</span></code>, logical, optional, default <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code></dt><dd><p>Switch of spin dynamics. When this parameter is true, extra coordinates of spin <span class="math notranslate nohighlight">\((s_x, s_y, s_z)\)</span> will be added to each macroparticles. Currently, the spin distribution can only be initialized through importing external particles, i.e., <code class="docutils literal notranslate"><span class="pre">profile_type</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code>. For other beam source types, this parameter must be set as <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">q</span></code>, real</dt><dd><p>Charge for each beam particle. For example, it is <code class="docutils literal notranslate"><span class="pre">-1.0</span></code> for an electron and <code class="docutils literal notranslate"><span class="pre">1.0</span></code> for a proton or positron.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">m</span></code>, real</dt><dd><p>Rest mass for each beam particle. For example, it is <code class="docutils literal notranslate"><span class="pre">1.0</span></code> for an electron and <code class="docutils literal notranslate"><span class="pre">1836.15267389</span></code> for a proton.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">gamma</span></code>, real</dt><dd><p>The Lorentz factor for the average energy of the particle beam.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">density</span></code>, real</dt><dd><p>Global multiplication factor for the density profile. Regardless of which profile type you choose the final density value will be product of <code class="docutils literal notranslate"><span class="pre">density</span></code> and the value set in the specific beam profile.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">quiet_start</span></code>, logical, optional, default <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code></dt><dd><p>Switch of initializing the beam particles using the “quiet start” method. If it is turned on, a set of image particles will be added to suppress the statistic noise. Note that with this feature on, the total particle number will be doubled.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">uth</span></code>, real array (3), optional, default <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">0,</span> <span class="pre">0]</span></code></dt><dd><p>The thermal proper velocity in x-, y- and z-direction (note it is not affected by <code class="docutils literal notranslate"><span class="pre">geometry</span></code>.). The thermal distribution is subject to Gaussian distribution. This is usually used to initialize rms beam divergence.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">alpha</span></code>, real array (2), optional, default <code class="docutils literal notranslate"><span class="pre">0</span></code></dt><dd><p>The Twiss parameter <span class="math notranslate nohighlight">\(\alpha\)</span> in x- and y-directions. This is used to initialize a tilt phase-space ellipse. Note that this parameter is <strong>only available</strong> for <code class="docutils literal notranslate"><span class="pre">&quot;geometry&quot;:</span> <span class="pre">&quot;cartesian&quot;</span></code> and Gaussian profile in x- and/or y-directions. The Twiss parameter <span class="math notranslate nohighlight">\(\beta\)</span> and the emittance will be automatically calculated from <code class="docutils literal notranslate"><span class="pre">gauss_sigma</span></code>, <code class="docutils literal notranslate"><span class="pre">gamma</span></code> and <code class="docutils literal notranslate"><span class="pre">uth</span></code>, so only <span class="math notranslate nohighlight">\(\alpha\)</span> needs to be given explicitly.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">perp_offset_x</span></code>, <code class="docutils literal notranslate"><span class="pre">perp_offset_y</span></code>, real array(*), optional</dt><dd><p>These two parameters are used to set the transverse position offset in x- and y-directions as a function of <span class="math notranslate nohighlight">\(\xi\)</span>. Taking <code class="docutils literal notranslate"><span class="pre">perp_offset_x</span></code> for example, its form looks like <span class="math notranslate nohighlight">\([\xi_0, P_0, P_1, \cdots]\)</span> where <span class="math notranslate nohighlight">\(\xi_0\)</span> is the reference position and <span class="math notranslate nohighlight">\(P_i\)</span> are the coefficients of a polynomial. The transverse offset is given by <span class="math notranslate nohighlight">\(\Delta x=\sum_{k=0} P_k(\xi-\xi_0)^k\)</span>. The configuration in y-direction is similar.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">diag</span></code>, session array (*), optional</dt><dd><p>Every type of diagnostics must be provided as a session. The parameters of each session include</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code>, string array (*)</dt><dd><p>Available options include <code class="docutils literal notranslate"><span class="pre">&quot;charge_cyl_m&quot;</span></code> for dumping beam charge density, and <code class="docutils literal notranslate"><span class="pre">&quot;raw&quot;</span></code> for dumping beam particle raw data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ndump</span></code>, integer</dt><dd><p>The code will dump the data every <code class="docutils literal notranslate"><span class="pre">ndump</span></code> time steps. The data dump is turned off for <code class="docutils literal notranslate"><span class="pre">&quot;ndump&quot;:</span> <span class="pre">0</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">psample</span></code>, integer</dt><dd><p>Only needed by <code class="docutils literal notranslate"><span class="pre">&quot;raw&quot;``diagnostic.</span> <span class="pre">The</span> <span class="pre">code</span> <span class="pre">will</span> <span class="pre">dump</span> <span class="pre">one</span> <span class="pre">particle</span> <span class="pre">raw</span> <span class="pre">data</span> <span class="pre">from</span> <span class="pre">every</span> <span class="pre">``psample</span></code> particles.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="initialization-using-probability-distribution-function">
+<h2>Initialization using probability distribution function<a class="headerlink" href="#initialization-using-probability-distribution-function" title="Permalink to this heading"></a></h2>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">profile_type</span></code> to be <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> enables this type of initialization of beam particles. This method initially inject macro-particles into the simulation box using the probability distribution functions of various density profiles. The charge carried by each macro-particle is the same.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">profile_type</span></code>, string</dt><dd><p>The source type of the beam particles. Available options include <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code>. Here it should be set as <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">total_num</span></code>, integer</dt><dd><p>The total number of particles of the entire beam.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">total_charge</span></code>, real</dt><dd><p>The total charge of the beam in the unit of <span class="math notranslate nohighlight">\(en_pc^3\omega_p^{-3}\)</span>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For simple beam density profiles, it is easy to connect the total charge with the peak density. Taking the tri-Gaussian profile for example, the total charge <span class="math notranslate nohighlight">\(Q=en_b(2\pi)^{3/2}\sigma_x\sigma_y\sigma_z\)</span>.</p>
+</div>
+<p>Other available parameters for <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> type beam profile include <code class="docutils literal notranslate"><span class="pre">geometry</span></code>, <code class="docutils literal notranslate"><span class="pre">profile</span></code>, <code class="docutils literal notranslate"><span class="pre">evolution</span></code>, <code class="docutils literal notranslate"><span class="pre">push_type</span></code>, <code class="docutils literal notranslate"><span class="pre">npmax</span></code>, <code class="docutils literal notranslate"><span class="pre">range1</span></code>, <code class="docutils literal notranslate"><span class="pre">range2</span></code>, <code class="docutils literal notranslate"><span class="pre">range3</span></code>, <code class="docutils literal notranslate"><span class="pre">has_spin</span></code>, <code class="docutils literal notranslate"><span class="pre">q</span></code>, <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">gamma</span></code>, <code class="docutils literal notranslate"><span class="pre">quiet_start</span></code>, <code class="docutils literal notranslate"><span class="pre">uth</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha</span></code>, <code class="docutils literal notranslate"><span class="pre">perp_offset_x</span></code>, <code class="docutils literal notranslate"><span class="pre">perp_offset_y</span></code>, <code class="docutils literal notranslate"><span class="pre">diag</span></code>, and their definitions and configuration are identical to those of the <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code> profile type.</p>
+</section>
+<section id="importing-particles-from-a-hdf5-file">
+<h2>Importing particles from a HDF5 file<a class="headerlink" href="#importing-particles-from-a-hdf5-file" title="Permalink to this heading"></a></h2>
+<p>Setting <code class="docutils literal notranslate"><span class="pre">profile_type</span></code> to be <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code> will import macro-particles from a HDF5 file. This file should contains seven datasets named <code class="docutils literal notranslate"><span class="pre">&quot;x1&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;x2&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;x3&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;p1&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;p2&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;p3&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;q&quot;</span></code> which corresponds to the beam positions and momenta in x-, y- and z-direction (not <span class="math notranslate nohighlight">\(\xi\)</span>-direction), and the charge per particle.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">profile_type</span></code>, string</dt><dd><p>Source type of the beam particles. Here it should be set as “file”.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">filename</span></code>, string</dt><dd><p>Name of the HDF5 file.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">anom_mag_moment</span></code>, real</dt><dd><p>Anomalous magnet moment of the particle. Used for spin dynamics.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">beam_center</span></code>, real array(3)</dt><dd><p>Cartesian coordinates <span class="math notranslate nohighlight">\((x, y, \xi)\)</span> of the beam center.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">file_center</span></code>, real array(3)</dt><dd><p>Cartesian coordinates <span class="math notranslate nohighlight">\((x, y, z)\)</span> of beam center in the HDF5 file.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">length_conv_fac</span></code>, real, optional, default <code class="docutils literal notranslate"><span class="pre">1.0</span></code></dt><dd><p>The scaling factor of the quantities with a length dimension. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density. With this parameter, the beam size will be scaled by <code class="docutils literal notranslate"><span class="pre">length_conv_fac</span></code> times.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">charge_conv_fac</span></code>, real, optional, default <code class="docutils literal notranslate"><span class="pre">1.0</span></code></dt><dd><p>The scaling factor of the charge per particle. This is often used when the beam defined in the HDF5 file and the QPAD simulation have different reference density, or when the beam defined in the HDF5 file is extracted from other simulation (e.g. <a class="reference external" href="http://epp.tecnico.ulisboa.pt/osiris/">OSIRIS</a>) with different cell volume. With this parameter, the charge per particle will be multiplied by <code class="docutils literal notranslate"><span class="pre">charge_conv_fac</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Other available parameters for <code class="docutils literal notranslate"><span class="pre">&quot;file&quot;</span></code> type beam profile include  <code class="docutils literal notranslate"><span class="pre">evolution</span></code>, <code class="docutils literal notranslate"><span class="pre">push_type</span></code>, <code class="docutils literal notranslate"><span class="pre">npmax</span></code>, <code class="docutils literal notranslate"><span class="pre">has_spin</span></code>, <code class="docutils literal notranslate"><span class="pre">q</span></code>, <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">diag</span></code>, and their definitions and configuration are identical to those of the <code class="docutils literal notranslate"><span class="pre">&quot;standard&quot;</span></code> profile type.</p>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
+<p>The following example shows the initialization of a beam with Gaussian transverse profile and a sawtooth longitudinal profile using the cylindrical geometry.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;beam&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="p">[</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;profile_type&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;geometry&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cylindrical&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;piecewise-linear&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;evolution&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;push_type&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reduced&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;has_spin&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;ppc&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;num_theta&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;npmax&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">20000000</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;q&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;m&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;density&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">4.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;quiet_start&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gauss_center&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gauss_sigma&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;piecewise_x3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-2.5</span><span class="p">,</span><span class="w"> </span><span class="mf">-2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;piecewise_fx3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range1&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.25</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range2&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">6.283185307179586</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-2.5</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;uth&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;den_min&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1e-10</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;diag&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;charge_cyl_m&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"></span>
+<span class="w">        </span><span class="p">},</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;raw&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;psample&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">],</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This can also be realized by using the Cartesian geometry.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;beam&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="p">[</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;profile_type&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;geometry&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cartesian&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;gaussian&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;piecewise-linear&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;evolution&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;push_type&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reduced&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;has_spin&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;ppc&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;num_theta&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;npmax&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">20000000</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;q&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;m&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;density&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">4.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;quiet_start&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gauss_center&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;gauss_sigma&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;none&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;piecewise_x3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-2.5</span><span class="p">,</span><span class="w"> </span><span class="mf">-2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">-0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;piecewise_fx3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range1&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-1.25</span><span class="p">,</span><span class="w"> </span><span class="mf">1.25</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range2&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-1.25</span><span class="p">,</span><span class="w"> </span><span class="mf">1.25</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;range3&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-2.5</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;uth&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;den_min&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1e-10</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;diag&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;charge_cyl_m&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"></span>
+<span class="w">        </span><span class="p">},</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;raw&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;psample&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="session_simulation.html" class="btn btn-neutral float-left" title="Simulation Session" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="session_species.html" class="btn btn-neutral float-right" title="Species Session" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Fei Li.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

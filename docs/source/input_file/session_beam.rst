@@ -19,7 +19,7 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
     Geometry for the particle initialization, including ``"cartesian"`` and ``"cylindrical"``. The initialization assumes the beam density distribution is variable-separable in three directions, i.e., 1-, 2- and 3-direction. Note that the choice of the value will affect the configuration of some of the following parameters. Setting ``geometry`` to be ``"cartesian"`` means the 1-, 2- and 3-directions correspond to x-, y- and :math:`\xi`-directions, or otherwise r-, :math:`\phi`- and :math:`\xi`-directions if ``"cylindrical"`` is selected.
 
 * ``profile``, string array(3)
-    Profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include ``"uniform"``, ``"gaussian"``, ``"super-gaussian"``, ``"parabolic"``, ``"rational"`` and ``"piecewise-linear"``. The ``"uniform"`` option does not need extra parameters while the other types do.
+    Profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include ``"uniform"``, ``"gaussian"``, ``"parabolic"``, ``"rational"`` and ``"piecewise-linear"``. The ``"uniform"`` option does not need extra parameters while the other types do.
 
     The ``"gaussian"`` type defines a Gaussian beam profile, and the following characteristic parameters need to be provided
     
@@ -27,19 +27,6 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
         The centers in 1-, 2- and 3-direction.
     * ``gauss_sigma``, real array (3)
         The rms sizes in 1-, 2- and 3-direction.
-
-    The ``"super-gaussian"`` type defines a super-Gaussian beam profile, and the following characteristic parameters need to be provided
-    
-    * ``super_gauss_center``, real array (3)
-        The centers in 1-, 2- and 3-direction.
-    * ``super_gauss_sigma``, real array (3)
-        The nominal sizes in 1-, 2- and 3-direction.
-    * ``super_gauss_order``, real array (3)
-        The orders of super-Gaussian profiles in 1-, 2- and 3-direction.
-
-    .. note::
-        The super-Gaussian profile is given by :math:`\exp(-(\frac{(x-\mu)^2}{2\sigma^2})^p)`. Note that ``super_gauss_sigma`` (which refers to :math:`\sigma`) is neither the rms nor fwhm size, but just a nominal size. ``super_gauss_order`` corresponds to :math:`p`.
-
 
     The ``"parabolic"`` type defines a parabolic beam profile like :math:`1-(x-x_0)^2/a^2` when :math:`|x|<a` (a is the radius). The following characteristic parameters need to be provided.
 
@@ -204,8 +191,8 @@ The following example shows the initialization of a beam with Gaussian transvers
       "gamma" : 20000,
       "density" : 4.0,
       "quiet_start" : true,
-      "gauss_center" : [0.0, null, null],
-      "gauss_sigma" : [0.25, null, null],
+      "gauss_center" : [0.0, "none", "none"],
+      "gauss_sigma" : [0.25, "none", "none"],
       "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
       "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
       "range1" : [0, 1.25],
@@ -249,8 +236,8 @@ This can also be realized by using the Cartesian geometry.
       "gamma" : 20000,
       "density" : 4.0,
       "quiet_start" : true,
-      "gauss_center" : [0.0, 0.0, null],
-      "gauss_sigma" : [0.25, 0.25, null],
+      "gauss_center" : [0.0, 0.0, "none"],
+      "gauss_sigma" : [0.25, 0.25, "none"],
       "piecewise_x3" : [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5],
       "piecewise_fx3" : [0.0, 1.0, 0.1, 1.0, 0.2, 1.0, 0.3, 1.0, 0.4, 1.0, 0.0],
       "range1" : [-1.25, 1.25],

@@ -6,7 +6,7 @@ DISABLE_TEMPLATE = TRUE
 DISABLE_POPAS = TRUE
 
 # Desktop
-ifeq ("$(HOSTNAME)","MYITX")
+ifeq ("$(HOSTNAME)","DESKTOP-GUC04E6")
 
 	# Fortran compiler configuration
 	FC = mpif90

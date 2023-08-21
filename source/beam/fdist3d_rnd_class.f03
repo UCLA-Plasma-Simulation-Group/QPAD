@@ -136,11 +136,6 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%prof_type(1) = p_prof_gaussian
       this%set_prof1    => set_prof_gaussian
       this%get_rndpos1  => get_rndpos_gaussian
-    
-    case ( 'super-gaussian' )
-      this%prof_type(1) = p_prof_super_gauss
-      this%set_prof1    => set_prof_super_gauss
-      this%get_rndpos1  => get_rndpos_super_gauss
 
     case ( 'parabolic' )
       this%prof_type(1) = p_prof_parabolic
@@ -154,7 +149,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 1! Currently available &
-        &include "uniform", "gaussian", "super-gaussian", "parabolic" and "piecewise-linear".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
@@ -170,11 +165,6 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%prof_type(2) = p_prof_gaussian
       this%set_prof2    => set_prof_gaussian
       this%get_rndpos2  => get_rndpos_gaussian
-    
-    case ( 'super-gaussian' )
-      this%prof_type(2) = p_prof_super_gauss
-      this%set_prof2    => set_prof_super_gauss
-      this%get_rndpos2  => get_rndpos_super_gauss
 
     case ( 'parabolic' )
       this%prof_type(2) = p_prof_parabolic
@@ -188,7 +178,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 2! Currently available &
-        &include "uniform", "gaussian", "super-gaussian", "parabolic" and "piecewise-linear".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
@@ -205,11 +195,6 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
       this%set_prof3    => set_prof_gaussian
       this%get_rndpos3  => get_rndpos_gaussian
 
-    case ( 'super-gaussian' )
-      this%prof_type(3) = p_prof_super_gauss
-      this%set_prof3    => set_prof_super_gauss
-      this%get_rndpos3  => get_rndpos_super_gauss
-
     case ( 'parabolic' )
       this%prof_type(3) = p_prof_parabolic
       this%set_prof3    => set_prof_parabolic
@@ -222,7 +207,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
-        &include "uniform", "gaussian", "super-gaussian", "parabolic" and "piecewise-linear".' )
+        &include "uniform", "gaussian" and "piecewise-linear".' )
 
   end select
 
@@ -433,9 +418,9 @@ subroutine inject_fdist3d_rnd( this, part )
     end select
 
     ! momentum initialization uses Cartesian geometry
-    part%p(1, ip) = this%uth(1) * rand_norm()
-    part%p(2, ip) = this%uth(2) * rand_norm()
-    part%p(3, ip) = this%uth(3) * rand_norm() + this%gamma
+    part%p(1, ip) = this%uth(1) * ranorm()
+    part%p(2, ip) = this%uth(2) * ranorm()
+    part%p(3, ip) = this%uth(3) * ranorm() + this%gamma
     part%p(3, ip) = sqrt( part%p(3, ip)**2 - part%p(1, ip)**2 - part%p(2, ip)**2 - 1 )
 
     ! spin initialization has not yet implemented

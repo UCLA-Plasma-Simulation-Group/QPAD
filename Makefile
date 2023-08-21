@@ -11,10 +11,6 @@ all:
 # 	@cd source && make depend && make
 	@cd source && make
 
-.PHONY: module
-module:
-	@cd source && make module
-
 .PHONY: TEST_%
 TEST_%:
 	@cd source && make $@.e
