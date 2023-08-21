@@ -10,6 +10,7 @@ private
 
 public :: set_prof_uniform, get_rndpos_uniform
 public :: set_prof_gaussian, get_rndpos_gaussian
+public :: set_prof_super_gauss, get_rndpos_super_gauss
 public :: set_prof_parabolic, get_rndpos_parabolic
 public :: set_prof_pw_linear, get_rndpos_pw_linear
 
@@ -93,9 +94,54 @@ subroutine get_rndpos_gaussian( prof_pars, pos )
 
   mu    = prof_pars(1)  
   sigma = prof_pars(2)
-  pos   = ranorm() * sigma + mu
+  pos   = rand_norm() * sigma + mu
 
 end subroutine get_rndpos_gaussian
+
+! ------------------------------------------------------------------------------
+! SUPER-GAUSSIAN PROFILES
+! ------------------------------------------------------------------------------
+
+subroutine set_prof_super_gauss( input, sect_name, dim, prof_pars )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  integer, intent(in) :: dim
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  ! local
+  real :: z0
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  allocate( prof_pars(3) )
+
+  call input%get( trim(sect_name) // '.super_gauss_center(' // num2str(dim) // ')', prof_pars(1) )
+  call input%get( trim(sect_name) // '.super_gauss_sigma(' // num2str(dim) // ')', prof_pars(2) )
+  call input%get( trim(sect_name) // '.super_gauss_order(' // num2str(dim) // ')', prof_pars(3) )
+  if (prof_pars(3) < 1.0) then
+    call write_err("The order of super-Gaussian profile must be >= 1.")
+  endif
+  if ( dim == 3 ) then
+    call input%get( 'simulation.box.z(1)', z0 )
+    prof_pars(1) = prof_pars(1) - z0
+  endif
+
+end subroutine set_prof_super_gauss
+
+subroutine get_rndpos_super_gauss( prof_pars, pos )
+  implicit none
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: pos
+
+  real :: sigma, mu, order
+
+  mu    = prof_pars(1)  
+  sigma = prof_pars(2)
+  order = prof_pars(3)
+  pos   = rand_super_gauss(order) * sigma + mu
+
+end subroutine get_rndpos_super_gauss
 
 ! ------------------------------------------------------------------------------
 ! PARABOLIC PROFILES
@@ -221,7 +267,15 @@ subroutine get_rndpos_pw_linear( prof_pars, pos )
       a = 0.5 * ( pdf(i) - pdf(i-1) ) / ( x(i) - x(i-1) )
       b = pdf(i-1)
       c = cdf(i-1) - dice
-      pos = 0.5 * ( sqrt( b*b - 4.0*a*c ) - b ) / a + x(i-1)
+      if ( a < epsilon(1.0) ) then
+        if ( b < epsilon(1.0) ) then
+          pos = x(i-1)
+        else
+          pos = -c / b + c**2 * a / b**3 + x(i-1)
+        endif
+      else
+        pos = 0.5 * ( sqrt( b*b - 4.0*a*c ) - b ) / a + x(i-1)
+      endif
       exit
     endif
   enddo

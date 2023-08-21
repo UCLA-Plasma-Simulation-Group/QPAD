@@ -7,6 +7,7 @@ QuickPIC with Azimuthal Decomposition (QPAD) is a quasi-3D parallel (MPI-based) 
 
 - Various particle pushers
 - Field-induced ionization (ADK model)
+- Ponderomotive guiding center model for laser
 - Spin dynamics for beam particles
 - Multiple initialization for beams and plasma species
 - Import beam particles from file
@@ -17,7 +18,6 @@ More simulation features and hardware supports are being developed, including
 - GPU support
 - Dynamic load balance
 - Adaptive time step
-- Ponderomotive guiding center model for laser
 - Radiation reaction
 - Others
 
