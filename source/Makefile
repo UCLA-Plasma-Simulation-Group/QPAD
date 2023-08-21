@@ -1,5 +1,5 @@
 # system (must be one of the file suffix in config directory)
-sys ?= gnu_openmpi
+sys = gnu_openmpi
 
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
