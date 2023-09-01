@@ -150,7 +150,8 @@ integer, parameter :: p_prof_uniform = 0, &
                       p_prof_parabolic = 5, &
                       p_prof_rational = 6, &
                       p_prof_sine = 7, &
-                      p_prof_cubic_spline = 8
+                      p_prof_cubic_spline = 8, &
+                      p_prof_analytic = 9
 
 ! ================================================================
 ! others
