@@ -8,7 +8,7 @@ use param
 use sysutil_module
 use fdist2d_lib
 use math_module
-
+use m_fparser
 implicit none
 
 private
@@ -47,8 +47,14 @@ type :: fdist2d
   ! Parameter list of perpendicular density profile
   real, dimension(:), pointer :: prof_pars_perp => null()
 
+  ! analytic density math function
+  type(t_fparser), pointer :: math_func => null()
+
+
   procedure( set_prof_interface ), nopass, pointer :: set_prof_lon => null()
   procedure( set_prof_interface ), nopass, pointer :: set_prof_perp => null()
+
+  procedure( set_prof_interface_analytic ), nopass, pointer :: set_prof_analytic => null()
 
   procedure( get_den_lon_interface ), nopass, pointer :: get_den_lon => null()
   procedure( get_den_perp_interface ), nopass, pointer :: get_den_perp => null()
@@ -61,12 +67,14 @@ type :: fdist2d
 end type fdist2d
 
 interface
-  subroutine get_den_perp_interface( x, s, prof_pars_perp, prof_pars_lon, den_value )
+  subroutine get_den_perp_interface( x, s, prof_pars_perp, prof_pars_lon, den_value, math_func )
+    import t_fparser
     implicit none
     real, intent(in), dimension(2) :: x
     real, intent(in) :: s
     real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
     real, intent(out) :: den_value
+    type(t_fparser), pointer, intent(inout) :: math_func
   end subroutine get_den_perp_interface
 end interface
 
@@ -87,6 +95,17 @@ interface
     character(len=*), intent(in) :: sect_name
     real, intent(inout), dimension(:), pointer :: prof_pars
   end subroutine set_prof_interface
+end interface
+
+interface
+  subroutine set_prof_interface_analytic( input, sect_name, prof_pars, math_func )
+    import input_json, t_fparser
+    implicit none
+    type( input_json ), intent(inout) :: input
+    character(len=*), intent(in) :: sect_name
+    real, intent(inout), dimension(:), pointer :: prof_pars
+    type(t_fparser), pointer, intent(inout) :: math_func
+  end subroutine set_prof_interface_analytic
 end interface
 
 character(len=20), parameter :: cls_name = "fdist2d"
@@ -139,6 +158,11 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
       this%set_prof_perp => set_prof_perp_hllw_chl
       this%get_den_perp  => get_den_perp_hllw_chl
 
+    case ( 'analytic' )
+      this%prof_type(1)  = p_prof_analytic
+      this%set_prof_analytic => set_prof_analytic
+      this%get_den_perp  => get_den_perp_analytic
+
     case default
       call write_err( 'Invalid transverse density profile! Currently available &
         &include "uniform", "parabolic-channel" and "hollow-channel".' )
@@ -168,15 +192,25 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
       this%set_prof_lon => set_prof_lon_cubic_spline
       this%get_den_lon  => get_den_lon_cubic_spline
 
+    case ( 'analytic' )
+      this%prof_type(2)  = p_prof_analytic
+      this%set_prof_analytic => set_prof_analytic
+      this%get_den_lon  => get_den_lon_analytic
+
     case default
       call write_err( 'Invalid longitudinal density profile! Currently available &
         &include "uniform", "piecewise-linear", "sine-series" and "cubic-spline".' )
 
   end select
 
+
   ! read and store the profile parameters into the parameter lists
-  call this%set_prof_perp( input, trim(sect_name), this%prof_pars_perp )
-  call this%set_prof_lon( input, trim(sect_name), this%prof_pars_lon )
+  if(this%prof_type(1) == p_prof_analytic .or. this%prof_type(2) == p_prof_analytic) then
+    call this%set_prof_analytic( input, trim(sect_name), this%prof_pars_perp, this%math_func )
+  else
+    call this%set_prof_perp( input, trim(sect_name), this%prof_pars_perp )
+    call this%set_prof_lon( input, trim(sect_name), this%prof_pars_lon )
+  endif
 
   call input%get( trim(sect_name) // '.ppc(1)', this%ppc(1) )
   call input%get( trim(sect_name) // '.ppc(2)', this%ppc(2) )
@@ -269,7 +303,6 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
   dr      = this%dr
   dtheta  = 2.0 * pi / n_theta
   ppc_tot = product( this%ppc )
-
   call this%get_den_lon( s, this%prof_pars_lon, den_lon )
   coef = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
 
@@ -287,8 +320,7 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
           x_tmp(1) = rn * dr * cos(theta)
           x_tmp(2) = rn * dr * sin(theta)
 
-          call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp )
-
+          call this%get_den_perp( x_tmp, s, this%prof_pars_perp, this%prof_pars_lon, den_perp, this%math_func )
           if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
           ipart = ipart + 1
