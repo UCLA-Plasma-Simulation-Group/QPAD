@@ -4,7 +4,7 @@ use input_class
 use sysutil_module
 use kwargs_class
 use math_module
-
+use m_fparser
 implicit none
 private
 
@@ -14,6 +14,8 @@ public :: set_prof_lon_sin2, get_prof_lon_sin2
 public :: set_prof_lon_poly, get_prof_lon_poly
 public :: set_prof_lon_pw_linear, get_prof_lon_pw_linear
 public :: set_prof_lon_cubic_spline, get_prof_lon_cubic_spline
+public :: set_prof_perp_astrl, get_prof_perp_astrl
+public :: set_prof_lon_astrl, get_prof_lon_astrl
 
 integer, parameter :: laguerre_p_max = 5
 integer, parameter :: laguerre_l_max = 5
@@ -185,6 +187,114 @@ subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
   endif
 
 end subroutine get_prof_perp_laguerre
+
+! ASTRL TRANSVERSE PROFILES
+! ------------------------------------------------------------------------------
+subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
+
+  implicit none
+
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  type(kw_list), intent(inout) :: prof_pars
+  character(len=:), allocatable :: read_str
+  type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+  real :: val
+  real(p_k_fparse) , dimension(1) :: fparser_arr
+  integer :: ierr
+
+  if ( .not. associated( math_funcs ) ) then
+    allocate( t_fparser :: math_funcs( 3 ) )
+  endif
+
+  call input%get( trim(sect_name) // '.w0_math_func', read_str )
+  call setup(math_funcs(1), trim(read_str), (/'xi'/), ierr)
+
+
+  call input%get( trim(sect_name) // '.a0_math_func', read_str )
+  call setup(math_funcs(2), trim(read_str), (/'xi'/), ierr)
+
+
+  call input%get( trim(sect_name) // '.s0_math_func', read_str )
+  call setup(math_funcs(3), trim(read_str), (/'xi'/), ierr)
+
+
+end subroutine set_prof_perp_astrl
+
+subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+
+  implicit none
+  real, intent(in) :: r, z, k, k0
+  type(kw_list), intent(in) :: prof_pars
+  integer, intent(in) :: mode
+  real, intent(out) :: ar_re, ar_im, ai_re, ai_im
+  character(len=:), allocatable :: read_str
+  real :: a0,w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
+  real(p_k_fparse), dimension(1) :: fparser_arr 
+  type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+
+  fparser_arr(1) = z
+  w0 = eval(math_funcs(1), fparser_arr)
+  a0 = eval(math_funcs(2), fparser_arr)
+  f_dist = eval(math_funcs(3), fparser_arr)
+  if ( mode == 0 ) then
+
+    z_shift = -1.0 * (z + f_dist)
+    r2 = r * r
+    z2 = z_shift * z_shift
+    zr = 0.5 * k * w0 * w0
+    zr2 = zr * zr
+    curv = z_shift / ( z2 + zr2 )
+    w = w0 * sqrt( 1.0 + z2 / zr2 )
+    gouy_shift = atan2( z_shift, zr )
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
+    amp = w0 / w * exp(-r2 / (w*w))
+
+    ar_re = a0 * amp * cos(phase)
+    ar_im = 0.0
+    ai_re = -a0 * amp * sin(phase)
+    ai_im = 0.0
+
+  else
+
+    ar_re = 0.0
+    ar_im = 0.0
+    ai_re = 0.0
+    ai_im = 0.0
+
+  endif
+
+end subroutine get_prof_perp_astrl
+
+
+
+
+! ------------------------------------------------------------------------------
+! ASTRL LONGITUDINAL PROFILES
+! ------------------------------------------------------------------------------
+subroutine set_prof_lon_astrl( input, sect_name, prof_pars )
+
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  type(kw_list), intent(inout) :: prof_pars
+
+  real :: val
+
+  ! do nothing
+
+end subroutine set_prof_lon_astrl
+
+subroutine get_prof_lon_astrl( z, prof_pars, env )
+
+  implicit none
+  real, intent(in) :: z
+  type(kw_list), intent(in) :: prof_pars
+  real, intent(out) :: env
+
+  env = 1.0
+
+end subroutine get_prof_lon_astrl
 
 ! ------------------------------------------------------------------------------
 ! SIN2 LONGITUDINAL PROFILES
