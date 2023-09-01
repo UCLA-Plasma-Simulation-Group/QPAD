@@ -28,6 +28,7 @@ src += hdf5io_class.f03
 src += interpolation.f03
 src += input_class.f03
 src += options_class.f03
+src += fparser.f03
 # PCR solver code
 include pcr-fortran/Makefile
 # fields code
