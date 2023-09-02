@@ -9,6 +9,7 @@ use fdist3d_std_lib
 use part3d_class
 use math_module
 use sysutil_module
+use m_fparser
 
 implicit none
 
@@ -48,6 +49,9 @@ type, extends(fdist3d) :: fdist3d_std
   ! Transverse position offset (as a function of xi)
   real, dimension(:), allocatable :: perp_offset_x, perp_offset_y
 
+  ! analytic density math function
+  type(t_fparser), pointer :: math_func => null()
+
   ! Parameter list of the density profile
   real, dimension(:), pointer :: prof_pars1 => null()
   real, dimension(:), pointer :: prof_pars2 => null()
@@ -61,10 +65,16 @@ type, extends(fdist3d) :: fdist3d_std
   procedure( set_prof_intf ), nopass, pointer :: set_prof2 => null()
   procedure( set_prof_intf ), nopass, pointer :: set_prof3 => null()
 
+  ! Procedure of setting the analytic (math func) density profiles
+  procedure( set_prof_analytic_intf ), nopass, pointer :: set_prof_a => null()
+
   ! Procedure of getting the beam density
   procedure( get_den_intf ), nopass, pointer :: get_den1 => null()
   procedure( get_den_intf ), nopass, pointer :: get_den2 => null()
   procedure( get_den_intf ), nopass, pointer :: get_den3 => null()
+
+  ! Procedure of getting analytic (math func) beam densiity
+  procedure( get_den_analytic_intf ), nopass, pointer :: get_den_a => null()
 
   contains
 
@@ -84,6 +94,17 @@ interface
 end interface
 
 interface
+  subroutine get_den_analytic_intf( x, prof_pars, math_func, den_value )
+  import t_fparser
+    implicit none
+    real, intent(in), dimension(3) :: x
+    type(t_fparser), pointer, intent(inout) :: math_func
+    real, intent(in), dimension(:), pointer :: prof_pars
+    real, intent(out) :: den_value
+  end subroutine get_den_analytic_intf
+end interface
+
+interface
   subroutine set_prof_intf( input, sect_name, dim, prof_pars )
     import input_json
     implicit none
@@ -92,6 +113,17 @@ interface
     integer, intent(in) :: dim
     real, intent(inout), dimension(:), pointer :: prof_pars
   end subroutine set_prof_intf
+end interface
+
+interface
+  subroutine set_prof_analytic_intf( input, sect_name, prof_pars, math_func )
+    import input_json, t_fparser
+    implicit none
+    type( input_json ), intent(inout) :: input
+    character(len=*), intent(in) :: sect_name
+    real, intent(inout), dimension(:), pointer :: prof_pars
+    type(t_fparser), pointer, intent(inout) :: math_func
+  end subroutine set_prof_analytic_intf
 end interface
 
 character(len=32), save :: cls_name = 'fdist3d_std'
@@ -129,7 +161,6 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
   this%dz     = opts%get_dxi()
 
   sect_name = 'beam(' // num2str(sect_id) // ')'
-
   ! read and set profile types
   call input%get( trim(sect_name) // '.profile(1)', read_str )
   select case ( trim(read_str) )
@@ -158,6 +189,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%prof_type(1) = p_prof_pw_linear
       this%set_prof1    => set_prof_pw_linear
       this%get_den1     => get_den_pw_linear
+
+    case ( 'analytic' )
+      this%prof_type(1) = p_prof_analytic
+      this%set_prof_a    => set_prof_analytic
+      this%get_den_a     => get_den_analytic
 
     case default
       call write_err( 'Invalid density profile in direction 1! Currently available &
@@ -193,6 +229,11 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof2    => set_prof_pw_linear
       this%get_den2     => get_den_pw_linear
 
+    case ( 'analytic' )
+      this%prof_type(2) = p_prof_analytic
+      this%set_prof_a    => set_prof_analytic
+      this%get_den_a     => get_den_analytic
+
     case default
       call write_err( 'Invalid density profile in direction 2! Currently available &
         &include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
@@ -227,16 +268,26 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
       this%set_prof3    => set_prof_pw_linear
       this%get_den3     => get_den_pw_linear
 
+    case ( 'analytic' )
+      this%prof_type(3) = p_prof_analytic
+      this%set_prof_a    => set_prof_analytic
+      this%get_den_a     => get_den_analytic
+
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
-        &include "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
+        &include "analytic", "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
 
   end select
 
   ! read and store the profile parameters into the parameter lists
-  call this%set_prof1( input, trim(sect_name), 1, this%prof_pars1 )
-  call this%set_prof2( input, trim(sect_name), 2, this%prof_pars2 )
-  call this%set_prof3( input, trim(sect_name), 3, this%prof_pars3 )
+  if(this%prof_type(1) == p_prof_analytic .or. this%prof_type(2) == p_prof_analytic &
+    .or. this%prof_type(3) == p_prof_analytic) then
+    call this%set_prof_a(input, trim(sect_name), this%prof_pars1, this%math_func)
+  else
+    call this%set_prof1( input, trim(sect_name), 1, this%prof_pars1 )
+    call this%set_prof2( input, trim(sect_name), 2, this%prof_pars2 )
+    call this%set_prof3( input, trim(sect_name), 3, this%prof_pars3 )
+  endif
 
   call input%get( 'simulation.box.z(1)', this%z0 )
   call input%get( trim(sect_name) // '.ppc(1)', this%ppc(1) )
@@ -425,10 +476,16 @@ subroutine inject_fdist3d_std( this, part )
               if ( x_tmp(2) < this%range(p_lower,2) .or. x_tmp(2) > this%range(p_upper,2) ) cycle
               if ( x_tmp(3) < this%range(p_lower,3) .or. x_tmp(3) > this%range(p_upper,3) ) cycle
 
-              call this%get_den1( x_tmp(1), this%prof_pars1, den_val(1) )
-              call this%get_den2( x_tmp(2), this%prof_pars2, den_val(2) )
-              call this%get_den3( x_tmp(3), this%prof_pars3, den_val(3) )
-              den_loc = product(den_val) * this%density
+              if(this%prof_type(1) == p_prof_analytic .or. this%prof_type(2) == p_prof_analytic &
+              .or.  this%prof_type(3) == p_prof_analytic) then
+                call this%get_den_a(x_tmp, this%prof_pars1, this%math_func, den_val(1))
+                den_loc = den_val(1) * this%density
+              else
+                call this%get_den1( x_tmp(1), this%prof_pars1, den_val(1) )
+                call this%get_den2( x_tmp(2), this%prof_pars2, den_val(2) )
+                call this%get_den3( x_tmp(3), this%prof_pars3, den_val(3) )
+                den_loc = product(den_val) * this%density
+              endif
 
               if ( den_loc < this%den_min ) cycle
 

@@ -804,7 +804,7 @@ subroutine add_particles( prof, part, part_add, multi_ion, ion_old, s )
         x_tmp(1) = rn * dr * cos(theta)
         x_tmp(2) = rn * dr * sin(theta)
         
-        call prof%get_den_perp( x_tmp, s, prof%prof_pars_perp, prof%prof_pars_lon, den_perp )
+        call prof%get_den_perp( x_tmp, s, prof%prof_pars_perp, prof%prof_pars_lon, den_perp, prof%math_func )
 
         if ( den_lon * den_perp * prof%density < prof%den_min ) cycle
 
