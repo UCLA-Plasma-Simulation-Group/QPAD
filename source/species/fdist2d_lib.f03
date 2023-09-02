@@ -143,7 +143,7 @@ subroutine set_prof_analytic( input, sect_name, prof_pars, math_func )
     allocate( t_fparser :: math_func )
   endif
   call input%get( trim(sect_name) // '.math_func', read_str )
-  call setup(math_func, trim(read_str), (/'x1','x2','x3'/), ierr)
+  call setup(math_func, trim(read_str), (/'x','y','z'/), ierr)
   
 
 end subroutine set_prof_analytic
@@ -158,9 +158,9 @@ subroutine get_den_perp_analytic( x, s, prof_pars_perp, prof_pars_lon, den_value
   real(p_k_fparse), dimension(3) :: fparser_arr 
   type(t_fparser), pointer, intent(inout) :: math_func
 
-  fparser_arr(1) = s
-  fparser_arr(2) = x(1)
-  fparser_arr(3) = x(2)
+  fparser_arr(1) = x(1)
+  fparser_arr(2) = x(2)
+  fparser_arr(3) = s
   den_value = eval(math_func, fparser_arr)
 
 end subroutine get_den_perp_analytic

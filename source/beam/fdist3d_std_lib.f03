@@ -2,7 +2,7 @@ module fdist3d_std_lib
 
 use input_class
 use sysutil_module
-
+use m_fparser
 implicit none
 
 private
@@ -13,7 +13,7 @@ public :: set_prof_super_gauss, get_den_super_gauss
 public :: set_prof_parabolic, get_den_parabolic
 public :: set_prof_rational, get_den_rational
 public :: set_prof_pw_linear, get_den_pw_linear
-
+public :: set_prof_analytic, get_den_analytic
 contains
 
 ! ------------------------------------------------------------------------------
@@ -37,6 +37,52 @@ subroutine get_den_uniform( x, prof_pars, den_value )
   real, intent(out) :: den_value
   den_value = 1.0
 end subroutine get_den_uniform
+
+
+! ------------------------------------------------------------------------------
+! ANALYTIC PROFILES
+! ------------------------------------------------------------------------------
+
+subroutine set_prof_analytic( input, sect_name, prof_pars, math_func )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  type(t_fparser), pointer, intent(inout) :: math_func
+  character(len=:), allocatable :: read_str
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  ! local
+  real :: z0
+  integer :: ierr
+
+  if ( .not. associated( math_func ) ) allocate( t_fparser :: math_func )
+
+  ! this should never be called
+  if ( associated(prof_pars) ) deallocate( prof_pars )
+
+  allocate( prof_pars(1) )
+
+  call input%get( 'simulation.box.z(1)', z0 )
+  prof_pars(1) = - z0
+
+  call input%get( trim(sect_name) // '.math_func', read_str )
+  call setup(math_func, trim(read_str), (/'x','y','z'/), ierr)
+end subroutine set_prof_analytic
+
+subroutine get_den_analytic( x, prof_pars, math_func, den_value )
+  implicit none
+  real, intent(in), dimension(3) :: x
+  type(t_fparser), pointer, intent(inout) :: math_func
+  real, intent(in), dimension(:), pointer :: prof_pars
+  real, intent(out) :: den_value
+
+  real(p_k_fparse), dimension(3) :: fparser_arr 
+
+  fparser_arr(1) = x(1) 
+  fparser_arr(2) = x(2)
+  fparser_arr(3) = x(3) - prof_pars(1)
+  den_value = eval(math_func, fparser_arr)
+end subroutine get_den_analytic
+
 
 ! ------------------------------------------------------------------------------
 ! GAUSSIAN PROFILES
