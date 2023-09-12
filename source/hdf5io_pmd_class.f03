@@ -39,9 +39,9 @@
          
          character(len=100) :: filename = 'file.h5', timeunit = 'a.u.',&
          &dataname = 'Data', units = 'a.u.', label = 'Data'
-         character(len=100) :: ty = 'grid',openpmd = '1.0.0', &
+         character(len=100) :: ty = 'grid',openpmd = '1.1.0', &
          & basepath='/data/%T/',filenamebase = 'data', records='Ex',&
-         & dataorder = 'F', software='QuickPIC',base = 'data',&
+         & dataorder = 'F', software='QPAD',base = 'data',&
          & meshespath = 'fields/', particlespath = 'particles/', &
          & iterationencoding = 'fileBased', iterationformat = 'data%T.h5',&
          & filepath ='./'
@@ -58,7 +58,7 @@
          ! ------------------   OpenPMD attributes   ------------------------
          ! ------------------------------------------------------------------
          ! -----------------------------------------------------------------
-         integer :: openpmdextension = 0
+         integer :: openpmdextension = 1
          integer :: iter = 0
          character(len=8) :: chiter = '00000000'
          real :: unitsi = 1.0, timeunitsi = 1.0, gridunitsi=1.0
@@ -158,7 +158,7 @@
          ! write(*,*) 'this%base = ', trim(this%base)
          ! DEBUG
 
-         if(.not. present(rank)) this%rank=3
+         if(.not. present(rank)) this%rank=2
          
          if (present(filename)) then
             this%filename = filename
@@ -231,7 +231,8 @@
              this%iter = iter
          end if
 
-         write(chiter,'(I8.8)') this%iter
+         !write(chiter,'(I8.8)') this%iter
+         write(chiter,'(I8.1)') this%iter
          chiter = trim(chiter)
          this%chiter = chiter
          
@@ -273,7 +274,7 @@
           
          integer(hid_t) :: dataspaceID, typeID, attrID
          integer(hsize_t), dimension(1) :: dims
-         integer(size_t) :: size
+         integer(size_t) :: maxlen
           
          integer :: ierr
           
@@ -282,8 +283,8 @@
          ! call h5tcopy_f(H5T_FORTRAN_S1, typeID, ierr)
          call h5tcopy_f(H5T_NATIVE_CHARACTER, typeID, ierr)
           
-         size = len(attribute)
-         call h5tset_size_f(typeID, size, ierr)
+         maxlen = len(attribute)
+         call h5tset_size_f(typeID, maxlen, ierr)
           
          call h5acreate_f( objID, name, typeID, dataspaceID, attrID, ierr )
          call h5awrite_f( attrID, typeID, attribute, dims, ierr)
@@ -498,29 +499,29 @@
           call add_h5_atribute(rootID, 'software',trim(this%software))
           call add_h5_atribute(rootID,'iterationFormat','data%T.h5')
 ! OpenPMD attributes     
-          if (this%ty == 'grid') then
-             call h5gcreate_f(rootID, 'AXIS', aid, ierr) 
-
-             dims(1) = 2 
-             call h5screate_simple_f(1, dims, dspace_id, ierr ) 
-             do i = 1, this%rank
-                call h5dcreate_f(aid, 'AXIS'//char(zero+i), treal, dspace_id,&
-                &dset_id, ierr )
-
-                call add_h5_atribute(dset_id, 'TYPE', 'linear') 
-                call add_h5_atribute(dset_id, 'UNITS', trim(this%axisunits(i))) 
-                call add_h5_atribute(dset_id, 'NAME', trim(this%axisname(i))) 
-                call add_h5_atribute(dset_id, 'LONG_NAME', trim(this%axislabel(i))) 
-
-                call h5dwrite_f(dset_id, treal, (/this%axismin(i),this%axismax(i)/),&
-                &dims, ierr, xfer_prp=xferID)
-
-                call h5dclose_f(dset_id, ierr)
-             enddo
-    
-             call h5sclose_f(dspace_id, ierr) 
-             call h5gclose_f(aid, ierr) 
-          endif
+!         if (this%ty == 'grid') then
+!            call h5gcreate_f(rootID, 'AXIS', aid, ierr) 
+!
+!            dims(1) = 2 
+!            call h5screate_simple_f(1, dims, dspace_id, ierr ) 
+!            do i = 1, this%rank
+!               call h5dcreate_f(aid, 'AXIS'//char(zero+i), treal, dspace_id,&
+!               &dset_id, ierr )
+!
+!               call add_h5_atribute(dset_id, 'TYPE', 'linear') 
+!               call add_h5_atribute(dset_id, 'UNITS', trim(this%axisunits(i))) 
+!               call add_h5_atribute(dset_id, 'NAME', trim(this%axisname(i))) 
+!               call add_h5_atribute(dset_id, 'LONG_NAME', trim(this%axislabel(i))) 
+!
+!               call h5dwrite_f(dset_id, treal, (/this%axismin(i),this%axismax(i)/),&
+!               &dims, ierr, xfer_prp=xferID)
+!
+!               call h5dclose_f(dset_id, ierr)
+!            enddo
+!   
+!            call h5sclose_f(dspace_id, ierr) 
+!            call h5gclose_f(aid, ierr) 
+!         endif
              call h5gclose_f(rootID, ierr)
 
       end subroutine wrattr_file
@@ -536,17 +537,17 @@
          ! real(8) :: gridtoSI = 1.0
          
 
-         if (present(unit)) then
-            call add_h5_atribute(dset_id, 'UNITS', unit)
-         else
-            call add_h5_atribute(dset_id, 'UNITS', this%units)
-         endif 
+         ! if (present(unit)) then
+            ! call add_h5_atribute(dset_id, 'UNITS', unit)
+         ! else
+            ! call add_h5_atribute(dset_id, 'UNITS', this%units)
+         ! endif 
           
-         if (present(name)) then
-            call add_h5_atribute(dset_id, 'LONG_NAME', name) 
-         else
-            call add_h5_atribute(dset_id, 'LONG_NAME', this%label) 
-         endif 
+         ! if (present(name)) then
+            ! call add_h5_atribute(dset_id, 'LONG_NAME', name) 
+         ! else
+            ! call add_h5_atribute(dset_id, 'LONG_NAME', this%label) 
+         ! endif 
 ! OPENPMD
          call add_h5_atribute(dset_id,'dataOrder','F')
          call add_h5_atribute(dset_id,'geometry','cartesian')
@@ -556,7 +557,7 @@
          call add_h5_atribute(dset_id,'unitSI',1.0)
          call add_h5_atribute(dset_id,'time',this%t)
          call add_h5_atribute(dset_id,'axisLabels',this%axisname(1:this%rank))
-         call add_h5_atribute(dset_id,'unitDimension',[ 0., 1., -2., -1., 0., 0., 0.])
+         call add_h5_atribute(dset_id,'unitDimension',[ 1., 0., 1., 1., 0., 0., 0.])
 ! OPENPMD
   
       end subroutine wrattr_dataset
@@ -644,7 +645,8 @@
          if(ierr .ne. 0) then
              write(*,*) 'error open data'
          end if
-         write(iter_str,'(I0.8)') file%n
+         ! write(iter_str,'(I0.8)') file%n
+         write(iter_str,'(I1)') file%n
          call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
          if(ierr .ne. 0) then
              write(*,*) 'error open iter'
@@ -752,7 +754,8 @@
          call h5gopen_f(file_id, '/', rootID, ierr)
          ! write(*,*) '(pwfield_2d) open data'
          call h5gcreate_f(rootID,'data',dataID,ierr)
-         write(iter_str,'(I0.8)') file%n
+         ! write(iter_str,'(I0.8)') file%n
+         write(iter_str,'(I1)') file%n
          ! write(*,*) '(pwfield_2d) open iter  --- ',iter_str
          call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
          ! here we need to write dt, time, and also
@@ -877,7 +880,8 @@
             call h5fopen_f(filename,H5F_ACC_RDWR_F, file_id, ierr,&
             &access_prp=flplID)
             call h5gopen_f(file_id,'/',rootID,ierr)
-            write(iter_str,'(I0.8)') file%n
+            ! write(iter_str,'(I0.8)') file%n
+            write(iter_str,'(I1)') file%n
             call h5gopen_f(rootID,'data',dataID,ierr)
             call h5gopen_f(dataID,iter_str,iterID,ierr)
             call h5gopen_f(iterID,trim(file%meshespath),meshID,ierr)
@@ -899,7 +903,8 @@
             call wrattr_file(file,file_id,xferID)
             call h5gopen_f(file_id, '/', rootID, ierr)
             call h5gcreate_f(rootID,'data',dataID,ierr)
-            write(iter_str,'(I0.8)') file%n
+            ! write(iter_str,'(I0.8)') file%n
+            write(iter_str,'(I1)') file%n
             call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
             ! here we need to write dt, time, and also
             ! time to SI connversion 
@@ -920,16 +925,12 @@
             !
             call h5dcreate_f(meshID, file%dataname, treal, dspace_id, dset_id,&
             &ierr, dcplID)
-            call wrattr_dataset(file,dset_id)
             do i=1,3 
                 local_gridspacing(i) = (file%axismax(i)-file%axismin(i))/gsize(i)
                 local_GlobalOffset(i) = 0.0
                 local_position(i) = 0.0
             end do
          
-            call add_h5_atribute(dset_id,'gridSpacing',local_gridspacing)
-            call add_h5_atribute(dset_id,'gridGlobalOffset',local_GlobalOffset)
-            call add_h5_atribute(dset_id,'position',local_position)
          endif
          
          start(1) = 0
@@ -941,7 +942,12 @@
 
          call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2),1:lsize(3)),&
          &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
-
+         if (ori < 0) then
+             call wrattr_dataset(file,dset_id)
+             call add_h5_atribute(dset_id,'gridSpacing',local_gridspacing)
+             call add_h5_atribute(dset_id,'gridGlobalOffset',local_GlobalOffset)
+             call add_h5_atribute(dset_id,'position',local_position)
+         endif
 
          call h5sclose_f(memspaceID, ierr)
          call h5sclose_f(dspace_id, ierr)
@@ -1038,7 +1044,8 @@
             call h5fopen_f(filename,H5F_ACC_RDWR_F, file_id, ierr,&
             &access_prp=flplID)
             call h5gopen_f(file_id,'/',rootID,ierr)
-            write(iter_str,'(I0.8)') file%n
+            ! write(iter_str,'(I0.8)') file%n
+            write(iter_str,'(I1)') file%n
             call h5gopen_f(rootID,'data',dataID,ierr)
             call h5gopen_f(dataID,iter_str,iterID,ierr)
             call h5gopen_f(iterID,trim(file%meshespath),meshID,ierr)
@@ -1064,7 +1071,8 @@
          if(ori < 0) then
              call h5gopen_f(file_id, '/', rootID, ierr)
              call h5gcreate_f(rootID,'data', dataID, ierr)
-             write(iter_str,'(I0.8)') file%n
+             ! write(iter_str,'(I0.8)') file%n
+             write(iter_str,'(I1)') file%n
              call h5gcreate_f(dataID,trim(iter_str),iterID,ierr)
              if (ierr .ne. 0) then
                  write(*,*) 'pwfield_2d_pipe: error in iterID ', ori
@@ -1087,16 +1095,12 @@
          if (ori < 0) then
             call h5dcreate_f(meshID, trim(file%dataname), treal, dspace_id, dset_id,&
             &ierr, dcplID)
-            call wrattr_dataset(file,dset_id)
             do i=1,2 
                 local_gridspacing(i) = (file%axismax(i)-file%axismin(i))/gsize(i)
                 local_GlobalOffset(i) = 0.0
                 local_position(i) = 0.0
             end do
          
-            call add_h5_atribute(dset_id,'gridSpacing',local_gridspacing)
-            call add_h5_atribute(dset_id,'gridGlobalOffset',local_GlobalOffset)
-            call add_h5_atribute(dset_id,'position',local_position)
          endif
          
          start = lnoff
@@ -1106,6 +1110,13 @@
 
          call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
          &lsize, ierr, memspaceID, dspace_id, xfer_prp=xferID)
+         
+         if (ori < 0 ) then
+            call wrattr_dataset(file,dset_id)
+            call add_h5_atribute(dset_id,'gridSpacing',local_gridspacing)
+            call add_h5_atribute(dset_id,'gridGlobalOffset',local_GlobalOffset)
+            call add_h5_atribute(dset_id,'position',local_position)
+         end if
 
          call h5sclose_f(memspaceID, ierr)
          call h5sclose_f(dspace_id, ierr)
@@ -1160,6 +1171,8 @@
          integer(hid_t) :: dataID, iterID, meshID
 ! other OPENPMD variables
          real, dimension(2) :: local_gridspacing
+         real, dimension(2) :: local_position
+         real, dimension(2) :: local_GlobalOffset
          integer i
          character(len=20) :: iter_str
                   
@@ -1191,7 +1204,8 @@
          if (ori >= 0) then
             call h5fopen_f(filename,H5F_ACC_RDWR_F, file_id, ierr)
             call h5gopen_f(file_id,'/',rootID,ierr)
-            write(iter_str,'(I0.8)') file%n
+            ! write(iter_str,'(I0.8)') file%n
+            write(iter_str,'(I1)') file%n
             call h5gopen_f(rootID,'data',dataID,ierr)
             call h5gopen_f(dataID,iter_str,iterID,ierr)
             call h5gopen_f(iterID,trim(file%meshespath),meshID,ierr)
@@ -1223,7 +1237,8 @@
          if ( ori < 0 ) then
              call h5gopen_f(file_id, '/', rootID, ierr)
              call h5gcreate_f(rootID,'data',dataID,ierr)
-             write(iter_str,'(I0.8)') file%n
+             ! write(iter_str,'(I0.8)') file%n
+             write(iter_str,'(I1)') file%n
              call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
          ! here we need to write dt, time, and also
          ! time to SI connversion 
@@ -1239,8 +1254,12 @@
             call wrattr_dataset(file,dset_id)
             do i=1,2 
                 local_gridspacing(i) = (file%axismax(i)-file%axismin(i))/gsize(i)
+                local_GlobalOffset(i) = 0.0
+                local_position(i) = 0.0
             end do
             call add_h5_atribute(dset_id,'gridSpacing',local_gridspacing)
+            call add_h5_atribute(dset_id,'gridGlobalOffset',local_GlobalOffset)
+            call add_h5_atribute(dset_id,'position',local_position)
          endif
          
          start(1) = 0
@@ -1251,8 +1270,6 @@
 
          call h5dwrite_f(dset_id, treal, fd(1:lsize(1),1:lsize(2)),&
          &lsize, ierr, memspaceID, dspace_id)
-
-
          call h5sclose_f(memspaceID, ierr)
          call h5sclose_f(dspace_id, ierr)
          call h5gclose_f(meshID, ierr)

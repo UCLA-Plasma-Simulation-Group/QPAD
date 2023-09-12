@@ -2,7 +2,9 @@
 sys = mac_openmpi
 
 # OpenPMD -- uncomment the line below if you wish to use OpenPMD format
-# IF_OPENPMD = 1
+IF_OPENPMD = 1
+DISABLE_POPAS = TRUE
+DISABLE_TEMPLATE = TRUE
 
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
