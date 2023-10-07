@@ -1,5 +1,5 @@
 # system (must be one of the file suffix in config directory)
-sys ?= gnu_openmpi
+sys = gnu_openmpi
 
 # Set the flag defining that we are in the top level makefile
 toplevel = 1
@@ -28,6 +28,7 @@ src += hdf5io_class.f03
 src += interpolation.f03
 src += input_class.f03
 src += options_class.f03
+src += fparser.f03
 # PCR solver code
 include pcr-fortran/Makefile
 # fields code

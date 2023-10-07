@@ -4,7 +4,7 @@ use input_class
 use sysutil_module
 use param
 use math_module
-
+use m_fparser
 implicit none
 
 private
@@ -16,6 +16,8 @@ public :: set_prof_lon_uniform, get_den_lon_uniform
 public :: set_prof_lon_pw_linear, get_den_lon_pw_linear
 public :: set_prof_lon_sine, get_den_lon_sine
 public :: set_prof_lon_cubic_spline, get_den_lon_cubic_spline
+public :: set_prof_analytic
+public :: get_den_perp_analytic, get_den_lon_analytic
 
 contains
 
@@ -32,12 +34,13 @@ subroutine set_prof_perp_uniform( input, sect_name, prof_pars )
   return
 end subroutine set_prof_perp_uniform
 
-subroutine get_den_perp_uniform( x, s, prof_pars_perp, prof_pars_lon, den_value )
+subroutine get_den_perp_uniform( x, s, prof_pars_perp, prof_pars_lon, den_value , math_func )
   implicit none
   real, intent(in), dimension(2) :: x
   real, intent(in) :: s
   real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
   real, intent(out) :: den_value
+  type(t_fparser), pointer, intent(inout) :: math_func
   den_value = 1.0
 end subroutine get_den_perp_uniform
 
@@ -60,13 +63,14 @@ subroutine set_prof_perp_para_chl( input, sect_name, prof_pars )
 
 end subroutine set_prof_perp_para_chl
 
-subroutine get_den_perp_para_chl( x, s, prof_pars_perp, prof_pars_lon, den_value )
+subroutine get_den_perp_para_chl( x, s, prof_pars_perp, prof_pars_lon, den_value , math_func )
 
   implicit none
   real, intent(in), dimension(2) :: x
   real, intent(in) :: s
   real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
   real, intent(out) :: den_value
+  type(t_fparser), pointer, intent(inout) :: math_func
 
   real :: r2, n0, n_depth, r02, r2_max
 
@@ -102,13 +106,14 @@ subroutine set_prof_perp_hllw_chl( input, sect_name, prof_pars )
 
 end subroutine set_prof_perp_hllw_chl
 
-subroutine get_den_perp_hllw_chl( x, s, prof_pars_perp, prof_pars_lon, den_value )
+subroutine get_den_perp_hllw_chl( x, s, prof_pars_perp, prof_pars_lon, den_value , math_func )
 
   implicit none
   real, intent(in), dimension(2) :: x
   real, intent(in) :: s
   real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
   real, intent(out) :: den_value
+  type(t_fparser), pointer, intent(inout) :: math_func
 
   real :: rmin, rmax, n_depth, r
 
@@ -124,6 +129,41 @@ subroutine get_den_perp_hllw_chl( x, s, prof_pars_perp, prof_pars_lon, den_value
   endif
 
 end subroutine get_den_perp_hllw_chl
+
+subroutine set_prof_analytic( input, sect_name, prof_pars, math_func )
+  implicit none
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  real, intent(inout), dimension(:), pointer :: prof_pars
+  type(t_fparser), pointer, intent(inout) :: math_func
+  character(len=:), allocatable :: read_str
+  integer :: ierr
+
+  if ( .not. associated( math_func ) ) then
+    allocate( t_fparser :: math_func )
+  endif
+  call input%get( trim(sect_name) // '.math_func', read_str )
+  call setup(math_func, trim(read_str), (/'x','y','z'/), ierr)
+  
+
+end subroutine set_prof_analytic
+
+subroutine get_den_perp_analytic( x, s, prof_pars_perp, prof_pars_lon, den_value, math_func )
+  implicit none
+  real, intent(in), dimension(2) :: x
+  real, intent(in) :: s
+  real, intent(in), dimension(:), pointer :: prof_pars_perp, prof_pars_lon
+  real, intent(out) :: den_value
+
+  real(p_k_fparse), dimension(3) :: fparser_arr 
+  type(t_fparser), pointer, intent(inout) :: math_func
+
+  fparser_arr(1) = x(1)
+  fparser_arr(2) = x(2)
+  fparser_arr(3) = s
+  den_value = eval(math_func, fparser_arr)
+
+end subroutine get_den_perp_analytic
 
 ! ------------------------------------------------------------------------------
 ! SECTION OF LONGITUDINAL PROFILES
@@ -145,6 +185,14 @@ subroutine get_den_lon_uniform( s, prof_pars_lon, den_value )
   real, intent(out) :: den_value
   den_value = 1.0
 end subroutine get_den_lon_uniform
+
+subroutine get_den_lon_analytic( s, prof_pars_lon, den_value )
+  implicit none
+  real, intent(in) :: s
+  real, intent(in), dimension(:), pointer :: prof_pars_lon
+  real, intent(out) :: den_value
+  den_value = 1.0
+end subroutine get_den_lon_analytic
 
 subroutine set_prof_lon_pw_linear( input, sect_name, prof_pars )
 

@@ -1,0 +1,32 @@
+# Fortran compiler configuration
+FC = mpif90
+FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
+# -fbacktrace -fbounds-check
+# -fbounds-check
+# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
+# -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
+# -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+
+# C compiler configuration
+CC = mpicc
+CC_OPTS = -O -std=c99
+
+# Preprocessor configuration
+FPP = gcc-11 -C -P -E -cpp
+
+# Python 2.x configuration. Used for automatically generate compile rules
+PYTHON = python 
+
+# Linker configuration
+LINKER = mpif90
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
+
+# Library dependencies
+HYPRE_LIB = /usr/local/lib
+JSON_LIB = /usr/local/jsonfortran-gnu-8.3.0/lib/
+JSON_INC = /usr/local/jsonfortran-gnu-8.3.0/lib/
+HDF5_INC = /usr/local/include
+HDF5_LIB = /usr/local/lib
+
+INCF = -I$(HDF5_INC) -I$(JSON_INC)

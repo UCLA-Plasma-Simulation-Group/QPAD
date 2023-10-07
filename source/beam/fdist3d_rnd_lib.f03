@@ -225,7 +225,7 @@ subroutine get_rndpos_pw_linear( prof_pars, pos )
         if ( b < epsilon(1.0) ) then
           pos = x(i-1)
         else
-          pos = -c / b + c**2 * a / b**3 + x(i-1)
+          pos = -c / b - c**2 * a / b**3 + x(i-1)
         endif
       else
         pos = 0.5 * ( sqrt( b*b - 4.0*a*c ) - b ) / a + x(i-1)

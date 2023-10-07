@@ -12,13 +12,15 @@ public :: init_stdout, write_stdout
 public :: init_errors, end_errors, set_monitor, write_err, write_wrn, write_dbg
 public :: num2str
 public :: init_tprof, write_tprof, start_tprof, stop_tprof
+public :: is_blank, is_alpha, strtodouble, parsenumber
 
 integer, save :: class_monitor = 0
 integer, save :: fid_err
 integer, dimension(4), save :: itime
 double precision, save :: dtime
 logical, save :: is_root
-
+character, parameter :: p_tab = achar(9)
+character, parameter ::p_space = ' '
 ! variables for timing
 integer, parameter :: p_max_event = 128
 double precision, dimension(p_max_event), save :: t_event
@@ -57,6 +59,22 @@ end interface
 interface num2str
   module procedure num2str_int
   module procedure num2str_real
+end interface
+
+interface is_blank
+  module procedure is_blank
+end interface
+
+interface is_digit
+  module procedure is_digit
+end interface
+
+interface strtodouble
+  module procedure strtodouble
+end interface
+
+interface parsenumber
+  module procedure parsenumber
 end interface
 
 interface init_tprof
@@ -432,4 +450,195 @@ subroutine write_tprof()
 
 end subroutine write_tprof
 
+
+!-------------------------------------------------------------------------------
+subroutine parsenumber( str, numberType, numberLen )
+!-------------------------------------------------------------------------------
+! parses the supplied string looking for a valid numeric value. If found
+! returns the length of the string holding the number and the number type (1 - integer,
+! 2 - float), otherwise returns length = 0, and type = -1
+!-------------------------------------------------------------------------------
+
+  implicit none
+
+  character(len=*), intent(in) :: str
+  integer, intent(out) :: numberLen, numberType
+
+  character(len=len_trim(str)) :: value_text
+  character :: c, c2
+  integer :: pos
+  logical :: has_decpoint, has_value, has_exponent, finished
+
+  pos = 0
+  has_decpoint = .false.
+  has_value    = .false.
+  has_exponent = .false.
+  finished     = .false. 
+  value_text = ''
+
+  ! check for signed number
+  c = str(1:1)
+  if ( c == '+' .or. c== '-' ) pos = pos+1
+
+  do
+    pos = pos + 1
+    if ( pos > len( str ) ) then
+      finished = .true.
+      exit
+    endif
+    c = str(pos:pos)
+
+    ! check for decimal point
+    if ( c == '.' ) then
+      if ( .not. has_decpoint ) then
+         has_decpoint = .true.    
+      else
+         ! error, two decimal points found
+         finished = .true. 
+      endif
+
+    else if ( is_digit(c) ) then
+      has_value = .true.
+
+    else if ( c=='e' .or. c=='E' .or. c=='d' .or. c=='D' ) then 
+      if ( (.not. has_value) .or. has_exponent ) then
+         ! of exponent found before mantissa, or exponent symbol found inside exponent
+         finished = .true.    
+      endif      
+      has_exponent = .true.
+      has_decpoint = .true. ! decimal points are not allowed in the exponent  
+
+      ! check if next character is + or -
+      pos = pos+1
+      if ( pos > len( str ) ) then
+        finished = .true.
+        exit
+      endif
+      c2 = str( pos:pos )
+      if ((c2 == '+') .or. (c2 == '-')) then
+        value_text = trim(value_text)//c//c2
+        cycle
+      else
+        pos = pos - 1
+      endif
+
+      has_value = .false. ! an integer must follow 
+    else 
+      ! invalid character found
+      ! finish processing
+
+      finished = .true.
+    endif
+
+
+    if ( finished ) then
+      pos = pos-1 
+      exit
+    else
+      value_text = trim(value_text)//c
+    endif
+
+  enddo
+
+  if ( .not. has_value ) then
+    numberLen = 0
+    numberType = -1
+    return
+  endif
+
+  numberLen = len_trim(value_text)
+  if ( has_exponent .or. has_decpoint ) then
+    numberType = 2
+  else
+    numberType = 1
+  endif
+
+
+!  print *, ">", trim(value_text), "< len = ", numberLen, ' type = ', numberType
+
+end subroutine parseNumber
+!-------------------------------------------------------------------------------
+
+
+!-------------------------------------------------------------------------------
+function is_digit(c)
+!-------------------------------------------------------------------------------
+! test if character is a digit 
+!-------------------------------------------------------------------------------
+  implicit none
+
+  character, intent(in) :: c
+  logical :: is_digit
+
+!  if ((c >= '0') .and. (c <= '9')) then
+!    is_digit = .true. 
+!  else
+!    is_digit = .false. 
+!  endif
+
+  is_digit = (c >= '0') .and. (c <= '9')
+
+end function is_digit
+!-------------------------------------------------------------------------------
+
+ !-------------------------------------------------------------------------------
+function is_blank(c)
+!-------------------------------------------------------------------------------
+! test if character is blank (white space) 
+!-------------------------------------------------------------------------------
+  implicit none
+
+  character, intent(in) :: c
+  logical :: is_blank
+
+  if ((c == p_space) .or. (c == p_tab)) then
+     is_blank = .true. 
+  else
+     is_blank = .false. 
+  endif
+
+end function is_blank
+!-------------------------------------------------------------------------------
+
+
+!-------------------------------------------------------------------------------
+function is_alpha(c)
+!-------------------------------------------------------------------------------
+! test if character is a letter 
+!-------------------------------------------------------------------------------
+  implicit none
+
+  character, intent(in) :: c
+  logical :: is_alpha
+
+!  if (((c >= 'a') .and. (c <= 'z')) .or. &
+!     ((c >= 'A') .and. (c <= 'Z'))) then
+!    is_alpha = .true. 
+!  else
+!    is_alpha = .false. 
+!  endif
+
+  is_alpha = ((c >= 'a') .and. (c <= 'z')) .or. ((c >= 'A') .and. (c <= 'Z'))
+
+end function is_alpha
+!-------------------------------------------------------------------------------
+
+
+!-------------------------------------------------------------------------------
+function strtodouble(str, ierr)
+!-------------------------------------------------------------------------------
+! convert string to integer
+!-------------------------------------------------------------------------------
+  implicit none
+
+  character(len=*), intent(in) :: str
+  integer, intent(out) :: ierr
+  real( kind(1.0d0) ) :: strtodouble
+
+  read( str, *, iostat = ierr ) strtodouble
+
+end function strtodouble
+!-------------------------------------------------------------------------------
+
 end module sysutil_module
+
