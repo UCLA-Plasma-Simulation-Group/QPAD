@@ -128,13 +128,13 @@ subroutine init_sim_lasers( this, input, opts )
         elseif ( m == 2 ) then
           cym_str = 'im_re0'
         elseif ( mod(m, 4) == 3 ) then
-          cym_str = 're_re'// num2str( (i+1)/4 )
+          cym_str = 're_re'// num2str( (m+1)/4 )
         elseif ( mod(m, 4) == 0 ) then
-          cym_str = 're_im'// num2str( i/4 )
+          cym_str = 're_im'// num2str( m/4 )
         elseif ( mod(m, 4) == 1 ) then
-          cym_str = 'im_re'// num2str( (i-1)/4 )
+          cym_str = 'im_re'// num2str( (m-1)/4 )
         elseif ( mod(m, 4) == 2 ) then
-          cym_str = 'im_im'// num2str( (i-2)/4 )
+          cym_str = 'im_im'// num2str( (m-2)/4 )
         endif
 
         call file_rst(m)%new(&
