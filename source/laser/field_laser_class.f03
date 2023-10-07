@@ -803,8 +803,8 @@ subroutine solve_field_laser( this, chi )
           endif
 
           do i = 1, nrp
-            tmpr_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
-            tmpi_re(i,m) = ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
+            tmpr_re(i,m) = tmpr_re(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ar_re(1,i,j)
+            tmpi_re(i,m) = tmpi_re(i,m) + ds_qtr_dr2 * chi_re(1,i,j) * ai_re(1,i,j)
           enddo
 
           if ( k == 0 .or. k == m ) cycle
