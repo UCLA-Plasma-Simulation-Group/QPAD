@@ -636,6 +636,26 @@ subroutine init_diag_lasers( this, input, opts, lasers )
           if ( allocated(ss) ) deallocate(ss)
           call input%get( 'laser(' // num2str(i) // ').diag'//'('//num2str(j)//').name'//'('//num2str(k)//')', ss )
           select case ( trim(ss) )
+          case ( 'chi_cyl_m' )
+            call this%add_diag( &
+              obj       = lasers%chi, &
+              dtype     = 'real', &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = 1, &
+              type_label= 'chi_cyl_m', &
+              filename  = './Fields'//'/Chi'//'/', &
+              dataname  = 'chi', &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = 'n_0', &
+              label     = '\chi', &
+              rank      = 2 )
           case ( 'a_cyl_m' )
             sn1 = 'A_laser'
             sn2 = 'a_laser'
@@ -643,26 +663,26 @@ subroutine init_diag_lasers( this, input, opts, lasers )
             sn4 = 'a'
             dim = 1
             obj => lasers%laser(i)
+            call this%add_diag( &
+              obj       = obj, &
+              dtype     = 'complex', &
+              max_mode  = max_mode, &
+              dump_freq = ndump, &
+              dim       = dim, &
+              type_label= trim(ss), &
+              filename  = './Lasers'//num2str(i)//'/'//trim(sn1)//'/', &
+              dataname  = trim(sn2), &
+              timeunit  = '1 / \omega_p', &
+              dt        = dt, &
+              axisname  = (/'r  ', '\xi', '   '/), &
+              axislabel = (/'r  ', '\xi', '   '/), &
+              axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
+              axismax   = (/rmax, zmax, 0.0/), &
+              axismin   = (/rmin, zmin, 0.0/), &
+              units     = trim(sn3), &
+              label     = trim(sn4), &
+              rank      = 2 )
           end select
-          call this%add_diag( &
-            obj       = obj, &
-            dtype     = 'complex', &
-            max_mode  = max_mode, &
-            dump_freq = ndump, &
-            dim       = dim, &
-            type_label= trim(ss), &
-            filename  = './Lasers'//num2str(i)//'/'//trim(sn1)//'/', &
-            dataname  = trim(sn2), &
-            timeunit  = '1 / \omega_p', &
-            dt        = dt, &
-            axisname  = (/'r  ', '\xi', '   '/), &
-            axislabel = (/'r  ', '\xi', '   '/), &
-            axisunits = (/'c / \omega_p', 'c / \omega_p', '            '/), &
-            axismax   = (/rmax, zmax, 0.0/), &
-            axismin   = (/rmin, zmin, 0.0/), &
-            units     = trim(sn3), &
-            label     = trim(sn4), &
-            rank      = 2 )
         enddo ! end of k
       endif
     enddo ! end of j
