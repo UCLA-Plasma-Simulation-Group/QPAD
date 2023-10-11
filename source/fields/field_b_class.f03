@@ -394,8 +394,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
   if ( mode == 0 ) then
 
     do i = 2, nrp
-      this%buf1_re(i) = -f1_re(2,i) - f3_re(1,i) ! Re(Br)
-      this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) ! Re(Bphi)
+      this%buf1_re(i) = -f1_re(2,i)  ! Re(Br)
+!       this%buf1_re(i) = -f1_re(2,i) - f3_re(1,i) ! Re(Br)
+      this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) )! Re(Bphi)
+!       this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) ! Re(Bphi)
     enddo
 
     ! calculate the derivatives at the boundary and axis
@@ -404,15 +406,20 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       this%buf2_re(1) = 0.0
       ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
       ! calculated using forward difference
-      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2)
+      this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) 
+!       this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2)
     else
-      this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
-      this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1)
+      this%buf1_re(1) = -f1_re(2,1) 
+!       this%buf1_re(1) = -f1_re(2,1) - f3_re(1,1)
+      this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) 
+!       this%buf2_re(1) =  f1_re(1,1) + idrh * ( f2_re(3,2) - f2_re(3,0) ) - f3_re(2,1)
     endif
 
     if ( idproc == nvp-1 ) then
-      this%buf1_re(nrp) = -f1_re(2,nrp) - f3_re(1,nrp)
-      this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
+      this%buf1_re(nrp) = -f1_re(2,nrp) 
+!       this%buf1_re(nrp) = -f1_re(2,nrp) - f3_re(1,nrp)
+      this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) )
+!       this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
     endif
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then

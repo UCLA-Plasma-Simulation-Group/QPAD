@@ -484,9 +484,11 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     ! half electric acceleration
     do i = 1, np
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
-      qtmh1 = qtmh * gam / ( gam - u0(3,i) )
+      qtmh1 = qtmh * gam 
+!       qtmh1 = qtmh * gam / ( gam - u0(3,i) )
       ep(:,i) = ep(:,i) * qtmh1 
-      qtmh2 = qtmh / ( gam - u0(3,i) )
+      qtmh2 = qtmh 
+!       qtmh2 = qtmh / ( gam - u0(3,i) )
       bp(:,i) = bp(:,i) * qtmh2
     enddo
 
