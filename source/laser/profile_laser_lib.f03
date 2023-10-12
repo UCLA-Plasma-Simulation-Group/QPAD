@@ -240,7 +240,7 @@ subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re,
 
   call prof_pars%get( 'w0', w0 )
   fparser_arr(1) = z
-  w0 = w0 * eval(math_funcs(1), fparser_arr)
+  w0 = eval(math_funcs(1), fparser_arr)
   a0 = eval(math_funcs(2), fparser_arr)
   f_dist = eval(math_funcs(3), fparser_arr)
   if ( mode == 0 ) then

@@ -57,13 +57,13 @@ type, public :: profile_laser
   ! Procedure of setting the density profiles
   procedure( set_prof_intf ), nopass, pointer :: set_prof_perp => null()
   procedure( set_prof_intf ), nopass, pointer :: set_prof_lon => null()
-  procedure( set_prof_perp_astrl_intf ), nopass, pointer :: set_prof_perp_astral => null()
+  procedure( set_prof_perp_astrl_intf ), nopass, pointer :: set_prof_perp_astrl => null()
   procedure( set_prof_array_intf ), nopass, pointer :: set_prof_lon_lin => null()
   procedure( set_prof_array_intf ), nopass, pointer :: set_prof_lon_cub => null()
 
   ! Procedure of getting the beam density
   procedure( get_prof_perp_intf ), nopass, pointer :: get_prof_perp => null()
-  procedure( get_prof_perp_astrl_intf ), nopass, pointer :: get_prof_perp_astral => null()
+  procedure( get_prof_perp_astrl_intf ), nopass, pointer :: get_prof_perp_astrl => null()
   procedure( get_prof_lon_intf ), nopass, pointer :: get_prof_lon => null()
   procedure( get_prof_array_intf ), nopass, pointer :: get_prof_lon_lin => null()
   procedure( get_prof_array_intf ), nopass, pointer :: get_prof_lon_cub => null()
@@ -194,8 +194,8 @@ subroutine init_profile_laser( this, input, opts, sect_id )
 
     case ( 'astrl_analytic' )
       this%prof_type(1)  = p_prof_laser_astrl
-      this%set_prof_perp_astral => set_prof_perp_astrl
-      this%get_prof_perp_astral => get_prof_perp_astrl
+      this%set_prof_perp_astrl => set_prof_perp_astrl
+      this%get_prof_perp_astrl => get_prof_perp_astrl
 
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
@@ -238,7 +238,7 @@ subroutine init_profile_laser( this, input, opts, sect_id )
 
   ! read and store the profile parameters into the parameter lists
   if(this%prof_type(1) == p_prof_laser_astrl) then
-    call this%set_prof_perp_astral( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
+    call this%set_prof_perp_astrl( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
   else
     call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
   endif
@@ -304,7 +304,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
         if(this%prof_type(1) == p_prof_laser_astrl) then
-          call this%get_prof_perp_astral( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+          call this%get_prof_perp_astrl( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
         else
           call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         endif
