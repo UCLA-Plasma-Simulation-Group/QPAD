@@ -474,12 +474,20 @@ subroutine generate_cr_coef_fpcr_penta( this )
 
       tmp = am1*cp1*dm2*dp2 - am1*bp2*dm2*ep1 + ap1*bm2*dp2*em1 + bm2*bp2*cm1*ep1 - bm2*cm1*cp1*dp2
       ! print *, "    tmp = ", tmp
-      tmp = 1.0 / tmp 
-      this%coefm2(i, step) =  am1 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
-      this%coefm1(i, step) = -bm2 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
-      this%coefp1(i, step) = -dp2 * ( am1*d0*dm2 + b0*bm2*em1 - d0*bm2*cm1 ) * tmp
-      this%coefp2(i, step) =  ep1 * ( am1*d0*dm2 + b0*bm2*em1 - d0*bm2*cm1 ) * tmp
 
+      if( abs(tmp) > 1e-40 ) then 
+         tmp = 1.0 / tmp
+         this%coefm2(i, step) =  am1 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
+         this%coefm1(i, step) = -bm2 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
+         this%coefp1(i, step) = -dp2 * ( am1*d0*dm2 + b0*bm2*em1 - d0*bm2*cm1 ) * tmp
+         this%coefp2(i, step) =  ep1 * ( am1*d0*dm2 + b0*bm2*em1 - d0*bm2*cm1 ) * tmp
+      else
+         this%coefm2(i, step) = 0
+         this%coefm1(i, step) = 0
+         this%coefp1(i, step) = 0
+         this%coefp2(i, step) = 0
+      endif
+         
       ! use class members as temporary arrays
       this%a(i) = this%coefm2(i,step) * am2
       this%b(i) = this%coefm2(i,step) * cm2 + this%coefm1(i,step) * bm1 + a0
