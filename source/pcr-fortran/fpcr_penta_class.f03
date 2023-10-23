@@ -475,7 +475,7 @@ subroutine generate_cr_coef_fpcr_penta( this )
       tmp = am1*cp1*dm2*dp2 - am1*bp2*dm2*ep1 + ap1*bm2*dp2*em1 + bm2*bp2*cm1*ep1 - bm2*cm1*cp1*dp2
       ! print *, "    tmp = ", tmp
 
-      if( abs(tmp) > 1e-40 ) then 
+      if( abs(tmp) > epsilon(1.0) ) then 
          tmp = 1.0 / tmp
          this%coefm2(i, step) =  am1 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
          this%coefm1(i, step) = -bm2 * ( ap1*d0*dp2 + b0*bp2*ep1 - b0*cp1*dp2 ) * tmp
