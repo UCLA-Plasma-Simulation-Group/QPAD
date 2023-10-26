@@ -6,7 +6,7 @@ DISABLE_TEMPLATE = TRUE
 DISABLE_POPAS = TRUE
 
 # Desktop
-ifeq ("$(HOSTNAME)","DESKTOP-GUC04E6")
+ifeq ("$(HOSTNAME)","MYITX")
 
 	# Fortran compiler configuration
 	FC = mpif90
@@ -63,6 +63,35 @@ else ifeq ("$(HOSTNAME)","DESKTOP-JJQ43ST")
 	JSON_INC = /usr/local/json-fortran-8.3.0/gcc-11.1/lib
 	HDF5_INC = /usr/local/hdf5-1.12.2/gcc-11.1/include
 	HDF5_LIB = /usr/local/hdf5-1.12.2/gcc-11.1/lib
+
+# office desktop
+else ifeq ("$(HOSTNAME)","DESKTOP-SCH8AU4")
+
+	# Fortran compiler configuration
+	FC = mpif90
+	FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -fcheck=all -fallow-argument-mismatch
+	ifeq ("$(ENABLE_DEBUG)",TRUE)
+		FC_OPTS += -fbacktrace -Wall -ffpe-trap=zero,overflow,underflow
+	endif
+
+	# C compiler configuration
+	CC = gcc-11
+	CC_OPTS = -O3 -std=c99
+
+	# Preprocessor configuration
+	FPP = gcc-11 -C -P -E -cpp
+
+	# Linker configuration
+	LINKER = mpif90
+	LINKER_OPTS = -fopenmp -O3
+	LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5
+
+	# Library dependencies
+	HYPRE_LIB = /usr/local/hypre/2.24.0_gnu-11.1/lib
+	JSON_LIB = /usr/local/json-fortran/8.3.0_gnu-11.1/lib
+	JSON_INC = /usr/local/json-fortran/8.3.0_gnu-11.1/lib
+	HDF5_INC = /usr/local/hdf5/1.12.2_gnu-11.1/include
+	HDF5_LIB = /usr/local/hdf5/1.12.2_gnu-11.1/lib
 
 endif
 
