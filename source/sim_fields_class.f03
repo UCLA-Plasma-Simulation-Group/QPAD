@@ -100,7 +100,7 @@ subroutine init_sim_fields( this, input, opts )
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=:), allocatable :: str
   integer :: entity, max_mode, ps, bnd
-  real :: alpha
+  real :: relax_fac
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -132,9 +132,9 @@ subroutine init_sim_fields( this, input, opts )
     call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
   end select
 
-  alpha = 2.0
-  if (input%found("simulation.alpha")) then
-    call input%get("simulation.alpha", alpha)
+  relax_fac = 1.0d-3
+  if (input%found("simulation.relax_fac")) then
+    call input%get("simulation.relax_fac", relax_fac)
   endif
 
   call this%psi%new(    opts, max_mode, ps, bnd )
@@ -146,12 +146,12 @@ subroutine init_sim_fields( this, input, opts )
   call this%amu%new(    opts, max_mode, ps, smooth_order=0 )
   entity = p_entity_plasma
   call this%e_spe%new(  opts, max_mode, ps, bnd, entity )
-  call this%b_spe%new(  opts, max_mode, ps, bnd, alpha, entity )
+  call this%b_spe%new(  opts, max_mode, ps, bnd, relax_fac, entity )
   call this%e%new(      opts, max_mode, ps, bnd, entity )
-  call this%b%new(      opts, max_mode, ps, bnd, alpha, entity )
+  call this%b%new(      opts, max_mode, ps, bnd, relax_fac, entity )
   entity = p_entity_beam
   call this%e_beam%new( opts, max_mode, ps, bnd, entity )
-  call this%b_beam%new( opts, max_mode, ps, bnd, alpha, entity )
+  call this%b_beam%new( opts, max_mode, ps, bnd, relax_fac, entity )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 

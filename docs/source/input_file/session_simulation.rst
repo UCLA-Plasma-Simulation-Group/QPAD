@@ -79,5 +79,8 @@ Simulation Session
 * ``verbose``, integer
     Level of verbosity. This parameter should be always set as 0 unless for debugging purpose. A larger ``verbose`` will output more debugging information into the log files. The maximum value is 5.
 
+* ``relax_fac``, real, optional
+    Relaxation factor of the predictor-corrector iteration and it should be only used for debug and test. Changing it will impact the convergence speed and stability. The default value is 1.0e-3.
+
 * ``random_seed``, integer
     Seed of the pseudo-random number generator. Set 0 to use the operating-system-specified seeds, which varies from run to run. Specify any integer greater than 0 to use the user-specified seed which is fixed for each run.
