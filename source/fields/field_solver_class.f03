@@ -33,8 +33,8 @@ type :: field_solver ! class for HYPRE solver
   integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver
   integer :: iupper, ilower
 
-  ! predictor-corrector coefficient
-  real :: alpha = 2.0
+  ! predictor-corrector relaxation factor
+  real :: relax_fac = 1.0d-3
 
   contains
 
@@ -55,7 +55,7 @@ contains
 ! Class field_solver implementation
 ! =====================================================================
 
-subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype, alpha )
+subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype, relax_fac )
 
   implicit none
 
@@ -63,7 +63,7 @@ subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype, alpha )
   type( options ), intent(in) :: opts
   integer, intent(in) :: kind, stype, mode, bnd
   real, intent(in) :: dr
-  real, intent(in), optional :: alpha
+  real, intent(in), optional :: relax_fac
 
   integer :: ierr, comm
   character(len=32), save :: sname = "init_field_solver"
@@ -74,8 +74,8 @@ subroutine init_field_solver( this, opts, mode, dr, kind, bnd, stype, alpha )
   this%mode  = mode
   this%kind  = kind
   this%bnd   = bnd
-  this%alpha = 2.0
-  if (present(alpha)) this%alpha = alpha
+  this%relax_fac = 1.0d-3
+  if (present(relax_fac)) this%relax_fac = relax_fac
 
   ! setup HYPRE grid
   comm = comm_loc()
@@ -263,7 +263,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
   integer :: i, ierr, local_vol, nr, noff, m
   integer :: comm, lidproc, lnvp
-  real :: dr2, m2, j, jmax, alpha_dr2
+  real :: dr2, m2, j, jmax
   character(len=32), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -278,7 +278,6 @@ subroutine set_struct_matrix( this, opts, dr )
   m2 = real(m*m)
   nr = this%iupper - this%ilower + 1
   local_vol = nr * this%num_stencil
-  alpha_dr2 = this%alpha * dr2
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )
@@ -338,7 +337,8 @@ subroutine set_struct_matrix( this, opts, dr )
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
       ! HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - dr2
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 - alpha_dr2
+      ! HYPRE_BUF(i+1) = -2.0 - (real(m+1)/j)**2 - alpha_dr2
+      HYPRE_BUF(i+1) = -2.0 - (real(m+1)/j)**2 - this%relax_fac
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -358,7 +358,8 @@ subroutine set_struct_matrix( this, opts, dr )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
       ! HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - dr2
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 - alpha_dr2
+      ! HYPRE_BUF(2) = -2.0 - (real(m+1)/j)**2 - alpha_dr2
+      HYPRE_BUF(2) = -2.0 - (real(m+1)/j)**2 - this%relax_fac
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -371,7 +372,8 @@ subroutine set_struct_matrix( this, opts, dr )
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
       ! HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - dr2
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 - alpha_dr2
+      ! HYPRE_BUF(i+1) = -2.0 - (real(m-1)/j)**2 - alpha_dr2
+      HYPRE_BUF(i+1) = -2.0 - (real(m-1)/j)**2 - this%relax_fac
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -381,7 +383,8 @@ subroutine set_struct_matrix( this, opts, dr )
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
         ! HYPRE_BUF(2) = -4.0 - dr2
-        HYPRE_BUF(2) = -4.0 - alpha_dr2
+        ! HYPRE_BUF(2) = -4.0 - alpha_dr2
+        HYPRE_BUF(2) = -4.0 - this%relax_fac
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
@@ -406,7 +409,8 @@ subroutine set_struct_matrix( this, opts, dr )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
       ! HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - dr2
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 - alpha_dr2
+      ! HYPRE_BUF(2) = -2.0 - (real(m-1)/j)**2 - alpha_dr2
+      HYPRE_BUF(2) = -2.0 - (real(m-1)/j)**2 - this%relax_fac
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -418,7 +422,7 @@ subroutine set_struct_matrix( this, opts, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2
+      HYPRE_BUF(i+1) = -2.0 - (real(m+1)/j)**2
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -437,7 +441,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2
+      HYPRE_BUF(2) = -2.0 - (real(m+1)/j)**2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -449,7 +453,7 @@ subroutine set_struct_matrix( this, opts, dr )
     do i = 4, local_vol, this%num_stencil
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2
+      HYPRE_BUF(i+1) = -2.0 - (real(m-1)/j)**2
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -474,7 +478,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2
+      HYPRE_BUF(2) = -2.0 - (real(m-1)/j)**2
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -502,7 +506,7 @@ subroutine set_struct_matrix( this, opts, dr )
         if ( this%mode == 0 ) then
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-real(m)/jmax) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
 
@@ -512,7 +516,7 @@ subroutine set_struct_matrix( this, opts, dr )
           HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0+1.0/(jmax*log(jmax*dr))) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-real(m)/jmax) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
 
@@ -521,18 +525,18 @@ subroutine set_struct_matrix( this, opts, dr )
         if ( this%mode == 0 ) then
           HYPRE_BUF(local_vol) = 0.0
         else
-          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-m/jmax) * HYPRE_BUF(local_vol)
+          HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-real(m)/jmax) * HYPRE_BUF(local_vol)
           HYPRE_BUF(local_vol) = 0.0
         endif
 
       case ( p_fk_bplus, p_fk_vpotp )
 
-        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-real(m+1)/jmax) * HYPRE_BUF(local_vol)
         HYPRE_BUF(local_vol) = 0.0
 
       case ( p_fk_bminus, p_fk_vpotm )
 
-        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+        HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-real(m+1)/jmax) * HYPRE_BUF(local_vol)
         HYPRE_BUF(local_vol) = 0.0
 
       case default
