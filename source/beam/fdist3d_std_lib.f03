@@ -9,7 +9,6 @@ private
 
 public :: set_prof_uniform, get_den_uniform
 public :: set_prof_gaussian, get_den_gaussian
-public :: set_prof_super_gauss, get_den_super_gauss
 public :: set_prof_parabolic, get_den_parabolic
 public :: set_prof_rational, get_den_rational
 public :: set_prof_pw_linear, get_den_pw_linear
@@ -125,53 +124,6 @@ subroutine get_den_gaussian( x, prof_pars, den_value )
   den_value = exp( -0.5 * ( (x-mu)/sigma )**2 )
 
 end subroutine get_den_gaussian
-
-! ------------------------------------------------------------------------------
-! SUPER-GAUSSIAN PROFILES
-! ------------------------------------------------------------------------------
-
-subroutine set_prof_super_gauss( input, sect_name, dim, prof_pars )
-  implicit none
-  type( input_json ), intent(inout) :: input
-  character(len=*), intent(in) :: sect_name
-  integer, intent(in) :: dim
-  real, intent(inout), dimension(:), pointer :: prof_pars
-  ! local
-  real :: z0
-
-  ! this should never be called
-  if ( associated(prof_pars) ) deallocate( prof_pars )
-
-  allocate( prof_pars(3) )
-
-  call input%get( trim(sect_name) // '.super_gauss_center(' // num2str(dim) // ')', prof_pars(1) )
-  call input%get( trim(sect_name) // '.super_gauss_sigma(' // num2str(dim) // ')', prof_pars(2) )
-  call input%get( trim(sect_name) // '.super_gauss_order(' // num2str(dim) // ')', prof_pars(3) )
-  if (prof_pars(3) < 1.0) then
-    call write_err("The order of super-Gaussian profile must be >= 1.")
-  endif
-  if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
-    prof_pars(1) = prof_pars(1) - z0
-  endif
-
-end subroutine set_prof_super_gauss
-
-subroutine get_den_super_gauss( x, prof_pars, den_value )
-  implicit none
-  real, intent(in) :: x
-  real, intent(in), dimension(:), pointer :: prof_pars
-  real, intent(out) :: den_value
-
-  real :: sigma, mu, order
-
-  mu    = prof_pars(1)  
-  sigma = prof_pars(2)
-  order = prof_pars(3)
-
-  den_value = exp( -(0.5 * ( (x-mu)/sigma )**2) ** order )
-
-end subroutine get_den_super_gauss
 
 ! ------------------------------------------------------------------------------
 ! PARABOLIC PROFILES

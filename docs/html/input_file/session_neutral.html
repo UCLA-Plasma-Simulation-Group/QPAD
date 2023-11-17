@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neutral Session &mdash; QPAD 0.1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Field Session" href="session_field.html" />
+    <link rel="prev" title="Species Session" href="session_species.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> QPAD
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview/overview.html">Overview of QPAD algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="overview.html">Input File</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="overview.html#format-of-input-file">Format of Input File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#parameter-unit">Parameter Unit</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="overview.html#sessions-of-input-file">Sessions of Input File</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="session_simulation.html">Simulation Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_beam.html">Beam Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="session_species.html">Species Session</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Neutral Session</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="session_field.html">Field Session</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../post_process/post_process.html">Post-processing Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/contribution.html">Contribute to QPAD</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">QPAD</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="overview.html">Input File</a> &raquo;</li>
+      <li>Neutral Session</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/input_file/session_neutral.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="neutral-session">
+<h1>Neutral Session<a class="headerlink" href="#neutral-session" title="Permalink to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">neutrals</span></code> session is an array and each component is a session that defines the parameters related to each neutral gas species.</p>
+<ul>
+<li><dl>
+<dt><code class="docutils literal notranslate"><span class="pre">profile</span></code>, string array (2)</dt><dd><p>Profile types for the plasma density distribution. The first and second components are the profile types of the transverse (in r-direction) and longitudinal (in <span class="math notranslate nohighlight">\(\xi\)</span>-direction) directions. The available options for the transverse profile type include <code class="docutils literal notranslate"><span class="pre">&quot;uniform&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;parabolic-channel&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;hollow-channel&quot;</span></code>. The “uniform” option does not need extra parameters while the other types do.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;parabolic-channel&quot;</span></code> defines a parabolic plasma channel, and the following characteristic parameters need to be provided</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_n0</span></code>, real</dt><dd><p>On-axis channel density.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_depth</span></code>, real</dt><dd><p>Channel density difference between r=0 and r=``channel_r0``.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_r0</span></code>, real</dt><dd><p>Characteristic channel radius.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_width</span></code>, real</dt><dd><p>Truncated radius of the plasma channel, beyond which the distribution becomes uniform.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;hollow-channel&quot;</span></code> defines plasma channel that has a uniform distribution between the inner and outer radii, and the following characteristic parameters need to be provided</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_rmin</span></code>, real</dt><dd><p>Inner channel radius.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_rmax</span></code>, real</dt><dd><p>Outer channel radius.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">channel_depth</span></code>, real</dt><dd><p>Channel density difference between the inner and outer radii.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The available options for the longitudinal profile type include <code class="docutils literal notranslate"><span class="pre">&quot;uniform&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;piecewise-linear&quot;</span></code>. The <code class="docutils literal notranslate"><span class="pre">&quot;uniform&quot;</span></code> option does not need extra parameters while the other types do.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;piecewise-linear&quot;</span></code> defines a piecewise linear function according to which the plasma density will be updated for each 3D time step. The following parameters are needed</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">piecewise_s</span></code>, real array(*)</dt><dd><p>Time points of the piecewise linear function. They must be a monotonically increasing array.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">piecewise_fs</span></code>, real array(*)</dt><dd><p>Density defined on each time point. The length should be the same with <code class="docutils literal notranslate"><span class="pre">piecewise_s</span></code>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ppc</span></code>, integer array (2)</dt><dd><p>Numbers of macro-particles per cell in polar coordinate system, i.e. <span class="math notranslate nohighlight">\((\Delta r, \Delta \phi)\)</span>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">num_theta</span></code>, integer</dt><dd><p>Numbers of “virtual” cells distributed azimuthally, i.e. <span class="math notranslate nohighlight">\(\Delta\phi=2\pi\)</span>/<code class="docutils literal notranslate"><span class="pre">num_theta</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">npmax</span></code>, integer, optional</dt><dd><p>Maximum particle number allowed for each partition. If not given, the code will try to determine this value automatically. The default value is twice of the minimum buffer size required to initialize the particles, i.e., <code class="docutils literal notranslate"><span class="pre">ppc(1)</span></code> * <code class="docutils literal notranslate"><span class="pre">ppc(2)</span></code> * <code class="docutils literal notranslate"><span class="pre">num_theta</span></code> * (number of cells in this partition) * 2.0. If the number of particles on a certain node exceeds the provided value, the code will attempt to reallocate the buffer to accommodate the extra particles. However, frequent buffer reallocation will impact the performance, which one should avoid. Warnings of buffer reallocation will be printed out so one can see how frequently this process is happening.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">q</span></code>, real</dt><dd><p>Charge for each plasma particle. For example, it is <code class="docutils literal notranslate"><span class="pre">-1.0</span></code> for an electron.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">m</span></code>, real</dt><dd><p>Rest mass for each plasma particle. For example. it is <code class="docutils literal notranslate"><span class="pre">1.0</span></code> for an electron and <code class="docutils literal notranslate"><span class="pre">1836.15267389</span></code> for a proton.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">density</span></code>, real</dt><dd><p>Global density of the plasma. This factor will be multiplied to the density values defined in <code class="docutils literal notranslate"><span class="pre">profile</span></code>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">element</span></code>, integer</dt><dd><p>Atom number of neutral gas species. The available include: H(1), He(2), Li(3), C(6), N(7), O(8), Ar(18), K(19), Rb(37), Xe(54) and Cs(55).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ion_max</span></code>, integer</dt><dd><p>Maximum ionization status allowed in the simulation.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">push_type</span></code>, string</dt><dd><p>Species particle pusher type. Currently, the valid options are <code class="docutils literal notranslate"><span class="pre">&quot;robust&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;clamp&quot;</span></code>. The <code class="docutils literal notranslate"><span class="pre">&quot;robust&quot;</span></code> push type is generally the first choice for most cases. The <code class="docutils literal notranslate"><span class="pre">&quot;clamp&quot;</span></code> push type will clamp the value of <span class="math notranslate nohighlight">\(\gamma/(\gamma-p_z)\)</span> (specified by <code class="docutils literal notranslate"><span class="pre">fac_clamp</span></code> parameter) of the plasma particles. This can mitigate the code crashing or numerical instability that emerges at the back of the wake for highly nonlinear blowout regime.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Note that the clamping is an artificial treatment and will lead to unphysical result. The <code class="docutils literal notranslate"><span class="pre">&quot;clamp&quot;</span></code> pusher is currently provided only for experimental purposes.</p>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">fac_clamp</span></code>, real, optional, default <code class="docutils literal notranslate"><span class="pre">10.0</span></code></dt><dd><p>Clamped value of <span class="math notranslate nohighlight">\(\gamma/(\gamma-p_z)\)</span> used by <code class="docutils literal notranslate"><span class="pre">&quot;clamp&quot;</span></code> push type.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">den_min</span></code>, real, optional, default <code class="docutils literal notranslate"><span class="pre">1.0d-10</span></code></dt><dd><p>It specifies the minimum density for injecting particles. Particles are only injected when the specified density is above this threshold.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">uth</span></code>, real(3), optional, default <code class="docutils literal notranslate"><span class="pre">[0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0]</span></code></dt><dd><p>Initial thermal velocity (proper velocity) in (x,y,z) directions.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is an experimental functionality. Setting non-zero values to <code class="docutils literal notranslate"><span class="pre">uth</span></code> will lead to unphysical plasma oscillation, and the cause is unclear currently. If not necessary, one should always set this parameter zero.</p>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">diag</span></code>, session array(*), optional</dt><dd><p>For the species, every type of diagnostics must be provided as a session. The parameters of each session include</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code>, string array(*)</dt><dd><p>Available options include <code class="docutils literal notranslate"><span class="pre">&quot;charge_cyl_m&quot;</span></code> for dumping species charge density, <code class="docutils literal notranslate"><span class="pre">&quot;ion_cyl_m&quot;</span></code> for dumping ion density, and <code class="docutils literal notranslate"><span class="pre">&quot;raw&quot;</span></code> for dumping species particle raw data.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ndump</span></code>, integer</dt><dd><p>The code will dump the data every <code class="docutils literal notranslate"><span class="pre">ndump</span></code> time steps. If <code class="docutils literal notranslate"><span class="pre">ndump</span></code> is zero, the dumping is turned off.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">psample</span></code>, integer</dt><dd><p>Only needed by <code class="docutils literal notranslate"><span class="pre">&quot;raw&quot;</span></code> diagnostic. The code will dump one particle raw data from every <code class="docutils literal notranslate"><span class="pre">psample</span></code> particles.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h2>
+<p>This example shows the settings for a uniform Lithum gas.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;neutrals&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="p">[</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;uniform&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;ppc&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="p">],</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;num_theta&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;q&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;m&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;density&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;element&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;ion_max&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;push_type&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;robust&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;den_min&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">1.0e-10</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;diag&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="p">[</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;charge_cyl_m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ion_cyl_m&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"></span>
+<span class="w">        </span><span class="p">},</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;raw&quot;</span><span class="p">],</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;ndump&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;psample&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">],</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="session_species.html" class="btn btn-neutral float-left" title="Species Session" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="session_field.html" class="btn btn-neutral float-right" title="Field Session" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Fei Li.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
