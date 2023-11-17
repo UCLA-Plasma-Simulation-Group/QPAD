@@ -42,6 +42,8 @@ type :: fdist2d
   real :: den_min
   ! Switch if setting neutralized background
   logical :: neutralized
+  ! if distribute particles randomly in theta
+  logical :: random_theta
   ! Parameter list of longitudinal density profile
   real, dimension(:), pointer :: prof_pars_lon => null()
   ! Parameter list of perpendicular density profile
@@ -240,6 +242,11 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
   endif
 
+  this%random_theta = .true.
+  if ( input%found( trim(sect_name) // '.random_theta' ) ) then
+    call input%get( trim(sect_name) // '.random_theta', this%random_theta )
+  endif
+
   this%neutralized = .true.
   if ( input%found( trim(sect_name) // '.neutralized' ) ) then
     call input%get( trim(sect_name) // '.neutralized', this%neutralized )
@@ -315,7 +322,12 @@ subroutine inject_fdist2d( this, x, p, gamma, psi, q, npp, s )
         
         do i2 = 1, this%ppc(2)
           
-          theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
+          if (this%random_theta) then
+            call random_number(theta) 
+            theta = theta * 2.0 * pi
+          else
+            theta = ( (i2 - 0.5) / this%ppc(2) + j - 1.0 ) * dtheta
+          endif
 
           x_tmp(1) = rn * dr * cos(theta)
           x_tmp(2) = rn * dr * sin(theta)
