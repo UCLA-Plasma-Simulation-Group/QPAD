@@ -38,10 +38,10 @@ def print_help_info():
 '''
 Usage: merge_mode_trans -z <longitudinal location> -t <type of variable> 
 Parameter:
-    -z: The longitudinal location of the transverse slice (in fact \xi) in plasma skin depth.
+    -z: The longitudinal location of the transverse slice in plasma skin depth.
     -t, --type: Type of the data. The options include 'c' (cylindrical variables) and 's' (scalar).
                 For example, the r and phi components of a vector are type 'c' while a scalar of 
-                the z component of a vector are type 's'. The outputs of a type 'c' vector are deposited 
+                the z component of a vector are type 's'. The outputs of a type 'c'vector are deposited 
                 to a Cartesian coordinate whose z = - xi, x = r in phi = 0, y = r in phi = 90.
 '''
     )
@@ -65,7 +65,7 @@ if __name__ == '__main__':
             print_help_info()
             sys.exit(2)
         elif opt in ('-z'):
-            z = int(arg)
+            z = float(arg)
         elif opt in ('-t', '--type'):
             if arg == 'c' :
                 sign = -1
