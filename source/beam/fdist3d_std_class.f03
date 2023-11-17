@@ -275,7 +275,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
 
     case default
       call write_err( 'Invalid density profile in direction 3! Currently available &
-        &include "analytic", "uniform", "gaussian", "parabolic", "rational" and "piecewise-linear".' )
+        &include "uniform", "gaussian", "super-gaussian", "parabolic", "rational", "piecewise-linear" and "analytic".' )
 
   end select
 
