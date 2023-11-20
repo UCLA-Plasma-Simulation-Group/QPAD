@@ -72,6 +72,65 @@ endif
 
 end function ranorm
 
+! A straightforward implementation (Box-Muller method) of random number generator
+! for Gaussian distribution with zero mean and unit variance.
+function rand_norm()
+
+  implicit none
+  logical, save :: iflg = .true.
+  real(kind=DB), save :: next_val = 0.0d0
+  real(kind=DB) :: u1, u2, theta, amp, rand_norm
+
+  if (iflg) then
+
+    call random_number(u1)
+    call random_number(u2)
+    theta = 2.0d0 * pi * u1
+    amp = dsqrt(-2.0d0 * dlog(u2))
+    rand_norm = amp * dcos(theta)
+    next_val = amp * dsin(theta)
+    iflg = .false.
+
+  else
+
+    rand_norm = next_val
+    next_val = 0.0d0
+    iflg = .true.
+
+  endif
+
+end function rand_norm
+
+function rand_super_gauss(p)
+
+  implicit none
+  real, intent(in) :: p
+  real(kind=DB) :: tmp, fac, x, u, sqrt_pi, accept, gam, rand_super_gauss
+
+  if (p < 1.0) then
+    write(2, *) '[ERROR] The order p for super-Gaussian distribution must be greater than 1.0'
+    stop
+  endif
+
+  sqrt_pi = sqrt(pi)
+  tmp = 1.0d0 / (1.0d0 - p)
+  gam = gamma(1.0d0 + 1.0d0 / (2.0d0 * p))
+  fac = 2.0d0 * exp(p ** (p * tmp) - p ** tmp) * gam / sqrt_pi;
+
+  do
+    x = rand_norm()
+    call random_number(u)
+
+    tmp = 0.5 * x * x
+    accept = 0.5 * fac * exp(tmp - tmp ** p) * sqrt_pi / gam
+    if (u < accept) then
+      rand_super_gauss = x
+      return
+    endif
+  enddo
+  
+end function rand_super_gauss
+
 function eval_polynomial( x, x0, p ) result(y)
   
   implicit none
