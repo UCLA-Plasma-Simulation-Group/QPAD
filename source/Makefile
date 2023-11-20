@@ -46,12 +46,14 @@ src += simulation_class.f03
 include proj_template/Makefile
 include proj_popas/Makefile
 include proj_subcyc/Makefile
-src += main.f03
+# src += main.f03
+main_src = main.f03
 # ------------------------------------------------------------------------------
 
 # Parse source files to generate object files
 objs := $(patsubst %.f03,$(builddir)/%.o,$(src))
 objs := $(patsubst %.c,  $(builddir)/%.o,$(objs))
+main_obj := $(builddir)/main.o
 
 # Generate date stamp
 DATESTAMP := $$(date +%s)
@@ -60,9 +62,9 @@ DATESTAMP := $$(date +%s)
 .DEFAULT_GOAL := $(qpad)
 .PHONY: clean
 
-$(qpad) : $(objs)
+$(qpad) : $(objs) $(main_obj)
 	@echo "[LINK] $(@F)"
-	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -I./$(builddir) -o $(notdir $(qpad)) $(notdir $(objs)) $(LDF)
+	@cd $(builddir) && $(LINKER) $(LINKER_OPTS) -I./$(builddir) -o $(notdir $(qpad)) $(notdir $(objs)) $(notdir $(main_obj)) $(LDF)
 	@chmod a+x $@
 	@echo "Copying binary to bin directory"
 	@if [ ! -d $(bindir) ];then \
@@ -74,6 +76,8 @@ $(qpad) : $(objs)
 	@echo "Done!"
 
 $(objs) : $(configfile) | $(builddir)
+
+$(main_obj) : $(configfile) | $(builddir)
 
 $(builddir) :
 	@echo "Creating $@ directory"
@@ -87,6 +91,9 @@ $(builddir)/%.o : %.f03
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"
 	@$(CC) $(CC_OPTS) -c $< -o $@
+
+module : $(objs)
+	@echo "Only compile modules, no executable is generated."
 
 TEST_%.e : $(testdir)/TEST_%.f03
 	@echo "[F03] $(<F)"
