@@ -48,7 +48,7 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``t_fall``, real
         Length of falling edge.
 
-    The ``"astrl_analytic"`` longitudinal profile defines a constant profile equal to :math: `1`. The ``"astrl_analytic"`` profile should be selected for the longitudinal direction if already selected for the transverse direction.
+    The ``"astrl_analytic"`` longitudinal profile defines a constant profile equal to :math:`1`. The ``"astrl_analytic"`` profile should be selected for the longitudinal direction if already selected for the transverse direction.
     .. The ``"piecewise-linear"`` defines a piecewise linear function according to which the plasma density will be updated for each 3D time step. The following parameters are needed
 
     .. * ``piecewise_s``, real array(\*)
@@ -110,7 +110,7 @@ This example shows the settings for a Gaussian Laser pulse with a `sin^2` longit
     ],
 
 
-This example shows the settings for an analytic ASTRL laser pulse using mathematical functions for the focal distance :math: `s0(\xi)`, the vector potential :math: `a_0(\xi)`, and the spot size :math: `w_0(\xi)` along the :math:`\xi`-direction.
+This example shows the settings for an analytic ASTRL laser pulse using mathematical functions for the focal distance ``s0_math_func``, the vector potential ``a0_math_func``, and the spot size ``w0_math_func`` along the :math:`\xi`-direction.
 
 .. code-block:: json
 
