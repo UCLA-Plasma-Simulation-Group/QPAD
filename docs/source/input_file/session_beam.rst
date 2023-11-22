@@ -64,10 +64,10 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
     * ``piecewise_fx1``, ``piecewise_fx2``, ``piecewise_fx3``: real array(\*)
         The density defined on each points defined by ``piecewise_x1``, ``piecewise_x2`` and ``piecewise_x3``.
 
-    The ``"analytic"`` defines a mathematical function for the beam density. If any component of ``profile`` is ``analytic``, all other profiles will be ignored. The following parameters are needed
+    The ``"analytic"`` defines a mathematical function for the beam density. If any component of ``profile`` is ``"analytic"``, all other profiles are ignored. The following parameters are needed
     
     * ``math_func``: string
-        A string expression describing the density profile as a function of :math: ``x``, :math: ``y``, and :math: ``z``, i.e. ``"math_func" : "exp(-z^2/0.5) * exp(-(x^2 + y^2)/8.0)"``.
+        A string expression describing the density profile as a function of :math: `x`, :math: `y`, and :math: `z`, representing the 1-, 2-, and 3-direction. An example math function expression is ``"exp(-z^2/0.5) * exp(-(x^2 + y^2)/8.0)"``.
 
 * ``evolution``, logical, optional, default ``"true"``
     If it is true, the code will update the momentum of beam particles every time step.
