@@ -205,8 +205,8 @@ subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
   real :: rval
   integer :: ival
 
-  call input%get( trim(sect_name) // '.w0', rval )
-  call prof_pars%append( 'w0', rval )
+  ! call input%get( trim(sect_name) // '.w0', rval )
+  ! call prof_pars%append( 'w0', rval )
 
   if ( .not. associated( math_funcs ) ) then
     allocate( t_fparser :: math_funcs( 3 ) )
@@ -238,7 +238,7 @@ subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re,
   real(p_k_fparse), dimension(1) :: fparser_arr 
   type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
 
-  call prof_pars%get( 'w0', w0 )
+  ! call prof_pars%get( 'w0', w0 )
   fparser_arr(1) = z
   w0 = eval(math_funcs(1), fparser_arr)
   a0 = eval(math_funcs(2), fparser_arr)

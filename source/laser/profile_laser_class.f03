@@ -251,7 +251,11 @@ subroutine init_profile_laser( this, input, opts, sect_id )
     call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
   endif
 
-  call input%get( trim(sect_name) // '.a0', this%a0 )
+  if(this%prof_type(1) /= p_prof_laser_astrl .or. this%prof_type(2) /= p_prof_laser_astrl_lon) then
+    call input%get( trim(sect_name) // '.a0', this%a0 )
+  else 
+    this%a0 = 1.0
+  endif
   call input%get( trim(sect_name) // '.k0', this%k0 )
   call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   call input%get( 'simulation.box.z(1)', this%z0 )

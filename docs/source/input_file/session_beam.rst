@@ -19,7 +19,7 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
     Geometry for the particle initialization, including ``"cartesian"`` and ``"cylindrical"``. The initialization assumes the beam density distribution is variable-separable in three directions, i.e., 1-, 2- and 3-direction. Note that the choice of the value will affect the configuration of some of the following parameters. Setting ``geometry`` to be ``"cartesian"`` means the 1-, 2- and 3-directions correspond to x-, y- and :math:`\xi`-directions, or otherwise r-, :math:`\phi`- and :math:`\xi`-directions if ``"cylindrical"`` is selected.
 
 * ``profile``, string array(3)
-    Profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include ``"uniform"``, ``"gaussian"``, ``"super-gaussian"``, ``"parabolic"``, ``"rational"`` and ``"piecewise-linear"``. The ``"uniform"`` option does not need extra parameters while the other types do.
+    Profile types for the beam density distribution. The three components correspond to the profile types in 1-, 2- and 3-direction. The available options for the transverse profile type include ``"uniform"``, ``"gaussian"``, ``"super-gaussian"``, ``"parabolic"``, ``"rational"``, ``"piecewise-linear"``, and ``"analytic"``. The ``"uniform"`` option does not need extra parameters while the other types do.
 
     The ``"gaussian"`` type defines a Gaussian beam profile, and the following characteristic parameters need to be provided
     
@@ -63,6 +63,11 @@ Setting ``profile_type`` to be ``"standard"`` enables the "Lattice-like" initial
         The arrays of position of the piecewise linear function in 1-, 2- and 3-direction respectively. They must be a monotonically increasing array.
     * ``piecewise_fx1``, ``piecewise_fx2``, ``piecewise_fx3``: real array(\*)
         The density defined on each points defined by ``piecewise_x1``, ``piecewise_x2`` and ``piecewise_x3``.
+
+    The ``"analytic"`` defines a mathematical function for the beam density. If any component of ``profile`` is ``analytic``, all other profiles will be ignored. The following parameters are needed
+    
+    * ``math_func``: string
+        A string expression describing the density profile as a function of :math: ``x``, :math: ``y``, and :math: ``z``, i.e. ``"math_func" : "exp(-z^2/0.5) * exp(-(x^2 + y^2)/8.0)"``.
 
 * ``evolution``, logical, optional, default ``"true"``
     If it is true, the code will update the momentum of beam particles every time step.
@@ -271,4 +276,51 @@ This can also be realized by using the Cartesian geometry.
           }
       ]    
       }
+  ]
+
+This following block shows an example of an analytic density profile.
+
+.. code-block:: json
+
+  "beam" :
+  [
+     {
+        "npmax": 1000000,
+        "ppc": [ 2, 2, 2 ],
+        "num_theta": 8,
+        "evolution": true,
+        "quiet_start": true,
+        "geometry": "cartesian",
+        "math_func" : "exp(-z^2/0.5) * exp(-(x^2 + y^2)/8.0)",
+        "profile": [ "analytic", "analytic", "analytic"],
+        "q": -1.0,
+        "m": 1.0,
+        "density": 1.0,
+        "gamma": 20000.0,
+        "uth": [
+            10.0,
+            10.0,
+            0.0
+        ],
+        "range1": [
+            -10,
+            10
+        ],
+        "range2": [
+            -10,
+            10
+        ],
+        "range3": [
+            -2,
+            2
+        ],
+        "diag": [
+            {
+                "name": [
+                    "charge_cyl_m"
+                ],
+                "ndump": 5
+            }
+        ]
+    }
   ]
