@@ -4,7 +4,7 @@ Species Session
 The "species" session is an array and each component is a session that defines the parameters related to each plasma particle. 
 
 * ``profile``, string array (2)
-    Profile types for the plasma density distribution. The first and second components are the profile types of the transverse (in r-direction) and longitudinal (in :math:`\xi`-direction) directions. The available options for the transverse profile type include ``"uniform"``, ``"parabolic-channel"`` and ``"hollow-channel"``. The "uniform" option does not need extra parameters while the other types do.
+    Profile types for the plasma density distribution. The first and second components are the profile types of the transverse (in r-direction) and longitudinal (in :math:`\xi`-direction) directions. The available options for the transverse profile type include ``"uniform"``, ``"parabolic-channel"``, ``"hollow-channel"``, and ``"analytic"``. The "uniform" option does not need extra parameters while the other types do.
 
     The ``"parabolic-channel"`` defines a parabolic plasma channel, and the following characteristic parameters need to be provided
 
@@ -25,6 +25,11 @@ The "species" session is an array and each component is a session that defines t
         Outer channel radius.
     * ``channel_depth``, real
         Channel density difference between the inner and outer radii.
+
+    The ``"analytic"`` defines a mathematical function for the plasma density. If any component of ``profile`` is ``"analytic"``, all other profiles are ignored. The following parameters are needed
+    
+    * ``math_func``: string
+        A string expression describing the density profile as a function of :math:`x`, :math:`y`, and :math:`z`, representing the 1-, 2-, and 3-direction. An example math function expression is ``"z^2/(z + 10.0)^2 * exp(-(x^2 + y^2)/50.0)",``.
 
     The available options for the longitudinal profile type include ``"uniform"`` and ``"piecewise-linear"``. The ``"uniform"`` option does not need extra parameters while the other types do.
 
@@ -152,4 +157,30 @@ This example shows the settings for a hollow plasma channel with both electrons 
       ]    
       }
   ],
+
+This example shows the settings for a mathematical plasma density profile.
+
+.. code-block:: json
+
+  "species" :
+  [
+    {
+    "profile" : ["analytic", "analytic"],
+    "math_func" : "z^2/(z + 10.0)^2 * exp(-(x^2 + y^2)/50.0)",
+    "ppc" : [2,2],
+    "num_theta" : 8,
+    "q" : -1.0,
+    "m" : 1.0,
+    "density" : 1.0,
+    "push_type" : "robust",
+    "diag" :
+    [
+        {
+        "name" : ["charge_cyl_m"],
+        "ndump" : 5
+        }
+    ]
+    }
+  ],
+
 

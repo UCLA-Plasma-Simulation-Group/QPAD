@@ -10,7 +10,7 @@ Laser Session
 The "lasers" is an array and each component is a session defines the parameters of laser pulses which are described by ponderomotive guiding center (PGC) model.
 
 * ``profile``, string array (2)
-    Profile types for laser field envelope. The first and second components are the profile types of the transverse (in r-direction) and longitudinal (in :math:`\xi`-direction) directions. The available options for the transverse profile type include ``"gaussian"`` and ``"laguerre"``.
+    Profile types for laser field envelope. The first and second components are the profile types of the transverse (in r-direction) and longitudinal (in :math:`\xi`-direction) directions. The available options for the transverse profile type include ``"gaussian"``, ``"laguerre"``, and ``"astrl_analytic"``.
 
     The ``"gaussian"`` profile defines a tri-Gaussian laser intensity distribution, and the following characteristic parameters need to be provided
 
@@ -30,7 +30,16 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``phi_index``, real
         Azimuthal index of Laguerre-Gaussian mode.
 
-    The available options for the longitudinal profile type include ``"sin2"`` and ``"polynomial"``. The ``"sin2"`` defines a profile like :math:`sin^2(\pi\xi/2)` and the ``"polynomial"`` like :math:`10\xi^3-15\xi^4+6\xi^5` for :math:`0<\xi<1`. Both profile types have the same parameters:
+    The ``"astrl_analytic"`` defines an Arbitrarily Structured Laser (ASTRL) pulse, and the following characteristic parameters need to be provided
+
+    * ``w0_math_func``, string
+        Radius of laser pulse as a function of :math:`\xi`.
+    * ``s0_math_func``, string
+        Distance of focal plane from the laser pulse as a function of :math:`\xi`. If negative, the focal plane is behind the laser pulse.
+    * ``a0_math_func``, string
+        Strength parameter of the laser pulse as a function of :math:`\xi`. Ignores ``a0`` input parameter (not required). 
+
+    The available options for the longitudinal profile type include ``"sin2"``, ``"polynomial"``, and ``"astrl_analytic"``. The ``"sin2"`` defines a profile like :math:`sin^2(\pi\xi/2)` and the ``"polynomial"`` like :math:`10\xi^3-15\xi^4+6\xi^5` for :math:`0<\xi<1`. Both profile types have the same parameters:
 
     * ``t_rise``, real
         Length of rising edge.
@@ -39,6 +48,7 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``t_fall``, real
         Length of falling edge.
 
+    The ``"astrl_analytic"`` longitudinal profile defines a constant profile equal to :math:`1`. The ``"astrl_analytic"`` profile should be selected for the longitudinal direction if already selected for the transverse direction.
     .. The ``"piecewise-linear"`` defines a piecewise linear function according to which the plasma density will be updated for each 3D time step. The following parameters are needed
 
     .. * ``piecewise_s``, real array(\*)
@@ -53,7 +63,7 @@ The "lasers" is an array and each component is a session defines the parameters 
     Wavenumber corresponding to the central frequency of the laser pulse.
 
 * ``a0``, real
-    Strength parameter (maximum normalized vector potential) of the laser pusle.
+    Strength parameter (maximum normalized vector potential) of the laser pulse. Parameter skipped if ``profile`` contains ``"astrl_analytic"`` (see ``a0_math_func``).
 
 * ``lon_center``, real
     Center of laser pulse in :math:`\xi`-direction. 
@@ -72,7 +82,7 @@ The "lasers" is an array and each component is a session defines the parameters 
 Example
 -------
 
-This example shows the settings for a hollow plasma channel with both electrons and mobile ions.
+This example shows the settings for a Gaussian Laser pulse with a `sin^2` longitudinal profile.
 
 .. code-block:: json
 
@@ -98,4 +108,32 @@ This example shows the settings for a hollow plasma channel with both electrons 
             ]
         }
     ],
+
+
+This example shows the settings for an analytic ASTRL laser pulse using mathematical functions for the focal distance ``s0_math_func``, the vector potential ``a0_math_func``, and the spot size ``w0_math_func`` along the :math:`\xi`-direction.
+
+.. code-block:: json
+
+    "laser": [
+        {
+            "profile": [
+                "astrl_analytic",
+                "astrl_analytic"
+            ],
+            "iteration": 3,
+            "k0": 10.0,
+            "lon_center": 0.0,
+            "s0_math_func": "200 - 20 * xi",
+            "a0_math_func": "if( xi < 0, 0, if( xi < (1), sin(1.5707 * xi / 1)^2, if( xi  < (9), 1, if( xi < (10), sin(1.5707 * (xi-10) / 1)^2, 0))))",
+            "w0_math_func": "2.0",
+            "diag": [
+                {
+                    "name": [
+                        "a_cyl_m"
+                    ],
+                    "ndump": 5
+                }
+            ]
+        }
+    ]
 
