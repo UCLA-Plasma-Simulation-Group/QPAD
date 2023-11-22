@@ -29,7 +29,7 @@ The "species" session is an array and each component is a session that defines t
     The ``"analytic"`` defines a mathematical function for the plasma density. If any component of ``profile`` is ``"analytic"``, all other profiles are ignored. The following parameters are needed
     
     * ``math_func``: string
-        A string expression describing the density profile as a function of :math: ``x``, :math: ``y``, and :math: ``z``, representing the 1-, 2-, and 3-direction. An example math function expression is ``"z^2/(z + 10.0)^2 * exp(-(x^2 + y^2)/50.0)",``.
+        A string expression describing the density profile as a function of :math: `x`, :math: `y`, and :math:`z`, representing the 1-, 2-, and 3-direction. An example math function expression is ``"z^2/(z + 10.0)^2 * exp(-(x^2 + y^2)/50.0)",``.
 
     The available options for the longitudinal profile type include ``"uniform"`` and ``"piecewise-linear"``. The ``"uniform"`` option does not need extra parameters while the other types do.
 
