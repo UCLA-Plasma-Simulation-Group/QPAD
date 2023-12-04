@@ -66,3 +66,25 @@ make html
 The output documentation is located at `/docs/build/html` and you can visit it via `index.html`. To generate documentation with other output formats, please check with `make help`.
 
 In case that you have difficulty to install Sphinx or the above the method does not work for you, we have put a precompiled html documentation and you can visit it via `/docs/html/index.html`.
+
+## OpenPMD support (available in this branch)
+
+Currently, in the "openpmd+dev" branch (and very soon in the "dev" branch), openPMD file format can be invoked in QPAD by setting the MAKEFILE variable IF_OPENPMD.  If this variable is defined then QPAD will dump all the files in openPMD format.  Currently the filenames are not changed when switching from the default PICKSC format (or the OSIRIS format) to the openPMD format.  
+
+To look at the data in openPMD format using the openPMD reader, first download the openPMD reader on gitHub via the repo:
+
+https://github.com/openPMD/openPMD-viewer
+
+And use the following lines of python command to plot a time-series from QPAD.
+
+```python 
+    %matplotlib widget
+    from openpmd_viewer 
+    import OpenPMDTimeSeries
+    
+    ts=OpenPMDTimeSeries('/Users/uclapic/Documents/code-development/git/QPAD/bin/Fields/Er/Re0/')
+    ts.slider()
+    
+```
+
+openPMD format can also be imported by pyVIsOS.  Available on the PICKSC github.
