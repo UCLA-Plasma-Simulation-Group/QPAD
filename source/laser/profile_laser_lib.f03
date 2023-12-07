@@ -14,8 +14,8 @@ public :: set_prof_lon_sin2, get_prof_lon_sin2
 public :: set_prof_lon_poly, get_prof_lon_poly
 public :: set_prof_lon_pw_linear, get_prof_lon_pw_linear
 public :: set_prof_lon_cubic_spline, get_prof_lon_cubic_spline
-public :: set_prof_perp_astrl, get_prof_perp_astrl
-public :: set_prof_lon_astrl, get_prof_lon_astrl
+public :: set_prof_perp_astrl_analytic, get_prof_perp_astrl_analytic
+public :: set_prof_const, get_prof_const
 
 integer, parameter :: laguerre_p_max = 5
 integer, parameter :: laguerre_l_max = 5
@@ -188,9 +188,10 @@ subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
 
 end subroutine get_prof_perp_laguerre
 
+! ------------------------------------------------------------------------------
 ! ASTRL TRANSVERSE PROFILES
 ! ------------------------------------------------------------------------------
-subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
+subroutine set_prof_perp_astrl_analytic( input, sect_name, prof_pars, math_funcs )
 
   implicit none
 
@@ -224,9 +225,9 @@ subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
   call setup(math_funcs(3), trim(read_str), (/'xi'/), ierr)
 
 
-end subroutine set_prof_perp_astrl
+end subroutine set_prof_perp_astrl_analytic
 
-subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_astrl_analytic( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
   real, intent(in) :: r, z, k, k0
@@ -270,15 +271,15 @@ subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re,
 
   endif
 
-end subroutine get_prof_perp_astrl
+end subroutine get_prof_perp_astrl_analytic
 
 
 
 
 ! ------------------------------------------------------------------------------
-! ASTRL LONGITUDINAL PROFILES
+! CONST LONGITUDINAL PROFILES (used with astrl pulses)
 ! ------------------------------------------------------------------------------
-subroutine set_prof_lon_astrl( input, sect_name, prof_pars )
+subroutine set_prof_const( input, sect_name, prof_pars )
 
   implicit none
   type( input_json ), intent(inout) :: input
@@ -289,9 +290,9 @@ subroutine set_prof_lon_astrl( input, sect_name, prof_pars )
 
   ! do nothing
 
-end subroutine set_prof_lon_astrl
+end subroutine set_prof_const
 
-subroutine get_prof_lon_astrl( z, prof_pars, env )
+subroutine get_prof_const( z, prof_pars, env )
 
   implicit none
   real, intent(in) :: z
@@ -300,7 +301,7 @@ subroutine get_prof_lon_astrl( z, prof_pars, env )
 
   env = 1.0
 
-end subroutine get_prof_lon_astrl
+end subroutine get_prof_const
 
 ! ------------------------------------------------------------------------------
 ! SIN2 LONGITUDINAL PROFILES
