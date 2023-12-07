@@ -297,21 +297,35 @@ subroutine set_prof_perp_astrl_discrete( input, sect_name, prof_pars, math_funcs
   ! call prof_pars%append( 'w0', rval )
 
   if ( .not. associated( math_funcs ) ) then
-    allocate( t_fparser :: math_funcs( 3 ) )
+    allocate( t_fparser :: math_funcs( 4 ) )
   endif
 
   call input%get( trim(sect_name) // '.w0_math_func', read_str )
   call setup(math_funcs(1), trim(read_str), (/'xi'/), ierr)
 
-
   call input%get( trim(sect_name) // '.a0_math_func', read_str )
   call setup(math_funcs(2), trim(read_str), (/'xi'/), ierr)
-
 
   call input%get( trim(sect_name) // '.s0_math_func', read_str )
   call setup(math_funcs(3), trim(read_str), (/'xi'/), ierr)
 
+  call input%get( trim(sect_name) // '.pulselet_math_func', read_str )
+  call setup(math_funcs(4), trim(read_str), (/'xi'/), ierr)
 
+  call input%get( trim(sect_name) // '.pulselet_delay', val )
+  call prof_pars%append( 'pulselet_delay', val )
+
+  call input%get( trim(sect_name) // '.pulselet_range', val )
+  call prof_pars%append( 'pulselet_range', val )
+
+  call input%get( trim(sect_name) // '.pulselet_offset', val )
+  call prof_pars%append( 'pulselet_offset', val )
+
+  ! compute normalization
+  ! call input%get( trim(sect_name) // '.norm_z', norm_z )
+  
+  ! call this%get_prof_perp_astrl_discrete 
+  
 end subroutine set_prof_perp_astrl_discrete
 
 subroutine get_prof_perp_astrl_discrete( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
@@ -325,29 +339,51 @@ subroutine get_prof_perp_astrl_discrete( r, z, k, k0, prof_pars, math_funcs, mod
   real :: a0,w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
   real(p_k_fparse), dimension(1) :: fparser_arr 
   type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+  real :: pulselet_delay, pulselet_range, pulselet_offset, xi_pulselet_min, xi_pulselet, pulselet_weight
+  integer :: j, npulselets
 
-  ! call prof_pars%get( 'w0', w0 )
-  fparser_arr(1) = z
-  w0 = eval(math_funcs(1), fparser_arr)
-  a0 = eval(math_funcs(2), fparser_arr)
-  f_dist = eval(math_funcs(3), fparser_arr)
+  ar_re = 0.0
+  ar_im = 0.0
+  ai_re = 0.0
+  ai_im = 0.0
+  
+  call prof_pars%get( 'pulselet_range', pulselet_range )
+  call prof_pars%get( 'pulselet_delay', pulselet_delay )
+
+  ! snap to grid of pulselets 
+  xi_pulselet_min = floor( z / pulselet_delay ) * pulselet_delay + pulselet_offset 
+  npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1 
+
   if ( mode == 0 ) then
 
-    z_shift = -1.0 * (z + f_dist)
-    r2 = r * r
-    z2 = z_shift * z_shift
-    zr = 0.5 * k * w0 * w0
-    zr2 = zr * zr
-    curv = z_shift / ( z2 + zr2 )
-    w = w0 * sqrt( 1.0 + z2 / zr2 )
-    gouy_shift = atan2( z_shift, zr )
-    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
-    amp = w0 / w * exp(-r2 / (w*w))
+     do j = 1, npulselets
 
-    ar_re = a0 * amp * cos(phase)
-    ar_im = 0.0
-    ai_re = -a0 * amp * sin(phase)
-    ai_im = 0.0
+        xi_pulselet = xi_pulselet_min + (j-1) * pulselet_delay
+
+        fparser_arr(1) = xi_pulselet
+        w0 = eval(math_funcs(1), fparser_arr)
+        a0 = eval(math_funcs(2), fparser_arr)
+        f_dist = eval(math_funcs(3), fparser_arr)
+
+        fparser_arr(1) = z - xi_pulselet
+        pulselet_weight = eval(math_funcs(4), fparser_arr)
+        
+        z_shift = -1.0 * (z + f_dist)
+        r2 = r * r
+        z2 = z_shift * z_shift
+        zr = 0.5 * k * w0 * w0
+        zr2 = zr * zr
+        curv = z_shift / ( z2 + zr2 )
+        w = w0 * sqrt( 1.0 + z2 / zr2 )
+        gouy_shift = atan2( z_shift, zr )
+        phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
+        amp = w0 / w * exp(-r2 / (w*w))
+
+        ! accumulate contribution from this pulse 
+        ar_re = ar_re + pulselet_weight * a0 * amp * cos(phase)
+        ai_re = ai_re - pulselet_weight * a0 * amp * sin(phase)
+        
+     enddo
 
   else
 
