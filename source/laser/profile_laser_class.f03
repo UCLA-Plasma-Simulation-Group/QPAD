@@ -142,6 +142,7 @@ end interface
 integer, parameter, public :: p_prof_laser_gaussian = 0
 integer, parameter, public :: p_prof_laser_laguerre = 1
 integer, parameter, public :: p_prof_laser_astrl_analytic = 2
+integer, parameter, public :: p_prof_laser_astrl_discrete = 3
 integer, parameter, public :: p_prof_laser_sin2 = 100
 integer, parameter, public :: p_prof_laser_poly = 101
 integer, parameter, public :: p_prof_laser_const = 102
@@ -197,6 +198,11 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%set_prof_perp_astrl_analytic => set_prof_perp_astrl_analytic
       this%get_prof_perp_astrl_analytic => get_prof_perp_astrl_analytic
 
+    case ( 'astrl_discrete' )
+      this%prof_type(1)  = p_prof_laser_astrl_discrete
+      this%set_prof_perp_astrl_analytic => set_prof_perp_astrl_discrete
+      this%get_prof_perp_astrl_analytic => get_prof_perp_astrl_discrete
+
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
         &Currently available include "gaussian" and "laguerre".' )
@@ -225,7 +231,8 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%prof_type(2)  = p_prof_laser_cubic_spline
       this%set_prof_lon_cub => set_prof_lon_cubic_spline
       this%get_prof_lon_cub => get_prof_lon_cubic_spline
-    case ( 'astrl_analytic' )
+
+   case ( 'const' )
       this%prof_type(2)  = p_prof_laser_const
       this%set_prof_lon => set_prof_const
       this%get_prof_lon => get_prof_const
@@ -238,9 +245,11 @@ subroutine init_profile_laser( this, input, opts, sect_id )
 
   ! read and store the profile parameters into the parameter lists
   if(this%prof_type(1) == p_prof_laser_astrl_analytic) then
-    call this%set_prof_perp_astrl_analytic( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
+     call this%set_prof_perp_astrl_analytic( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
+  else if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
+     call this%set_prof_perp_astrl_analytic( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
   else
-    call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
+     call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
   endif
   
   if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
@@ -251,10 +260,10 @@ subroutine init_profile_laser( this, input, opts, sect_id )
     call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
   endif
 
-  if(this%prof_type(1) /= p_prof_laser_astrl_analytic .or. this%prof_type(2) /= p_prof_laser_const) then
-    call input%get( trim(sect_name) // '.a0', this%a0 )
+  if(this%prof_type(1) /= p_prof_laser_astrl_analytic .and. this%prof_type(1) /= p_prof_laser_astrl_discrete ) then
+     call input%get( trim(sect_name) // '.a0', this%a0 )
   else 
-    this%a0 = 1.0
+     this%a0 = 1.0
   endif
   call input%get( trim(sect_name) // '.k0', this%k0 )
   call input%get( trim(sect_name) // '.lon_center', this%lon_center )
@@ -308,9 +317,11 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
         if(this%prof_type(1) == p_prof_laser_astrl_analytic) then
-          call this%get_prof_perp_astrl_analytic( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+           call this%get_prof_perp_astrl_analytic( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+        else if (this%prof_type(1) == p_prof_laser_astrl_discrete) then
+           call this%get_prof_perp_astrl_analytic( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )           
         else
-          call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
+           call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         endif
 
         if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
