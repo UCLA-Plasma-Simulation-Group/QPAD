@@ -72,7 +72,7 @@ type, public :: profile_laser
   procedure :: new => init_profile_laser
   procedure :: del => end_profile_laser
   procedure :: launch => launch_profile_laser
-  procedure :: norm_power => norm_power_laser 
+  procedure :: normalize_power => normalize_power_laser 
 
 end type profile_laser
 
@@ -166,6 +166,10 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   character(len=:), allocatable :: read_str
   character(len=20) :: sect_name
   character(len=32), save :: sname = 'init_profile_laser'
+
+  logical :: if_norm_a0 
+  real :: r_norm, xi_norm, z_norm
+  integer :: mode_norm
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -261,7 +265,8 @@ subroutine init_profile_laser( this, input, opts, sect_id )
     call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
   endif
 
-  if(this%prof_type(1) /= p_prof_laser_astrl_analytic .and. this%prof_type(1) /= p_prof_laser_astrl_discrete ) then
+  if(this%prof_type(1) /= p_prof_laser_astrl_analytic &
+       .and. this%prof_type(1) /= p_prof_laser_astrl_discrete ) then
      call input%get( trim(sect_name) // '.a0', this%a0 )
   else 
      this%a0 = 1.0
@@ -272,9 +277,24 @@ subroutine init_profile_laser( this, input, opts, sect_id )
 
   this%chirp_coefs = [0.0]
   if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then
-    call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
+     call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
   endif
 
+  ! optional automatic normalization of a0 for astrl_discrete
+  if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
+     call input%get( trim(sect_name) // '.if_norm_a0', if_norm_a0 )
+     if( if_norm_a0 ) then
+        call input%get( trim(sect_name) // '.r_norm', r_norm )     
+        call input%get( trim(sect_name) // '.xi_norm', xi_norm )     
+        call input%get( trim(sect_name) // '.z_norm', z_norm )     
+        call input%get( trim(sect_name) // '.mode_norm', mode_norm )     
+        call input%get( trim(sect_name) // '.a0', this%a0 )     
+        call normalize_a0_astrl_discrete( r_norm, xi_norm, z_norm, this%k0, &
+             this%chirp_coefs, this%prof_perp_pars, &
+             this%math_funcs, mode_norm, this%a0 )
+     endif
+  endif
+     
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_profile_laser
@@ -300,14 +320,12 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   integer :: i, j, m, l, max_mode
   real :: r, z, t, k, arr, ari, air, aii, env
   character(len=32), save :: sname = 'launch_profile_laser'
-  logical :: if_norm_power
-  real :: z_norm, power_norm 
   
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   ! launch occurs at t=0 
   t = 0.0 
-  
+
   max_mode = size(ar_im)
   do m = 0, max_mode
     do j = 1, this%nzp
@@ -350,59 +368,8 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
     enddo
   enddo
 
-  ! normalize power to match the desired value 
-  if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
-
-     call this%prof_perp_pars%get( 'if_norm_power', if_norm_power )
-
-     if( if_norm_power ) then 
-        
-        call this%prof_perp_pars%get( 'power_norm', power_norm )
-        call this%norm_power( ar_re, ar_im, ai_re, ai_im, z_norm, power_norm )
-        
-        call this%prof_perp_pars%get( 'z_norm', z_norm )
-
-     endif
-
-  endif
-
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine launch_profile_laser
-
-! perform a numerical integration to make the total power through the transverse slice
-! of the nearest gridpoint to z_norm equal to power_norm
-subroutine norm_power_laser( this, ar_re, ar_im, ai_re, ai_im, z_norm, power_norm )
-
-  implicit none
-  class( profile_laser ), intent(inout) :: this
-  class( ufield ), intent(inout), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
-  real, intent(in) :: z_norm, power_norm 
-
-  integer :: i, j_norm
-  real :: r 
-  real :: power_unnormalized, scale 
-  
-  ! get j index for integration, from z = ( this%noff_z + j - 1 ) * this%dz + this%z0
-  j_norm = floor( ( z_norm - this%z0 ) / this%dz ) - this%noff_z + 1 
-  
-  ! numerically integrate the power (only implemented for mode 0)
-  power_unnormalized = 0 
-
-  do i = 1, this%nrp
-     r = ( this%noff_r + i - 1 ) * this%dr     
-     power_unnormalized = power_unnormalized + (1 / (8 * 3.1415) ) * (2 * 3.1415 * r) * &
-          ( ar_re(0)%f2( 1, i, j_norm )**2 + ai_re(0)%f2( 1, i, j_norm )**2 )
-
-  enddo
-
-  scale = sqrt( power_norm / power_unnormalized ) 
-
-  ar_re(0)%f2(:,:,:) = ar_re(0)%f2(:,:,:) * scale
-  ar_im(0)%f2(:,:,:) = ar_im(0)%f2(:,:,:) * scale
-  ai_re(0)%f2(:,:,:) = ai_re(0)%f2(:,:,:) * scale
-  ai_im(0)%f2(:,:,:) = ai_im(0)%f2(:,:,:) * scale  
-  
-end subroutine norm_power_laser
 
 end module profile_laser_class

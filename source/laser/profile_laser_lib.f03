@@ -15,7 +15,7 @@ public :: set_prof_lon_poly, get_prof_lon_poly
 public :: set_prof_lon_pw_linear, get_prof_lon_pw_linear
 public :: set_prof_lon_cubic_spline, get_prof_lon_cubic_spline
 public :: set_prof_perp_astrl_analytic, get_prof_perp_astrl_analytic
-public :: set_prof_perp_astrl_discrete, get_prof_perp_astrl_discrete
+public :: set_prof_perp_astrl_discrete, get_prof_perp_astrl_discrete, normalize_a0_astrl_discrete
 public :: set_prof_const, get_prof_const
 
 integer, parameter :: laguerre_p_max = 5
@@ -285,7 +285,6 @@ subroutine set_prof_perp_astrl_discrete( input, sect_name, prof_pars, math_funcs
   real(p_k_fparse) , dimension(1) :: fparser_arr
   integer :: ierr
   integer :: ival
-  logical :: if_norm_power
 
   if ( .not. associated( math_funcs ) ) then
     allocate( t_fparser :: math_funcs( 4 ) )
@@ -312,46 +311,43 @@ subroutine set_prof_perp_astrl_discrete( input, sect_name, prof_pars, math_funcs
   call input%get( trim(sect_name) // '.pulselet_offset', val )
   call prof_pars%append( 'pulselet_offset', val )
 
-  call input%get( trim(sect_name) // '.if_norm_power', if_norm_power )
-  call prof_pars%append( 'if_norm_power', if_norm_power )
-
-  if( if_norm_power ) then
-
-     call input%get( trim(sect_name) // '.power_norm', val )
-     call prof_pars%append( 'power_norm', val )     
-     
-     call input%get( trim(sect_name) // '.z_norm', val )
-     call prof_pars%append( 'z_norm', val )     
-     
-  endif
-
 end subroutine set_prof_perp_astrl_discrete
 
-! ! compute normalization so that the a0 of the pulse will equal the a0 of the input deck
-! ! at the specified xi_norm, z_norm 
-! subroutine normalize_a0_astrl_discrete( 
+! compute normalization so that the a0 of the pulse will equal the a0 of the input deck
+! at the specified xi_norm, z_norm
+! the requested value of a0 is used as input, then the variable a0 stores the required
+! normalization to achieve the originally requested a0.
+subroutine normalize_a0_astrl_discrete( r_norm, xi_norm, z_norm, &
+     k0, chirp_coefs, prof_pars, math_funcs, mode_norm, a0 ) 
 
-!   logical :: if_norm 
-!   real :: xi_norm, z_norm, a0_desired, a0_unnormalized
+  implicit none 
 
-!   call input%get( trim(sect_name) // '.if_norm', if_norm )
+  real, intent(in) :: r_norm, xi_norm, z_norm, k0
+  real, dimension(:), intent(in) :: chirp_coefs
+  type(kw_list), intent(inout) :: prof_pars
+  type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+  integer, intent(in) :: mode_norm
+  real, intent(inout) :: a0 
 
-!   if( if_norm ) then 
+  real :: k
+  integer :: l 
+  logical :: if_norm
+  real :: ar_re, ar_im, ai_re, ai_im, a0_unnormalized
 
-!      call input%get( trim(sect_name) // '.xi_norm', xi_norm )
-!      call input%get( trim(sect_name) // '.z_norm', z_norm )
-!      call input%get( trim(sect_name) // '.a0', a0_desired )
-     
-!      call this%get_prof_perp_astrl_discrete( 0, xi_norm, z_norm, k0, k0, prof_pars, math_funcs, &
-!           0, ar_re, ar_im, ai_re, ai_im )
-     
-!      a0_unnormalized = np.sqrt( ar_re**2 + ai_re**2 ) 
-     
-!      call prof_pars%append( 'a0', a0_desired / a0_unnormalized )
-     
-!   endif
+  ! longitudinal frequency chirp
+  k = k0
+  do l = 1, size(chirp_coefs)
+     k = k + chirp_coefs(l) * xi_norm ** l
+  enddo
   
-! end subroutine normalize_a0_astrl_discrete
+  call get_prof_perp_astrl_discrete( r_norm, xi_norm, z_norm, k, k0, prof_pars, math_funcs, &
+       0, ar_re, ar_im, ai_re, ai_im )
+     
+  a0_unnormalized = sqrt( ar_re**2 + ai_re**2 ) 
+  
+  a0 = a0 / a0_unnormalized
+  
+end subroutine normalize_a0_astrl_discrete
 
 subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
 
@@ -376,8 +372,9 @@ subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, 
   call prof_pars%get( 'pulselet_delay', pulselet_delay )
 
   ! snap to grid of pulselets 
-  xi_pulselet_min = floor( (z-t) / pulselet_delay ) * pulselet_delay + pulselet_offset 
-  npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1 
+  npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1
+  xi_pulselet_min = floor( (z-t) / pulselet_delay ) * pulselet_delay &
+       - (npulselets/2)*pulselet_delay + pulselet_offset 
 
   if ( mode == 0 ) then
 
@@ -420,7 +417,6 @@ subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, 
   endif
 
 end subroutine get_prof_perp_astrl_discrete
-
 
 
 ! ------------------------------------------------------------------------------
