@@ -72,6 +72,7 @@ type, public :: profile_laser
   procedure :: new => init_profile_laser
   procedure :: del => end_profile_laser
   procedure :: launch => launch_profile_laser
+  procedure :: norm_power => norm_power_laser 
 
 end type profile_laser
 
@@ -116,10 +117,10 @@ interface
     real, intent(inout), dimension(:), pointer :: prof_pars
   end subroutine set_prof_array_intf
 
-  subroutine get_prof_perp_astrl_analytic_intf( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+  subroutine get_prof_perp_astrl_analytic_intf( r, z, t, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
     import kw_list, t_fparser
     implicit none
-    real, intent(in) :: r, z, k, k0
+    real, intent(in) :: r, z, t, k, k0
     type(kw_list), intent(in) :: prof_pars
     integer, intent(in) :: mode
     real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -297,11 +298,16 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   class( ufield ), intent(inout), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
 
   integer :: i, j, m, l, max_mode
-  real :: r, z, k, arr, ari, air, aii, env
+  real :: r, z, t, k, arr, ari, air, aii, env
   character(len=32), save :: sname = 'launch_profile_laser'
-
+  logical :: if_norm_power
+  real :: z_norm, power_norm 
+  
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  ! launch occurs at t=0 
+  t = 0.0 
+  
   max_mode = size(ar_im)
   do m = 0, max_mode
     do j = 1, this%nzp
@@ -317,9 +323,11 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
         if(this%prof_type(1) == p_prof_laser_astrl_analytic) then
-           call this%get_prof_perp_astrl_analytic( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+           call this%get_prof_perp_astrl_analytic( r, z, t, k, this%k0, &
+                this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
         else if (this%prof_type(1) == p_prof_laser_astrl_discrete) then
-           call this%get_prof_perp_astrl_analytic( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )           
+           call this%get_prof_perp_astrl_analytic( r, z, t, k, this%k0, &
+                this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )           
         else
            call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         endif
@@ -330,7 +338,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
           call this%get_prof_lon_cub( z, this%prof_lon_pars_cub, env )
         else 
           call this%get_prof_lon( z, this%prof_lon_pars, env )
-        endif
+       endif
         
         env = env * this%a0
         ar_re(m)%f2( 1, i, j ) = env * arr
@@ -342,8 +350,59 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
     enddo
   enddo
 
+  ! normalize power to match the desired value 
+  if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
+
+     call this%prof_perp_pars%get( 'if_norm_power', if_norm_power )
+
+     if( if_norm_power ) then 
+        
+        call this%prof_perp_pars%get( 'power_norm', power_norm )
+        call this%norm_power( ar_re, ar_im, ai_re, ai_im, z_norm, power_norm )
+        
+        call this%prof_perp_pars%get( 'z_norm', z_norm )
+
+     endif
+
+  endif
+
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine launch_profile_laser
+
+! perform a numerical integration to make the total power through the transverse slice
+! of the nearest gridpoint to z_norm equal to power_norm
+subroutine norm_power_laser( this, ar_re, ar_im, ai_re, ai_im, z_norm, power_norm )
+
+  implicit none
+  class( profile_laser ), intent(inout) :: this
+  class( ufield ), intent(inout), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
+  real, intent(in) :: z_norm, power_norm 
+
+  integer :: i, j_norm
+  real :: r 
+  real :: power_unnormalized, scale 
+  
+  ! get j index for integration, from z = ( this%noff_z + j - 1 ) * this%dz + this%z0
+  j_norm = floor( ( z_norm - this%z0 ) / this%dz ) - this%noff_z + 1 
+  
+  ! numerically integrate the power (only implemented for mode 0)
+  power_unnormalized = 0 
+
+  do i = 1, this%nrp
+     r = ( this%noff_r + i - 1 ) * this%dr     
+     power_unnormalized = power_unnormalized + (1 / (8 * 3.1415) ) * (2 * 3.1415 * r) * &
+          ( ar_re(0)%f2( 1, i, j_norm )**2 + ai_re(0)%f2( 1, i, j_norm )**2 )
+
+  enddo
+
+  scale = sqrt( power_norm / power_unnormalized ) 
+
+  ar_re(0)%f2(:,:,:) = ar_re(0)%f2(:,:,:) * scale
+  ar_im(0)%f2(:,:,:) = ar_im(0)%f2(:,:,:) * scale
+  ai_re(0)%f2(:,:,:) = ai_re(0)%f2(:,:,:) * scale
+  ai_im(0)%f2(:,:,:) = ai_im(0)%f2(:,:,:) * scale  
+  
+end subroutine norm_power_laser
 
 end module profile_laser_class
