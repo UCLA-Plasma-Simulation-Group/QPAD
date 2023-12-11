@@ -28,11 +28,7 @@ src += kwargs_class.f03
 src += sysutil_module.f03
 src += ppmsg_class.f03
 src += sort_module.f03
-ifdef IF_OPENPMD
-	src += hdf5io_pmd_class.f03
-else
-	src += hdf5io_class.f03
-endif
+src += hdf5io_class.f03
 src += interpolation.f03
 src += input_class.f03
 src += options_class.f03

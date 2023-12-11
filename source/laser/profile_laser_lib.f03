@@ -14,8 +14,9 @@ public :: set_prof_lon_sin2, get_prof_lon_sin2
 public :: set_prof_lon_poly, get_prof_lon_poly
 public :: set_prof_lon_pw_linear, get_prof_lon_pw_linear
 public :: set_prof_lon_cubic_spline, get_prof_lon_cubic_spline
-public :: set_prof_perp_astrl, get_prof_perp_astrl
-public :: set_prof_lon_astrl, get_prof_lon_astrl
+public :: set_prof_perp_astrl_analytic, get_prof_perp_astrl_analytic
+public :: set_prof_perp_astrl_discrete, get_prof_perp_astrl_discrete
+public :: set_prof_const, get_prof_const
 
 integer, parameter :: laguerre_p_max = 5
 integer, parameter :: laguerre_l_max = 5
@@ -188,9 +189,10 @@ subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
 
 end subroutine get_prof_perp_laguerre
 
-! ASTRL TRANSVERSE PROFILES
 ! ------------------------------------------------------------------------------
-subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
+! ASTRL ANALYTIC TRANSVERSE PROFILES
+! ------------------------------------------------------------------------------
+subroutine set_prof_perp_astrl_analytic( input, sect_name, prof_pars, math_funcs )
 
   implicit none
 
@@ -205,9 +207,6 @@ subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
   real :: rval
   integer :: ival
 
-  ! call input%get( trim(sect_name) // '.w0', rval )
-  ! call prof_pars%append( 'w0', rval )
-
   if ( .not. associated( math_funcs ) ) then
     allocate( t_fparser :: math_funcs( 3 ) )
   endif
@@ -215,21 +214,18 @@ subroutine set_prof_perp_astrl( input, sect_name, prof_pars, math_funcs )
   call input%get( trim(sect_name) // '.w0_math_func', read_str )
   call setup(math_funcs(1), trim(read_str), (/'xi'/), ierr)
 
-
   call input%get( trim(sect_name) // '.a0_math_func', read_str )
   call setup(math_funcs(2), trim(read_str), (/'xi'/), ierr)
-
 
   call input%get( trim(sect_name) // '.s0_math_func', read_str )
   call setup(math_funcs(3), trim(read_str), (/'xi'/), ierr)
 
+end subroutine set_prof_perp_astrl_analytic
 
-end subroutine set_prof_perp_astrl
-
-subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_astrl_analytic( r, z, t, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
-  real, intent(in) :: r, z, k, k0
+  real, intent(in) :: r, z, t, k, k0
   type(kw_list), intent(in) :: prof_pars
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -238,11 +234,11 @@ subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re,
   real(p_k_fparse), dimension(1) :: fparser_arr 
   type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
 
-  ! call prof_pars%get( 'w0', w0 )
   fparser_arr(1) = z
   w0 = eval(math_funcs(1), fparser_arr)
   a0 = eval(math_funcs(2), fparser_arr)
   f_dist = eval(math_funcs(3), fparser_arr)
+
   if ( mode == 0 ) then
 
     z_shift = -1.0 * (z + f_dist)
@@ -270,15 +266,167 @@ subroutine get_prof_perp_astrl( r, z, k, k0, prof_pars, math_funcs, mode, ar_re,
 
   endif
 
-end subroutine get_prof_perp_astrl
+end subroutine get_prof_perp_astrl_analytic
 
+
+! ------------------------------------------------------------------------------
+! ASTRL DISCRETE TRANSVERSE PROFILES
+! ------------------------------------------------------------------------------
+subroutine set_prof_perp_astrl_discrete( input, sect_name, prof_pars, math_funcs )
+
+  implicit none
+
+  type( input_json ), intent(inout) :: input
+  character(len=*), intent(in) :: sect_name
+  type(kw_list), intent(inout) :: prof_pars
+  character(len=:), allocatable :: read_str
+  type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+  real :: val
+  real(p_k_fparse) , dimension(1) :: fparser_arr
+  integer :: ierr
+  integer :: ival
+  logical :: if_norm_power
+
+  if ( .not. associated( math_funcs ) ) then
+    allocate( t_fparser :: math_funcs( 4 ) )
+  endif
+
+  call input%get( trim(sect_name) // '.w0_math_func', read_str )
+  call setup(math_funcs(1), trim(read_str), (/'xi'/), ierr)
+
+  call input%get( trim(sect_name) // '.a0_math_func', read_str )
+  call setup(math_funcs(2), trim(read_str), (/'xi'/), ierr)
+
+  call input%get( trim(sect_name) // '.s0_math_func', read_str )
+  call setup(math_funcs(3), trim(read_str), (/'xi'/), ierr)
+
+  call input%get( trim(sect_name) // '.pulselet_math_func', read_str )
+  call setup(math_funcs(4), trim(read_str), (/'xi'/), ierr)
+
+  call input%get( trim(sect_name) // '.pulselet_delay', val )
+  call prof_pars%append( 'pulselet_delay', val )
+
+  call input%get( trim(sect_name) // '.pulselet_range', val )
+  call prof_pars%append( 'pulselet_range', val )
+
+  call input%get( trim(sect_name) // '.pulselet_offset', val )
+  call prof_pars%append( 'pulselet_offset', val )
+
+  call input%get( trim(sect_name) // '.if_norm_power', if_norm_power )
+  call prof_pars%append( 'if_norm_power', if_norm_power )
+
+  if( if_norm_power ) then
+
+     call input%get( trim(sect_name) // '.power_norm', val )
+     call prof_pars%append( 'power_norm', val )     
+     
+     call input%get( trim(sect_name) // '.z_norm', val )
+     call prof_pars%append( 'z_norm', val )     
+     
+  endif
+
+end subroutine set_prof_perp_astrl_discrete
+
+! ! compute normalization so that the a0 of the pulse will equal the a0 of the input deck
+! ! at the specified xi_norm, z_norm 
+! subroutine normalize_a0_astrl_discrete( 
+
+!   logical :: if_norm 
+!   real :: xi_norm, z_norm, a0_desired, a0_unnormalized
+
+!   call input%get( trim(sect_name) // '.if_norm', if_norm )
+
+!   if( if_norm ) then 
+
+!      call input%get( trim(sect_name) // '.xi_norm', xi_norm )
+!      call input%get( trim(sect_name) // '.z_norm', z_norm )
+!      call input%get( trim(sect_name) // '.a0', a0_desired )
+     
+!      call this%get_prof_perp_astrl_discrete( 0, xi_norm, z_norm, k0, k0, prof_pars, math_funcs, &
+!           0, ar_re, ar_im, ai_re, ai_im )
+     
+!      a0_unnormalized = np.sqrt( ar_re**2 + ai_re**2 ) 
+     
+!      call prof_pars%append( 'a0', a0_desired / a0_unnormalized )
+     
+!   endif
+  
+! end subroutine normalize_a0_astrl_discrete
+
+subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+
+  implicit none
+  real, intent(in) :: r, z, t, k, k0
+  type(kw_list), intent(in) :: prof_pars
+  integer, intent(in) :: mode
+  real, intent(out) :: ar_re, ar_im, ai_re, ai_im
+  character(len=:), allocatable :: read_str
+  real :: a0,w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
+  real(p_k_fparse), dimension(1) :: fparser_arr 
+  type(t_fparser), dimension(:), pointer, intent(inout) :: math_funcs
+  real :: pulselet_delay, pulselet_range, pulselet_offset, xi_pulselet_min, xi_pulselet, pulselet_weight
+  integer :: j, npulselets
+
+  ar_re = 0.0
+  ar_im = 0.0
+  ai_re = 0.0
+  ai_im = 0.0
+  
+  call prof_pars%get( 'pulselet_range', pulselet_range )
+  call prof_pars%get( 'pulselet_delay', pulselet_delay )
+
+  ! snap to grid of pulselets 
+  xi_pulselet_min = floor( (z-t) / pulselet_delay ) * pulselet_delay + pulselet_offset 
+  npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1 
+
+  if ( mode == 0 ) then
+
+     do j = 1, npulselets
+
+        xi_pulselet = xi_pulselet_min + (j-1) * pulselet_delay
+
+        fparser_arr(1) = xi_pulselet
+        w0 = eval(math_funcs(1), fparser_arr)
+        a0 = eval(math_funcs(2), fparser_arr)
+        f_dist = eval(math_funcs(3), fparser_arr)
+
+        fparser_arr(1) = (z-t) - xi_pulselet
+        pulselet_weight = eval(math_funcs(4), fparser_arr)
+        
+        z_shift = -1.0 * (z + f_dist)
+        r2 = r * r
+        z2 = z_shift * z_shift
+        zr = 0.5 * k * w0 * w0
+        zr2 = zr * zr
+        curv = z_shift / ( z2 + zr2 )
+        w = w0 * sqrt( 1.0 + z2 / zr2 )
+        gouy_shift = atan2( z_shift, zr )
+        phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
+        amp = w0 / w * exp(-r2 / (w*w))
+
+        ! accumulate contribution from this pulse 
+        ar_re = ar_re + pulselet_weight * a0 * amp * cos(phase)
+        ai_re = ai_re - pulselet_weight * a0 * amp * sin(phase)
+        
+     enddo
+
+  else
+
+    ar_re = 0.0
+    ar_im = 0.0
+    ai_re = 0.0
+    ai_im = 0.0
+
+  endif
+
+end subroutine get_prof_perp_astrl_discrete
 
 
 
 ! ------------------------------------------------------------------------------
-! ASTRL LONGITUDINAL PROFILES
+! CONST LONGITUDINAL PROFILES (used with astrl pulses)
 ! ------------------------------------------------------------------------------
-subroutine set_prof_lon_astrl( input, sect_name, prof_pars )
+subroutine set_prof_const( input, sect_name, prof_pars )
 
   implicit none
   type( input_json ), intent(inout) :: input
@@ -289,9 +437,9 @@ subroutine set_prof_lon_astrl( input, sect_name, prof_pars )
 
   ! do nothing
 
-end subroutine set_prof_lon_astrl
+end subroutine set_prof_const
 
-subroutine get_prof_lon_astrl( z, prof_pars, env )
+subroutine get_prof_const( z, prof_pars, env )
 
   implicit none
   real, intent(in) :: z
@@ -300,7 +448,7 @@ subroutine get_prof_lon_astrl( z, prof_pars, env )
 
   env = 1.0
 
-end subroutine get_prof_lon_astrl
+end subroutine get_prof_const
 
 ! ------------------------------------------------------------------------------
 ! SIN2 LONGITUDINAL PROFILES
