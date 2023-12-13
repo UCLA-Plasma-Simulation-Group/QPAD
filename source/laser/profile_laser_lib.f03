@@ -370,16 +370,17 @@ subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, 
   
   call prof_pars%get( 'pulselet_range', pulselet_range )
   call prof_pars%get( 'pulselet_delay', pulselet_delay )
+  call prof_pars%get( 'pulselet_offset', pulselet_offset )
 
   ! snap to grid of pulselets 
   npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1
   xi_pulselet_min = floor( (z-t) / pulselet_delay ) * pulselet_delay &
-       - (npulselets/2)*pulselet_delay + pulselet_offset 
+       - (npulselets/2)*pulselet_delay + mod( pulselet_offset, pulselet_delay ) 
 
   if ( mode == 0 ) then
 
      do j = 1, npulselets
-
+        
         xi_pulselet = xi_pulselet_min + (j-1) * pulselet_delay
 
         fparser_arr(1) = xi_pulselet
