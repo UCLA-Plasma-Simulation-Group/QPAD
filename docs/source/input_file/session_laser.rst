@@ -30,24 +30,24 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``phi_index``, real
         Azimuthal index of Laguerre-Gaussian mode.
 
-      The ``"astrl_discrete"`` profile defines a discretization of the ASTRL integral defined in Pierce et al. Physical Review Research 5, 013085 (2023). This is accomplished by defining a grid of pulses with centroids linearly spaced in :math:`\xi`. The properties of each pulse are determined by the specified math functions (e.g. ``a0_math_func``, ``s0_math_func`` evaluated at the central :math:`\xi` of the pulse. The pulses are added coherently. The following  parameters need to be provided:
+    The ``"astrl_discrete"`` profile defines a discretization of the ASTRL integral defined in Pierce et al., Physical Review Research 5, 013085 (2023). This is accomplished by defining a grid of pulselets with centroids linearly spaced in :math:`\xi` The properties of each pulselet are determined by the specified math functions (``a0_math_func``, ``s0_math_func``, and ``w0_math_func``) evaluated at the central :math:`\xi` of the pulselet. The pulselets may overlap, in which case they are added coherently. The following  parameters need to be provided:
 
-    * ``w0_math_func``, string
-        Spot size of laser pulses as a function of :math:`\xi`.
-    * ``s0_math_func``, string
-        Distance of focal plane from the laser pulses as a function of :math:`\xi`. If negative, the focal plane is behind the laser pulse.
     * ``a0_math_func``, string
-        Strength parameter of the laser pulses as a function of :math:`\xi`. Ignores ``a0`` input parameter (not required).
+        Strength parameter of the laser pulselets as a function of :math:`\xi`. Ignores ``a0`` input parameter (not required).
+    * ``s0_math_func``, string
+        Distance of focal plane from the laser pulselets as a function of :math:`\xi`. If negative, the focal plane is behind the laser pulselet.
+    * ``w0_math_func``, string
+        Spot size of laser pulselets as a function of :math:`\xi`.
     * ``pulselet_math_func``, string
         Longitudinal profile of each pulselet in the discrete sum as a function of :math:`\xi`. This is the same as the function :math:`B(\xi)` used in Pierce et al., 2023. In the current implementation, each pulselet uses the same longitudinal profile, but this is not necessary in general.
     * ``pulselet_range``, real
-        At a given :math:`xi` value, only pulses whose centroid lies within ``pulselet_range`` of :math:`\xi` will be added to compute the field. This reduces the cost of the pulse initialization. ``pulselet_range`` should be several times the duration of the pulselets defined by ``pulselet_math_func``. 
+        At a given :math:`xi` value, only pulselets whose centroid lies within ``pulselet_range`` of :math:`\xi` will be added to compute the field. This reduces the cost of the laser field initialization. ``pulselet_range`` should be several times the duration of the pulselets defined by ``pulselet_math_func``. 
     * ``pulselet_delay``, real
         Delay between the central :math:`\xi` of each of the pulselets. 
     * ``pulselet_offset``, real
-        This specifies an offset to the grid of :math:`\xi` values over which the pulse centroids in :math:`\xi` are defined. For example, if ``pulselet_offset = 0`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots, -4, -2, 0, 2, 4, \hdots`. If ``pulselet_offset = 1`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots -5, -3, -1, 1, 3, 5, \hdots`. 
+        This specifies an offset to the grid of :math:`\xi` values over which the pulselet centroids in :math:`\xi` are defined. For example, if ``pulselet_offset = 0`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots, -4, -2, 0, 2, 4, \hdots`. If ``pulselet_offset = 1`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots -5, -3, -1, 1, 3, 5, \hdots`. 
     * ``if_norm_a0``, logical
-        Whether to normalize the total amplitude of the pulse to a particular value. If ``if_norm_a0 = True``, then the pulse is normalized such that the pulse normalized vector potential equals the deck parameter ``a0`` at the coordinates (``r_norm``, ``xi_norm,``, ``z_norm``) for the specific mode ``mode_norm``. Normalization is generally useful because the integration leads to the total amplitude being larger than the amplitude of each individual pulselet. 
+        Whether to normalize the total amplitude of the total laser field to a particular value. If ``if_norm_a0 = True``, then the laser field is normalized such that the normalized vector potential equals the deck parameter ``a0`` at the specified coordinates (``r_norm``, ``xi_norm,``, ``z_norm``) for the specific mode ``mode_norm``. Normalization is generally useful because the integration leads to the total laser amplitude being larger than the amplitude of each individual pulselet. 
     * ``r_norm``, real
         The transverse coordinate used for optional normalization of an ``astrl_discrete`` profile.
     * ``xi_norm``, real
@@ -57,16 +57,14 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``mode_norm``, integer
         Mode used for the normalization. 
 
-	
-      The ``"astrl_analytic"`` is equivalent to evaluation of the ASTRL integral in the above paper on ASTRL pulses when :math:`B(\xi)` is a Dirac delta function. This results in an ASTRL pulse whose transverse properties continuously vary as a function of :math:`\xi`. This general form has not yet been published but will be included in a forthcoming publication. This profile does not use any of the pulselet profiles or normalization parameters used by the ``"astrl_discrete"`` class. The following must be specified:
+    The ``"astrl_analytic"`` is equivalent to evaluation of the ASTRL integral in the above paper on ASTRL pulses when :math:`B(\xi)` is a Dirac delta function. This results in an ASTRL pulse whose transverse properties continuously vary as a function of :math:`\xi`. This general form has not yet been published but will be included in a forthcoming publication. The ``"astrl_analytic"`` profile does not use any of the pulselet profiles or normalization parameters used by the ``"astrl_discrete"`` class. The following must be specified:
 
-    * ``w0_math_func``, string
-        Spot size of laser pulse as a function of :math:`\xi`.
+    * ``a0_math_func``, string
+        Strength parameter of the laser pulse as a function of :math:`\xi`. Ignores ``a0`` input parameter (not required).
     * ``s0_math_func``, string
         Distance of focal plane from the laser pulse as a function of :math:`\xi`. If negative, the focal plane is behind the laser pulse.
-    * ``a0_math_func``, string
-        Strength parameter of the laser pulse as a function of :math:`\xi`. Ignores ``a0`` input parameter (not required).      
-
+    * ``w0_math_func``, string
+        Spot size of laser pulse as a function of :math:`\xi`.
 
     The available options for the longitudinal profile type include ``"sin2"``, ``"polynomial"``, and ``"astrl_analytic"``. The ``"sin2"`` defines a profile like :math:`sin^2(\pi\xi/2)` and the ``"polynomial"`` like :math:`10\xi^3-15\xi^4+6\xi^5` for :math:`0<\xi<1`. Both profile types have the same parameters:
 
