@@ -47,7 +47,7 @@ The "lasers" is an array and each component is a session defines the parameters 
     * ``pulselet_offset``, real
         This specifies an offset to the grid of :math:`\xi` values over which the pulselet centroids in :math:`\xi` are defined. For example, if ``pulselet_offset = 0`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots, -4, -2, 0, 2, 4, \hdots`. If ``pulselet_offset = 1`` and ``pulselet_delay = 2``, then the centroids occur at :math:`\xi = \hdots -5, -3, -1, 1, 3, 5, \hdots`. 
     * ``if_norm_a0``, logical
-        Whether to normalize the total amplitude of the total laser field to a particular value. If ``if_norm_a0 = True``, then the laser field is normalized such that the total normalized vector potential equals the deck parameter ``a0`` at the specified coordinates (``r_norm``, ``xi_norm,``, ``z_norm``) for the specific mode ``mode_norm``. Normalization is generally useful because the integration leads to the total laser amplitude being larger than the amplitude of each individual pulselet. 
+        Whether to normalize the total amplitude of the total laser field to a particular value. If ``if_norm_a0 = true``, then the laser field is normalized such that the total normalized vector potential equals the deck parameter ``a0`` at the specified coordinates (``r_norm``, ``xi_norm,``, ``z_norm``) for the specific mode ``mode_norm``. Normalization is generally useful because the integration leads to the total laser amplitude being larger than the amplitude of each individual pulselet. 
     * ``r_norm``, real
         The transverse coordinate used for optional normalization of an ``astrl_discrete`` profile.
     * ``xi_norm``, real
