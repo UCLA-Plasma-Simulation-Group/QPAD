@@ -1,0 +1,104 @@
+{
+    "simulation": {
+        "nodes": [
+            4,
+            4
+        ],
+        "grid": [
+            1024,
+            1024
+        ],
+        "box": {
+            "r": [
+                0.0,
+                60.0
+            ],
+            "z": [
+                -2.0,
+                12.0
+            ]
+        },
+        "field_boundary": "open",
+        "max_mode": 1,
+        "interpolation": "linear",
+        "n0": 1.0e16,
+        "time": 100.1,
+        "dt": 2.0,
+        "nbeams": 0,
+        "nspecies": 1,
+        "nneutrals": 0,
+        "nlasers": 1,
+        "dump_restart": false,
+        "ndump_restart": 1,
+        "read_restart": false,
+        "restart_timestep": 1,
+        "iter_max": 10,
+        "iter_reltol": 1.0e-2,
+        "iter_abstol": 1.0e-3,
+        "verbose": 0,
+        "if_timing": true,
+        "random_seed": 10,
+        "algorithm": "standard",
+        "relax_fac": 1.7e-3
+    },
+    "species": [
+        {
+            "profile": [
+                "uniform",
+                "uniform"
+            ],
+            "ppc": [
+                2,
+                2
+            ],
+            "num_theta": 8,
+            "random_theta": false,
+            "q": -1.0,
+            "m": 1.0,
+            "density": 1.0,
+            "push_type": "robust_pgc",
+            "diag": [
+                {
+                    "name": [
+                        "charge_cyl_m"
+                    ],
+                    "ndump": 5
+                }
+            ]
+        }
+    ],
+    "laser": [
+        {
+            "profile": [
+                "astrl_analytic",
+                "const"
+            ],
+            "iteration": 3,
+            "k0": 10.0,
+            "s0_math_func": "200 - 20 * xi",
+            "a0_math_func": "if( xi < 0, 0, if( xi < (1), sin(1.5707 * xi / 1)^2, if( xi  < (9), 1, if( xi < (10), sin(1.5707 * (xi-10) / 1)^2, 0))))",
+            "w0_math_func": "2.0",
+            "diag": [
+                {
+                    "name": [
+                        "a_cyl_m"
+                    ],
+                    "ndump": 5
+                }
+            ]
+        }
+    ],
+    "field": {
+        "diag": [
+            {
+                "name": [
+                    "psi_cyl_m",
+                    "er_cyl_m",
+                    "bphi_cyl_m",
+                    "ez_cyl_m"
+                ],
+                "ndump": 5
+            }
+        ]
+    }
+}

@@ -54,14 +54,14 @@ type, public :: profile_laser
   real, dimension(:), pointer :: prof_lon_pars_lin => null()
   real, dimension(:), pointer :: prof_lon_pars_cub => null()
 
-  ! Procedure of setting the density profiles
+  ! Procedure of setting the transverse profiles
   procedure( set_prof_intf ), nopass, pointer :: set_prof_perp => null()
   procedure( set_prof_intf ), nopass, pointer :: set_prof_lon => null()
   procedure( set_prof_perp_astrl_intf ), nopass, pointer :: set_prof_perp_astrl => null()
   procedure( set_prof_array_intf ), nopass, pointer :: set_prof_lon_lin => null()
   procedure( set_prof_array_intf ), nopass, pointer :: set_prof_lon_cub => null()
 
-  ! Procedure of getting the beam density
+  ! Procedure of getting the longitudinal profile
   procedure( get_prof_perp_intf ), nopass, pointer :: get_prof_perp => null()
   procedure( get_prof_perp_astrl_intf ), nopass, pointer :: get_prof_perp_astrl => null()
   procedure( get_prof_lon_intf ), nopass, pointer :: get_prof_lon => null()
@@ -116,10 +116,10 @@ interface
     real, intent(inout), dimension(:), pointer :: prof_pars
   end subroutine set_prof_array_intf
 
-  subroutine get_prof_perp_astrl_intf( r, z, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
+  subroutine get_prof_perp_astrl_intf( r, z, t, k, k0, prof_pars, math_funcs, mode, ar_re, ar_im, ai_re, ai_im )
     import kw_list, t_fparser
     implicit none
-    real, intent(in) :: r, z, k, k0
+    real, intent(in) :: r, z, t, k, k0
     type(kw_list), intent(in) :: prof_pars
     integer, intent(in) :: mode
     real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -141,10 +141,11 @@ end interface
 
 integer, parameter, public :: p_prof_laser_gaussian = 0
 integer, parameter, public :: p_prof_laser_laguerre = 1
-integer, parameter, public :: p_prof_laser_astrl = 2
+integer, parameter, public :: p_prof_laser_astrl_analytic = 2
+integer, parameter, public :: p_prof_laser_astrl_discrete = 3
 integer, parameter, public :: p_prof_laser_sin2 = 100
 integer, parameter, public :: p_prof_laser_poly = 101
-integer, parameter, public :: p_prof_laser_astrl_lon = 102
+integer, parameter, public :: p_prof_laser_const = 102
 integer, parameter, public :: p_prof_laser_pw_linear = 1000
 integer, parameter, public :: p_prof_laser_cubic_spline = 1001
 
@@ -164,6 +165,10 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   character(len=:), allocatable :: read_str
   character(len=20) :: sect_name
   character(len=32), save :: sname = 'init_profile_laser'
+
+  logical :: if_norm_a0 
+  real :: r_norm, xi_norm, z_norm
+  integer :: mode_norm
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -193,9 +198,14 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%get_prof_perp => get_prof_perp_laguerre
 
     case ( 'astrl_analytic' )
-      this%prof_type(1)  = p_prof_laser_astrl
-      this%set_prof_perp_astrl => set_prof_perp_astrl
-      this%get_prof_perp_astrl => get_prof_perp_astrl
+      this%prof_type(1)  = p_prof_laser_astrl_analytic
+      this%set_prof_perp_astrl => set_prof_perp_astrl_analytic
+      this%get_prof_perp_astrl => get_prof_perp_astrl_analytic
+
+    case ( 'astrl_discrete' )
+      this%prof_type(1)  = p_prof_laser_astrl_discrete
+      this%set_prof_perp_astrl => set_prof_perp_astrl_discrete
+      this%get_prof_perp_astrl => get_prof_perp_astrl_discrete
 
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
@@ -225,10 +235,11 @@ subroutine init_profile_laser( this, input, opts, sect_id )
       this%prof_type(2)  = p_prof_laser_cubic_spline
       this%set_prof_lon_cub => set_prof_lon_cubic_spline
       this%get_prof_lon_cub => get_prof_lon_cubic_spline
-    case ( 'astrl_analytic' )
-      this%prof_type(2)  = p_prof_laser_astrl_lon
-      this%set_prof_lon => set_prof_lon_astrl
-      this%get_prof_lon => get_prof_lon_astrl
+
+   case ( 'const' )
+      this%prof_type(2)  = p_prof_laser_const
+      this%set_prof_lon => set_prof_const
+      this%get_prof_lon => get_prof_const
     
     case default
       call write_err( 'Invalid intensity profile in direction 1! &
@@ -237,10 +248,12 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   end select
 
   ! read and store the profile parameters into the parameter lists
-  if(this%prof_type(1) == p_prof_laser_astrl) then
-    call this%set_prof_perp_astrl( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
+  if(this%prof_type(1) == p_prof_laser_astrl_analytic) then
+     call this%set_prof_perp_astrl( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
+  else if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
+     call this%set_prof_perp_astrl( input, trim(sect_name), this%prof_perp_pars, this%math_funcs )
   else
-    call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
+     call this%set_prof_perp( input, trim(sect_name), this%prof_perp_pars )
   endif
   
   if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
@@ -251,20 +264,42 @@ subroutine init_profile_laser( this, input, opts, sect_id )
     call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
   endif
 
-  if(this%prof_type(1) /= p_prof_laser_astrl .or. this%prof_type(2) /= p_prof_laser_astrl_lon) then
-    call input%get( trim(sect_name) // '.a0', this%a0 )
+  ! a0 is not used with the analytic astrl pulse and is not used by default with the
+  ! discrete astrl pulse. it can be used optionally with the discrete astrl pulse
+  ! if a reference point is used for normalization; in this case it is read later.
+  ! lon_center parameter is not used for ASTRL pulses
+  if(this%prof_type(1) /= p_prof_laser_astrl_analytic &
+       .and. this%prof_type(1) /= p_prof_laser_astrl_discrete ) then
+     call input%get( trim(sect_name) // '.a0', this%a0 )
+     call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   else 
-    this%a0 = 1.0
+     this%a0 = 1.0
+     this%lon_center = 0.0
   endif
+
   call input%get( trim(sect_name) // '.k0', this%k0 )
-  call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   call input%get( 'simulation.box.z(1)', this%z0 )
 
   this%chirp_coefs = [0.0]
   if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then
-    call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
+     call input%get( trim(sect_name) // '.chirp_coefs', this%chirp_coefs )
   endif
 
+  ! optional automatic normalization of a0 for astrl_discrete
+  if( this%prof_type(1) == p_prof_laser_astrl_discrete ) then
+     call input%get( trim(sect_name) // '.if_norm_a0', if_norm_a0 )
+     if( if_norm_a0 ) then
+        call input%get( trim(sect_name) // '.r_norm', r_norm )     
+        call input%get( trim(sect_name) // '.xi_norm', xi_norm )     
+        call input%get( trim(sect_name) // '.z_norm', z_norm )     
+        call input%get( trim(sect_name) // '.mode_norm', mode_norm )     
+        call input%get( trim(sect_name) // '.a0', this%a0 )     
+        call normalize_a0_astrl_discrete( r_norm, xi_norm, z_norm, this%k0, &
+             this%chirp_coefs, this%prof_perp_pars, &
+             this%math_funcs, mode_norm, this%a0 )
+     endif
+  endif
+     
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine init_profile_laser
@@ -288,10 +323,13 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   class( ufield ), intent(inout), dimension(:), pointer :: ar_re, ar_im, ai_re, ai_im
 
   integer :: i, j, m, l, max_mode
-  real :: r, z, k, arr, ari, air, aii, env
+  real :: r, z, t, k, arr, ari, air, aii, env
   character(len=32), save :: sname = 'launch_profile_laser'
-
+  
   call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  ! launch occurs at t=0 
+  t = 0.0 
 
   max_mode = size(ar_im)
   do m = 0, max_mode
@@ -307,10 +345,14 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
 
       do i = 1, this%nrp
         r = ( this%noff_r + i - 1 ) * this%dr
-        if(this%prof_type(1) == p_prof_laser_astrl) then
-          call this%get_prof_perp_astrl( r, z, k, this%k0, this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+        if(this%prof_type(1) == p_prof_laser_astrl_analytic) then
+           call this%get_prof_perp_astrl( r, z, t, k, this%k0, &
+                this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )
+        else if (this%prof_type(1) == p_prof_laser_astrl_discrete) then
+           call this%get_prof_perp_astrl( r, z, t, k, this%k0, &
+                this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )           
         else
-          call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
+           call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         endif
 
         if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
@@ -319,7 +361,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
           call this%get_prof_lon_cub( z, this%prof_lon_pars_cub, env )
         else 
           call this%get_prof_lon( z, this%prof_lon_pars, env )
-        endif
+       endif
         
         env = env * this%a0
         ar_re(m)%f2( 1, i, j ) = env * arr
