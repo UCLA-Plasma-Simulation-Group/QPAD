@@ -264,14 +264,20 @@ subroutine init_profile_laser( this, input, opts, sect_id )
     call this%set_prof_lon( input, trim(sect_name), this%prof_lon_pars )
   endif
 
+  ! a0 is not used with the analytic astrl pulse and is not used by default with the
+  ! discrete astrl pulse. it can be used optionally with the discrete astrl pulse
+  ! if a reference point is used for normalization; in this case it is read later.
+  ! lon_center parameter is not used for ASTRL pulses
   if(this%prof_type(1) /= p_prof_laser_astrl_analytic &
        .and. this%prof_type(1) /= p_prof_laser_astrl_discrete ) then
      call input%get( trim(sect_name) // '.a0', this%a0 )
+     call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   else 
      this%a0 = 1.0
+     this%lon_center = 0.0
   endif
+
   call input%get( trim(sect_name) // '.k0', this%k0 )
-  call input%get( trim(sect_name) // '.lon_center', this%lon_center )
   call input%get( 'simulation.box.z(1)', this%z0 )
 
   this%chirp_coefs = [0.0]

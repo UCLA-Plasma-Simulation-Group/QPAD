@@ -22,7 +22,7 @@
         "max_mode": 1,
         "interpolation": "linear",
         "n0": 1.0e16,
-        "time": 100.1,
+        "time": 20.1,
         "dt": 2.0,
         "nbeams": 0,
         "nspecies": 1,
@@ -70,15 +70,24 @@
     "laser": [
         {
             "profile": [
-                "astrl_analytic",
-                "astrl_analytic"
+                "astrl_discrete",
+                "const"
             ],
             "iteration": 3,
             "k0": 10.0,
-            "lon_center": 0.0,
+	    "a0" : 1,
+	    "if_norm_a0" : true,
+	    "r_norm" : 0,
+	    "xi_norm" : 9,
+	    "z_norm" : 29,
+	    "mode_norm" : 0,
             "s0_math_func": "200 - 20 * xi",
             "a0_math_func": "if( xi < 0, 0, if( xi < (1), sin(1.5707 * xi / 1)^2, if( xi  < (9), 1, if( xi < (10), sin(1.5707 * (xi-10) / 1)^2, 0))))",
             "w0_math_func": "2.0",
+            "pulselet_math_func" : "exp( -(xi/0.5)^2 )",
+            "pulselet_range" : 3,
+            "pulselet_delay" : 0.5,
+            "pulselet_offset" : 0,	    
             "diag": [
                 {
                     "name": [

@@ -374,7 +374,7 @@ subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, 
 
   ! snap to grid of pulselets 
   npulselets = ceiling( 2 * pulselet_range / pulselet_delay ) + 1
-  xi_pulselet_min = floor( (z-t) / pulselet_delay ) * pulselet_delay &
+  xi_pulselet_min = floor( z / pulselet_delay ) * pulselet_delay &
        - (npulselets/2)*pulselet_delay + mod( pulselet_offset, pulselet_delay ) 
 
   if ( mode == 0 ) then
@@ -388,10 +388,11 @@ subroutine get_prof_perp_astrl_discrete( r, z, t, k, k0, prof_pars, math_funcs, 
         a0 = eval(math_funcs(2), fparser_arr)
         f_dist = eval(math_funcs(3), fparser_arr)
 
-        fparser_arr(1) = (z-t) - xi_pulselet
+        fparser_arr(1) = z - xi_pulselet
         pulselet_weight = eval(math_funcs(4), fparser_arr)
-        
-        z_shift = -1.0 * (z + f_dist)
+
+        ! move z_shift by t. t=0 is always used for initialization. t != 0 is used for normalization.
+        z_shift = -1.0 * (z + f_dist - t)
         r2 = r * r
         z2 = z_shift * z_shift
         zr = 0.5 * k * w0 * w0
