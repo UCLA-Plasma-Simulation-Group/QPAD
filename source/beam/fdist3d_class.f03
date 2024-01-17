@@ -13,7 +13,7 @@ private
 
 public :: fdist3d
 
-integer, parameter, public :: p_pf3d_std = 1, p_pf3d_rnd = 2, p_pf3d_file = 3
+integer, parameter, public :: p_pf3d_std = 1, p_pf3d_rnd = 2, p_pf3d_file = 3, p_pf3d_for = 4
 integer, parameter, public :: p_geom_cart = 1, p_geom_cyl = 2
 integer, parameter, public :: p_npmax_min = 65536
 real, parameter, public :: p_buf_incr = 1.2

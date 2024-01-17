@@ -370,7 +370,7 @@ subroutine end_fdist3d_std( this )
 
 end subroutine end_fdist3d_std
 
-subroutine inject_fdist3d_std( this, part )
+subroutine inject_fdist3d_std2( this, part )
 
   implicit none
 
@@ -406,6 +406,178 @@ subroutine inject_fdist3d_std( this, part )
           zn = (i3 - 0.5) / this%ppc(3) + real(k - 1 + noff_z)
           do i2 = 1, this%ppc(2)
             theta = ( (i2 - 0.5) / this%ppc(2) + j - 1 ) * dtheta
+            do i1 = 1, this%ppc(1)
+              rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff_r)
+
+              select case ( this%geom )
+              case ( p_geom_cart )
+                x_tmp(1) = rn * dr * cos(theta)
+                x_tmp(2) = rn * dr * sin(theta)
+                x_tmp(3) = zn * dz
+              case ( p_geom_cyl )
+                x_tmp(1) = rn * dr
+                x_tmp(2) = theta
+                x_tmp(3) = zn * dz
+              end select
+
+              ! check if the particle to be injected is within the range
+              if ( x_tmp(1) < this%range(p_lower,1) .or. x_tmp(1) > this%range(p_upper,1) ) cycle
+              if ( x_tmp(2) < this%range(p_lower,2) .or. x_tmp(2) > this%range(p_upper,2) ) cycle
+              if ( x_tmp(3) < this%range(p_lower,3) .or. x_tmp(3) > this%range(p_upper,3) ) cycle
+
+              call this%get_den1( x_tmp(1), this%prof_pars1, den_val(1) )
+              call this%get_den2( x_tmp(2), this%prof_pars2, den_val(2) )
+              call this%get_den3( x_tmp(3), this%prof_pars3, den_val(3) )
+              den_loc = product(den_val) * this%density
+
+              if ( den_loc < this%den_min ) cycle
+
+              ! check if needs to reallocate the particle buffer
+              if ( part%npp >= part%npmax ) then
+                call part%realloc( ratio = p_buf_incr, buf_type = 'particle' )
+              endif
+
+              part%npp = part%npp + 1
+              ip = part%npp
+
+              select case ( this%geom )
+              case ( p_geom_cart )
+                part%x(1,ip) = x_tmp(1)
+                part%x(2,ip) = x_tmp(2)
+                part%x(3,ip) = x_tmp(3)
+              case ( p_geom_cyl )
+                part%x(1,ip) = x_tmp(1) * cos(x_tmp(2))
+                part%x(2,ip) = x_tmp(1) * sin(x_tmp(2))
+                part%x(3,ip) = x_tmp(3)
+              end select
+
+              ! momentum initialization uses Cartesian geometry
+              part%p(1,ip) = this%uth(1) * ranorm()
+              part%p(2,ip) = this%uth(2) * ranorm()
+              part%p(3,ip) = this%uth(3) * ranorm() + this%gamma
+              part%p(3,ip) = sqrt( part%p(3,ip)**2 - part%p(1,ip)**2 - part%p(2,ip)**2 - 1 )
+
+              part%q(ip) = rn * den_loc * coef
+
+              ! spin initialization has not yet implemented
+              if ( this%has_spin ) then
+                part%s(1,ip) = 0.0
+                part%s(2,ip) = 0.0
+                part%s(3,ip) = 1.0
+              endif
+              
+            enddo  
+          enddo
+        enddo
+
+      enddo
+    enddo
+  enddo
+
+  ! if using quiet start. Note that the quiet start will double the total particle number
+  if ( this%quiet ) then
+
+    if ( part%npp * 2 > part%npmax ) then
+      ratio = real(part%npp * 2) / part%npmax
+      call part%realloc( ratio = p_buf_incr * ratio, buf_type = 'particle' )
+    endif
+
+    ip = part%npp
+    do i = 1, ip
+
+      part%x(1,ip+i) = -part%x(1,i)
+      part%x(2,ip+i) = -part%x(2,i)
+      part%x(3,ip+i) =  part%x(3,i)
+
+      part%p(1,ip+i) = -part%p(1,i)
+      part%p(2,ip+i) = -part%p(2,i)
+      part%p(3,ip+i) =  part%p(3,i)
+
+      part%q(i) = 0.5 * part%q(i)
+      part%q(ip+i) = part%q(i)
+
+      ! spin initialization has not yet implemented
+      if ( this%has_spin ) then
+        part%s(1,ip+i) = 0.0
+        part%s(2,ip+i) = 0.0
+        part%s(3,ip+i) = 1.0
+      endif
+
+    enddo
+    part%npp = part%npp * 2
+
+  endif
+
+  ! use Twiss parameter to initialize the tilt phase-space ellipse
+  if ( this%alpha(1) /= 0.0 ) then
+    coef = this%gamma * this%alpha(1) / this%beta(1)
+    do i = 1, part%npp
+      part%p(1,i) = part%p(1,i) - coef * ( part%x(1,i) - this%ctr(1) )
+    enddo
+  endif
+  if ( this%alpha(2) /= 0.0 ) then
+    coef = this%gamma * this%alpha(2) / this%beta(2)
+    do i = 1, part%npp
+      part%p(2,i) = part%p(2,i) - coef * ( part%x(2,i) - this%ctr(2) )
+    enddo
+  endif
+
+  ! offset the beam particles according to xi
+  if ( allocated(this%perp_offset_x) ) then
+    do i = 1, part%npp
+      offset = eval_polynomial( part%x(3,i), this%perp_offset_x(1), this%perp_offset_x(2:) )
+      part%x(1,i) =  part%x(1,i) + offset
+    enddo
+  endif
+  if ( allocated(this%perp_offset_y) ) then
+    do i = 1, part%npp
+      offset = eval_polynomial( part%x(3,i), this%perp_offset_y(1), this%perp_offset_y(2:) )
+      part%x(2,i) =  part%x(2,i) + offset
+    enddo
+  endif
+
+  call write_dbg( cls_name, sname, cls_level, 'ends' )
+
+end subroutine inject_fdist3d_std2
+
+subroutine inject_fdist3d_std( this, part )
+
+  implicit none
+
+  class( fdist3d_std ), intent(inout) :: this
+  class( part3d ), intent(inout) :: part
+
+  integer :: i, j, k, i1, i2, i3, ppc_tot, n_theta, nrp, nzp, noff_r, noff_z
+  integer(kind=LG) :: ip
+  real :: dr, dz, dtheta, rn, zn, theta, coef, den_loc, ratio, offset, np
+  real, dimension(3) :: den_val
+  real, dimension(3) :: x_tmp
+  character(len=18), save :: sname = 'inject_fdist3d_std'
+
+  call write_dbg( cls_name, sname, cls_level, 'starts' )
+
+  nrp     = this%nrp
+  nzp     = this%nzp
+  noff_r  = this%noff_r
+  noff_z  = this%noff_z
+  n_theta = this%num_theta
+  dr      = this%dr
+  dz      = this%dz
+  dtheta  = 2.0 * pi / n_theta
+  ppc_tot = product( this%ppc )
+  coef    = sign(1.0, this%qm) / ( real(ppc_tot) * real(n_theta) )
+
+  ip = 0; part%npp = 0
+  do k = 1, nzp
+    do j = 1, n_theta
+      do i = 1, nrp
+        
+        do i3 = 1, this%ppc(3)
+          zn = (i3 - 0.5) / this%ppc(3) + real(k - 1 + noff_z)
+          do i2 = 1, this%ppc(2)
+!             theta = ( (i2 - 0.5) / this%ppc(2) + j - 1 ) * dtheta
+            call random_number(theta)
+            theta = 2.0 * pi * theta
             do i1 = 1, this%ppc(1)
               rn = (i1 - 0.5) / this%ppc(1) + real(i - 1 + noff_r)
 
