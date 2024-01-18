@@ -2105,7 +2105,7 @@ subroutine expush_part2d( this, ef, bf )
   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
   integer :: i, np, max_mode
-  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq
+  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, x_l
   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
   integer(kind=LG) :: ptrcur, pp
 
@@ -2133,6 +2133,16 @@ subroutine expush_part2d( this, ef, bf )
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cartesian )
 
+    ! advance particle position
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+      dtc = this%dt / ( gam - this%p(3,pp) )
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0.5
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0.5
+      pp = pp + 1
+    enddo
+
     pp = ptrcur
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
@@ -2149,6 +2159,7 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np
       utmp(:,i) = this%p(:,pp) + ep(:,i)
+      this%p_l(:,pp) = this%p(:,pp)
       pp = pp + 1
     enddo
 
@@ -2188,8 +2199,8 @@ subroutine expush_part2d( this, ef, bf )
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + 0.5*this%p(1,pp) * dtc
-      this%x(2,pp) = this%x(2,pp) + 0.5*this%p(2,pp) * dtc
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0.5
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0.5
       pp = pp + 1
     enddo
 
