@@ -353,6 +353,8 @@ subroutine run_simulation( this )
       ! call q_spe%copy_slice( j, p_copy_1to2 )
 !..............psi.........................
       call psi%solve( q_spe )
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
 !       call b_spe%solve( cu ) 
 !.............cu...........................
       cu = 0.0 
@@ -395,6 +397,8 @@ subroutine run_simulation( this )
 !..............eperp........................
       call e_spe%solve( b_spe, psi )
       call e%solve( b, psi ) 
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%b%getresum(),"b"
 
       ! for vector potential diagnostics
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then
