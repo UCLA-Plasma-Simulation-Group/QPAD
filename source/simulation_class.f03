@@ -383,7 +383,9 @@ subroutine run_simulation( this )
 !............bperp.........................
 !       dcu = 0.0 
 !       cu =0.0
+      write(2,*) 'solve_bperp Initializing'
       call b_spe%solve( dcu, cu, psi, q_spe )
+      write(2,*) 'solve_bperp end_berp'
 !       call b_spe%solve( cu )
       do k = 1, this%nspecies
         call spe(k)%cbq(j)

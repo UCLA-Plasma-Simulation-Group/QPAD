@@ -202,7 +202,9 @@ subroutine qdp_species2d(this,q)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%q = 0.0
+   write(2,*)  this%q%getresum(), "q 1"
    call this%part%qdeposit(this%q)
+   write(2,*)  this%q%getresum(), "q 2"
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
