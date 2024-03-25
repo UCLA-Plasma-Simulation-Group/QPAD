@@ -124,7 +124,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    this%dt  = dt
    this%dt_eff_max = pf%dt_eff_max
    this%fac_clamp = pf%fac_clamp
-   this%part_dim = 2 + p_p_dim + 5
+   this%part_dim = 2 + p_p_dim + 5 + 3
 
    npmax      = pf%npmax
    this%npmax = npmax
@@ -133,7 +133,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
    
-   allocate( this%x_l( 2, npmax ) )
+!    allocate( this%x_l( 2, npmax ) )
    allocate( this%x( 2, npmax ) )
 !    allocate( this%x_r( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
@@ -147,8 +147,10 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%p_l, this%p, this%gamma, this%psi, this%q, &
+   if ( .not. empty ) call pf%inject( this%x, this%p_l, this%p, this%gamma, this%psi, this%q, &
     this%w, this%w0, this%npp, s, ionize )
+!    if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, &
+!     this%w, this%w0, this%npp, s, ionize )
 
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -164,7 +166,8 @@ subroutine end_part2d(this)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
-   deallocate( this%x_l, this%x, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
+!    deallocate( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
+   deallocate( this%x, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -190,10 +193,10 @@ subroutine realloc_part2d( this, ratio )
   this%tmp2( 1:2, 1:this%npp ) = this%x( 1:2, 1:this%npp )
   call move_alloc( this%tmp2, this%x )
 
-  allocate( this%tmp2( 2, npmax ) )
-  this%tmp2 = 0.0
-  this%tmp2( 1:2, 1:this%npp ) = this%x_l( 1:2, 1:this%npp )
-  call move_alloc( this%tmp2, this%x_l )
+!   allocate( this%tmp2( 2, npmax ) )
+!   this%tmp2 = 0.0
+!   this%tmp2( 1:2, 1:this%npp ) = this%x_l( 1:2, 1:this%npp )
+!   call move_alloc( this%tmp2, this%x_l )
 
 !   allocate( this%tmp2( 2, npmax ) )
 !   this%tmp2 = 0.0
@@ -264,8 +267,10 @@ subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    if ( present( if_empty ) ) empty = if_empty
    if ( present( ionization ) ) ionize = ionization
-   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%p_l, this%p, this%gamma, &
+   if ( .not. empty ) call pf%inject( this%x, this%p_l, this%p, this%gamma, &
     this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
+!    if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, &
+!     this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -476,8 +481,11 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     pp = ptrcur
     do i = 1, np
       u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
+!       u0(1,i) = (this%p_l(1,pp)+this%p(1,pp))*0.4 * cc(i) + (this%p_l(2,pp) + this%p(2,pp))*0.4 * ss(i)
       u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
+!       u0(2,i) = (this%p_l(2,pp) + this%p(2,pp))*0.4 * cc(i) - (this%p_l(1,pp)+this%p(1,pp))*0.4 * ss(i)
       u0(3,i) = this%p(3,pp)
+!       u0(3,i) = (this%p_l(3,pp)+this%p(3,pp))*0.5
       pp = pp + 1
     enddo
 
@@ -508,6 +516,9 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
       u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
       u0(3,i) = this%p(3,pp)
+!       u0(1,i) = (this%p_l(1,pp)+this%p(1,pp))*0.4 * cc(i) + (this%p_l(2,pp) + this%p(2,pp))*0.4 * ss(i)
+!       u0(2,i) = (this%p_l(2,pp) + this%p(2,pp))*0.4 * cc(i) - (this%p_l(1,pp)+this%p(1,pp))*0.4 * ss(i)
+!       u0(3,i) = (this%p_l(3,pp)+this%p(3,pp))*0.5
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       this%gamma(pp) = gam
       this%psi(pp)   = this%gamma(pp) - u0(3,i)
@@ -2200,9 +2211,17 @@ subroutine expush_part2d( this, ef, bf )
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
       this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0.5
+!       this%x(1,pp) = ((this%x(1,pp) + this%p(1,pp) * dtc * 0.5) + this%x(1,pp))*0.5
       this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0.5
+!       this%x(2,pp) = ((this%x(2,pp) + this%p(2,pp) * dtc * 0.5) + this%x(2,pp))*0.5
       pp = pp + 1
     enddo
+
+!     pp = ptrcur
+!     do i = 1, np
+!       this%p(:,pp) = (this%p_l(:,pp) + this%p(:,pp))*0.5
+!       pp = pp + 1
+!     enddo
 
   enddo
 

@@ -845,7 +845,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q)
   type( ufield ), dimension(:), pointer :: q_re => null(), q_im => null()
 !   type( ufield ), pointer :: psi_re1 => null(), psi_im1 => null()
 !   type( ufield ), pointer :: q_re1 => null(), q_im1 => null()
-  real :: psisum,qsum
+  real :: psisum_re,qsum_re,psisum_im,qsum_im
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
 
@@ -866,15 +866,15 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q)
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
 !       psi_re1 => psi_re(i)
 !       q_re1 => q_re(i)
-      psisum = psi%getresum()
-      qsum = q%getresum()
+      psisum_re = psi%getresum()
+      qsum_re = q%getresum()
       write(2,*) 'solver bplus initial m=0'
-      write(2,*) psisum, 'solver bplus initial m=0 psi'
-      write(2,*) qsum, 'solver bplus initial m=0 q'
-      call this%solver_bplus(i)%solve( this%buf1_re, psisum, qsum)
+      write(2,*) psisum_re, 'solver bplus initial m=0 psi'
+      write(2,*) qsum_re, 'solver bplus initial m=0 q'
+      call this%solver_bplus(i)%solve( this%buf1_re, psisum_re, qsum_re)
       write(2,*) 'solver bplus end m=0'
       write(2,*) 'solver bminus initial'
-      call this%solver_bminus(i)%solve( this%buf2_re, psisum, qsum)
+      call this%solver_bminus(i)%solve( this%buf2_re, psisum_re, qsum_re)
       write(2,*) 'solver bminus end m=0'
       call this%get_solution_bt_iter(i)
       cycle
@@ -883,11 +883,15 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q)
     write(2,*) 'set source m>0'
     call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
     write(2,*) 'solver_bplus%solve m>0'
-    call this%solver_bplus(i)%solve( this%buf1_re )
+    psisum_re = sum(psi%rf_re(i)%get_f1())
+    qsum_re = sum(q%rf_re(i)%get_f1())
+    psisum_im = sum(psi%rf_im(i)%get_f1())
+    qsum_im = sum(q%rf_im(i)%get_f1())
+    call this%solver_bplus(i)%solve( this%buf1_re, psisum_re, qsum_re )
     write(2,*) 'solver_bplus%solve m>0'
-    call this%solver_bplus(i)%solve( this%buf1_im )
-    call this%solver_bminus(i)%solve( this%buf2_re )
-    call this%solver_bminus(i)%solve( this%buf2_im )
+    call this%solver_bplus(i)%solve( this%buf1_im, psisum_im, qsum_im )
+    call this%solver_bminus(i)%solve( this%buf2_re, psisum_re, qsum_re )
+    call this%solver_bminus(i)%solve( this%buf2_im, psisum_im, qsum_im )
     call this%get_solution_bt_iter(i)
 
   enddo

@@ -210,6 +210,7 @@ subroutine qdp_species2d(this,q)
    call this%q%copy_gc_f1()
    call add_f1( this%q, q )
    write(2,*)  this%q%getresum(), "q"
+   write(2,*)  this%qn%getresum(), "qn"
    if ( this%pf%neutralized ) call add_f1( this%qn, q )
    write(2,*)  q%getresum(), "q2"
 

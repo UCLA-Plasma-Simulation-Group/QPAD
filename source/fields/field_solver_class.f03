@@ -175,7 +175,6 @@ subroutine solve_equation( this, src_sol, psisum, qsum)
     write(2,*) qsum,'solve_equation q'
     call start_tprof( 'solve plasma bt' )
     write(2,*) 'satrt set_struct_matrixv1'
-!     call set_struct_matrixv1( this, f1_re, f2_re )
     call set_struct_matrixv1( this, psisum, qsum)
     write(2,*) 'end set_struct_matrixv1'
   case ( p_fk_vpotz, p_fk_vpotp, p_fk_vpotm )
@@ -650,7 +649,7 @@ subroutine set_struct_matrixv1( this, psisum, qsum )
 !       write(2,*) i, 'i number'
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * qsum/(1+psisum)
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (qsum)/(1+psisum)
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) qsum, 'q_re in field_solver'
 !       write(2,*) psi_re(1,j), 'psi_re'
@@ -674,7 +673,7 @@ subroutine set_struct_matrixv1( this, psisum, qsum )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * qsum/(1+psisum)
+      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (qsum)/(1+psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
@@ -687,7 +686,7 @@ subroutine set_struct_matrixv1( this, psisum, qsum )
       j = j + 1.0
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * qsum/(1+psisum)
+      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum)/(1+psisum)
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j))
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) qsum, 'q_re in field_solver'
@@ -716,7 +715,7 @@ subroutine set_struct_matrixv1( this, psisum, qsum )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 + dr2 * qsum/(1+psisum)
+      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum)/(1+psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
