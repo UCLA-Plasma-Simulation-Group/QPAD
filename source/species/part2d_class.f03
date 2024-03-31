@@ -432,7 +432,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
-  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, w1
+  real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, w1, irr
   complex(kind=DB) :: phase, phase0, phase1
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
@@ -473,7 +473,9 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     ! calculate wake field
     do i = 1, np
       wp(1,i) = ep(1,i) 
+!       wp(1,i) = ep(1,i) - bp(2,i)
       wp(2,i) = ep(2,i) 
+!       wp(2,i) = ep(2,i) + bp(1,i)
       wp(3,i) = ep(3,i)
     enddo
 
@@ -494,7 +496,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       qtmh1 = qtmh * gam 
 !       qtmh1 = qtmh * gam / ( gam - u0(3,i) )
-      ep(:,i) = ep(:,i) * qtmh1 
+!       ep(:,i) = ep(:,i) * qtmh1 
       qtmh2 = qtmh 
 !       qtmh2 = qtmh / ( gam - u0(3,i) )
       bp(:,i) = bp(:,i) * qtmh2
@@ -510,8 +512,13 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     pp = ptrcur
     do i = 1, np
 
-      du(1) = ep(1,i) + u(1,i)
-      du(2) = ep(2,i) + u(2,i)
+      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
+      qtmh1 = qtmh * gam 
+      du(1) = qtmh1*wp(1,i) + u(1,i)
+!       du(1) = ep(1,i) + u(1,i)
+!       irr = sqrt(this%x(1,i)**2+this%x(2,i)**2)/6
+      du(2) = qtmh1*wp(2,i) + u(2,i)
+!       du(2) = ep(2,i) + u(2,i)
       
       u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
       u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
@@ -538,7 +545,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
-      phase1  = cmplx( 1.0, 0.0 ) * this%q(pp) * this%q(pp)
+      phase1  = cmplx( 1.0, 0.0 ) * this%q(pp) * this%q(pp)* ipsi
 
       ! deposit m = 0 mode
       do j = 0, 1
@@ -2149,8 +2156,8 @@ subroutine expush_part2d( this, ef, bf )
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0.5
-      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0.5
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 1.0
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 1.0
       pp = pp + 1
     enddo
 
@@ -2210,9 +2217,9 @@ subroutine expush_part2d( this, ef, bf )
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
       dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0.5
+      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0
 !       this%x(1,pp) = ((this%x(1,pp) + this%p(1,pp) * dtc * 0.5) + this%x(1,pp))*0.5
-      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0.5
+      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0
 !       this%x(2,pp) = ((this%x(2,pp) + this%p(2,pp) * dtc * 0.5) + this%x(2,pp))*0.5
       pp = pp + 1
     enddo
