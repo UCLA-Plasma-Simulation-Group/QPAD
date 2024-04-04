@@ -113,13 +113,11 @@ if __name__ == '__main__':
                 os.mkdir('Longitudinal_location_'+str(z)+'/y')
 
     ind_arra = np.arange(-dset_size[1] + 1, dset_size[1])
-    x_matrix = np.expand_dims(ind_arra,0).repeat(dset_size[1] *2 - 1, axis=0)
-    y_matrix = np.expand_dims(ind_arra[::-1],1).repeat(dset_size[1] *2 - 1, axis=1)
-    pos_matrix = x_matrix + 1j*y_matrix
-    R_matrix = np.abs(pos_matrix)
+    x_matrix, y_matrix = np.meshgrid(ind_arra, ind_arra)
+    R_matrix = np.sqrt(x_matrix**2 + y_matrix**2)
     R_matrix = np.round(R_matrix).astype(int)
     R_matrix = np.where(R_matrix >= dset_size[1], dset_size[1], R_matrix)
-    Phi_matrix = np.angle(pos_matrix)
+    Phi_matrix = np.arctan2(y_matrix, x_matrix)
 
     for filename in file_list:
 

@@ -267,7 +267,7 @@ subroutine get_rndpos_pw_linear( prof_pars, pos )
       a = 0.5 * ( pdf(i) - pdf(i-1) ) / ( x(i) - x(i-1) )
       b = pdf(i-1)
       c = cdf(i-1) - dice
-      if ( a < epsilon(1.0) ) then
+      if ( abs(a) < epsilon(1.0) ) then
         if ( b < epsilon(1.0) ) then
           pos = x(i-1)
         else
