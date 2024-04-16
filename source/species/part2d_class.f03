@@ -124,7 +124,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    this%dt  = dt
    this%dt_eff_max = pf%dt_eff_max
    this%fac_clamp = pf%fac_clamp
-   this%part_dim = 2 + p_p_dim + 5 + 3
+   this%part_dim = 2*2 + 2*p_p_dim + 5 
 
    npmax      = pf%npmax
    this%npmax = npmax
@@ -133,7 +133,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
    
-!    allocate( this%x_l( 2, npmax ) )
+   allocate( this%x_l( 2, npmax ) )
    allocate( this%x( 2, npmax ) )
 !    allocate( this%x_r( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
@@ -147,7 +147,7 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty, ionization )
    if ( present( ionization ) ) ionize = ionization
 
    ! initialize particle coordinates according to specified profile
-   if ( .not. empty ) call pf%inject( this%x, this%p_l, this%p, this%gamma, this%psi, this%q, &
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%p_l, this%p, this%gamma, this%psi, this%q, &
     this%w, this%w0, this%npp, s, ionize )
 !    if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, this%psi, this%q, &
 !     this%w, this%w0, this%npp, s, ionize )
@@ -167,7 +167,7 @@ subroutine end_part2d(this)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
 !    deallocate( this%x, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
-   deallocate( this%x, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
+   deallocate( this%x_l, this%x, this%p_l, this%p, this%gamma, this%psi, this%q, this%w, this%w0 )
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -193,10 +193,10 @@ subroutine realloc_part2d( this, ratio )
   this%tmp2( 1:2, 1:this%npp ) = this%x( 1:2, 1:this%npp )
   call move_alloc( this%tmp2, this%x )
 
-!   allocate( this%tmp2( 2, npmax ) )
-!   this%tmp2 = 0.0
-!   this%tmp2( 1:2, 1:this%npp ) = this%x_l( 1:2, 1:this%npp )
-!   call move_alloc( this%tmp2, this%x_l )
+  allocate( this%tmp2( 2, npmax ) )
+  this%tmp2 = 0.0
+  this%tmp2( 1:2, 1:this%npp ) = this%x_l( 1:2, 1:this%npp )
+  call move_alloc( this%tmp2, this%x_l )
 
 !   allocate( this%tmp2( 2, npmax ) )
 !   this%tmp2 = 0.0
@@ -267,7 +267,7 @@ subroutine renew_part2d( this, pf, s, if_empty, ionization )
 
    if ( present( if_empty ) ) empty = if_empty
    if ( present( ionization ) ) ionize = ionization
-   if ( .not. empty ) call pf%inject( this%x, this%p_l, this%p, this%gamma, &
+   if ( .not. empty ) call pf%inject( this%x_l, this%x, this%p_l, this%p, this%gamma, &
     this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
 !    if ( .not. empty ) call pf%inject( this%x, this%p, this%gamma, &
 !     this%psi, this%q, this%w, this%w0, this%npp, s, ionize )
@@ -472,10 +472,10 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
     ! calculate wake field
     do i = 1, np
-      wp(1,i) = ep(1,i) 
-!       wp(1,i) = ep(1,i) - bp(2,i)
-      wp(2,i) = ep(2,i) 
-!       wp(2,i) = ep(2,i) + bp(1,i)
+!       wp(1,i) = ep(1,i) 
+      wp(1,i) = ep(1,i) - bp(2,i)
+!       wp(2,i) = ep(2,i) 
+      wp(2,i) = ep(2,i) + bp(1,i)
       wp(3,i) = ep(3,i)
     enddo
 
@@ -483,23 +483,14 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     pp = ptrcur
     do i = 1, np
       u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
-!       u0(1,i) = (this%p_l(1,pp)+this%p(1,pp))*0.4 * cc(i) + (this%p_l(2,pp) + this%p(2,pp))*0.4 * ss(i)
       u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
-!       u0(2,i) = (this%p_l(2,pp) + this%p(2,pp))*0.4 * cc(i) - (this%p_l(1,pp)+this%p(1,pp))*0.4 * ss(i)
       u0(3,i) = this%p(3,pp)
-!       u0(3,i) = (this%p_l(3,pp)+this%p(3,pp))*0.5
       pp = pp + 1
     enddo
 
     ! half electric acceleration
     do i = 1, np
-      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
-      qtmh1 = qtmh * gam 
-!       qtmh1 = qtmh * gam / ( gam - u0(3,i) )
-!       ep(:,i) = ep(:,i) * qtmh1 
-      qtmh2 = qtmh 
-!       qtmh2 = qtmh / ( gam - u0(3,i) )
-      bp(:,i) = bp(:,i) * qtmh2
+      bp(:,i) = bp(:,i) * this%qbm
     enddo
 
     do i = 1, np
@@ -513,20 +504,12 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     do i = 1, np
 
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
-      qtmh1 = qtmh * gam 
-      du(1) = qtmh1*wp(1,i) + u(1,i)
+      qtmh1 = this%qbm * gam 
+      du(1) = this%qbm*wp(1,i) + u(1,i)
 !       du(1) = ep(1,i) + u(1,i)
 !       irr = sqrt(this%x(1,i)**2+this%x(2,i)**2)/6
-      du(2) = qtmh1*wp(2,i) + u(2,i)
+      du(2) = this%qbm*wp(2,i) + u(2,i)
 !       du(2) = ep(2,i) + u(2,i)
-      
-      u0(1,i) = this%p(1,pp) * cc(i) + this%p(2,pp) * ss(i)
-      u0(2,i) = this%p(2,pp) * cc(i) - this%p(1,pp) * ss(i)
-      u0(3,i) = this%p(3,pp)
-!       u0(1,i) = (this%p_l(1,pp)+this%p(1,pp))*0.4 * cc(i) + (this%p_l(2,pp) + this%p(2,pp))*0.4 * ss(i)
-!       u0(2,i) = (this%p_l(2,pp) + this%p(2,pp))*0.4 * cc(i) - (this%p_l(1,pp)+this%p(1,pp))*0.4 * ss(i)
-!       u0(3,i) = (this%p_l(3,pp)+this%p(3,pp))*0.5
-      gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       this%gamma(pp) = gam
       this%psi(pp)   = this%gamma(pp) - u0(3,i)
 
@@ -535,9 +518,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
       du(1) = du(1) * ipsi + u0(1,i) * dpsi * ipsi
-      du(2) = du(2) * ipsi + u0(2,i) * dpsi * ipsi
-!       du(1) = du(1) * ipsi 
-!       du(2) = du(2) * ipsi 
+      du(2) = du(2) * ipsi + u0(2,i) * dpsi * ipsi 
 
       u2(1) = u0(1,i) * u0(1,i) * ipsi
       u2(2) = u0(1,i) * u0(2,i) * ipsi
@@ -545,15 +526,12 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
       phase0 = cmplx( cc(i), -ss(i) )
       phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
-      phase1  = cmplx( 1.0, 0.0 ) * this%q(pp) * this%q(pp)* ipsi
 
       ! deposit m = 0 mode
       do j = 0, 1
         w = wt(j,i) * real(phase)
-        w1 = wt(j,i) * real(phase1)
         cu0( 1:3, ix(i)+j )  = cu0( 1:3, ix(i)+j )  + w * u0(1:3,i) 
         dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w * du(1:2)
-!         dcu0( 1:2, ix(i)+j ) = dcu0( 1:2, ix(i)+j ) + w1 * du(1:2) + w * u0(1:2,i) * dpsi * ipsi
         amu0( 1:3, ix(i)+j ) = amu0( 1:3, ix(i)+j ) + w * u2(1:3)
       enddo
 
@@ -799,8 +777,8 @@ subroutine amjdeposit_robust_part2d( this, ef, bf, cu, amu, dcu )
     pp = ptrcur
     do i = 1, np
 
-      du(1) = idt * ( u(1,i) - u0(1,i) ) - this%qbm*bp(2,i)
-      du(2) = idt * ( u(2,i) - u0(2,i) ) + this%qbm*bp(1,i)
+      du(1) = idt * ( u(1,i) - u0(1,i) ) 
+      du(2) = idt * ( u(2,i) - u0(2,i) )
       
       u(:,i)  = 0.5 * ( u(:,i) + u0(:,i) )
       this%gamma(pp) = sqrt( 1.0 + u(1,i)**2 + u(2,i)**2 + u(3,i)**2 )
@@ -2112,151 +2090,25 @@ subroutine epush_part2d( this, ef, bf)
 
 end subroutine epush_part2d
 
-subroutine expush_part2d( this, ef, bf )
-
-  implicit none
-
-  class(part2d), intent(inout) :: this
-  class(field), intent(in) :: ef, bf
-  ! local data
-  character(len=18), save :: sname = 'push_robust_part2d'
-  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
-
-  integer :: i, np, max_mode
-  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, x_l
-  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
-  integer(kind=LG) :: ptrcur, pp
-
-  call write_dbg(cls_name, sname, cls_level, 'starts')
-  call start_tprof( 'push 2D particles' )
-
-  qtmh = this%qbm * this%dt * 0.5
-  max_mode = ef%get_max_mode()
-
-  ef_re => ef%get_rf_re()
-  ef_im => ef%get_rf_im()
-  bf_re => bf%get_rf_re()
-  bf_im => bf%get_rf_im()
-
-  do ptrcur = 1, this%npp, p_cache_size
-
-    ! check if last copy of table and set np
-    if( ptrcur + p_cache_size > this%npp ) then
-      np = this%npp - ptrcur + 1
-    else
-      np = p_cache_size
-    endif
-
-    ! interpolate fields to particles
-    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-      bp, ep, np, ptrcur, p_cartesian )
-
-    ! advance particle position
-    pp = ptrcur
-    do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 1.0
-      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 1.0
-      pp = pp + 1
-    enddo
-
-    pp = ptrcur
-    do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      ! qtmh1 = qtmh / this%psi(pp)
-      ! qtmh2 = qtmh1 * this%gamma(pp)
-      qtmh1 = qtmh / ( gam - this%p(3,pp) )
-      qtmh2 = qtmh1 * gam
-      ep(:,i) = ep(:,i) * qtmh2
-      bp(:,i) = bp(:,i) * qtmh1
-      pp = pp + 1
-    enddo
-
-    ! first half of electric field acceleration
-    pp = ptrcur
-    do i = 1, np
-      utmp(:,i) = this%p(:,pp) + ep(:,i)
-      this%p_l(:,pp) = this%p(:,pp)
-      pp = pp + 1
-    enddo
-
-    ! rotation about magnetic field
-    pp = ptrcur
-    do i = 1, np
-      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
-      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
-      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
-      pp = pp + 1
-    enddo
-
-    do i = 1, np
-      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
-      bp(1,i) = bp(1,i) * ostq
-      bp(2,i) = bp(2,i) * ostq
-      bp(3,i) = bp(3,i) * ostq
-    enddo
-
-    pp = ptrcur
-    do i = 1, np
-      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
-      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
-      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
-      pp = pp + 1
-    enddo
-
-    ! second half of electric field acc.
-    pp = ptrcur
-    do i = 1, np
-      this%p(:,pp) = utmp(:,i) + ep(:,i)
-      pp = pp + 1
-    enddo
-
-    ! advance particle position
-    pp = ptrcur
-    do i = 1, np
-      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      dtc = this%dt / ( gam - this%p(3,pp) )
-      this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0
-!       this%x(1,pp) = ((this%x(1,pp) + this%p(1,pp) * dtc * 0.5) + this%x(1,pp))*0.5
-      this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0
-!       this%x(2,pp) = ((this%x(2,pp) + this%p(2,pp) * dtc * 0.5) + this%x(2,pp))*0.5
-      pp = pp + 1
-    enddo
-
-!     pp = ptrcur
-!     do i = 1, np
-!       this%p(:,pp) = (this%p_l(:,pp) + this%p(:,pp))*0.5
-!       pp = pp + 1
-!     enddo
-
-  enddo
-
-  call stop_tprof( 'push 2D particles' )
-  call write_dbg(cls_name, sname, cls_level, 'ends')
-
-end subroutine expush_part2d
-
 ! subroutine expush_part2d( this, ef, bf )
 
 !   implicit none
+
 !   class(part2d), intent(inout) :: this
 !   class(field), intent(in) :: ef, bf
 !   ! local data
-!   character(len=18), save :: sname = 'expush_part2d'
+!   character(len=18), save :: sname = 'push_robust_part2d'
 !   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
 
 !   integer :: i, np, max_mode
-!   real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, p_l, x_l
+!   real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, x_l
 !   real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
 !   integer(kind=LG) :: ptrcur, pp
 
 !   call write_dbg(cls_name, sname, cls_level, 'starts')
 !   call start_tprof( 'push 2D particles' )
 
-! !   qtmh = this%qbm * this%dt 
-!   qtmh = this%qbm * this%dt 
-! !   write(2,*) this%qbm, "qbm"
+!   qtmh = this%qbm * this%dt * 0.5
 !   max_mode = ef%get_max_mode()
 
 !   ef_re => ef%get_rf_re()
@@ -2282,12 +2134,8 @@ end subroutine expush_part2d
 !     do i = 1, np
 !       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
 !       dtc = this%dt / ( gam - this%p(3,pp) )
-!       x_l = this%x(1,pp)
-!       this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc 
-!       this%x_l(1,pp) = x_l
-!       x_l = this%x(2,pp)
-!       this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc 
-!       this%x_l(2,pp) = x_l
+!       this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 1.0
+!       this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 1.0
 !       pp = pp + 1
 !     enddo
 
@@ -2298,18 +2146,16 @@ end subroutine expush_part2d
 !       ! qtmh2 = qtmh1 * this%gamma(pp)
 !       qtmh1 = qtmh / ( gam - this%p(3,pp) )
 !       qtmh2 = qtmh1 * gam
-!       ep(:,i) = ep(:,i) * qtmh2 
-!       bp(:,i) = bp(:,i) * qtmh1 
+!       ep(:,i) = ep(:,i) * qtmh2
+!       bp(:,i) = bp(:,i) * qtmh1
 !       pp = pp + 1
 !     enddo
 
 !     ! first half of electric field acceleration
 !     pp = ptrcur
 !     do i = 1, np
-!       utmp(:,i) = this%p_l(:,pp) + ep(:,i)
-! !       p_l = this%p(1,pp)
-! !       this%p_l(:,pp) = p_l
-!       this%p_l(:,pp) = this%p(1,pp)
+!       utmp(:,i) = this%p(:,pp) + ep(:,i)
+!       this%p_l(:,pp) = this%p(:,pp)
 !       pp = pp + 1
 !     enddo
 
@@ -2339,11 +2185,28 @@ end subroutine expush_part2d
 
 !     ! second half of electric field acc.
 !     pp = ptrcur
-!     do i = 1, np 
+!     do i = 1, np
 !       this%p(:,pp) = utmp(:,i) + ep(:,i)
-! !       this%p_l(:,pp) = p_l
 !       pp = pp + 1
 !     enddo
+
+!     ! advance particle position
+!     pp = ptrcur
+!     do i = 1, np
+!       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+!       dtc = this%dt / ( gam - this%p(3,pp) )
+!       this%x(1,pp) = this%x(1,pp) + this%p(1,pp) * dtc * 0
+! !       this%x(1,pp) = ((this%x(1,pp) + this%p(1,pp) * dtc * 0.5) + this%x(1,pp))*0.5
+!       this%x(2,pp) = this%x(2,pp) + this%p(2,pp) * dtc * 0
+! !       this%x(2,pp) = ((this%x(2,pp) + this%p(2,pp) * dtc * 0.5) + this%x(2,pp))*0.5
+!       pp = pp + 1
+!     enddo
+
+! !     pp = ptrcur
+! !     do i = 1, np
+! !       this%p(:,pp) = (this%p_l(:,pp) + this%p(:,pp))*0.5
+! !       pp = pp + 1
+! !     enddo
 
 !   enddo
 
@@ -2351,6 +2214,143 @@ end subroutine expush_part2d
 !   call write_dbg(cls_name, sname, cls_level, 'ends')
 
 ! end subroutine expush_part2d
+
+subroutine expush_part2d( this, ef, bf )
+
+  implicit none
+  class(part2d), intent(inout) :: this
+  class(field), intent(in) :: ef, bf
+  ! local data
+  character(len=18), save :: sname = 'expush_part2d'
+  type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
+
+  integer :: i, np, max_mode
+  real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, p_l, x_l
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
+  integer(kind=LG) :: ptrcur, pp
+
+  call write_dbg(cls_name, sname, cls_level, 'starts')
+  call start_tprof( 'push 2D particles' )
+
+!   qtmh = this%qbm * this%dt 
+  qtmh = this%qbm * this%dt 
+!   write(2,*) this%qbm, "qbm"
+  max_mode = ef%get_max_mode()
+
+  ef_re => ef%get_rf_re()
+  ef_im => ef%get_rf_im()
+  bf_re => bf%get_rf_re()
+  bf_im => bf%get_rf_im()
+
+  do ptrcur = 1, this%npp, p_cache_size
+
+    ! check if last copy of table and set np
+    if( ptrcur + p_cache_size > this%npp ) then
+      np = this%npp - ptrcur + 1
+    else
+      np = p_cache_size
+    endif
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
+      bp, ep, np, ptrcur, p_cartesian )
+
+!     ! advance particle position
+!     pp = ptrcur
+!     do i = 1, np
+!       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+!       dtc = this%dt / ( gam - this%p(3,pp) )
+! !       x_l = this%x(1,pp)
+!       this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
+!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+! !       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+! !       this%x_l(1,pp) = this%x_l(1,pp)*0.42 + this%x(1,pp)*0.58
+! !       x_l = this%x(2,pp)
+!       this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc 
+!       this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
+! !       this%x_l(2,pp) = this%x_l(2,pp)*0.42  + this%x(2,pp)*0.58
+!       pp = pp + 1
+!     enddo
+
+
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
+      ! qtmh1 = qtmh / this%psi(pp)
+      ! qtmh2 = qtmh1 * this%gamma(pp)
+      qtmh1 = qtmh / ( gam - this%p(3,pp) )
+      qtmh2 = qtmh1 * gam
+      ep(:,i) = ep(:,i) * qtmh2 
+      bp(:,i) = bp(:,i) * qtmh1 
+      pp = pp + 1
+    enddo
+
+    ! first half of electric field acceleration
+    pp = ptrcur
+    do i = 1, np
+      utmp(:,i) = this%p_l(:,pp) + ep(:,i)
+!       p_l = this%p(1,pp)
+!       this%p_l(:,pp) = p_l
+!       this%p_l(:,pp) = this%p(:,pp)
+      pp = pp + 1
+    enddo
+
+    ! rotation about magnetic field
+    pp = ptrcur
+    do i = 1, np
+      this%p(1,pp) = utmp(1,i) + utmp(2,i) * bp(3,i) - utmp(3,i) * bp(2,i)
+      this%p(2,pp) = utmp(2,i) + utmp(3,i) * bp(1,i) - utmp(1,i) * bp(3,i)
+      this%p(3,pp) = utmp(3,i) + utmp(1,i) * bp(2,i) - utmp(2,i) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    do i = 1, np
+      ostq = 2.0 / ( 1.0 + bp(1,i)**2 + bp(2,i)**2 + bp(3,i)**2 )
+      bp(1,i) = bp(1,i) * ostq
+      bp(2,i) = bp(2,i) * ostq
+      bp(3,i) = bp(3,i) * ostq
+    enddo
+
+    pp = ptrcur
+    do i = 1, np
+      utmp(1,i) = utmp(1,i) + this%p(2,pp) * bp(3,i) - this%p(3,pp) * bp(2,i)
+      utmp(2,i) = utmp(2,i) + this%p(3,pp) * bp(1,i) - this%p(1,pp) * bp(3,i)
+      utmp(3,i) = utmp(3,i) + this%p(1,pp) * bp(2,i) - this%p(2,pp) * bp(1,i)
+      pp = pp + 1
+    enddo
+
+    ! second half of electric field acc.
+    pp = ptrcur
+    do i = 1, np 
+      this%p(:,pp) = utmp(:,i) + ep(:,i)
+      this%p_l(:,pp) = (this%p_l(:,pp)+this%p(:,pp))*0.5
+!       this%p_l(:,pp) = this%p_l(:,pp)*0.2+this%p(:,pp)*0.8
+      pp = pp + 1
+    enddo
+
+  ! advance particle position
+    pp = ptrcur
+    do i = 1, np
+      gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
+      dtc = 2*this%dt / ( gam - this%p(3,pp) )
+!       x_l = this%x(1,pp)
+      this%x(1,pp) = this%x_l(1,pp) + this%p_l(1,pp) * dtc
+      this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+!       this%x_l(1,pp) = x_l
+!       x_l = this%x(2,pp)
+      this%x(2,pp) = this%x_l(2,pp) + this%p_l(2,pp) * dtc 
+      this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
+!       this%x_l(2,pp) = x_l
+      pp = pp + 1
+    enddo
+
+  enddo
+
+  call stop_tprof( 'push 2D particles' )
+  call write_dbg(cls_name, sname, cls_level, 'ends')
+
+end subroutine expush_part2d
 
 
 subroutine push_robust_part2d( this, ef, bf )

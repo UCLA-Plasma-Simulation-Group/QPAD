@@ -235,13 +235,13 @@ subroutine end_fdist2d( this )
 
 end subroutine end_fdist2d
 
-subroutine inject_fdist2d( this, x, p_l, p, gamma, psi, q, w, w0, npp, s, ionization )
+subroutine inject_fdist2d( this, x_l, x, p_l, p, gamma, psi, q, w, w0, npp, s, ionization )
 
   implicit none
 
   class( fdist2d ), intent(inout) :: this
 !   real, intent(inout), dimension(:,:) ::  x, p
-  real, intent(inout), dimension(:,:) :: x, p_l, p
+  real, intent(inout), dimension(:,:) :: x_l, x, p_l, p
   real, intent(inout), dimension(:) :: gamma, psi, q, w, w0
   integer(kind=LG), intent(inout) :: npp
   real, intent(in) :: s
@@ -285,8 +285,8 @@ subroutine inject_fdist2d( this, x, p_l, p, gamma, psi, q, w, w0, npp, s, ioniza
             if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
             ipart = ipart + 1
-!             x_l(1,ipart) = x_tmp(1)
-!             x_l(2,ipart) = x_tmp(2)
+            x_l(1,ipart) = x_tmp(1)
+            x_l(2,ipart) = x_tmp(2)
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
 !             x_r(1,ipart) = 0
@@ -332,8 +332,8 @@ subroutine inject_fdist2d( this, x, p_l, p, gamma, psi, q, w, w0, npp, s, ioniza
             if ( den_lon * den_perp * this%density < this%den_min ) cycle
 
             ipart = ipart + 1
-!             x_l(1,ipart) = x_tmp(1)
-!             x_l(2,ipart) = x_tmp(2)
+            x_l(1,ipart) = x_tmp(1)
+            x_l(2,ipart) = x_tmp(2)
             x(1,ipart) = x_tmp(1)
             x(2,ipart) = x_tmp(2)
 !             x_r(1,ipart) = 0
@@ -343,9 +343,9 @@ subroutine inject_fdist2d( this, x, p_l, p, gamma, psi, q, w, w0, npp, s, ioniza
             p(1,ipart) = this%uth(1) * ranorm()
             p(2,ipart) = this%uth(2) * ranorm()
             p(3,ipart) = this%uth(3) * ranorm()
-!             p_l(1,ipart) = p(1,ipart)
-!             p_l(2,ipart) = p(2,ipart)
-!             p_l(3,ipart) = p(3,ipart)
+            p_l(1,ipart) = p(1,ipart)
+            p_l(2,ipart) = p(2,ipart)
+            p_l(3,ipart) = p(3,ipart)
 !             write(2,*) p_l(1,ipart), "fdist2d_pl"
 !             write(2,*) p(1,ipart), "fdist2d_p"
             gamma(ipart) = sqrt( 1.0 + p(1,ipart)**2 + p(2,ipart)**2 + p(3,ipart)**2 )
