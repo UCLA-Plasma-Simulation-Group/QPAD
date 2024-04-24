@@ -130,7 +130,7 @@ subroutine init_sim_plasma( this, input, opts, s )
   enddo
 
   ! initialize 2D particle manager
-  part_dim = 8
+  part_dim = 15
   ! loop over all the 2D particle profile to get the buffer size
   do i = 1, this%num_species
     call set_part2d_comm( part_dim, npmax = this%pf_spe(i)%npmax )

@@ -650,12 +650,13 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       write(2,*) i, 'i number'
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j))
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+!       + dr2 /(1836.5-psi_re(1,j))
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) q_re(1,j), 'q_re in field_solver'
 !       write(2,*) psi_re(1,j), 'psi_re'
-!       write(2,*) dr2, 'dr2'
+!       write(2,*) 'now'
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
     enddo
 
@@ -675,7 +676,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j))
+      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+!       + dr2 /(1836.5-psi_re(1,j))      
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 
@@ -692,7 +694,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum)/(1+psisum) 
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum - 65.000000000000014)/(1+psisum) + &
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j))
+      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+!       + dr2 /(1836.5-psi_re(1,j))
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) qsum, 'q_re in field_solver'
       HYPRE_BUF(i+2) = 1.0 + 0.5 / j
@@ -720,7 +723,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j))
+      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+!       + dr2 /(1836.5-psi_re(1,j))
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
 

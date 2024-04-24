@@ -446,8 +446,6 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
   idt = 1.0 / this%dt
   qtmh = this%qbm
-!   write(2,*) qtmh,"qbm" 
-!   qtmh = 0.5 * this%qbm * this%dt
   max_mode = ef%get_max_mode()
 
   noff = cu_re(0)%get_noff(1)
@@ -472,9 +470,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
     ! calculate wake field
     do i = 1, np
-!       wp(1,i) = ep(1,i) 
       wp(1,i) = ep(1,i) - bp(2,i)
-!       wp(2,i) = ep(2,i) 
       wp(2,i) = ep(2,i) + bp(1,i)
       wp(3,i) = ep(3,i)
     enddo
@@ -505,11 +501,8 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       qtmh1 = this%qbm * gam 
-      du(1) = this%qbm*wp(1,i) + u(1,i)
-!       du(1) = ep(1,i) + u(1,i)
-!       irr = sqrt(this%x(1,i)**2+this%x(2,i)**2)/6
-      du(2) = this%qbm*wp(2,i) + u(2,i)
-!       du(2) = ep(2,i) + u(2,i)
+      du(1) = qtmh1*wp(1,i) + u(1,i)
+      du(2) = qtmh1*wp(2,i) + u(2,i)
       this%gamma(pp) = gam
       this%psi(pp)   = this%gamma(pp) - u0(3,i)
 
@@ -525,7 +518,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       u2(3) = u0(2,i) * u0(2,i) * ipsi
 
       phase0 = cmplx( cc(i), -ss(i) )
-      phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi
+      phase  = cmplx( 1.0, 0.0 ) * this%q(pp) * ipsi 
 
       ! deposit m = 0 mode
       do j = 0, 1
