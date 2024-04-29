@@ -263,7 +263,7 @@ subroutine amjdp_species2d( this, ef, bf, cu, amu, dcu )
 
 end subroutine amjdp_species2d
 
-subroutine edp_species2d( this, ef, bf, cu, amu, dcu )
+subroutine edp_species2d( this, ef, bf, b_beam, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
    implicit none
@@ -273,6 +273,7 @@ subroutine edp_species2d( this, ef, bf, cu, amu, dcu )
    class(field_djdxi), intent(inout) :: dcu
    class(field_e), intent(in) :: ef
    class(field_b), intent(in) :: bf
+   class(field_b), intent(in) :: b_beam
    ! local data
    character(len=18), save :: sname = 'amjdp_species2d'
 
@@ -281,7 +282,7 @@ subroutine edp_species2d( this, ef, bf, cu, amu, dcu )
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   call this%part%edeposit( ef, bf, this%cu, this%amu, this%dcu )
+   call this%part%edeposit( ef, bf, b_beam, this%cu, this%amu, this%dcu )
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )

@@ -405,18 +405,20 @@ subroutine qdeposit_part2d( this, q )
 
 end subroutine qdeposit_part2d
 
-subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
+subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
 ! deposit the current, acceleration and momentum flux
 
   implicit none
 
   class(part2d), intent(inout) :: this
   class(field), intent(in) :: cu, amu, dcu
-  class(field), intent(in) :: ef, bf
+  class(field), intent(in) :: ef, bf, b_beam
   ! local data
   character(len=32), save :: sname = 'edeposit_part2d'
   type(ufield), dimension(:), pointer :: ef_re => null(), ef_im => null()
+  type(ufield), dimension(:), pointer :: ef1_re => null(), ef1_im => null()
   type(ufield), dimension(:), pointer :: bf_re => null(), bf_im => null()
+  type(ufield), dimension(:), pointer :: bfbeam_re => null(), bfbeam_im => null()
   type(ufield), dimension(:), pointer :: cu_re => null(), cu_im => null()
   type(ufield), dimension(:), pointer :: dcu_re => null(), dcu_im => null()
   type(ufield), dimension(:), pointer :: amu_re => null(), amu_im => null()
@@ -428,7 +430,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
   integer(kind=LG) :: ptrcur, pp
   integer :: i, j, noff, nrp, np, mode, max_mode
   integer, dimension(p_cache_size) :: ix
-  real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
+  real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp, ep1,bpbeam
   real, dimension(0:1, p_cache_size) :: wt
   real, dimension(p_cache_size) :: cc, ss
   real, dimension(p_p_dim) :: du, u2
@@ -439,7 +441,9 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
   call start_tprof( 'deposit 2D particles' )
 
   ef_re  => ef%get_rf_re();  ef_im  => ef%get_rf_im()
+  ef1_re  => ef%get_rf_re();  ef1_im  => ef%get_rf_im()
   bf_re  => bf%get_rf_re();  bf_im  => bf%get_rf_im()
+  bfbeam_re  => b_beam%get_rf_re();  bfbeam_im  => b_beam%get_rf_im()
   cu_re  => cu%get_rf_re();  cu_im  => cu%get_rf_im()
   dcu_re => dcu%get_rf_re(); dcu_im => dcu%get_rf_im()
   amu_re => amu%get_rf_re(); amu_im => amu%get_rf_im()
@@ -467,6 +471,11 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
     ! interpolate fields to particles
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+
+
+    ! interpolate fields to particles
+    call interp_emf_part2d( ef1_re, ef1_im, bfbeam_re, bfbeam_im, max_mode, this%x, this%dr, &
+      bpbeam, ep1, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
 
     ! calculate wake field
     do i = 1, np
@@ -501,7 +510,7 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
 
       gam = sqrt( 1.0 + u0(1,i)**2 + u0(2,i)**2 + u0(3,i)**2 )
       qtmh1 = this%qbm * gam 
-      du(1) = qtmh1*wp(1,i) + u(1,i)
+      du(1) = qtmh1*wp(1,i) + u(1,i) 
       du(2) = qtmh1*wp(2,i) + u(2,i)
       this%gamma(pp) = gam
       this%psi(pp)   = this%gamma(pp) - u0(3,i)
@@ -510,8 +519,8 @@ subroutine edeposit_part2d( this, ef, bf, cu, amu, dcu )
       !wp(1)andwp(2) is - laplace_perp psi_perp
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
-      du(1) = du(1) * ipsi + u0(1,i) * dpsi * ipsi
-      du(2) = du(2) * ipsi + u0(2,i) * dpsi * ipsi 
+      du(1) = du(1) * ipsi + this%qbm* bpbeam(2,i) + u0(1,i) * dpsi * ipsi
+      du(2) = du(2) * ipsi - this%qbm* bpbeam(1,i) + u0(2,i) * dpsi * ipsi 
 
       u2(1) = u0(1,i) * u0(1,i) * ipsi
       u2(2) = u0(1,i) * u0(2,i) * ipsi

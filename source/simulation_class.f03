@@ -367,7 +367,7 @@ subroutine run_simulation( this )
       acu = 0.0 
       amu = 0.0 
       do k = 1, this%nspecies
-        call spe(k)%edp( e, b, cu, amu, acu )
+        call spe(k)%edp( e, b, b_beam, cu, amu, acu )
       write(2,*) this%fields%cu%getresum(),"cu"      
       enddo
 !............ez/bz.........................
@@ -403,7 +403,7 @@ subroutine run_simulation( this )
       write(2,*) this%fields%b_spe%getresum(),'b_spe' 
 !............amu/dcu.......................
       do k = 1, this%nspecies
-        call spe(k)%edp( e, b_spe, cu, amu, acu )
+        call spe(k)%edp( e, b, b_beam, cu, amu, acu )
       enddo
 !............dj/dxi........................
       call dcu%solve( acu, amu )
