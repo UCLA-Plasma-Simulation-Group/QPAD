@@ -2293,7 +2293,7 @@ subroutine expush_part2d( this, ef, bf )
       utmp(:,i) = this%p_l(:,pp) + ep(:,i)
 !       p_l = this%p(1,pp)
 !       this%p_l(:,pp) = p_l
-!       this%p_l(:,pp) = this%p(:,pp)
+      this%p_l(:,pp) = this%p(:,pp)
       pp = pp + 1
     enddo
 
@@ -2325,7 +2325,7 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np 
       this%p(:,pp) = utmp(:,i) + ep(:,i)
-      this%p_l(:,pp) = (this%p_l(:,pp)+this%p(:,pp))*0.5
+!       this%p_l(:,pp) = (this%p_l(:,pp)+this%p(:,pp))*0.5
 !       this%p_l(:,pp) = this%p_l(:,pp)*0.2+this%p(:,pp)*0.8
       pp = pp + 1
     enddo
@@ -2335,15 +2335,15 @@ subroutine expush_part2d( this, ef, bf )
     do i = 1, np
       gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
       dtc = 2*this%dt / ( gam - this%p(3,pp) )
-!       x_l = this%x(1,pp)
+      x_l = this%x(1,pp)
       this%x(1,pp) = this%x_l(1,pp) + this%p_l(1,pp) * dtc
-      this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
 !       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
-!       this%x_l(1,pp) = x_l
-!       x_l = this%x(2,pp)
+!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+      this%x_l(1,pp) = x_l
+      x_l = this%x(2,pp)
       this%x(2,pp) = this%x_l(2,pp) + this%p_l(2,pp) * dtc 
-      this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
-!       this%x_l(2,pp) = x_l
+!       this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
+      this%x_l(2,pp) = x_l
       pp = pp + 1
     enddo
 
