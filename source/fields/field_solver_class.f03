@@ -706,7 +706,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
-        HYPRE_BUF(2) = -4.0 - dr2
+        HYPRE_BUF(2) = -4.0 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
