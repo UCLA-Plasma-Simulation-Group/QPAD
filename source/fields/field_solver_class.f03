@@ -572,7 +572,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 
   integer :: i, ierr, local_vol, nr, noff, m
   integer :: comm, lidproc, lnvp
-  real :: dr2, m2, j, jmax, dr
+  real :: dr2, m2, j, jmax, dr, qm_ion
   character(len=32), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -589,6 +589,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
   m2 = real(m*m)
   nr = this%iupper - this%ilower + 1
   local_vol = nr * this%num_stencil
+  qm_ion = 1/1836.5
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )
@@ -650,7 +651,12 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       write(2,*) i, 'i number'
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+      if (m == 0) then
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
+        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
+      else 
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
+      endif
 !       + dr2 /(1836.5-psi_re(1,j))
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
@@ -676,7 +682,12 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+      if (m == 0) then
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
+        dr2 * qm_ion/(1-qm_ion*psi_re(1,j))
+      else 
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
+      endif
 !       + dr2 /(1836.5-psi_re(1,j))      
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
@@ -694,7 +705,12 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum)/(1+psisum) 
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum - 65.000000000000014)/(1+psisum) + &
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
-      HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+      if (m == 0) then
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
+        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
+      else 
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j))
+      endif
 !       + dr2 /(1836.5-psi_re(1,j))
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) qsum, 'q_re in field_solver'
@@ -706,7 +722,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
-        HYPRE_BUF(2) = -4.0 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+        HYPRE_BUF(2) = -4.0 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
@@ -723,7 +739,12 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 
-      HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) 
+      if (m == 0) then
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
+        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
+      else 
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
+      endif 
 !       + dr2 /(1836.5-psi_re(1,j))
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
