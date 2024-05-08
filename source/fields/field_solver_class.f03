@@ -140,7 +140,7 @@ subroutine set_struct_solver( this )
 
 end subroutine set_struct_solver
 
-subroutine solve_equation( this, src_sol, psi_re, q_re)
+subroutine solve_equation( this, src_sol, psi_re, q_re, qn_re)
 
   implicit none
 
@@ -148,12 +148,14 @@ subroutine solve_equation( this, src_sol, psi_re, q_re)
   real, intent(inout), dimension(:), pointer :: src_sol
   type(ufield), intent(inout), pointer, optional :: psi_re
   type(ufield), intent(inout), pointer, optional :: q_re
+  type(ufield), intent(inout), pointer, optional :: qn_re
 !   real, intent(inout), optional:: psisum
 !   real, intent(inout), optional :: qsum
 
   integer :: ierr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
+  real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
   character(len=32), save :: sname = "solve_equation"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -171,11 +173,12 @@ subroutine solve_equation( this, src_sol, psi_re, q_re)
     write(2,*) 'solve_equation'
     f1_re => psi_re%get_f1()
     f2_re => q_re%get_f1()
+    f3_re => qn_re%get_f1()
 !     write(2,*) psisum,'solve_equation psi'
 !     write(2,*) qsum,'solve_equation q'
     call start_tprof( 'solve plasma bt' )
     write(2,*) 'satrt set_struct_matrixv1'
-    call set_struct_matrixv1( this, f1_re, f2_re)
+    call set_struct_matrixv1( this, f1_re, f2_re, f3_re)
     call this%set_struct_solver()
     write(2,*) 'end set_struct_matrixv1'
   case ( p_fk_vpotz, p_fk_vpotp, p_fk_vpotm )
@@ -557,7 +560,7 @@ subroutine set_struct_matrix( this, opts, dr )
 
 end subroutine set_struct_matrix
 
-subroutine set_struct_matrixv1( this, psi_re, q_re )
+subroutine set_struct_matrixv1( this, psi_re, q_re, qn_re )
 ! subroutine set_struct_matrixv1( this, psisum, qsum )
 
   implicit none
@@ -567,6 +570,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !   real, intent(in) :: dr
   real, intent(in), dimension(:,:), optional, pointer :: psi_re
   real, intent(in), dimension(:,:), optional, pointer :: q_re
+  real, intent(in), dimension(:,:), optional, pointer :: qn_re
 !   real, intent(in) :: psisum
 !   real, intent(in) :: qsum
 
@@ -651,12 +655,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       write(2,*) i, 'i number'
       HYPRE_BUF(i)   = 1.0 - 0.5 / j
 !       HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
-      if (m == 0) then
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
-        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
-      else 
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
-      endif
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
+      dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
 !       + dr2 /(1836.5-psi_re(1,j))
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
@@ -681,13 +681,9 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
-!       HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-      if (m == 0) then
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
-        dr2 * qm_ion/(1-qm_ion*psi_re(1,j))
-      else 
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
-      endif
+!       HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 ) then
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
+      dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j))
 !       + dr2 /(1836.5-psi_re(1,j))      
 !         dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j
@@ -705,12 +701,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum)/(1+psisum) 
 !       HYPRE_BUF(i+1) = -2.0 - ((m-1)/j)**2 + dr2 * (qsum - 65.000000000000014)/(1+psisum) + &
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
-      if (m == 0) then
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
-        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
-      else 
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j))
-      endif
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
+      dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
 !       + dr2 /(1836.5-psi_re(1,j))
 !       write(2,*) qsum/(1+psisum), 'coefficient ratio'
 !       write(2,*) qsum, 'q_re in field_solver'
@@ -722,7 +714,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
 
       if (m == 1) then
         HYPRE_BUF(1) = 0.0
-        HYPRE_BUF(2) = -4.0 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
+        HYPRE_BUF(2) = -4.0 + dr2 * (q_re(1,j) - qn_re(1,j))/(1+psi_re(1,j)) 
         HYPRE_BUF(3) = 4.0
       else
         ! matrix elements 1 to 3 are given arbitrarily to make sure the matrix
@@ -739,12 +731,8 @@ subroutine set_struct_matrixv1( this, psi_re, q_re )
       j = real(noff)
       HYPRE_BUF(1) = 1.0 - 0.5 / j
 !       HYPRE_BUF(2) = -2.0 - ((m-1)/j)**2 
-      if (m == 0) then
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-1)/(1+psi_re(1,j)) -&
-        dr2 * qm_ion/(1-qm_ion*psi_re(1,j)) 
-      else 
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * q_re(1,j)/(1+psi_re(1,j)) 
-      endif 
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
+      dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
 !       + dr2 /(1836.5-psi_re(1,j))
 !        dr2 * 65.000000000000014/(1-0.00054451*psisum)
       HYPRE_BUF(3) = 1.0 + 0.5 / j

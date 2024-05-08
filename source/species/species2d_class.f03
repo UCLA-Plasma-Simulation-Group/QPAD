@@ -189,13 +189,14 @@ subroutine renew_species2d(this,s)
    call write_dbg(cls_name, sname, cls_level, 'ends')
 end subroutine renew_species2d
 
-subroutine qdp_species2d(this,q)
+subroutine qdp_species2d(this,q, qn)
 ! deposit the charge density
 
    implicit none
 
    class(species2d), intent(inout) :: this
    class(field_rho), intent(inout) :: q
+   class(field_rho), intent(inout) :: qn
    ! local data
    character(len=18), save :: sname = 'qdp_species2d'
 
@@ -212,6 +213,7 @@ subroutine qdp_species2d(this,q)
    write(2,*)  this%q%getresum(), "q"
    write(2,*)  this%qn%getresum(), "qn"
    if ( this%pf%neutralized ) call add_f1( this%qn, q )
+   if ( this%pf%neutralized ) call add_f1( this%qn, qn )
    write(2,*)  q%getresum(), "q2"
 
    call write_dbg(cls_name, sname, cls_level, 'ends')

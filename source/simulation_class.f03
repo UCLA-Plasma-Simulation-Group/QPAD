@@ -228,7 +228,7 @@ subroutine run_simulation( this )
   type(field_e), pointer :: e_spe, e_beam, e
   type(field_b), pointer :: b_spe, b_beam, b
   type(field_jay), pointer :: cu, amu
-  type(field_rho), pointer :: q_spe, q_beam
+  type(field_rho), pointer :: q_spe, q_beam, qn
   type(field_djdxi), pointer :: dcu, acu 
   type(beam3d), dimension(:), pointer :: beam
   type(species2d), dimension(:), pointer :: spe
@@ -250,6 +250,7 @@ subroutine run_simulation( this )
   cu     => this%fields%cu
   amu    => this%fields%amu 
   q_spe  => this%fields%q_spe 
+  qn     => this%fields%qn 
   q_beam => this%fields%q_beam
   dcu    => this%fields%dcu 
   acu    => this%fields%acu
@@ -266,6 +267,7 @@ subroutine run_simulation( this )
 
     call q_beam%as(0.0)
     call q_spe%as(0.0)
+    call qn%as(0.0)
     ! pipeline data transfer for beams
     do k = 1, this%nbeams
       this%tag_bq(k) = ntag()
@@ -283,6 +285,7 @@ subroutine run_simulation( this )
 
     call q_beam%as(0.0)
     call q_spe%as(0.0)
+    call qn%as(0.0)
 
     ! pipeline data transfer for beams
     do k = 1, this%nbeams
@@ -339,8 +342,9 @@ subroutine run_simulation( this )
       write(2,*) q_beam%getresum(), 'q_beam'
       call b_beam%solve( q_beam )
       q_spe = 0.0
+      qn = 0.0
       do k = 1, this%nspecies
-        call spe(k)%qdp( q_spe )
+        call spe(k)%qdp( q_spe, qn )
       enddo
 
       do k = 1, this%nneutrals
@@ -411,7 +415,7 @@ subroutine run_simulation( this )
 !       dcu = 0.0 
 !       cu =0.0
       write(2,*) 'solve_bperp Initializing'
-      call b_spe%solve( dcu, cu, psi, q_spe )
+      call b_spe%solve( dcu, cu, psi, q_spe, qn )
       write(2,*) 'solve_bperp end_berp'
       write(2,*) this%fields%psi%getresum(),"psi"
       write(2,*) this%fields%q_spe%getresum(),"q"
