@@ -91,6 +91,7 @@ subroutine init_sim_lasers( this, input, opts )
   ! local data
   character(len=32), save :: sname = 'init_sim_lasers'
   character(len=:), allocatable :: cym_str
+  character(len=:), allocatable :: interp_str
   integer :: max_mode, iter, i, m, rst_timestep
   integer, dimension(2,2) :: gc_num
   real :: k0 
@@ -104,10 +105,20 @@ subroutine init_sim_lasers( this, input, opts )
   call input%get( 'simulation.read_restart', read_rst )
   call kwargs%append( 'iter', 0 )
   call kwargs%append( 'k0', 10.0 )
-
-  gc_num(:,1) = (/1, 1/)
-  gc_num(:,2) = (/2, 1/)
-
+  
+  call input%get ( 'simulation.interpolation', interp_str)
+  select case ( trim(interp_str) )
+  case ( 'linear' )
+    gc_num(:,1) = (/1, 1/)
+    gc_num(:,2) = (/2, 1/)
+  case ( 'quadratic' )
+    gc_num(:,1) = (/1, 2/)
+    gc_num(:,2) = (/2, 1/)
+  case default
+    call write_err( 'Invalid interpolation type! Only "linear" and "quadratic" are supported &
+      &currently.' )
+  end select
+   
   do i = 1, this%num_lasers
     call input%get( 'laser(' // num2str(i) // ').iteration', iter )
     call input%get( 'laser(' // num2str(i) // ').k0', k0 )

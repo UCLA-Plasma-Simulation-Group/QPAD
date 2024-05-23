@@ -88,7 +88,9 @@ subroutine init_field_e( this, opts, max_mode, part_shape, boundary, entity )
 
   case ( p_ps_quadratic )
 
-    call write_err( "Quadratic particle shape not implemented." )
+    gc_num(:,1) = (/1, 2/)
+    gc_num(:,2) = (/0, 1/)
+    ! call write_err( "Quadratic particle shape not implemented." )
 
   case default
 
