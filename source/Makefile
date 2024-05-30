@@ -1,5 +1,5 @@
 # system (must be one of the file suffix in config directory)
-sys = dsq
+sys = gnu_openmpi
 
 # IF_OPENPMD -- uncomment the line below if you wish to use the OpenPMD format
 # IF_OPENPMD = 1

@@ -10,7 +10,7 @@
 FC = mpif90
 
 # Configure the compiler options
-FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+FC_OPTS = -Wa,-q -cpp -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
 # Enable the generation of run-time checks. The argument shall be a comma-delimited 
 # list of the following keywords:
@@ -45,7 +45,7 @@ CC = gcc
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-FPP = gcc -C -P -E -cpp
+FPP = gcc -C -P -E -x assembler-with-cpp 
 
 # ------------------------------------------------------------------------------
 # Configure the modules that will NOT be installed
