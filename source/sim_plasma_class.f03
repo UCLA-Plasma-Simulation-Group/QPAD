@@ -88,8 +88,11 @@ subroutine init_sim_plasma( this, input, opts, s )
   select case ( trim(str) )
   case ( 'linear' )
     ps = p_ps_linear
+  case ( 'quadratic' )
+    ps = p_ps_quadratic
+    call write_stdout('Attention! Quadratic interpolation for plasma not finised!')
   case default
-    call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
+    call write_err( 'Invalid interpolation type! Only "linear" and "quadratic" are supported currently.' )
   end select
 
   ! initialize profiles of species and neutrals
@@ -170,7 +173,7 @@ subroutine init_sim_plasma( this, input, opts, s )
       call input%get( 'neutrals('//num2str(i)//').smooth_order', sm_ord )
     endif
 
-    call this%neut(i)%new( opts, this%pf_neut(i), max_mode, elem, ion_max, &
+    call this%neut(i)%new( opts, this%pf_neut(i), ps, max_mode, elem, ion_max, &
       qbm, omega_p, s, push_type, sm_ord )
 
   enddo

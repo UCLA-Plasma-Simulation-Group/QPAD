@@ -1,6 +1,6 @@
 # Fortran compiler configuration
 FC = mpif90
-FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
+FC_OPTS = -Wa,-q -cpp -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
 # -fbacktrace -fbounds-check
 # -fbounds-check
 # FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
@@ -12,7 +12,7 @@ CC = gcc
 CC_OPTS = -O3 -std=c99
 
 # Preprocessor configuration
-FPP = gcc -C -P -E -cpp
+FPP = gcc -C -P -E -x assembler-with-cpp
 
 # Python 2.x configuration. Used for automatically generate compile rules
 PYTHON = python 

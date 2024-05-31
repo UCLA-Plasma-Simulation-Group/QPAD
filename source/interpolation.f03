@@ -29,14 +29,20 @@ subroutine spline_quadratic( x, s )
   real, intent(in) :: x
   real, dimension(-1:1), intent(inout) :: s
   
-  real :: t0, t1
+! Previous work, unfinished
+!   real :: t0, t1
   
-  t0 = 1.0 - x
-  t1 = x
+!   t0 = 1.0 - x
+!   t1 = x
   
-  s(-1) = 0.5 * t0**2
-  s( 0) = 0.5 + t0*t1
-  s( 1) = 0.5 * t1**2
+!   s(-1) = 0.5 * t0**2
+!   s( 0) = 0.5 + t0*t1
+!   s( 1) = 0.5 * t1**2
+
+  ! the x is in [-0.5, 0.5)
+  s(-1) = 0.5*(0.5-x)**2
+  s( 0) = 3.0/4.0 - x**2
+  s( 1) = 0.5*(0.5+x)**2
 
 end subroutine spline_quadratic
 

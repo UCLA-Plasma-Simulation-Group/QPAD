@@ -128,8 +128,11 @@ subroutine init_sim_fields( this, input, opts )
   select case ( trim(str) )
   case ( 'linear' )
     ps = p_ps_linear
+  case ( 'quadratic' )
+    ps = p_ps_quadratic
+    ! call write_stdout('Attention! Quadratic interpolation for fields not implemented!')
   case default
-    call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
+    call write_err( 'Invalid interpolation type! Only "linear" and "quadratic" are supported currently.' )
   end select
 
   relax_fac = 1.0d-3

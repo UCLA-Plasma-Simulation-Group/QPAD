@@ -30,6 +30,7 @@ type species2d
    class(field_jay), allocatable :: cu, amu
    class(field_djdxi), allocatable :: dcu
    class(fdist2d), pointer :: pf => null()
+   integer :: part_shape
    integer :: push_type
 
    contains
@@ -94,6 +95,7 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    this%pf        => pf
    dt             = opts%get_dxi()
    this%push_type = push_type
+   this%part_shape = part_shape
    ntd            = pf%neutralized
 
    allocate( this%q, this%cu, this%amu, this%dcu )
@@ -101,11 +103,11 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    smth_ord = 0
    if (present(smooth_order)) smth_ord = smooth_order
 
-   call this%q%new(opts,max_mode,part_shape,smth_ord)
-   call this%cu%new(opts,max_mode,part_shape,smth_ord)
-   call this%dcu%new(opts,max_mode,part_shape,smth_ord)
-   call this%amu%new(opts,max_mode,part_shape,smth_ord)
-   call this%part%new(opts,pf,qbm,dt,s)
+   call this%q%new(opts,max_mode,this%part_shape,smth_ord)
+   call this%cu%new(opts,max_mode,this%part_shape,smth_ord)
+   call this%dcu%new(opts,max_mode,this%part_shape,smth_ord)
+   call this%amu%new(opts,max_mode,this%part_shape,smth_ord)
+   call this%part%new(opts,pf,qbm,dt,s,this%part_shape)
 
    this%q  = 0.0
    this%cu = 0.0

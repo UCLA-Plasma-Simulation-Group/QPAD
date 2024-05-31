@@ -90,11 +90,13 @@ $(main_obj) : $(configfile) | $(builddir)
 $(builddir) :
 	@echo "Creating $@ directory"
 	@mkdir -p $@
+	@mkdir -p $@/preprocessed
 
 $(builddir)/%.o : %.f03
 	@echo "[F03] $(<F)"
 	@$(FPP) $(FPPF) -I. -I./$(builddir) $< > $(builddir)/$(<F)
-	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) -o $(@F) && rm $(<F)
+	@cd $(builddir) && $(FC) $(INCF) -c $(FC_OPTS) $(<F) 
+	@cd $(builddir) && mv $(<F) ./preprocessed
 
 $(builddir)/%.o : %.c
 	@echo "[CC] $(<F)"

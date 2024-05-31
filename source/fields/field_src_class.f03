@@ -81,8 +81,11 @@ subroutine init_field_rho(this, opts, max_mode, part_shape, smooth_order, has_2d
       gc_num(:,2) = (/0, 1/)
 
     case ( p_ps_quadratic )
-      call write_err( "Quadratic particle shape not implemented." )
-
+        
+    !   call write_err( "Quadratic particle shape not implemented." )
+        gc_num(:,1) = (/1, 2/)
+        gc_num(:,2) = (/0, 2/)
+        
     case default
       call write_err( "Invalid particle shape." )
 
@@ -149,8 +152,11 @@ subroutine init_field_jay(this, opts, max_mode, part_shape, smooth_order)
       gc_num(:,2) = (/0, 1/)
 
     case ( p_ps_quadratic )
-
-      call write_err( "Quadratic particle shape not implemented." )
+        
+      gc_num(:,1) = (/1, 2/)
+      gc_num(:,2) = (/0, 2/)
+        
+    !   call write_err( "Quadratic particle shape not implemented." )
 
     case default
 
@@ -223,8 +229,11 @@ subroutine init_field_djdxi( this, opts, max_mode, part_shape, smooth_order )
     gc_num(:,2) = (/0, 1/)
 
   case ( p_ps_quadratic )
-
-    call write_err( "Quadratic particle shape not implemented." )
+    
+    gc_num(:,1) = (/1, 2/)
+    gc_num(:,2) = (/0, 1/)
+      
+    ! call write_err( "Quadratic particle shape not implemented." )
 
   case default
 
