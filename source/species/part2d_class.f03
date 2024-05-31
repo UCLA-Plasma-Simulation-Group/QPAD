@@ -52,7 +52,8 @@ type part2d
   ! particle buffer
   real, dimension(:), allocatable :: pbuf
   ! on-axis deposition correction factor
-  real, dimension(2,2) :: deposit_ax_corr
+  real, dimension(1,2) :: deposit_ax_corr
+  integer :: part_shape
 
   ! temporary arrays used for buffer reallocation
   real, private, dimension(:), allocatable :: tmp1
@@ -99,7 +100,7 @@ real, parameter :: p_buf_incr = 1.5
 
 contains
 
-subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
+subroutine init_part2d( this, opts, pf, qbm, dt, s, part_shape, if_empty )
 
    implicit none
 
@@ -107,8 +108,8 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
    type(options), intent(in) :: opts
    class(fdist2d), intent(inout) :: pf
    real, intent(in) :: qbm, dt, s
+   integer, intent(in) :: part_shape
    logical, intent(in), optional :: if_empty
-
    ! local data
    character(len=18), save :: sname = 'init_part2d'
    integer :: npmax
@@ -126,7 +127,8 @@ subroutine init_part2d( this, opts, pf, qbm, dt, s, if_empty )
 
    this%dr   = opts%get_dr()
    this%edge = opts%get_nd(1) * this%dr
-   this%deposit_ax_corr = get_deposit_ax_corr( pf%ppc(1) )
+   this%part_shape = part_shape
+   this%deposit_ax_corr = get_deposit_ax_corr( pf%ppc(1), part_shape )
    
    allocate( this%x( 2, npmax ) )
    allocate( this%p( p_p_dim, npmax ) )
@@ -230,13 +232,12 @@ subroutine renew_part2d( this, pf, s, if_empty )
 
 end subroutine renew_part2d
 
-subroutine qdeposit_part2d( this, q, part_shape )
+subroutine qdeposit_part2d( this, q )
     implicit none
     class(part2d), intent(in) :: this
     class(field), intent(in) :: q
-    integer, intent(in) :: part_shape
     
-    select case (part_shape)
+    select case (this%part_shape)
     case(p_ps_linear)
         call qdeposit_part2d_s1(this, q)
     case(p_ps_quadratic)
@@ -247,13 +248,12 @@ subroutine qdeposit_part2d( this, q, part_shape )
     
 end subroutine qdeposit_part2d
 
-subroutine deposit_chi_part2d( this, chi, part_shape )
+subroutine deposit_chi_part2d( this, chi)
     implicit none
     class(part2d), intent(in) :: this
     class(field), intent(inout) :: chi
-    integer, intent(in) :: part_shape
     
-    select case (part_shape)
+    select case (this%part_shape)
     case(p_ps_linear)
         call deposit_chi_part2d_s1(this, chi)
     case(p_ps_quadratic)
@@ -264,7 +264,7 @@ subroutine deposit_chi_part2d( this, chi, part_shape )
     
 end subroutine deposit_chi_part2d
 
-subroutine amjdeposit_std_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
+subroutine amjdeposit_std_part2d(this, ef, bf, cu, amu, dcu, dt_)
     ! deposit the current, acceleration and momentum flux
     
     implicit none
@@ -273,9 +273,8 @@ subroutine amjdeposit_std_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
     class(field), intent(in) :: cu, amu, dcu
     class(field), intent(in) :: ef, bf
     real, intent(in), optional :: dt_
-    integer, intent(in) :: part_shape
 
-    select case(part_shape)
+    select case(this%part_shape)
     case(p_ps_linear)
       call amjdeposit_std_part2d_s1(this, ef, bf, cu, amu, dcu, dt_)
     case(p_ps_quadratic)
@@ -286,7 +285,7 @@ subroutine amjdeposit_std_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
   
 end subroutine amjdeposit_std_part2d
 
-subroutine amjdeposit_robust_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
+subroutine amjdeposit_robust_part2d(this, ef, bf, cu, amu, dcu, dt_)
     ! deposit the current, acceleration and momentum flux
     
     implicit none
@@ -295,9 +294,8 @@ subroutine amjdeposit_robust_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
     class(field), intent(in) :: cu, amu, dcu
     class(field), intent(in) :: ef, bf
     real, intent(in), optional :: dt_
-    integer, intent(in) :: part_shape
 
-    select case(part_shape)
+    select case(this%part_shape)
     case(p_ps_linear)
       call amjdeposit_robust_part2d_s1(this, ef, bf, cu, amu, dcu, dt_)
     case(p_ps_quadratic)
@@ -309,7 +307,7 @@ subroutine amjdeposit_robust_part2d(this, ef, bf, cu, amu, dcu, dt_, part_shape)
 end subroutine amjdeposit_robust_part2d
 
 
-subroutine amjdeposit_std_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_, part_shape)
+subroutine amjdeposit_std_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_)
     ! deposit the current, acceleration and momentum flux
     
       implicit none
@@ -319,9 +317,8 @@ subroutine amjdeposit_std_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_, part_s
       class(field), intent(in) :: ef, bf
       class(field_laser), intent(in) :: af
       real, intent(in), optional :: dt_
-      integer, intent(in) :: part_shape
       
-      select case(part_shape)
+      select case(this%part_shape)
       case(p_ps_linear)
         call amjdeposit_std_pgc_part2d_s1(this, ef, bf, af, cu, amu, dcu, dt_)
       case(p_ps_quadratic)
@@ -332,7 +329,7 @@ subroutine amjdeposit_std_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_, part_s
       
     end subroutine amjdeposit_std_pgc_part2d
     
-subroutine amjdeposit_robust_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_, part_shape)
+subroutine amjdeposit_robust_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_)
 ! deposit the current, acceleration and momentum flux
 
   implicit none
@@ -342,9 +339,8 @@ subroutine amjdeposit_robust_pgc_part2d(this, ef, bf, af, cu, amu, dcu, dt_, par
   class(field), intent(in) :: ef, bf
   class(field_laser), intent(in) :: af
   real, intent(in), optional :: dt_
-  integer, intent(in) :: part_shape
   
-  select case(part_shape)
+  select case(this%part_shape)
   case(p_ps_linear)
     call amjdeposit_robust_pgc_part2d_s1(this, ef, bf, af, cu, amu, dcu, dt_)
   case(p_ps_quadratic)
@@ -541,15 +537,14 @@ end subroutine amjdeposit_robust_pgc_part2d
 
 ! end subroutine interp_laser_part2d
 
-subroutine push_u_std_part2d(this, ef, bf, dt_, part_shape)
+subroutine push_u_std_part2d(this, ef, bf, dt_)
     implicit none
     
     class(part2d), intent(inout) :: this
     class(field), intent(in) :: ef, bf
     real, intent(in), optional :: dt_
-    integer, intent(in) :: part_shape
   
-    select case(part_shape)
+    select case(this%part_shape)
     case(p_ps_linear)
       call push_u_std_part2d_s1(this, ef, bf, dt_)
     case(p_ps_quadratic)
@@ -560,15 +555,14 @@ subroutine push_u_std_part2d(this, ef, bf, dt_, part_shape)
     
 end subroutine push_u_std_part2d
 
-subroutine push_u_robust_part2d(this, ef, bf, dt_, part_shape)
+subroutine push_u_robust_part2d(this, ef, bf, dt_)
     implicit none
     
     class(part2d), intent(inout) :: this
     class(field), intent(in) :: ef, bf
     real, intent(in), optional :: dt_
-    integer, intent(in) :: part_shape
   
-    select case(part_shape)
+    select case(this%part_shape)
     case(p_ps_linear)
       call push_u_robust_part2d_s1(this, ef, bf, dt_)
     case(p_ps_quadratic)
@@ -579,16 +573,15 @@ subroutine push_u_robust_part2d(this, ef, bf, dt_, part_shape)
     
 end subroutine push_u_robust_part2d
 
-subroutine push_u_robust_pgc_part2d(this, ef, bf, af, dt_, part_shape)
+subroutine push_u_robust_pgc_part2d(this, ef, bf, af, dt_)
   implicit none
   
   class(part2d), intent(inout) :: this
   class(field), intent(in) :: ef, bf
   class(field_laser), intent(in) :: af
   real, intent(in), optional :: dt_
-  integer, intent(in) :: part_shape
 
-  select case(part_shape)
+  select case(this%part_shape)
   case(p_ps_linear)
     call push_u_robust_pgc_part2d_s1(this, ef, bf, af, dt_)
   case(p_ps_quadratic)
@@ -599,7 +592,7 @@ subroutine push_u_robust_pgc_part2d(this, ef, bf, af, dt_, part_shape)
   
 end subroutine push_u_robust_pgc_part2d
 
-subroutine push_u_std_pgc_part2d(this, ef, bf, af, dt_, part_shape)
+subroutine push_u_std_pgc_part2d(this, ef, bf, af, dt_)
 
   implicit none
 
@@ -607,9 +600,8 @@ subroutine push_u_std_pgc_part2d(this, ef, bf, af, dt_, part_shape)
   class(field), intent(in) :: ef, bf
   class(field_laser), intent(in) :: af
   real, intent(in), optional :: dt_
-  integer, intent(in) :: part_shape
   
-  select case(part_shape)
+  select case(this%part_shape)
   case(p_ps_linear)
     call push_u_std_pgc_part2d_s1(this, ef, bf, af, dt_)
   case(p_ps_quadratic)
@@ -663,13 +655,12 @@ subroutine push_x_part2d(this, dt_)
 
 end subroutine push_x_part2d
 
-subroutine interp_psi_part2d(this, psi_re, psi_im, max_mode, part_shape)
+subroutine interp_psi_part2d(this, psi_re, psi_im, max_mode)
 
   implicit none
   class(part2d), intent(inout) :: this
   type(ufield), dimension(:), pointer, intent(in) :: psi_re, psi_im
   integer, intent(in) :: max_mode
-  integer, intent(in) :: part_shape
 
   ! real, dimension(:, :), pointer :: psi_re_ptr, psi_im_ptr
   integer :: noff, i, np
@@ -678,14 +669,14 @@ subroutine interp_psi_part2d(this, psi_re, psi_im, max_mode, part_shape)
   ! real, dimension(0:1) :: wt
   ! complex(kind=DB) :: phase0, phase
 
-  real, dimension(:, :), pointer :: weight
+  real, dimension(:, :), allocatable :: weight
   real, dimension(p_cache_size) :: pcos, psin, psip
   integer, dimension(p_cache_size) :: idx
 
   ! idr = 1.0 / this%dr
   noff = psi_re(0)%get_noff(1)
   ! psi_re_ptr => psi_re(0)%get_f1()
-  select case(part_shape)
+  select case(this%part_shape)
   case(p_ps_linear)
     allocate(weight(0:1, p_cache_size))
   case(p_ps_quadratic)
@@ -713,7 +704,6 @@ end select
 
   enddo
   
-  deallocate(weight)
 end subroutine interp_psi_part2d
 
 subroutine update_bound_part2d( this )
@@ -990,20 +980,27 @@ subroutine sort_part2d( this, nrp, noff )
     
 end subroutine sort_part2d
 
-function get_deposit_ax_corr( ppc_r ) result(res)
+function get_deposit_ax_corr( ppc_r, part_shape ) result(res)
     implicit none
     integer, intent(in) :: ppc_r
-    real, dimension(2,2) :: res
+    real, dimension(1,2) :: res
+    integer, intent(in) :: part_shape
     
     res = 0.0
-    res(1,1) = (12.0 * ppc_r**2) / ( 1.0 + 2.0 * ppc_r**2 ) 
-    if (mod(ppc_r,2)==0) then
-        res(2,1) = (384.0 * ppc_r**2) / (14.0 + 79.0 * ppc_r**2)
-        res(2,2) = (384.0 * ppc_r**2) / (2.0 + 385.0 * ppc_r**2)
-    else
-        res(2,1) = (384.0 * ppc_r**4) / (3.0 + 14.0 * ppc_r**2 + 79.0 * ppc_r**4)
-        res(2,2) = (384.0 * ppc_r**4) / (-3.0 + 2.0 * ppc_r**2 + 385.0 * ppc_r**4)
-    endif
+    select case(part_shape)
+    case(p_ps_linear)
+        res(1,1) = (12.0 * ppc_r**2) / ( 1.0 + 2.0 * ppc_r**2 ) 
+    case(p_ps_quadratic)
+        if (mod(ppc_r,2)==0) then
+            res(1,1) = (384.0 * ppc_r**2) / (14.0 + 79.0 * ppc_r**2)
+            res(1,2) = (384.0 * ppc_r**2) / (2.0 + 385.0 * ppc_r**2)
+        else
+            res(1,1) = (384.0 * ppc_r**4) / (3.0 + 14.0 * ppc_r**2 + 79.0 * ppc_r**4)
+            res(1,2) = (384.0 * ppc_r**4) / (-3.0 + 2.0 * ppc_r**2 + 385.0 * ppc_r**4)
+        endif
+  case default
+      call write_err('Not implemented yet')
+  end select
   end function get_deposit_ax_corr
   
 #define __TEMPLATE__
@@ -1165,18 +1162,18 @@ subroutine QDEPOSIT( this, q )
     enddo
 
   else
-#ifdef QUADRATIC
-! Correct the charge on the boundary by adding the value on the guard cell nrp+2
-    if (id_proc_loc() == num_procs_loc()-1) then
-        q0(1, nrp) = q0(1, nrp) + q0(1, nrp+2)
-        do i = 1, max_mode
-            qr => q_re(i)%get_f1()
-            qi => q_im(i)%get_f1()
-            qr(1, nrp) = qr(1, nrp) + qr(1, nrp+2)
-            qi(1, nrp) = qi(1, nrp) + qi(1, nrp+2)
-        enddo
-    endif
-#endif
+! #ifdef QUADRATIC
+! ! Correct the charge on the boundary by adding the value on the guard cell nrp+2
+!     if (id_proc_loc() == num_procs_loc()-1) then
+!         q0(1, nrp) = q0(1, nrp) + q0(1, nrp+2)
+!         do i = 1, max_mode
+!             qr => q_re(i)%get_f1()
+!             qi => q_im(i)%get_f1()
+!             qr(1, nrp) = qr(1, nrp) + qr(1, nrp+2)
+!             qi(1, nrp) = qi(1, nrp) + qi(1, nrp+2)
+!         enddo
+!     endif
+! #endif
     do j = 0, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       q0(1,j) = q0(1,j) * ir
@@ -1290,8 +1287,8 @@ subroutine CHIDEPOSIT( this, chi )
 #endif
 
 #ifdef QUADRATIC
-    chi_re(0)%f1(1,1) = chi_re(0)%f1(1,1) * this%deposit_ax_corr(2,1)
-    chi_re(0)%f1(1,2) = chi_re(0)%f1(1,2) * this%deposit_ax_corr(2,2)
+    chi_re(0)%f1(1,1) = chi_re(0)%f1(1,1) * this%deposit_ax_corr(1,1)
+    chi_re(0)%f1(1,2) = chi_re(0)%f1(1,2) * this%deposit_ax_corr(1,2)
 #endif
 
     do j = 2, nrp + 1
@@ -1307,8 +1304,8 @@ subroutine CHIDEPOSIT( this, chi )
       chi_re(mode)%f1(1,1) = 0.0
       chi_im(mode)%f1(1,1) = 0.0
 #ifdef QUADRATIC
-      chi_re(mode)%f1(1,2) = chi_re(mode)%f1(1,2) * this%deposit_ax_corr(2,2)
-      chi_im(mode)%f1(1,2) = chi_im(mode)%f1(1,2) * this%deposit_ax_corr(2,2)
+      chi_re(mode)%f1(1,2) = chi_re(mode)%f1(1,2) * this%deposit_ax_corr(1,2)
+      chi_im(mode)%f1(1,2) = chi_im(mode)%f1(1,2) * this%deposit_ax_corr(1,2)
 #endif
 
       do j = 2, nrp + 1
@@ -1375,7 +1372,7 @@ subroutine AMJ_STD(this, ef, bf, cu, amu, dcu, dt_)
       integer :: i, j, noff, nrp, np, mode, max_mode
       integer, dimension(p_cache_size) :: ix
       real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u
-      real, dimension(:, :), pointer :: weight
+      real, dimension(:, :), allocatable :: weight
       real, dimension(p_cache_size) :: pcos, psin
       real, dimension(p_p_dim) :: du, u2, utmp
       real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, dt
@@ -1644,7 +1641,6 @@ subroutine AMJ_STD(this, ef, bf, cu, amu, dcu, dt_)
     
       endif
       
-      deallocate(weight)
       call stop_tprof( 'deposit 2D particles' )
       call write_dbg(cls_name, sname, cls_level, 'ends')
     
@@ -1676,7 +1672,7 @@ subroutine AMJ_ROB(this, ef, bf, cu, amu, dcu, dt_)
       integer :: i, j, noff, nrp, np, mode, max_mode
       integer, dimension(p_cache_size) :: ix
       real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u, utmp
-      real, dimension(:, :), pointer :: weight
+      real, dimension(:, :), allocatable :: weight
       real, dimension(p_cache_size) :: pcos, psin
       real, dimension(p_p_dim) :: du, u2
       real :: qtmh, qtmh1, qtmh2, idt, gam, ostq, ipsi, dpsi, w, ir, dt
@@ -1943,7 +1939,6 @@ subroutine AMJ_ROB(this, ef, bf, cu, amu, dcu, dt_)
     
       endif
       
-      deallocate(weight)
       call stop_tprof( 'deposit 2D particles' )
       call write_dbg(cls_name, sname, cls_level, 'ends')
     
@@ -1979,7 +1974,7 @@ subroutine AMJ_STD_PGC(this, ef, bf, af, cu, amu, dcu, dt_)
       real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u
       real, dimension(p_cache_size) :: apr, api
       real, dimension(3,p_cache_size) :: apr_grad, api_grad
-      real, dimension(:, :), pointer :: weight
+      real, dimension(:, :), allocatable :: weight
       real, dimension(p_cache_size) :: pcos, psin
       real, dimension(p_p_dim) :: du, u2, utmp
       real :: qtmh, qtmh_e, qtmh_b, idt, gam, ostq, ipsi, dpsi, w, ir, gam_corr, tmp, dt
@@ -2273,7 +2268,6 @@ subroutine AMJ_STD_PGC(this, ef, bf, af, cu, amu, dcu, dt_)
     
       endif
       
-      deallocate(weight)
       call stop_tprof( 'deposit 2D particles' )
       call write_dbg(cls_name, sname, cls_level, 'ends')
       
@@ -2309,7 +2303,7 @@ subroutine AMJ_ROB_PGC(this, ef, bf, af, cu, amu, dcu, dt_)
       real, dimension(p_p_dim, p_cache_size) :: bp, ep, wp, u0, u
       real, dimension(p_cache_size) :: apr, api
       real, dimension(3,p_cache_size) :: apr_grad, api_grad
-      real, dimension(:, :), pointer :: weight
+      real, dimension(:, :), allocatable :: weight
       real, dimension(p_cache_size) :: pcos, psin
       real, dimension(p_p_dim) :: du, u2, utmp
       real :: qtmh, qtmh_e, qtmh_b, idt, gam, ostq, ipsi, dpsi, w, ir, gam_corr, tmp, dt
@@ -2600,7 +2594,6 @@ subroutine AMJ_ROB_PGC(this, ef, bf, af, cu, amu, dcu, dt_)
     
       endif
       
-      deallocate(weight)
       call stop_tprof( 'deposit 2D particles' )
       call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -2619,7 +2612,7 @@ subroutine PUSH_STD(this, ef, bf, dt_)
     type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
     integer :: i, np, max_mode, noff
     real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, dt
-    real, dimension(:, :), pointer :: weight
+    real, dimension(:, :), allocatable :: weight
     real, dimension(p_cache_size) :: pcos, psin
     integer, dimension(p_cache_size) :: idx
     real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
@@ -2692,7 +2685,6 @@ subroutine PUSH_STD(this, ef, bf, dt_)
       enddo
     enddo
     
-    deallocate(weight)
     call stop_tprof( 'push 2D particles' )
     call write_dbg(cls_name, sname, cls_level, 'ends')
   
@@ -2712,7 +2704,7 @@ subroutine PUSH_ROB(this, ef, bf, dt_)
     integer :: i, np, max_mode, noff
     real :: qtmh, qtmh1, qtmh2, gam, dtc, ostq, dt
     real, dimension(p_p_dim, p_cache_size) :: bp, ep, utmp
-    real, dimension(:, :), pointer :: weight
+    real, dimension(:, :), allocatable :: weight
     real, dimension(p_cache_size) :: pcos, psin
     integer, dimension(p_cache_size) :: idx
     integer(kind=LG) :: ptrcur, pp
@@ -2782,7 +2774,6 @@ subroutine PUSH_ROB(this, ef, bf, dt_)
   
     enddo
     
-    deallocate(weight)
     call stop_tprof( 'push 2D particles' )
     call write_dbg(cls_name, sname, cls_level, 'ends')
   
@@ -2804,7 +2795,7 @@ subroutine PUSH_ROB_PGC(this, ef, bf, af, dt_)
   
     integer :: i, np, max_mode, noff
     real :: qtmh, qtmh_e, qtmh_b, gam, dtc, ostq, gam_corr, tmp, qbm2_hf, dt
-    real, dimension(:, :), pointer :: weight
+    real, dimension(:, :), allocatable :: weight
     real, dimension(p_cache_size) :: pcos, psin
     integer, dimension(p_cache_size) :: idx
     real, dimension(p_p_dim, p_cache_size) :: bp, ep
@@ -2911,7 +2902,6 @@ subroutine PUSH_ROB_PGC(this, ef, bf, af, dt_)
   
     enddo
     
-    deallocate(weight)
     call stop_tprof( 'push 2D particles' )
     call write_dbg(cls_name, sname, cls_level, 'ends')
   
@@ -2932,7 +2922,7 @@ subroutine PUSH_ROB_PGC(this, ef, bf, af, dt_)
     type(ufield), dimension(:), pointer :: ar_grad_re, ar_grad_im, ai_grad_re, ai_grad_im
     integer :: i, np, max_mode, noff
     real :: qtmh, qtmh_e, qtmh_b, gam, dtc, ostq, gam_corr, tmp, dt, qbm2_hf
-    real, dimension(:, :), pointer :: weight
+    real, dimension(:, :), allocatable :: weight
     real, dimension(p_cache_size) :: pcos, psin
     integer, dimension(p_cache_size) :: idx
     real, dimension(p_p_dim, p_cache_size) :: bp, ep
@@ -3040,7 +3030,6 @@ subroutine PUSH_ROB_PGC(this, ef, bf, af, dt_)
   
     enddo
     
-    deallocate(weight)
     call stop_tprof( 'push 2D particles' )
     call write_dbg(cls_name, sname, cls_level, 'ends')
   

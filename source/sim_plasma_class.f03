@@ -173,7 +173,7 @@ subroutine init_sim_plasma( this, input, opts, s )
       call input%get( 'neutrals('//num2str(i)//').smooth_order', sm_ord )
     endif
 
-    call this%neut(i)%new( opts, this%pf_neut(i), max_mode, elem, ion_max, &
+    call this%neut(i)%new( opts, this%pf_neut(i), ps, max_mode, elem, ion_max, &
       qbm, omega_p, s, push_type, sm_ord )
 
   enddo

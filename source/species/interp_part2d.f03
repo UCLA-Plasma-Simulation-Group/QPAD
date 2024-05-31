@@ -33,7 +33,7 @@ subroutine gen_interp_info(x, dr, noff, np, ptrcur, weight, idx, pcos, psin)
     real, intent(in) :: dr
     integer, intent(in) :: noff, np
     integer(kind=LG), intent(in) :: ptrcur
-    real, dimension(:, :), pointer, intent(inout) :: weight
+    real, dimension(:, :), intent(inout), allocatable :: weight
     integer, dimension(:), intent(out) :: idx
     real, dimension(:), intent(out) :: pcos, psin
     
@@ -78,21 +78,26 @@ subroutine gen_interp_info(x, dr, noff, np, ptrcur, weight, idx, pcos, psin)
             pos = pos - floor(pos)
             idx(i) = idx(i) + floor(pos - 0.5) + 1
             pos = pos - floor(pos-0.5) - 1
-            
-            if (noff == 0 .and. (idx(i) == 1)) then
-                weight(-1, i) = 0
-                weight( 0, i) = 1 - 0.5*(0.5+pos)**2
-                weight( 1, i) = 0.5*(0.5+pos)**2
-            else
-                call spline_quadratic(pos, wt)
-                weight(-1:1, i) = wt
-            endif
+
+            call spline_quadratic(pos, wt)
+            weight(-1:1, i) = wt
     
             pp = pp + 1
     
         enddo
+        
+        if (noff == 0) then
+            do i = 1, np
+                ! It is inevitable
+                if (idx(i) == 1) then
+                    weight( -1, i ) = 0
+                    weight(  0, i ) = weight( 0, i ) + weight( -1, i )
+                endif
+            enddo
+        endif
+        
     else
-        print *, 'Invalid lower bound of weight'
+        print *, 'Invalid bounds of weight'
     end if
     
 end subroutine gen_interp_info
@@ -103,7 +108,7 @@ subroutine interp_field_part2d_vector(f_re, f_im, max_mode, weight, idx, pcos, p
     implicit none
     type(ufield), dimension(:), pointer, intent(in) :: f_re, f_im
     integer, intent(in) :: max_mode, np
-    real, dimension(:, :), pointer, intent(inout) :: weight
+    real, dimension(:, :), intent(inout), allocatable :: weight
     integer, dimension(:), intent(in) :: idx
     real, dimension(:), intent(in) :: pcos, psin
     real, dimension(:, :), intent(inout) :: fp
@@ -175,7 +180,7 @@ subroutine interp_field_part2d_scalar(f_re, f_im, max_mode, weight, idx, pcos, p
     implicit none
     type(ufield), dimension(:), pointer, intent(in) :: f_re, f_im
     integer, intent(in) :: max_mode, np
-    real, dimension(:, :), pointer, intent(inout) :: weight
+    real, dimension(:, :), intent(inout), allocatable :: weight
     integer, dimension(:), intent(in) :: idx
     real, dimension(:), intent(in) :: pcos, psin
     real, dimension(:), intent(inout) :: fp

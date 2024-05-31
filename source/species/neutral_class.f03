@@ -406,7 +406,7 @@ subroutine alloc_neutral( this )
 
 end subroutine alloc_neutral
 
-subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
+subroutine init_neutral( this, opts, pf, part_shape, max_mode, elem, max_e, qbm, wp, s, &
   push_type, smooth_order )
 ! element is atomic number. e.g.: For Li, element = 3
 ! max_e is the maximum number of electrons that the programmer allow the atom
@@ -418,7 +418,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   class(neutral), intent(inout) :: this
   type(options), intent(in) :: opts
   class(fdist2d), intent(inout), target :: pf
-  integer, intent(in) :: max_mode, elem, max_e, push_type
+  integer, intent(in) :: part_shape, max_mode, elem, max_e, push_type
   real, intent(in) :: qbm, wp, s
   integer, intent(in), optional :: smooth_order
 
@@ -433,7 +433,7 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   this%wp = wp
   this%dt = opts%get_dxi()
   this%push_type = push_type
-  this%part_shape = p_ps_linear
+  this%part_shape = part_shape
 
   allocate( this%q, this%cu, this%amu, this%dcu, this%rho_ion, this%rho_ion_add )
 
@@ -446,9 +446,9 @@ subroutine init_neutral( this, opts, pf, max_mode, elem, max_e, qbm, wp, s, &
   call this%dcu%new( opts, max_mode, this%part_shape, smth_ord )
   call this%amu%new( opts, max_mode, this%part_shape, smth_ord )
 
-  call this%part%new( opts, pf, qbm, this%dt, s, if_empty=.true. )
-  call this%part_add%new( opts, pf, qbm, this%dt, s )
-
+  call this%part%new( opts, pf, qbm, this%dt, s, this%part_shape, if_empty=.true. )
+  call this%part_add%new( opts, pf, qbm, this%dt, s, this%part_shape )
+ 
   this%q  = 0.0
   this%cu = 0.0
   this%rho_ion = 0.0
@@ -893,7 +893,7 @@ subroutine qdeposit_neutral( this, q_tot )
 
   this%q = 0.0
 
-  call this%part%qdeposit( this%q, this%part_shape )
+  call this%part%qdeposit( this%q )
   call this%q%acopy_gc_f1( dir=p_mpi_forward )
   call this%q%copy_gc_f1()
   call this%q%smooth()
@@ -917,7 +917,7 @@ subroutine ion_deposit_neutral( this, q_tot )
 
   this%rho_ion_add = 0.0
 
-  call this%part_add%qdeposit( this%rho_ion_add, this%part_shape )
+  call this%part_add%qdeposit( this%rho_ion_add )
   call this%rho_ion_add%acopy_gc_f1( dir=p_mpi_forward )
   call this%rho_ion_add%copy_gc_f1()
   call this%rho_ion_add%smooth()
@@ -952,9 +952,9 @@ subroutine amjdeposit_neutral( this, e, b, cu, amu, dcu, dt )
   this%amu = 0.0
   select case ( this%push_type )
     case ( p_push2_std )
-      call this%part%amjdeposit_std( e, b, this%cu, this%amu, this%dcu, dt, this%part_shape )
+      call this%part%amjdeposit_std( e, b, this%cu, this%amu, this%dcu, dt )
     case ( p_push2_robust )
-      call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu, dt, this%part_shape )
+      call this%part%amjdeposit_robust( e, b, this%cu, this%amu, this%dcu, dt )
     ! case ( p_push2_robust_pgc )
   end select
   
@@ -990,9 +990,9 @@ subroutine push_u_neutral( this, e, b, dt )
 
   select case ( this%push_type )
     case ( p_push2_std )
-      call this%part%push_u_std( e, b, dt, this%part_shape )
+      call this%part%push_u_std( e, b, dt )
     case ( p_push2_robust )
-      call this%part%push_u_robust( e, b, dt, this%part_shape )
+      call this%part%push_u_robust( e, b, dt )
   end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -1189,7 +1189,7 @@ function get_multi_max(this)
 
 end function get_multi_max
 
-subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
+subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, part_shape, if_empty )
 
   implicit none
 
@@ -1197,6 +1197,7 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
   type(options), intent(in) :: opts
   class(fdist2d), intent(inout) :: pf
   real, intent(in) :: qbm, dt, s
+  integer, intent(in) :: part_shape
   logical, intent(in), optional :: if_empty
 
   ! local data
@@ -1214,7 +1215,8 @@ subroutine init_part2d_buf( this, opts, pf, qbm, dt, s, if_empty )
 
   this%dr   = opts%get_dr()
   this%edge = opts%get_nd(1) * this%dr
-
+  this%part_shape = part_shape
+  
   ! only allocate position and charge, no need to initialize with profile
   allocate( this%x( 2, this%npmax ), this%q( this%npmax ) )
 

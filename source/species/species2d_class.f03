@@ -107,13 +107,13 @@ subroutine init_species2d( this, opts, pf, part_shape, max_mode, qbm, s, &
    call this%cu%new(opts,max_mode,this%part_shape,smth_ord)
    call this%dcu%new(opts,max_mode,this%part_shape,smth_ord)
    call this%amu%new(opts,max_mode,this%part_shape,smth_ord)
-   call this%part%new(opts,pf,qbm,dt,s)
+   call this%part%new(opts,pf,qbm,dt,s,this%part_shape)
 
    this%q  = 0.0
    this%cu = 0.0
 
    ! deposit charge
-   call this%part%qdeposit( this%q, this%part_shape )
+   call this%part%qdeposit( this%q )
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%copy_gc_f1()
    if (id_stage() == 0) call this%q%copy_slice( 1, p_copy_1to2 )
@@ -171,7 +171,7 @@ subroutine renew_species2d(this,s)
 
    ! renew the charge density
    this%q = 0.0
-   call this%part%qdeposit( this%q, this%part_shape )
+   call this%part%qdeposit( this%q )
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%copy_gc_f1()
    if (id_stage() == 0) call this%q%copy_slice( 1, p_copy_1to2 )
@@ -198,7 +198,7 @@ subroutine qdp_species2d(this,q)
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
   this%q = 0.0
-  call this%part%qdeposit(this%q, this%part_shape)
+  call this%part%qdeposit(this%q)
   call this%q%acopy_gc_f1( dir=p_mpi_forward )
   call this%q%copy_gc_f1()
   call this%q%smooth()
@@ -221,7 +221,7 @@ subroutine deposit_chi_species2d( this, chi )
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
 
-  call this%part%deposit_chi( chi, this%part_shape )
+  call this%part%deposit_chi( chi )
   ! call this%q%acopy_gc_f1( dir=p_mpi_forward )
   ! call this%q%smooth_f1()
   ! call this%q%copy_gc_f1()
@@ -254,13 +254,13 @@ subroutine amjdp_species2d( this, ef, bf, af, cu, amu, dcu, dt )
    this%amu = 0.0
    select case ( this%push_type )
       case (p_push2_std)
-         call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu, dt, this%part_shape )
+         call this%part%amjdeposit_std( ef, bf, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_robust )
-         call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu, dt, this%part_shape )
+         call this%part%amjdeposit_robust( ef, bf, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_std_pgc )
-         call this%part%amjdeposit_std_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt, this%part_shape )
+         call this%part%amjdeposit_std_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt )
       case ( p_push2_robust_pgc )
-         call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt, this%part_shape )
+         call this%part%amjdeposit_robust_pgc( ef, bf, af, this%cu, this%amu, this%dcu, dt )
    end select
 
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
@@ -297,13 +297,13 @@ subroutine push_u_species2d(this, ef, bf, af, dt)
 
    select case (this%push_type)
       case (p_push2_std)
-         call this%part%push_u_std(ef, bf, dt, this%part_shape)
+         call this%part%push_u_std(ef, bf, dt)
       case (p_push2_robust)
-         call this%part%push_u_robust(ef, bf, dt, this%part_shape)
+         call this%part%push_u_robust(ef, bf, dt)
       case (p_push2_std_pgc)
-         call this%part%push_u_std_pgc(ef, bf, af, dt, this%part_shape)
+         call this%part%push_u_std_pgc(ef, bf, af, dt)
       case (p_push2_robust_pgc)
-         call this%part%push_u_robust_pgc(ef, bf, af, dt, this%part_shape)
+         call this%part%push_u_robust_pgc(ef, bf, af, dt)
    end select
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
@@ -447,7 +447,7 @@ subroutine interp_psi_species2d(this, psi)
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if (this%push_type == p_push2_std .or. this%push_type == p_push2_std_pgc) then
-      call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im(), psi%get_max_mode(), this%part_shape)
+      call this%part%interp_psi(psi%get_rf_re(), psi%get_rf_im(), psi%get_max_mode())
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
