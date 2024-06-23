@@ -4,6 +4,7 @@ use field_class
 use field_psi_class
 use field_src_class
 use field_solver_class
+use field_solver_all_modes_class
 use ufield_class
 use param
 use sysutil_module
@@ -29,9 +30,16 @@ type, extends( field ) :: field_b
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
+  class( field_solver_all_modes ), dimension(:), pointer :: solver_coef  => null()
+  class( field_solver_all_modes ), pointer :: solver_bp => null()
+  class( field_solver_all_modes ), pointer :: solver_bm => null()
 
   real, dimension(:), pointer :: buf1_re => null(), buf1_im => null()
   real, dimension(:), pointer :: buf2_re => null(), buf2_im => null()
+  real, dimension(:,:,:), pointer :: buf3 => null()
+  real, dimension(:,:,:), pointer :: buf4 => null()
+  real, dimension(:,:,:), pointer :: buf5 => null()
+  real, dimension(:,:,:), pointer :: buf6 => null()
   real, dimension(:), pointer :: buf    => null()
 
   contains
@@ -77,6 +85,10 @@ subroutine alloc_field_b( this, max_mode )
 
   if ( .not. associated( this%solver_bminus ) ) then
     allocate( field_solver :: this%solver_bminus(0:max_mode) )
+  endif
+
+  if ( .not. associated( this%solver_coef ) ) then
+    allocate( field_solver :: this%solver_coef(0:1) )
   endif
 
 end subroutine alloc_field_b
@@ -134,6 +146,15 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
         bnd=boundary, stype=p_hypre_cycred )
     enddo 
 
+    call this%solver_coef%new( opts, max_mode, dr, kind=p_fk_coef, &
+        bnd=boundary, stype=p_hypre_cycred )
+
+    call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
+        bnd=boundary, stype=p_hypre_cycred )
+
+    call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
+        bnd=boundary, stype=p_hypre_cycred )
+
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
     allocate( this%buf2_re(nrp), this%buf2_im(nrp) )
 
@@ -175,9 +196,14 @@ subroutine end_field_b( this )
       call this%solver_bplus(i)%del()
       call this%solver_bminus(i)%del()
     enddo
+    call this%solver_coef(0)%del()
+    call this%solver_coef(1)%del()
+    call this%solver_bm%del()
+    call this%solver_bp%del()
     deallocate( this%solver_bz )
     deallocate( this%solver_bplus )
     deallocate( this%solver_bminus )
+    deallocate( this%solver_coef )
 
   case ( p_entity_beam )
     do i = 0, this%max_mode
@@ -881,48 +907,54 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   qn_re => qn%get_rf_re()
   qn_im => qn%get_rf_im()
 
-  do i = 0, this%max_mode
-
-    if ( i == 0 ) then
-      call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
-      psi_re1 => psi_re(i)
-      q_re1 => q_re(i)
-      qn_re1 => qn_re(i)
-      psisum_re = psi%getresum()
-      qsum_re = q%getresum()
-      write(2,*) 'solver bplus initial m=0'
-      write(2,*) psisum_re, 'solver bplus initial m=0 psi'
-      write(2,*) qsum_re, 'solver bplus initial m=0 q'
-      call this%solver_bplus(i)%solve( this%buf1_re, psi_re1, q_re1, qn_re1)
-      write(2,*) 'solver bplus end m=0'
-      write(2,*) 'solver bminus initial'
-      call this%solver_bminus(i)%solve( this%buf2_re, psi_re1, q_re1, qn_re1)
-      write(2,*) 'solver bminus end m=0'
-      call this%get_solution_bt_iter(i)
-      cycle
-    endif
-
-    write(2,*) 'set source m>0'
-    call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
-    write(2,*) 'solver_bplus%solve m>0'
-    psi_re1 => psi_re(i)
-    psi_im1 => psi_im(i)
-    q_re1 => q_re(i)
-    q_im1 => q_im(i)
-    qn_re1 => qn_re(i)
-    qn_im1 => qn_im(i)
-!     psisum_re = sum(psi%rf_re(i)%get_f1())
-!     qsum_re = sum(q%rf_re(i)%get_f1())
-!     psisum_im = sum(psi%rf_im(i)%get_f1())
-!     qsum_im = sum(q%rf_im(i)%get_f1())
-    call this%solver_bplus(i)%solve( this%buf1_re, psi_re1, q_re1, qn_re1 )
-    write(2,*) 'solver_bplus%solve m>0'
-    call this%solver_bplus(i)%solve( this%buf1_im, psi_im1, q_im1, qn_im1)
-    call this%solver_bminus(i)%solve( this%buf2_re, psi_re1, q_re1, qn_re1 )
-    call this%solver_bminus(i)%solve( this%buf2_im, psi_im1, q_im1, qn_im1 )
-    call this%get_solution_bt_iter(i)
-
-  enddo
+  if ( this%max_mode == 0 ) then
+    call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
+    psi_re1 => psi_re(0)
+    q_re1 => q_re(0)
+    qn_re1 => qn_re(0)
+    call this%solver_bplus(i)%solve( this%buf1_re, psi_re1, q_re1, qn_re1)
+    call this%solver_bminus(i)%solve( this%buf2_re, psi_re1, q_re1, qn_re1)
+    call this%get_solution_bt_iter(0)
+  else
+    !   solve ele coef
+    call this%solver_coef(1)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im，q_re = q_re, q_im = q_im, qbm = -1)
+    !   solve ion coef
+    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im，q_re = qn_re, q_im = qn_im, qbm = 1/1836.5)
+    ! add coef
+    this%buf3 = this%buf3 + this%buf4
+    !   set source
+    do i = 0, this%max_mode
+      if ( i == 0 ) then
+        call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
+        this%buf5(this%max_mode,:,0) = this%buf1_re
+        this%buf6(this%max_mode,:,0) = this%buf2_re
+      else
+        call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
+        this%buf5(this%max_mode + i, :, 0) = this%buf1_re
+        this%buf5(this%max_mode + i, :, 1) = this%buf1_im
+        this%buf5(this%max_mode - i, :, 0) = this%buf1_re
+        this%buf5(this%max_mode - i, :, 1) = -this%buf1_im
+        this%buf6(this%max_mode + i, :, 0) = this%buf2_re
+        this%buf6(this%max_mode + i, :, 1) = this%buf2_im
+        this%buf6(this%max_mode - i, :, 0) = this%buf2_re
+        this%buf6(this%max_mode - i, :, 1) = -this%buf2_im
+      endif
+    enddo
+    call this%solver_bm(src = this%buf5, u = this%buf3)
+    call this%solver_bp(src = this%buf6, u = this%buf3)
+    do i = 0, this%max_mode
+      if ( i == 0 ) then
+        this%buf1_re = this%buf5(this%max_mode,:,0)
+        this%buf2_re = this%buf6(this%max_mode,:,0)
+        call this%get_solution_bt_iter(i)
+      else
+        this%buf1_re = this%buf5(this%max_mode + i,:,0)
+        this%buf1_im = this%buf5(this%max_mode + i,:,1)
+        this%buf2_re = this%buf6(this%max_mode + i,:,0)
+        this%buf2_im = this%buf6(this%max_mode + i,:,1)
+        call this%get_solution_bt_iter(i)
+      endif
+    enddo
 
   call this%copy_gc_f1()
 

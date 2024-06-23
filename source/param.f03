@@ -74,7 +74,10 @@ integer, parameter :: p_fk_psi     = 0, &
                       p_fk_vpotz   = 6, &
                       p_fk_vpotp   = 7, &
                       p_fk_vpotm   = 8, &
-                      p_fk_bphi    = 9
+                      p_fk_bphi    = 9, &
+                      p_fk_coef    = 10, &
+                      p_fk_all_B_minus = 11, &
+                      p_fk_all_B_plus  = 12
 
 ! ================================================================
 ! entity of electromagnetic field

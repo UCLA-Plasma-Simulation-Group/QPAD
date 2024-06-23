@@ -1,4 +1,4 @@
-module field_solver_class
+module field_solver_all_modes_class
 
 use options_class 
 use parallel_module
@@ -167,7 +167,7 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
 
   select case ( this%kind )
   case ( p_fk_coef )
-    call set_struct_matrix(this, opts, dr, psi_re, psi_im)
+    call set_struct_matrix(this, opts, dr, psi_re, psi_im, qbm)
     call this%set_struct_solver() 
     a = 1
     do k = this%ilower(2),this%iupper(2)
@@ -210,8 +210,8 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
       enddo 
     enddo
 
-  case (p_fk_all_B)
-    call set_struct_matrix(this, opts, dr, psi_re, psi_im)
+  case (p_fk_all_B_minus,p_fk_all_B_bplus)
+    call set_struct_matrix(this, opts, dr, u)
     call this%set_struct_solver() 
     a = 1
     do k = this%ilower(2),this%iupper(2)
@@ -331,7 +331,7 @@ subroutine set_struct_stencil( this )
       call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
     enddo
   
-  case(p_fk_all_B)
+  case(p_fk_all_B_bplus,p_fk_all_B_minus)
 
     this%num_stencil = (4*this%mode + 1)*3
     if ( .not. associated( this%offsets ) ) then
@@ -368,7 +368,7 @@ subroutine set_struct_stencil( this )
 
 end subroutine set_struct_stencil
 
-subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qbm)
+subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
 
   implicit none
 
@@ -487,36 +487,38 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qb
     ! set the first grid point of each partition
     i=1
     if (lidproc == 0) then
-      do l = -1, 1
-        do i = 0, 4*this%mode
-          if( cc - 2*this%mode > 0 ) then
-            n = (cc + 1)/2 - this%mode
-          else
-            n = cc/2 - this%mode
-          endif
-          if (n == -1) .or. (n == 1) then
-            if (l = -1) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = -4.0 - dr2
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
+      do bb = 0, 4*this%mode
+        do l = -1, 1
+          do cc = 0, 4*this%mode
+            if( cc - 2*this%mode > 0 ) then
+              n = (cc + 1)/2 - this%mode
+            else
+              n = cc/2 - this%mode
             endif
-          else
-            if (l = -1) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 1.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            endif           
-          endif
+            if (n == -1) .or. (n == 1) then
+              if (l = -1) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = -4.0 - dr2
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif
+            else
+              if (l = -1) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 1.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif           
+            endif
+          enddo
         enddo
       enddo
     else
@@ -594,36 +596,38 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qb
     ! set the first grid point of each partition
     i=1
     if (lidproc == 0) then
-      do l = -1, 1
-        do i = 0, 4*this%mode
-          if( cc - 2*this%mode > 0 ) then
-            n = (cc + 1)/2 - this%mode
-          else
-            n = cc/2 - this%mode
-          endif
-          if (n == -1) .or. (n == 1) then
-            if (l = -1) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = -4.0 - dr2
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
+      do bb = 0, 4*this%mode
+        do l = -1, 1
+          do cc = 0, 4*this%mode
+            if( cc - 2*this%mode > 0 ) then
+              n = (cc + 1)/2 - this%mode
+            else
+              n = cc/2 - this%mode
             endif
-          else
-            if (l = -1) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 1.0
-              i = i + 1
-            elseif (l = 0 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            endif           
-          endif
+            if (n == -1) .or. (n == 1) then
+              if (l = -1) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = -4.0 - dr2
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif
+            else
+              if (l = -1) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 1.0
+                i = i + 1
+              elseif (l = 0 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif           
+            endif
+          enddo
         enddo
       enddo
     else
@@ -705,11 +709,13 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qb
     ! to be deleted
     case ( p_bnd_zero )
       
-      i = local_vol - (4*this%mode+1)*2
-      do l = 0, 1
-        do i = 0, 4*this%mode
-          HYPRE_BUF(i) = 0.0
-          i = i + 1
+      i = local_vol - (4*this%mode+1)^2*3*2
+      do bb = 0, 4*this%mode
+        do l = 0, 1
+          do cc = 0, 4*this%mode
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          enddo
         enddo
       enddo
 
@@ -721,41 +727,45 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qb
 
       case ( p_fk_all_B_minus )
         
-        i = local_vol - (4*this%mode+1)*2
-        do l = 0, 1
-          do i = 0, 4*this%mode
-            if( cc - 2*this%mode > 0 ) then
-              n = (cc + 1)/2 - this%mode
-            else
-              n = cc/2 - this%mode
-            endif
-            if (l = 0 ) then
-              HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
-              i = i + 1
-            elseif (l = 1 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            endif          
+        i = local_vol - (4*this%mode+1)^2*3*2
+        do bb = 0, 4*this%mode
+          do l = 0, 1
+            do cc = 0, 4*this%mode
+              if( cc - 2*this%mode > 0 ) then
+                n = (cc + 1)/2 - this%mode
+              else
+                n = cc/2 - this%mode
+              endif
+              if (l = 0 ) then
+                HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
+                i = i + 1
+              elseif (l = 1 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif          
+            enddo
           enddo
         enddo
 
       case ( p_fk_all_B_bplus )
         
-        i = local_vol - (4*this%mode+1)*2
-        do l = 0, 1
-          do i = 0, 4*this%mode
-            if( cc - 2*this%mode > 0 ) then
-              n = (cc + 1)/2 - this%mode
-            else
-              n = cc/2 - this%mode
-            endif
-            if (l = 0 ) then
-              HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
-              i = i + 1
-            elseif (l = 1 ) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            endif          
+        i = local_vol - (4*this%mode+1)^2*3*2
+        do bb = 0, 4*this%mode
+          do l = 0, 1
+            do cc = 0, 4*this%mode
+              if( cc - 2*this%mode > 0 ) then
+                n = (cc + 1)/2 - this%mode
+              else
+                n = cc/2 - this%mode
+              endif
+              if (l = 0 ) then
+                HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
+                i = i + 1
+              elseif (l = 1 ) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif          
+            enddo
           enddo
         enddo
 
@@ -778,4 +788,4 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, q_re, psi_im, q_im，u, qb
 
 end subroutine set_struct_matrix
 
-end module field_solver_class
+end module field_solver_all_modes_class
