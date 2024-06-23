@@ -12,18 +12,18 @@ implicit none
 
 private
 
-public :: field_solver
+public :: field_solver_all_modes
 public :: HYPRE_BUF
 
 character(len=32), parameter :: cls_name = "field_solver"
 integer, parameter :: cls_level = 4
 
-real, dimension(:,:,:), pointer, save :: HYPRE_BUF => null()
+real, dimension(:), pointer, save :: HYPRE_BUF => null()
 
-type :: field_solver ! class for HYPRE solver
+type :: field_solver_all_modes ! class for HYPRE solver
 
   ! HYPRE parameters
-  integer, dimension(:), pointer :: offsets => null()
+  integer, dimension(:,:), pointer :: offsets => null()
   integer, dimension(:), pointer :: stencil_idx => null()
   integer :: num_stencil
   integer :: stype ! currently there's only cyclic reduction
@@ -43,9 +43,8 @@ type :: field_solver ! class for HYPRE solver
   procedure, private :: set_struct_grid
   procedure, private :: set_struct_stencil
   procedure, private :: set_struct_matrix 
-  procedure, private :: set_struct_matrixv1 
  
-end type field_solver
+end type field_solver_all_modes
 
 integer, save :: nofff
 real, save :: drr
@@ -60,7 +59,7 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
+  class( field_solver_all_modes ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: kind, stype, max_mode, bnd
   real, intent(in) :: dr
@@ -74,13 +73,15 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
   this%mode  = max_mode
   this%kind  = kind
   this%bnd   = bnd
+  nofff    = opts%get_noff(1)
+  drr     = dr
 
   ! setup HYPRE grid
   comm = comm_loc()
 
   call this%set_struct_grid( opts )
   call this%set_struct_stencil()
-  call this%set_struct_matrix( opts, dr )
+!   call this%set_struct_matrix( opts, dr )
 
   call HYPRE_StructVectorCreate( comm, this%grid, this%b, ierr )
   call HYPRE_StructVectorInitialize( this%b, ierr )
@@ -98,7 +99,7 @@ subroutine end_field_solver( this )
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
+  class( field_solver_all_modes ), intent(inout) :: this
 
   integer :: ierr
   character(len=32), save :: sname = "end_field_solver"
@@ -123,7 +124,7 @@ subroutine set_struct_solver( this )
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
+  class( field_solver_all_modes ), intent(inout) :: this
 
   integer :: ierr, comm
   character(len=32), save :: sname = "set_struct_solver"
@@ -140,23 +141,22 @@ subroutine set_struct_solver( this )
 
 end subroutine set_struct_solver
 
-subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, qbm)
+subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
-  type(ufield), intent(inout), pointer, optional :: psi_re
-  type(ufield), intent(inout), pointer, optional :: q_re
-  type(ufield), intent(inout), pointer, optional :: psi_im
-  type(ufield), intent(inout), pointer, optional :: q_im
-  real, intent(inout), dimension(:,:,:), pointer, optional :: src
-  real, intent(inout), optional :: u_re
-  real, intent(inout), optional :: u_im
+  class( field_solver_all_modes ), intent(inout) :: this
+  type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: q_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
+  type(ufield), intent(inout), dimension(:), optional, pointer :: q_im
+  real, intent(inout), dimension(:,:,:), optional, pointer :: src
+  real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
 !   real, intent(inout), optional:: psisum
 !   real, intent(inout), optional :: qsum
 
-  integer :: ierr, a, im
+  integer :: ierr, a, im, k, l
   real, dimension(:), pointer :: src_sol
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
@@ -167,7 +167,7 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
 
   select case ( this%kind )
   case ( p_fk_coef )
-    call set_struct_matrix(this, opts, dr, psi_re, psi_im, qbm)
+    call set_struct_matrix(this, psi_re = psi_re, psi_im = psi_im, qbm=qbm)
     call this%set_struct_solver() 
     a = 1
     do k = this%ilower(2),this%iupper(2)
@@ -179,7 +179,7 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
             src_sol(a)  = -qbm*f1_re(1,k)
             src_sol(a+1)  = -qbm*f1_im(1,k)
             a=a+2
-          elseif (im = 0) then
+          elseif (im == 0) then
             f1_re => q_re(0)%get_f1()
             src_sol(a)  = -qbm*f1_re(1,k)
             a = a+1
@@ -210,8 +210,8 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
       enddo 
     enddo
 
-  case (p_fk_all_B_minus,p_fk_all_B_bplus)
-    call set_struct_matrix(this, opts, dr, u)
+  case ( p_fk_all_B_minus, p_fk_all_B_plus )
+    call set_struct_matrix(this, u=u)
     call this%set_struct_solver() 
     a = 1
     do k = this%ilower(2),this%iupper(2)
@@ -221,7 +221,7 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im，u_re, u_im, q
             src_sol(a)  = src(im,k,0)
             src_sol(a+1)  = src(im,k,1)
             a=a+2
-          elseif (im = 0) then
+          elseif (im == 0) then
             src_sol(a)  = src(im,k,0)
             a = a+1
           else
@@ -263,7 +263,7 @@ subroutine set_struct_grid( this, opts )
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
+  class( field_solver_all_modes ), intent(inout) :: this
   type( options ), intent(in) :: opts
 
   integer :: comm, ierr
@@ -291,7 +291,7 @@ subroutine set_struct_stencil( this )
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
+  class( field_solver_all_modes ), intent(inout) :: this
 
   integer :: i, j, k, l, ierr
   character(len=32), save :: sname = "set_struct_stencil"
@@ -304,7 +304,7 @@ subroutine set_struct_stencil( this )
     
     this%num_stencil = 4*this%mode + 1
     if ( .not. associated( this%offsets ) ) then
-      allocate( this%offsets( this%num_stencil ) )
+      allocate( this%offsets(3, this%num_stencil ) )
     endif
 
     if ( .not. associated( this%stencil_idx ) ) then
@@ -317,25 +317,25 @@ subroutine set_struct_stencil( this )
     k = 1
     do j = 0, 2*this%mode
       if (j == this%mode) then
-        this%offsets(k) = (/0, 0, 0/)
+        this%offsets(:,k) = (/0, 0, 0/)
         k=k+1
       else
-        this%offsets(k) = (/j-this%mode, 0, 0/)
-        this%offsets(k+1) = (/j-this%mode, 0, 1/)
+        this%offsets(:,k) = (/j-this%mode, 0, 0/)
+        this%offsets(:,k+1) = (/j-this%mode, 0, 1/)
         k=k+2
       endif
     enddo
 
     call HYPRE_StructStencilCreate( 3, this%num_stencil, this%stencil, ierr )
     do i = 1, this%num_stencil
-      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
+      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(1,i), ierr )
     enddo
   
-  case(p_fk_all_B_bplus,p_fk_all_B_minus)
+  case( p_fk_all_B_minus, p_fk_all_B_plus )
 
     this%num_stencil = (4*this%mode + 1)*3
     if ( .not. associated( this%offsets ) ) then
-      allocate( this%offsets( this%num_stencil ) )
+      allocate( this%offsets( 3,this%num_stencil ) )
     endif
 
     if ( .not. associated( this%stencil_idx ) ) then
@@ -349,11 +349,11 @@ subroutine set_struct_stencil( this )
     do l = -1, 1
       do j = 0, 2*this%mode
         if (j == this%mode) then
-          this%offsets(k) = (/0, l, 0/)
+          this%offsets(:,k) = (/0, l, 0/)
           k=k+1
         else
-          this%offsets(k) = (/j-this%mode, l, 0/)
-          this%offsets(k+1) = (/j-this%mode, l, 1/)
+          this%offsets(:,k) = (/j-this%mode, l, 0/)
+          this%offsets(:,k+1) = (/j-this%mode, l, 1/)
           k=k+2
         endif
       enddo
@@ -361,36 +361,33 @@ subroutine set_struct_stencil( this )
 
     call HYPRE_StructStencilCreate( 3, this%num_stencil, this%stencil, ierr )
     do i = 1, this%num_stencil
-      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
+      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(1,i), ierr )
     enddo
+
+  end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_struct_stencil
 
-subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
+subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
   implicit none
 
-  class( field_solver ), intent(inout) :: this
-  type( options ), intent(in) :: opts
-  real, intent(in) :: dr
-  type(ufield), intent(inout), pointer, optional :: psi_re
-  type(ufield), intent(inout), pointer, optional :: q_re
-  type(ufield), intent(inout), pointer, optional :: psi_im
-  type(ufield), intent(inout), pointer, optional :: q_im
-  real, intent(inout), dimension(:,:,:), pointer, optional :: src
-  real, intent(inout), optional :: u
+  class( field_solver_all_modes ), intent(inout) :: this
+!   type( options ), intent(in) :: opts
+!   real, intent(in) :: dr
+  type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
+  real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
 
   integer :: i, ierr, local_vol, nr, noff, m, aa, bb, cc
-  integer :: k, n, d, bb_offeset, cc_offeset,l
+  integer :: k, n, d, bb_offeset, cc_offeset,l, demode
   integer :: comm, lidproc, lnvp
-  real :: dr2, m2, j, jmax
-  real, intent(inout), dimension(:,:,:), pointer :: src_sol
+  real :: dr2, m2, j, jmax, dr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
-  real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
   character(len=32), save :: sname = "set_struct_matrix"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
@@ -398,11 +395,10 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
   comm    = comm_loc()
   lidproc = id_proc_loc()
   lnvp    = num_procs_loc()
-  noff    = opts%get_noff(1)
-  nofff   = noff
-  drr     = dr
+  noff   = nofff
+  dr     = drr
 
-  dr2 = dr*dr
+  dr2 = drr*drr
   m = this%mode
   m2 = real(m*m)
   nr = this%iupper(2) - this%ilower(2) + 1
@@ -423,60 +419,60 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
 
   case ( p_fk_coef )
 
-    ! set from the first grid point of each partition，mode is close.
-!     i = 4*this%mode+1
-      do aa = 1, nr
-        do bb = 0, 4*this%mode
-          do cc = 0, 4*this%mode
-            if( cc - 2*this%mode > 0 ) then
-              n = (cc + 1)/2 - this%mode
-            else
-              n = cc/2 - this%mode
-            endif
-            if( bb - 2*this%mode > 0 ) then
-              k = (bb + 1)/2 - this%mode
-            else
-              k = bb/2 - this%mode
-            endif
-            dmode = abs(k-n)
-            if (bb == cc) then
-              f1_re => psi_re(0)%get_f1()
-              HYPRE_BUF(i)   = 1.0 - qbm * f1(1,aa)
+  ! set from the first grid point of each partition，mode is close.
+  !i = 4*this%mode+1
+    do aa = 1, nr
+      do bb = 0, 4*this%mode
+        do cc = 0, 4*this%mode
+          if( cc - 2*this%mode > 0 ) then
+            n = (cc + 1)/2 - this%mode
+          else
+            n = cc/2 - this%mode
+          endif
+          if( bb - 2*this%mode > 0 ) then
+            k = (bb + 1)/2 - this%mode
+          else
+            k = bb/2 - this%mode
+          endif
+          demode = abs(k-n)
+          if (bb == cc) then
+            f1_re => psi_re(0)%get_f1()
+            HYPRE_BUF(i)   = 1.0 - qbm * f1_re(1,aa)
+            i = i + 1
+          else
+            if (demode > this%mode) then
+              HYPRE_BUF(i) = 0
               i = i + 1
             else
-              if (dmode > this%mode) then
-                HYPRE_BUF(i) = 0
+              if (demode == 0) then
+                HYPRE_BUF(i) = 0.0
                 i = i + 1
               else
-                if (demode = 0) then
-                  HYPRE_BUF(i) = 0
+                bb_offeset = bb - (k+this%mode)*2
+                cc_offeset = cc - (n+this%mode)*2
+                if ( bb_offeset == 1  .and. cc_offeset == 1) then
+                  f1_re => psi_re(demode)%get_f1()
+                  HYPRE_BUF(i) = -qbm * f1_re(1,aa)
                   i = i + 1
-                else
-                  bb_offeset = bb - (k+this%mode)*2
-                  cc_offeset = cc - (n+this%mode)*2
-                  if ( bb_offeset == 1 ) .and. (cc_offeset == 1) then
-                    f1_re => psi_re(demode)%get_f1()
-                    HYPRE_BUF(i) = -qbm * f1(1,aa)
-                    i = i + 1
-                  elseif ( bb_offeset == 1 ) .and. (cc_offeset == 0) then
-                    f1_im => psi_im(demode)%get_f1()
-                    HYPRE_BUF(i) = -sign(1,k-n)*qbm * f1(1,aa)
-                    i = i + 1
-                  elseif ( bb_offeset == 0 ) .and. (cc_offeset == 1) then
-                    f1_im => psi_im(demode)%get_f1()
-                    HYPRE_BUF(i) = sign(1,k-n)*qbm * f1(1,aa)
-                    i = i + 1
-                  elseif ( bb_offeset == 0 ) .and. (cc_offeset == 0) then
-                    f1_re => psi_re(demode)%get_f1()
-                    HYPRE_BUF(i) = -qbm * f1(1,aa)
-                    i = i + 1
-                  endif
+                elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
+                  f1_im => psi_im(demode)%get_f1()
+                  HYPRE_BUF(i) = -sign(1,k-n)*qbm * f1_im(1,aa)
+                  i = i + 1
+                elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
+                  f1_im => psi_im(demode)%get_f1()
+                  HYPRE_BUF(i) = sign(1,k-n)*qbm * f1_im(1,aa)
+                  i = i + 1
+                elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
+                  f1_re => psi_re(demode)%get_f1()
+                  HYPRE_BUF(i) = -qbm * f1_re(1,aa)
+                  i = i + 1
                 endif
               endif
             endif
-          enddo
+          endif
         enddo
       enddo
+    enddo
     call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
       this%stencil_idx, HYPRE_BUF, ierr )
 
@@ -495,25 +491,25 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
             else
               n = cc/2 - this%mode
             endif
-            if (n == -1) .or. (n == 1) then
-              if (l = -1) then
+            if (n == -1 .or. n == 1) then
+              if (l == -1) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = -4.0 - dr2
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif
             else
-              if (l = -1) then
+              if (l == -1) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 1.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif           
@@ -538,7 +534,7 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
               else
                 k = bb/2 - this%mode
               endif
-              dmode = abs(k-n)
+              demode = abs(k-n)
               if (l == -1) then
                 if( bb == cc) then
                   HYPRE_BUF(i) = ( 1.0 - 0.5 / j )/dr2
@@ -552,46 +548,48 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
                   HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,aa,0)
                   i = i + 1
                 else
-                  if (dmode > this%mode) then
+                  if (demode > this%mode) then
                     HYPRE_BUF(i) = 0
                     i = i + 1
                   else
-                    if (demode = 0) then
+                    if (demode == 0) then
                       HYPRE_BUF(i) = 0
                       i = i + 1
                     else
                       bb_offeset = bb - (k+this%mode)*2
                       cc_offeset = cc - (n+this%mode)*2
-                      if ( bb_offeset == 1 ) .and. (cc_offeset == 1) then
+                      if ( bb_offeset == 1  .and. cc_offeset == 1) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
                         i = i + 1
-                      elseif ( bb_offeset == 1 ) .and. (cc_offeset == 0) then)
+                      elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,1)
                         i = i + 1
-                      elseif ( bb_offeset == 0 ) .and. (cc_offeset == 1) then
+                      elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
                         HYPRE_BUF(i) = -u(k-n+this%mode,aa,0)
                         i = i + 1
-                      elseif ( bb_offeset == 0 ) .and. (cc_offeset == 0) then
+                      elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
                         i = i + 1
                       endif
                     endif
                   endif
-                elseif (l== 1) then
-                  if( bb == cc) then
-                    HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
-                    i = i + 1
-                  else
-                    HYPRE_BUF(i) = 0
-                    i = i + 1 
-                  endif 
-                endif 
+                endif
+              elseif (l== 1) then
+                if( bb == cc) then
+                  HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0
+                  i = i + 1 
+                endif  
               endif
             enddo
           enddo
         enddo
       enddo
-  case(p_fk_all_B_bplus)
+    endif
+
+  case(p_fk_all_B_plus)
 
     ! set the first grid point of each partition
     i=1
@@ -604,25 +602,25 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
             else
               n = cc/2 - this%mode
             endif
-            if (n == -1) .or. (n == 1) then
-              if (l = -1) then
+            if (n == -1 .or. n == 1) then
+              if (l == -1) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = -4.0 - dr2
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif
             else
-              if (l = -1) then
+              if (l == -1) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 1.0
                 i = i + 1
-              elseif (l = 0 ) then
+              elseif (l == 0 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif           
@@ -647,13 +645,13 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
               else
                 k = bb/2 - this%mode
               endif
-              dmode = abs(k-n)
+              demode = abs(k-n)
               if (l == -1) then
                 if( bb == cc) then
                   HYPRE_BUF(i) = ( 1.0 - 0.5 / j )/dr2
                   i = i + 1
                 else
-                  HYPRE_BUF(i) = 0
+                  HYPRE_BUF(i) = 0.0
                   i = i + 1 
                 endif                 
               elseif( l == 0) then  
@@ -661,45 +659,49 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
                   HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,aa,0)
                   i = i + 1
                 else
-                  if (dmode > this%mode) then
-                    HYPRE_BUF(i) = 0
+                  if (demode > this%mode) then
+                    HYPRE_BUF(i) = 0.0
                     i = i + 1
                   else
-                    if (demode = 0) then
-                      HYPRE_BUF(i) = 0
+                    if (demode == 0) then
+                      HYPRE_BUF(i) = 0.0
                       i = i + 1
                     else
                       bb_offeset = bb - (k+this%mode)*2
                       cc_offeset = cc - (n+this%mode)*2
-                      if ( bb_offeset == 1 ) .and. (cc_offeset == 1) then
+                      if ( bb_offeset == 1  .and. cc_offeset == 1) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
                         i = i + 1
-                      elseif ( bb_offeset == 1 ) .and. (cc_offeset == 0) then)
+                      elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,1)
                         i = i + 1
-                      elseif ( bb_offeset == 0 ) .and. (cc_offeset == 1) then
+                      elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
                         HYPRE_BUF(i) = -u(k-n+this%mode,aa,0)
                         i = i + 1
-                      elseif ( bb_offeset == 0 ) .and. (cc_offeset == 0) then
+                      elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
                         HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
                         i = i + 1
                       endif
                     endif
                   endif
-                elseif (l== 1) then
-                  if( bb == cc) then
-                    HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
-                    i = i + 1
-                  else
-                    HYPRE_BUF(i) = 0
-                    i = i + 1 
-                  endif 
+                endif
+              elseif (l== 1) then
+                if( bb == cc) then
+                  HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1 
                 endif 
               endif
             enddo
           enddo
         enddo
       enddo
+    endif
+  case default
+    call write_err( 'Invalid field type!' )
+  end select
 
   ! set the upper boundary
   if ( lidproc == lnvp-1 ) then
@@ -709,7 +711,7 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
     ! to be deleted
     case ( p_bnd_zero )
       
-      i = local_vol - (4*this%mode+1)^2*3*2
+      i = local_vol - (4*this%mode+1)**2*3*2
       do bb = 0, 4*this%mode
         do l = 0, 1
           do cc = 0, 4*this%mode
@@ -727,7 +729,7 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
 
       case ( p_fk_all_B_minus )
         
-        i = local_vol - (4*this%mode+1)^2*3*2
+        i = local_vol - (4*this%mode+1)**2*3*2
         do bb = 0, 4*this%mode
           do l = 0, 1
             do cc = 0, 4*this%mode
@@ -736,10 +738,10 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
               else
                 n = cc/2 - this%mode
               endif
-              if (l = 0 ) then
+              if (l == 0 ) then
                 HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
                 i = i + 1
-              elseif (l = 1 ) then
+              elseif (l == 1 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif          
@@ -747,9 +749,9 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
           enddo
         enddo
 
-      case ( p_fk_all_B_bplus )
+      case ( p_fk_all_B_plus )
         
-        i = local_vol - (4*this%mode+1)^2*3*2
+        i = local_vol - (4*this%mode+1)**2*3*2
         do bb = 0, 4*this%mode
           do l = 0, 1
             do cc = 0, 4*this%mode
@@ -758,10 +760,10 @@ subroutine set_struct_matrix( this, opts, dr, psi_re, psi_im, u, qbm)
               else
                 n = cc/2 - this%mode
               endif
-              if (l = 0 ) then
+              if (l == 0 ) then
                 HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
                 i = i + 1
-              elseif (l = 1 ) then
+              elseif (l == 1 ) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif          

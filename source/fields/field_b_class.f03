@@ -88,7 +88,7 @@ subroutine alloc_field_b( this, max_mode )
   endif
 
   if ( .not. associated( this%solver_coef ) ) then
-    allocate( field_solver :: this%solver_coef(0:1) )
+    allocate( field_solver_all_modes :: this%solver_coef(0:1) )
   endif
 
 end subroutine alloc_field_b
@@ -146,7 +146,9 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
         bnd=boundary, stype=p_hypre_cycred )
     enddo 
 
-    call this%solver_coef%new( opts, max_mode, dr, kind=p_fk_coef, &
+    call this%solver_coef(0)%new( opts, max_mode, dr, kind=p_fk_coef, &
+        bnd=boundary, stype=p_hypre_cycred )
+    call this%solver_coef(1)%new( opts, max_mode, dr, kind=p_fk_coef, &
         bnd=boundary, stype=p_hypre_cycred )
 
     call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
@@ -890,7 +892,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   type( ufield ), pointer :: psi_re1 => null(), psi_im1 => null()
   type( ufield ), pointer :: q_re1 => null(), q_im1 => null()
   type( ufield ), pointer :: qn_re1 => null(), qn_im1 => null()
-  real :: psisum_re,qsum_re,psisum_im,qsum_im
+  real :: qbm
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
 
@@ -917,9 +919,11 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
     call this%get_solution_bt_iter(0)
   else
     !   solve ele coef
-    call this%solver_coef(1)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im，q_re = q_re, q_im = q_im, qbm = -1)
+    qbm = -1.0
+    call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
     !   solve ion coef
-    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im，q_re = qn_re, q_im = qn_im, qbm = 1/1836.5)
+    qbm = 1/1836.5
+    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
     ! add coef
     this%buf3 = this%buf3 + this%buf4
     !   set source
@@ -940,8 +944,8 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
         this%buf6(this%max_mode - i, :, 1) = -this%buf2_im
       endif
     enddo
-    call this%solver_bm(src = this%buf5, u = this%buf3)
-    call this%solver_bp(src = this%buf6, u = this%buf3)
+    call this%solver_bm%solve(src = this%buf5, u = this%buf3)
+    call this%solver_bp%solve(src = this%buf6, u = this%buf3)
     do i = 0, this%max_mode
       if ( i == 0 ) then
         this%buf1_re = this%buf5(this%max_mode,:,0)
@@ -955,6 +959,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
         call this%get_solution_bt_iter(i)
       endif
     enddo
+  endif
 
   call this%copy_gc_f1()
 
