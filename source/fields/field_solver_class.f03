@@ -575,7 +575,7 @@ subroutine set_struct_matrixv1( this, psi_re, q_re, qn_re )
 !   real, intent(in) :: qsum
 
   integer :: i, ierr, local_vol, nr, noff, m
-  integer :: comm, lidproc, lnvp
+  integer :: comm, lidproc, lnvp, k
   real :: dr2, m2, j, jmax, dr, qm_ion
   character(len=32), save :: sname = "set_struct_matrix"
 
@@ -648,24 +648,15 @@ subroutine set_struct_matrixv1( this, psi_re, q_re, qn_re )
   case ( p_fk_bplus )
 
     ! set from the second grid point of each partition
-    if (m == 0) then
       j = real(noff)
       do i = 4, local_vol, this%num_stencil
         j = j + 1.0
+        k = int(j)
         HYPRE_BUF(i)   = 1.0 - 0.5 / j
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
-        dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
+        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,k)-qn_re(1,k))/(1+psi_re(1,k)) -&
+        dr2 * qm_ion * qn_re(1,k)/(1-qm_ion*psi_re(1,k)) 
         HYPRE_BUF(i+2) = 1.0 + 0.5 / j
       enddo
-    else
-      j = real(noff)
-      do i = 4, local_vol, this%num_stencil
-        j = j + 1.0
-        HYPRE_BUF(i)   = 1.0 - 0.5 / j
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 
-        HYPRE_BUF(i+2) = 1.0 + 0.5 / j
-      enddo
-    endif
 
     ! set the first grid point of each partition
     if (lidproc == 0) then
@@ -679,43 +670,27 @@ subroutine set_struct_matrixv1( this, psi_re, q_re, qn_re )
       HYPRE_BUF(4) = 0.0
 
     else
-
-      if (m == 0) then
-        j = real(noff)
-        HYPRE_BUF(1) = 1.0 - 0.5 / j
-        HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
-        dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j))
-        HYPRE_BUF(3) = 1.0 + 0.5 / j
-      else
-        j = real(noff)
-        HYPRE_BUF(1) = 1.0 - 0.5 / j
-        HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-        HYPRE_BUF(3) = 1.0 + 0.5 / j
-      endif
+      j = real(noff)
+      k = int(j)
+      HYPRE_BUF(1) = 1.0 - 0.5 / j
+      HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,k)-qn_re(1,k))/(1+psi_re(1,k)) -&
+      dr2 * qm_ion * qn_re(1,k)/(1-qm_ion*psi_re(1,k))
+      HYPRE_BUF(3) = 1.0 + 0.5 / j
 
     endif
 
   case ( p_fk_bminus )
 
     ! set from the second grid point of each partition
-    if (m == 0) then
-      j = real(noff)
-      do i = 4, local_vol, this%num_stencil
-        j = j + 1.0
-        HYPRE_BUF(i)   = 1.0 - 0.5 / j
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
-        dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
-        HYPRE_BUF(i+2) = 1.0 + 0.5 / j
-      enddo
-    else
-      j = real(noff)
-      do i = 4, local_vol, this%num_stencil
-        j = j + 1.0
-        HYPRE_BUF(i)   = 1.0 - 0.5 / j
-        HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2
-        HYPRE_BUF(i+2) = 1.0 + 0.5 / j
-      enddo
-    endif
+    j = real(noff)
+    do i = 4, local_vol, this%num_stencil
+      j = j + 1.0
+      k = int(j)
+      HYPRE_BUF(i)   = 1.0 - 0.5 / j
+      HYPRE_BUF(i+1) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,k)-qn_re(1,k))/(1+psi_re(1,k)) -&
+      dr2 * qm_ion * qn_re(1,k)/(1-qm_ion*psi_re(1,k)) 
+      HYPRE_BUF(i+2) = 1.0 + 0.5 / j
+    enddo
 
     ! set the first grid point of each partition
     if (lidproc == 0) then
@@ -735,17 +710,12 @@ subroutine set_struct_matrixv1( this, psi_re, q_re, qn_re )
       endif
 
     else
-      if (m == 0) then
         j = real(noff)
+        k = int(j)
         HYPRE_BUF(1) = 1.0 - 0.5 / j
-        HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,j)-qn_re(1,j))/(1+psi_re(1,j)) -&
-        dr2 * qm_ion * qn_re(1,j)/(1-qm_ion*psi_re(1,j)) 
+        HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 + dr2 * (q_re(1,k)-qn_re(1,k))/(1+psi_re(1,k)) -&
+        dr2 * qm_ion * qn_re(1,k)/(1-qm_ion*psi_re(1,k)) 
         HYPRE_BUF(3) = 1.0 + 0.5 / j
-      else
-        HYPRE_BUF(1) = 1.0 - 0.5 / j
-        HYPRE_BUF(2) = -2.0 - ((m+1)/j)**2 
-        HYPRE_BUF(3) = 1.0 + 0.5 / j
-      endif
     endif
 
   case ( p_fk_vpotp )

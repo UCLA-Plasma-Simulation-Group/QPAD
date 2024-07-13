@@ -15,15 +15,16 @@ private
 public :: field_solver_all_modes
 public :: HYPRE_BUF
 
-character(len=32), parameter :: cls_name = "field_solver"
+character(len=32), parameter :: cls_name = "field_solver_all_modes"
 integer, parameter :: cls_level = 4
 
 real, dimension(:), pointer, save :: HYPRE_BUF => null()
+real, dimension(:), pointer :: src_sol => null()
 
 type :: field_solver_all_modes ! class for HYPRE solver
 
   ! HYPRE parameters
-  integer, dimension(:,:), pointer :: offsets => null()
+  integer, dimension(:), pointer :: offsets => null()
   integer, dimension(:), pointer :: stencil_idx => null()
   integer :: num_stencil
   integer :: stype ! currently there's only cyclic reduction
@@ -32,7 +33,7 @@ type :: field_solver_all_modes ! class for HYPRE solver
   integer :: bnd
 
   integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver
-  integer, dimension(2) :: iupper, ilower
+  integer :: iupper, ilower
 
   contains
 
@@ -48,6 +49,7 @@ end type field_solver_all_modes
 
 integer, save :: nofff
 real, save :: drr
+integer :: nr
  
 contains
 
@@ -73,8 +75,9 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
   this%mode  = max_mode
   this%kind  = kind
   this%bnd   = bnd
-  nofff    = opts%get_noff(1)
-  drr     = dr
+  nofff = opts%get_noff(1)
+  drr = dr
+  nr = opts%get_ndp(1)
 
   ! setup HYPRE grid
   comm = comm_loc()
@@ -89,7 +92,7 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
   call HYPRE_StructVectorCreate( comm, this%grid, this%x, ierr )
   call HYPRE_StructVectorInitialize( this%x, ierr )
 
-  call this%set_struct_solver()
+!   call this%set_struct_solver()
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -107,6 +110,7 @@ subroutine end_field_solver( this )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   if ( associated(HYPRE_BUF) ) deallocate( HYPRE_BUF )
+  if ( associated(src_sol) ) deallocate( src_sol )
 
   call HYPRE_StructGridDestroy( this%grid, ierr )
   call HYPRE_StructStencilDestroy( this%stencil, ierr )
@@ -133,9 +137,12 @@ subroutine set_struct_solver( this )
 
   comm = comm_loc()
 
+  write(2,*) 'solver Initializing 2'
   ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
   call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
+  write(2,*) 'solver Initializing 3'
   call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
+  write(2,*) 'solver Initializing 4'
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -151,13 +158,14 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
   type(ufield), intent(inout), dimension(:), optional, pointer :: q_im
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
+!   real, intent(inout), dimension(:), optional, pointer :: src1
+!   real, intent(inout), dimension(:), optional, pointer :: src
   real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
-!   real, intent(inout), optional:: psisum
-!   real, intent(inout), optional :: qsum
 
-  integer :: ierr, a, im, k, l
-  real, dimension(:), pointer :: src_sol
+  integer :: ierr, a, im, k, l, kk
+  real :: jj
+  integer :: size_sol
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
@@ -165,68 +173,107 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
+  size_sol = nr * (4 * this%mode + 1)  
+
+  if (.not. associated( src_sol)) then
+    allocate( src_sol(size_sol) )
+  end if
+
   select case ( this%kind )
   case ( p_fk_coef )
     call set_struct_matrix(this, psi_re = psi_re, psi_im = psi_im, qbm=qbm)
-    call this%set_struct_solver() 
+    call this%set_struct_solver()
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 0' 
     a = 1
-    do k = this%ilower(2),this%iupper(2)
-      do l = this%ilower(1),this%iupper(1)
-          im = l - this%mode
-          if (im > 0 ) then
-            f1_re => q_re(im)%get_f1()
-            f1_re => q_im(im)%get_f1()
-            src_sol(a)  = -qbm*f1_re(1,k)
-            src_sol(a+1)  = -qbm*f1_im(1,k)
-            a=a+2
-          elseif (im == 0) then
-            f1_re => q_re(0)%get_f1()
-            src_sol(a)  = -qbm*f1_re(1,k)
-            a = a+1
-          else
-            f1_re => q_re(im)%get_f1()
-            f1_re => q_im(im)%get_f1()
-            src_sol(a)  = -qbm*f1_re(1,k)
-            src_sol(a+1)  = qbm*f1_im(1,k)
-            a=a+2          
+    do k = 1, nr
+      do l = 0, 2*this%mode
+        im = l - this%mode
+!         write(2,*) im,"im"
+        if (im > 0 ) then
+          f1_re => q_re(im)%get_f1()
+          f1_im => q_im(im)%get_f1()
+!           write(2,*) f1_re(1,k),"f1_re(1,k) im>0"
+!           write(2,*) f1_im(1,k),"f1_im(1,k) im>0"
+          src_sol(a)  = -qbm*f1_re(1,k)
+          src_sol(a + 1)  = -qbm*f1_im(1,k)
+          a=a + 2
+        elseif (im == 0) then
+          f1_re => q_re(0)%get_f1()
+!           write(2,*) f1_re(1,k),"f1_re(1,k) im=0"
+          src_sol(a)  = -qbm*f1_re(1,k)
+          a = a + 1
+        else
+          im = abs(im)
+          f1_re => q_re(im)%get_f1()
+          f1_im => q_im(im)%get_f1()
+          write(2,*) f1_re(1,k),"f1_re(1,k) im<0"
+          write(2,*) f1_im(1,k),"f1_im(1,k) im<0"
+          write(2,*) -qbm*f1_re(1,k),"src_sol(a) im<0"
+          write(2,*) a,"a0"
+          src_sol(a) = -qbm*f1_re(1,k)
+          src_sol(a + 1)  = qbm*f1_im(1,k)
+!           write(2,*) qbm*f1_im(1,k),"src_sol(a+1) 0  im<0"
+!           write(2,*) src_sol(a + 1),"src_sol(a+1) 1  im<0"
+          a=a + 2 
+!           write(2,*) a,"a"         
         endif
-      enddo 
+      enddo
     enddo
+    write(2,*) a,"a"
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 1'     
     call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
     call HYPRE_StructVectorAssemble( this%b, ierr )
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
     call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
     a = 1
-    do k = this%ilower(2), this%iupper(2)
-      do l = 0, 4*this%mode
-          if (l == 2*this%mode ) then
-            src(im,k,0) = src_sol(a)
+    do k = 1, nr
+      do l = 0, 2*this%mode
+        im = l - this%mode
+        write(2,*) im,"im get"
+        write(2,*) a,"a get"
+          if (im == 0 ) then
+            if (a > size(src_sol)) then
+              print *, "Error: a is out of bounds for src_sol."
+              stop
+            end if
+            write(2,*) src_sol(a),"src_sol(a) im=0 0"
+            src(l,k,0) = src_sol(a)
+            write(2,*) src_sol(a),"src_sol(a) im=0 1"
             a=a+1
           else
-            src(im,k,0) = src_sol(a)
-            src(im,k,1) = src_sol(a + 1)
+            if (a > size(src_sol)) then
+              print *, "Error: a is out of bounds for src_sol."
+              stop
+            end if
+            write(2,*) src_sol(a),"src_sol(a) im><0 0"
+            src(l,k,0) = src_sol(a)
+            write(2,*) src_sol(a),"src_sol(a) im><0 1"
+            src(l,k,1) = src_sol(a + 1)
             a=a+2          
         endif
       enddo 
     enddo
-
+    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
   case ( p_fk_all_B_minus, p_fk_all_B_plus )
     call set_struct_matrix(this, u=u)
     call this%set_struct_solver() 
     a = 1
-    do k = this%ilower(2),this%iupper(2)
-      do l = this%ilower(1),this%iupper(1)
+    do k = 1, nr
+      do l = 0, 2*this%mode
           im = l - this%mode
           if (im > 0 ) then
-            src_sol(a)  = src(im,k,0)
-            src_sol(a+1)  = src(im,k,1)
+            src_sol(a)  = src(l,k,0)
+            src_sol(a+1)  = src(l,k,1)
             a=a+2
           elseif (im == 0) then
-            src_sol(a)  = src(im,k,0)
+            src_sol(a)  = src(l,k,0)
             a = a+1
           else
-            src_sol(a)  = src(im,k,0)
-            src_sol(a+1)  = -src(im,k,1)
+            src_sol(a)  = src(l,k,0)
+            src_sol(a+1)  = -src(l,k,1)
             a=a+2          
         endif
       enddo 
@@ -236,15 +283,16 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
     call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
     a = 1
-    do k = this%ilower(2), this%iupper(2)
-      do l = 0, 4*this%mode
-          if (l == 2*this%mode ) then
-            src(im,k,0) = src_sol(a)
-            a=a+1
-          else
-            src(im,k,0) = src_sol(a)
-            src(im,k,1) = src_sol(a + 1)
-            a=a+2          
+    do k = 1, nr
+      do l = 0, 2*this%mode
+        im = l - this%mode
+        if (im == 0 ) then
+          src(l,k,0) = src_sol(a)
+          a=a+1
+        else
+          src(l,k,0) = src_sol(a)
+          src(l,k,1) = src_sol(a + 1)
+          a=a+2          
         endif
       enddo 
     enddo
@@ -253,6 +301,11 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
   select case ( this%kind )
   case ( p_fk_coef)
     call stop_tprof( 'solve coef' )
+  case ( p_fk_all_B_minus)
+    call stop_tprof( 'solve B_minus' )
+  case ( p_fk_all_B_plus)
+    call stop_tprof( 'solve B_plus' )
+
   end select
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -272,14 +325,10 @@ subroutine set_struct_grid( this, opts )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   comm = comm_loc()
-  this%ilower(1) = 0
-  this%ilower(2) = opts%get_noff(1) + 1
-  this%ilower(3) = 0
-  this%iupper(1) = 2*this%mode
-  this%iupper(2) = opts%get_noff(1) + opts%get_ndp(1)
-  this%iupper(3) = 1
+  this%ilower = opts%get_noff(1) + 1
+  this%iupper = opts%get_noff(1) + opts%get_ndp(1)*(4*this%mode+1) 
 
-  call HYPRE_StructGridCreate( comm, 3, this%grid, ierr )
+  call HYPRE_StructGridCreate( comm, 1, this%grid, ierr )
   call HYPRE_StructGridSetExtents( this%grid, this%ilower, this%iupper, ierr )
   call HYPRE_StructGridAssemble( this%grid, ierr )
 
@@ -304,7 +353,7 @@ subroutine set_struct_stencil( this )
     
     this%num_stencil = 4*this%mode + 1
     if ( .not. associated( this%offsets ) ) then
-      allocate( this%offsets(3, this%num_stencil ) )
+      allocate( this%offsets(this%num_stencil ) )
     endif
 
     if ( .not. associated( this%stencil_idx ) ) then
@@ -315,27 +364,21 @@ subroutine set_struct_stencil( this )
     endif
 
     k = 1
-    do j = 0, 2*this%mode
-      if (j == this%mode) then
-        this%offsets(:,k) = (/0, 0, 0/)
-        k=k+1
-      else
-        this%offsets(:,k) = (/j-this%mode, 0, 0/)
-        this%offsets(:,k+1) = (/j-this%mode, 0, 1/)
-        k=k+2
-      endif
+    do j = 0, 4*this%mode
+      this%offsets(k) = j-2*this%mode
+      k=k+1
     enddo
 
-    call HYPRE_StructStencilCreate( 3, this%num_stencil, this%stencil, ierr )
+    call HYPRE_StructStencilCreate( 1, this%num_stencil, this%stencil, ierr )
     do i = 1, this%num_stencil
-      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(1,i), ierr )
+      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
     enddo
   
   case( p_fk_all_B_minus, p_fk_all_B_plus )
 
     this%num_stencil = (4*this%mode + 1)*3
     if ( .not. associated( this%offsets ) ) then
-      allocate( this%offsets( 3,this%num_stencil ) )
+      allocate( this%offsets( this%num_stencil ) )
     endif
 
     if ( .not. associated( this%stencil_idx ) ) then
@@ -346,22 +389,14 @@ subroutine set_struct_stencil( this )
     endif
 
     k = 1
-    do l = -1, 1
-      do j = 0, 2*this%mode
-        if (j == this%mode) then
-          this%offsets(:,k) = (/0, l, 0/)
-          k=k+1
-        else
-          this%offsets(:,k) = (/j-this%mode, l, 0/)
-          this%offsets(:,k+1) = (/j-this%mode, l, 1/)
-          k=k+2
-        endif
-      enddo
+    do j = 0, (4*this%mode+1)*3-1
+      this%offsets(k) = j-(6*this%mode+1)
+      k=k+1
     enddo
 
-    call HYPRE_StructStencilCreate( 3, this%num_stencil, this%stencil, ierr )
+    call HYPRE_StructStencilCreate( 1, this%num_stencil, this%stencil, ierr )
     do i = 1, this%num_stencil
-      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(1,i), ierr )
+      call HYPRE_StructStencilSetElement( this%stencil, i-1, this%offsets(i), ierr )
     enddo
 
   end select
@@ -375,15 +410,13 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   implicit none
 
   class( field_solver_all_modes ), intent(inout) :: this
-!   type( options ), intent(in) :: opts
-!   real, intent(in) :: dr
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
   real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
 
-  integer :: i, ierr, local_vol, nr, noff, m, aa, bb, cc
-  integer :: k, n, d, bb_offeset, cc_offeset,l, demode
+  integer :: i, ierr, local_vol, noff, m, aa, bb, nn, kk
+  integer :: k, n, d, bb_offeset, aa_offeset,l, demode, Anumber
   integer :: comm, lidproc, lnvp
   real :: dr2, m2, j, jmax, dr
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
@@ -401,8 +434,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   dr2 = drr*drr
   m = this%mode
   m2 = real(m*m)
-  nr = this%iupper(2) - this%ilower(2) + 1
-  local_vol = nr * this%num_stencil * (4 * this%mode +1)
+  local_vol = (this%iupper - this%ilower + 1)* this%num_stencil
 
   if ( .not. associated( HYPRE_BUF ) ) then
     allocate( HYPRE_BUF( local_vol ) )
@@ -419,364 +451,430 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
   case ( p_fk_coef )
 
-  ! set from the first grid point of each partition，mode is close.
-  !i = 4*this%mode+1
-    do aa = 1, nr
-      do bb = 0, 4*this%mode
-        do cc = 0, 4*this%mode
-          if( cc - 2*this%mode > 0 ) then
-            n = (cc + 1)/2 - this%mode
-          else
-            n = cc/2 - this%mode
-          endif
-          if( bb - 2*this%mode > 0 ) then
-            k = (bb + 1)/2 - this%mode
-          else
-            k = bb/2 - this%mode
-          endif
-          demode = abs(k-n)
-          if (bb == cc) then
-            f1_re => psi_re(0)%get_f1()
-            HYPRE_BUF(i)   = 1.0 - qbm * f1_re(1,aa)
-            i = i + 1
-          else
-            if (demode > this%mode) then
-              HYPRE_BUF(i) = 0
+    j = real(noff)
+    i = 1
+    do nn = 1, nr
+      kk = int(j)
+      do aa = 0, 4*this%mode
+        if( aa - 2*this%mode > 0 ) then
+          k = (aa + 1)/2 - this%mode
+        else
+          k = aa/2 - this%mode
+        endif
+        do bb = aa - 2*this%mode, aa + 2*this%mode
+          if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
+            if( bb - 2*this%mode > 0 ) then
+              n = (bb + 1)/2 - this%mode 
+            else
+              n = bb/2 - this%mode 
+            endif
+            demode = abs(k-n)
+            if (aa == bb) then
+              f1_re => psi_re(0)%get_f1()
+              HYPRE_BUF(i)   = 1.0 - qbm * f1_re(1,kk)
               i = i + 1
             else
-              if (demode == 0) then
+              if (demode > this%mode) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               else
-                bb_offeset = bb - (k+this%mode)*2
-                cc_offeset = cc - (n+this%mode)*2
-                if ( bb_offeset == 1  .and. cc_offeset == 1) then
-                  f1_re => psi_re(demode)%get_f1()
-                  HYPRE_BUF(i) = -qbm * f1_re(1,aa)
+                if (demode == 0) then
+                  HYPRE_BUF(i) = 0.0
                   i = i + 1
-                elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
-                  f1_im => psi_im(demode)%get_f1()
-                  HYPRE_BUF(i) = -sign(1,k-n)*qbm * f1_im(1,aa)
-                  i = i + 1
-                elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
-                  f1_im => psi_im(demode)%get_f1()
-                  HYPRE_BUF(i) = sign(1,k-n)*qbm * f1_im(1,aa)
-                  i = i + 1
-                elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
-                  f1_re => psi_re(demode)%get_f1()
-                  HYPRE_BUF(i) = -qbm * f1_re(1,aa)
-                  i = i + 1
+                else
+                  if (aa - 2*this%mode > 0) then
+                    aa_offeset = aa + 1 - (k+this%mode)*2
+                  else
+                    aa_offeset = aa - (k+this%mode)*2
+                  endif
+                  if( bb - 2*this%mode > 0 ) then
+                    bb_offeset = bb + 1 - (n+this%mode)*2
+                  else
+                    bb_offeset = bb - (n+this%mode)*2
+                  endif
+                  if ( aa_offeset == 1  .and. bb_offeset == 1) then
+                    f1_re => psi_re(demode)%get_f1()
+                    HYPRE_BUF(i) = -qbm * f1_re(1,kk)
+                    i = i + 1
+                  elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
+                    f1_im => psi_im(demode)%get_f1()
+                    HYPRE_BUF(i) = -sign(1,k-n)*qbm * f1_im(1,kk)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
+                    f1_im => psi_im(demode)%get_f1()
+                    HYPRE_BUF(i) = sign(1,k-n)*qbm * f1_im(1,kk)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
+                    f1_re => psi_re(demode)%get_f1()
+                    HYPRE_BUF(i) = -qbm * f1_re(1,kk)
+                    i = i + 1
+                  endif
                 endif
               endif
             endif
+          else            
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
           endif
         enddo
       enddo
+      j = j + 1.0 
     enddo
+          
     call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
       this%stencil_idx, HYPRE_BUF, ierr )
 
     call HYPRE_StructMatrixAssemble( this%A, ierr )
 
-  case(p_fk_all_B_minus)
+  case( p_fk_all_B_minus )
 
     ! set the first grid point of each partition
-    i=1
-    if (lidproc == 0) then
-      do bb = 0, 4*this%mode
-        do l = -1, 1
-          do cc = 0, 4*this%mode
-            if( cc - 2*this%mode > 0 ) then
-              n = (cc + 1)/2 - this%mode
+    i = ((4*this%mode + 1)*3) * (4*this%mode + 1) + 1
+    j = real(noff) 
+     do nn = 2, nr
+      j = j + 1.0
+      kk = int(j)
+      do aa = 0, 4*this%mode
+        if( aa - 2*this%mode > 0 ) then
+          k = (aa + 1)/2 - this%mode
+        else
+          k = aa/2 - this%mode
+        endif
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
+            if( bb - 2*this%mode > 0 ) then
+              n = (bb + 1)/2 - this%mode 
             else
-              n = cc/2 - this%mode
+              n = bb/2 - this%mode 
             endif
-            if (n == -1 .or. n == 1) then
-              if (l == -1) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = -4.0 - dr2
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif
+            demode = abs(k-n)
+            if (aa == bb) then
+              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,kk,0)
+              i = i + 1
             else
-              if (l == -1) then
+              if (demode > this%mode) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 1.0
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif           
-            endif
-          enddo
-        enddo
-      enddo
-    else
-      j = real(noff)
-      do aa = 1, nr
-        j = j + 1.0
-        do bb = 0, 4*this%mode
-          do l = -1, 1
-            do cc = 0, 4*this%mode
-              if( cc - 2*this%mode > 0 ) then
-                n = (cc + 1)/2 - this%mode
               else
-                n = cc/2 - this%mode
-              endif
-              if( bb - 2*this%mode > 0 ) then
-                k = (bb + 1)/2 - this%mode
-              else
-                k = bb/2 - this%mode
-              endif
-              demode = abs(k-n)
-              if (l == -1) then
-                if( bb == cc) then
-                  HYPRE_BUF(i) = ( 1.0 - 0.5 / j )/dr2
+                if (demode == 0) then
+                  HYPRE_BUF(i) = 0.0
                   i = i + 1
                 else
-                  HYPRE_BUF(i) = 0
-                  i = i + 1 
-                endif                 
-              elseif( l == 0) then  
-                if (bb == cc) then
-                  HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,aa,0)
-                  i = i + 1
-                else
-                  if (demode > this%mode) then
-                    HYPRE_BUF(i) = 0
-                    i = i + 1
+                  if (aa - 2*this%mode > 0) then
+                    aa_offeset = aa + 1 - (k+this%mode)*2
                   else
-                    if (demode == 0) then
-                      HYPRE_BUF(i) = 0
-                      i = i + 1
-                    else
-                      bb_offeset = bb - (k+this%mode)*2
-                      cc_offeset = cc - (n+this%mode)*2
-                      if ( bb_offeset == 1  .and. cc_offeset == 1) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,1)
-                        i = i + 1
-                      elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
-                        HYPRE_BUF(i) = -u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      endif
-                    endif
+                    aa_offeset = aa - (k+this%mode)*2
+                  endif
+                  if( bb - 2*this%mode > 0 ) then
+                    bb_offeset = bb + 1 - (n+this%mode)*2
+                  else
+                    bb_offeset = bb - (n+this%mode)*2
+                  endif
+                  if ( aa_offeset == 1  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
                   endif
                 endif
-              elseif (l== 1) then
-                if( bb == cc) then
-                  HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
+              endif
+            endif
+          elseif (bb == aa - 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1
+          elseif (bb == aa + 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1  
+          else               
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
+        enddo
+      enddo 
+    enddo
+! inner boundary
+    i = 1
+    if (lidproc == 0) then
+      do aa = 0, 4*this%mode
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if (aa == bb) then
+!             m=-1
+            if (aa == 2*this%mode-1) then
+              HYPRE_BUF(i) = u(this%mode,0,0) - u(this%mode + 2,0,0) - 4.0/dr2
+              i = i + 1
+            elseif(aa == 2*this%mode-2) then
+              HYPRE_BUF(i) = u(this%mode,0,0) + u(this%mode + 2,0,0) - 4.0/dr2
+              i = i + 1
+!               m=1
+            elseif(aa == 2*this%mode+1) then
+              HYPRE_BUF(i) = u(this%mode,0,0) - 4.0/dr2
+              i = i + 1
+            elseif(aa == 2*this%mode+2) then
+              HYPRE_BUF(i) = u(this%mode,0,0) - 4.0/dr2
+              i = i + 1
+            else
+              HYPRE_BUF(i) = 1.0
+              i = i + 1
+            endif
+          else
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
+        enddo
+      enddo 
+    else
+      j = real(noff) 
+      kk = int(j)
+      do aa = 0, 4*this%mode
+        if( aa - 2*this%mode > 0 ) then
+          k = (aa + 1)/2 - this%mode
+        else
+          k = aa/2 - this%mode
+        endif
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
+            if( bb - 2*this%mode > 0 ) then
+              n = (bb + 1)/2 - this%mode 
+            else
+              n = bb/2 - this%mode 
+            endif
+            demode = abs(k-n)
+            if (aa == bb) then
+              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,kk,0)
+              i = i + 1
+            else
+              if (demode > this%mode) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              else
+                if (demode == 0) then
+                  HYPRE_BUF(i) = 0.0
                   i = i + 1
                 else
-                  HYPRE_BUF(i) = 0
-                  i = i + 1 
-                endif  
+                  if (aa - 2*this%mode > 0) then
+                    aa_offeset = aa + 1 - (k+this%mode)*2
+                  else
+                    aa_offeset = aa - (k+this%mode)*2
+                  endif
+                  if( bb - 2*this%mode > 0 ) then
+                    bb_offeset = bb + 1 - (n+this%mode)*2
+                  else
+                    bb_offeset = bb - (n+this%mode)*2
+                  endif
+                  if ( aa_offeset == 1  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  endif
+                endif
               endif
-            enddo
-          enddo
+            endif
+          elseif (bb == aa - 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1
+          elseif (bb == aa + 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1  
+          else               
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
         enddo
       enddo
-    endif
+    endif 
 
-  case(p_fk_all_B_plus)
+  case( p_fk_all_B_plus )
 
     ! set the first grid point of each partition
-    i=1
-    if (lidproc == 0) then
-      do bb = 0, 4*this%mode
-        do l = -1, 1
-          do cc = 0, 4*this%mode
-            if( cc - 2*this%mode > 0 ) then
-              n = (cc + 1)/2 - this%mode
+    i = ((4*this%mode + 1)*3) * (4*this%mode + 1) + 1
+    j = real(noff) 
+     do nn = 2, nr
+      j = j + 1.0
+      kk = int(j)
+      do aa = 0, 4*this%mode
+        if( aa - 2*this%mode > 0 ) then
+          k = (aa + 1)/2 - this%mode
+        else
+          k = aa/2 - this%mode
+        endif
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
+            if( bb - 2*this%mode > 0 ) then
+              n = (bb + 1)/2 - this%mode 
             else
-              n = cc/2 - this%mode
+              n = bb/2 - this%mode 
             endif
-            if (n == -1 .or. n == 1) then
-              if (l == -1) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = -4.0 - dr2
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif
+            demode = abs(k-n)
+            if (aa == bb) then
+              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,kk,0)
+              i = i + 1
             else
-              if (l == -1) then
+              if (demode > this%mode) then
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 1.0
-                i = i + 1
-              elseif (l == 0 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif           
-            endif
-          enddo
-        enddo
-      enddo
-    else
-      j = real(noff)
-      do aa = 1, nr
-        j = j + 1.0
-        do bb = 0, 4*this%mode
-          do l = -1, 1
-            do cc = 0, 4*this%mode
-              if( cc - 2*this%mode > 0 ) then
-                n = (cc + 1)/2 - this%mode
               else
-                n = cc/2 - this%mode
-              endif
-              if( bb - 2*this%mode > 0 ) then
-                k = (bb + 1)/2 - this%mode
-              else
-                k = bb/2 - this%mode
-              endif
-              demode = abs(k-n)
-              if (l == -1) then
-                if( bb == cc) then
-                  HYPRE_BUF(i) = ( 1.0 - 0.5 / j )/dr2
-                  i = i + 1
-                else
+                if (demode == 0) then
                   HYPRE_BUF(i) = 0.0
-                  i = i + 1 
-                endif                 
-              elseif( l == 0) then  
-                if (bb == cc) then
-                  HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,aa,0)
                   i = i + 1
                 else
-                  if (demode > this%mode) then
-                    HYPRE_BUF(i) = 0.0
-                    i = i + 1
+                  if (aa - 2*this%mode > 0) then
+                    aa_offeset = aa + 1 - (k+this%mode)*2
                   else
-                    if (demode == 0) then
-                      HYPRE_BUF(i) = 0.0
-                      i = i + 1
-                    else
-                      bb_offeset = bb - (k+this%mode)*2
-                      cc_offeset = cc - (n+this%mode)*2
-                      if ( bb_offeset == 1  .and. cc_offeset == 1) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      elseif ( bb_offeset == 1  .and. cc_offeset == 0) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,1)
-                        i = i + 1
-                      elseif ( bb_offeset == 0  .and. cc_offeset == 1) then
-                        HYPRE_BUF(i) = -u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      elseif ( bb_offeset == 0  .and. cc_offeset == 0) then
-                        HYPRE_BUF(i) = u(k-n+this%mode,aa,0)
-                        i = i + 1
-                      endif
-                    endif
+                    aa_offeset = aa - (k+this%mode)*2
+                  endif
+                  if( bb - 2*this%mode > 0 ) then
+                    bb_offeset = bb + 1 - (n+this%mode)*2
+                  else
+                    bb_offeset = bb - (n+this%mode)*2
+                  endif
+                  if ( aa_offeset == 1  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
                   endif
                 endif
-              elseif (l== 1) then
-                if( bb == cc) then
-                  HYPRE_BUF(i) = ( 1.0 + 0.5 / j ) / dr2
+              endif
+            endif
+          elseif (bb == aa -  6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1
+          elseif (bb == aa +  6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1  
+          else               
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
+        enddo
+      enddo 
+    enddo
+! inner boundary
+    i = 1
+    if (lidproc == 0) then
+      do aa = 0, 4*this%mode
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if (aa == bb) then
+            HYPRE_BUF(i)   = 1.0
+            i = i + 1
+          else
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
+        enddo
+      enddo 
+    else
+      j = real(noff) 
+      kk = int(j)
+      do aa = 0, 4*this%mode
+        if( aa - 2*this%mode > 0 ) then
+          k = (aa + 1)/2 - this%mode
+        else
+          k = aa/2 - this%mode
+        endif
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+          if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
+            if( bb - 2*this%mode > 0 ) then
+              n = (bb + 1)/2 - this%mode 
+            else
+              n = bb/2 - this%mode 
+            endif
+            demode = abs(k-n)
+            if (aa == bb) then
+              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,kk,0)
+              i = i + 1
+            else
+              if (demode > this%mode) then
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              else
+                if (demode == 0) then
+                  HYPRE_BUF(i) = 0.0
                   i = i + 1
                 else
-                  HYPRE_BUF(i) = 0.0
-                  i = i + 1 
-                endif 
+                  if (aa - 2*this%mode > 0) then
+                    aa_offeset = aa + 1 - (k+this%mode)*2
+                  else
+                    aa_offeset = aa - (k+this%mode)*2
+                  endif
+                  if( bb - 2*this%mode > 0 ) then
+                    bb_offeset = bb + 1 - (n+this%mode)*2
+                  else
+                    bb_offeset = bb - (n+this%mode)*2
+                  endif
+                  if ( aa_offeset == 1  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
+                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    i = i + 1
+                  elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
+                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    i = i + 1
+                  endif
+                endif
               endif
-            enddo
-          enddo
+            endif
+          elseif (bb == aa - 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1
+          elseif (bb == aa + 6*this%mode + 1) then
+            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            i = i + 1  
+          else               
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
+          endif
         enddo
       enddo
-    endif
-  case default
-    call write_err( 'Invalid field type!' )
+    endif 
+
   end select
 
   ! set the upper boundary
   if ( lidproc == lnvp-1 ) then
 
-    select case ( this%bnd )
+    select case ( this%kind )
 
-    ! to be deleted
-    case ( p_bnd_zero )
+    case ( p_fk_all_B_minus, p_fk_all_B_plus )
       
-      i = local_vol - (4*this%mode+1)**2*3*2
-      do bb = 0, 4*this%mode
-        do l = 0, 1
-          do cc = 0, 4*this%mode
+      i = local_vol - ((4*this%mode + 1)*3) * (4*this%mode + 1) + 1
+      jmax = real(noff + nr)
+      do aa = 0, 4*this%mode
+        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+!           beta+ becomes 0.0
+          if ( bb == aa + 6*this%mode + 1 ) then
             HYPRE_BUF(i) = 0.0
             i = i + 1
-          enddo
+          endif
         enddo
-      enddo
+      enddo 
 
-    case ( p_bnd_open )
-
-      jmax = real(noff + nr)
-
-      select case ( this%kind )
-
-      case ( p_fk_all_B_minus )
-        
-        i = local_vol - (4*this%mode+1)**2*3*2
-        do bb = 0, 4*this%mode
-          do l = 0, 1
-            do cc = 0, 4*this%mode
-              if( cc - 2*this%mode > 0 ) then
-                n = (cc + 1)/2 - this%mode
-              else
-                n = cc/2 - this%mode
-              endif
-              if (l == 0 ) then
-                HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
-                i = i + 1
-              elseif (l == 1 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif          
-            enddo
-          enddo
-        enddo
-
-      case ( p_fk_all_B_plus )
-        
-        i = local_vol - (4*this%mode+1)**2*3*2
-        do bb = 0, 4*this%mode
-          do l = 0, 1
-            do cc = 0, 4*this%mode
-              if( cc - 2*this%mode > 0 ) then
-                n = (cc + 1)/2 - this%mode
-              else
-                n = cc/2 - this%mode
-              endif
-              if (l == 0 ) then
-                HYPRE_BUF(i)=HYPRE_BUF(i) + (1.0-(n+this%mode-1)/jmax) * HYPRE_BUF(i)
-                i = i + 1
-              elseif (l == 1 ) then
-                HYPRE_BUF(i) = 0.0
-                i = i + 1
-              endif          
-            enddo
-          enddo
-        enddo
-
-      case default
-        call write_err( 'Invalid field type!' )
-      end select
-
-    case default
-      call write_err( 'Invalid boundary condition!' )
     end select
 
   endif

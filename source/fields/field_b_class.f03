@@ -91,6 +91,14 @@ subroutine alloc_field_b( this, max_mode )
     allocate( field_solver_all_modes :: this%solver_coef(0:1) )
   endif
 
+  if ( .not. associated( this%solver_bp ) ) then
+    allocate( field_solver_all_modes :: this%solver_bp)
+  endif
+
+  if (.not. associated(this%solver_bm)) then
+    allocate(field_solver_all_modes :: this%solver_bm)
+  endif
+
 end subroutine alloc_field_b
 
 subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
@@ -146,19 +154,28 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
         bnd=boundary, stype=p_hypre_cycred )
     enddo 
 
-    call this%solver_coef(0)%new( opts, max_mode, dr, kind=p_fk_coef, &
-        bnd=boundary, stype=p_hypre_cycred )
-    call this%solver_coef(1)%new( opts, max_mode, dr, kind=p_fk_coef, &
-        bnd=boundary, stype=p_hypre_cycred )
+    if (max_mode > 0) then
+      write(2,*) 'B Initializing 2'
+      call this%solver_coef(0)%new( opts, max_mode, dr, kind=p_fk_coef, &
+          bnd=boundary, stype=p_hypre_cycred )
+      call this%solver_coef(1)%new( opts, max_mode, dr, kind=p_fk_coef, &
+          bnd=boundary, stype=p_hypre_cycred )
 
-    call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
-        bnd=boundary, stype=p_hypre_cycred )
+      write(2,*) 'B Initializing 3'
+      call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
+          bnd=boundary, stype=p_hypre_cycred )
 
-    call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
-        bnd=boundary, stype=p_hypre_cycred )
+      write(2,*) 'B Initializing 4'
+      call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
+          bnd=boundary, stype=p_hypre_cycred )
+    endif
 
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
     allocate( this%buf2_re(nrp), this%buf2_im(nrp) )
+    allocate( this%buf3(2*max_mode,nrp,2) )
+    allocate( this%buf4(2*max_mode,nrp,2) )
+    allocate( this%buf5(2*max_mode,nrp,2) )
+    allocate( this%buf6(2*max_mode,nrp,2) )
 
   case ( p_entity_beam )
 
@@ -198,14 +215,18 @@ subroutine end_field_b( this )
       call this%solver_bplus(i)%del()
       call this%solver_bminus(i)%del()
     enddo
-    call this%solver_coef(0)%del()
-    call this%solver_coef(1)%del()
-    call this%solver_bm%del()
-    call this%solver_bp%del()
     deallocate( this%solver_bz )
     deallocate( this%solver_bplus )
     deallocate( this%solver_bminus )
-    deallocate( this%solver_coef )
+    if (this%max_mode > 0 ) then
+      call this%solver_coef(0)%del()
+      call this%solver_coef(1)%del()
+      call this%solver_bp%del()
+      call this%solver_bm%del()
+      deallocate( this%solver_coef )
+      deallocate( this%solver_bp )
+      deallocate( this%solver_bm )
+    endif
 
   case ( p_entity_beam )
     do i = 0, this%max_mode
@@ -219,6 +240,10 @@ subroutine end_field_b( this )
   if ( associated( this%buf2_re ) ) deallocate( this%buf2_re )
   if ( associated( this%buf2_im ) ) deallocate( this%buf2_im )
   if ( associated( this%buf ) ) deallocate( this%buf )
+  if ( associated( this%buf3 ) ) deallocate( this%buf3 )
+  if ( associated( this%buf4 ) ) deallocate( this%buf4 )
+  if ( associated( this%buf5 ) ) deallocate( this%buf5 )
+  if ( associated( this%buf6 ) ) deallocate( this%buf6 )
 
   call this%field%del()
 
@@ -920,9 +945,11 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   else
     !   solve ele coef
     qbm = -1.0
+    write(2,*) 'this%solver_coef(0)%solve'
     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
     !   solve ion coef
     qbm = 1/1836.5
+    write(2,*) 'this%solver_coef(1)%solve'
     call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
     ! add coef
     this%buf3 = this%buf3 + this%buf4
