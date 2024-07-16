@@ -141,6 +141,9 @@ subroutine set_struct_solver( this )
   ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
   call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
   write(2,*) 'solver Initializing 3'
+  write(2,*) this%A,'A'
+  write(2,*) this%b,'b'
+  write(2,*) this%x,'x'
   call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
   write(2,*) 'solver Initializing 4'
 
@@ -179,6 +182,7 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
     allocate( src_sol(size_sol) )
   end if
 
+  write(2,*) this%kind, 'kind' 
   select case ( this%kind )
   case ( p_fk_coef )
     call set_struct_matrix(this, psi_re = psi_re, psi_im = psi_im, qbm=qbm)
@@ -206,10 +210,6 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
           im = abs(im)
           f1_re => q_re(im)%get_f1()
           f1_im => q_im(im)%get_f1()
-          write(2,*) f1_re(1,k),"f1_re(1,k) im<0"
-          write(2,*) f1_im(1,k),"f1_im(1,k) im<0"
-          write(2,*) -qbm*f1_re(1,k),"src_sol(a) im<0"
-          write(2,*) a,"a0"
           src_sol(a) = -qbm*f1_re(1,k)
           src_sol(a + 1)  = qbm*f1_im(1,k)
 !           write(2,*) qbm*f1_im(1,k),"src_sol(a+1) 0  im<0"
@@ -219,44 +219,33 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
         endif
       enddo
     enddo
-    write(2,*) a,"a"
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 1'     
+!     write(2,*) a,"a"
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 1'     
     call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
     call HYPRE_StructVectorAssemble( this%b, ierr )
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
     call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
     a = 1
     do k = 1, nr
       do l = 0, 2*this%mode
         im = l - this%mode
-        write(2,*) im,"im get"
-        write(2,*) a,"a get"
+!         write(2,*) im,"im get"
+!         write(2,*) a,"a get"
           if (im == 0 ) then
-            if (a > size(src_sol)) then
-              print *, "Error: a is out of bounds for src_sol."
-              stop
-            end if
-            write(2,*) src_sol(a),"src_sol(a) im=0 0"
+!             write(2,*) src_sol(a),"src_sol(a) im=0 0"
             src(l,k,0) = src_sol(a)
-            write(2,*) src_sol(a),"src_sol(a) im=0 1"
+!             write(2,*) src_sol(a),"src_sol(a) im=0 1"
             a=a+1
           else
-            if (a > size(src_sol)) then
-              print *, "Error: a is out of bounds for src_sol."
-              stop
-            end if
-            write(2,*) src_sol(a),"src_sol(a) im><0 0"
             src(l,k,0) = src_sol(a)
-            write(2,*) src_sol(a),"src_sol(a) im><0 1"
             src(l,k,1) = src_sol(a + 1)
             a=a+2          
         endif
       enddo 
     enddo
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
   case ( p_fk_all_B_minus, p_fk_all_B_plus )
     call set_struct_matrix(this, u=u)
     call this%set_struct_solver() 
@@ -451,7 +440,9 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
   case ( p_fk_coef )
 
+    write(2,*) 'this%solver_coef%solve||set_struct_matrix' 
     j = real(noff)
+    write(2,*) j,"j"
     i = 1
     do nn = 1, nr
       kk = int(j)
@@ -607,17 +598,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           if (aa == bb) then
 !             m=-1
             if (aa == 2*this%mode-1) then
-              HYPRE_BUF(i) = u(this%mode,0,0) - u(this%mode + 2,0,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(this%mode,1,0) - u(this%mode + 2,1,0) - 4.0/dr2
               i = i + 1
             elseif(aa == 2*this%mode-2) then
-              HYPRE_BUF(i) = u(this%mode,0,0) + u(this%mode + 2,0,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(this%mode,1,0) + u(this%mode + 2,1,0) - 4.0/dr2
               i = i + 1
 !               m=1
             elseif(aa == 2*this%mode+1) then
-              HYPRE_BUF(i) = u(this%mode,0,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(this%mode,1,0) - 4.0/dr2
               i = i + 1
             elseif(aa == 2*this%mode+2) then
-              HYPRE_BUF(i) = u(this%mode,0,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(this%mode,1,0) - 4.0/dr2
               i = i + 1
             else
               HYPRE_BUF(i) = 1.0

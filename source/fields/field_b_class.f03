@@ -160,22 +160,23 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
           bnd=boundary, stype=p_hypre_cycred )
       call this%solver_coef(1)%new( opts, max_mode, dr, kind=p_fk_coef, &
           bnd=boundary, stype=p_hypre_cycred )
-
-      write(2,*) 'B Initializing 3'
-      call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
-          bnd=boundary, stype=p_hypre_cycred )
-
-      write(2,*) 'B Initializing 4'
-      call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
-          bnd=boundary, stype=p_hypre_cycred )
     endif
+
+    write(2,*) 'B Initializing 3'
+    call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
+        bnd=boundary, stype=p_hypre_cycred )
+
+    write(2,*) 'B Initializing 4'
+    call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
+        bnd=boundary, stype=p_hypre_cycred )
+!     endif
 
     allocate( this%buf1_re(nrp), this%buf1_im(nrp) )
     allocate( this%buf2_re(nrp), this%buf2_im(nrp) )
-    allocate( this%buf3(2*max_mode,nrp,2) )
-    allocate( this%buf4(2*max_mode,nrp,2) )
-    allocate( this%buf5(2*max_mode,nrp,2) )
-    allocate( this%buf6(2*max_mode,nrp,2) )
+    allocate( this%buf3(1 + 2*max_mode,nrp,2) )
+    allocate( this%buf4(1 + 2*max_mode,nrp,2) )
+    allocate( this%buf5(1 + 2*max_mode,nrp,2) )
+    allocate( this%buf6(1 + 2*max_mode,nrp,2) )
 
   case ( p_entity_beam )
 
@@ -221,12 +222,14 @@ subroutine end_field_b( this )
     if (this%max_mode > 0 ) then
       call this%solver_coef(0)%del()
       call this%solver_coef(1)%del()
-      call this%solver_bp%del()
-      call this%solver_bm%del()
       deallocate( this%solver_coef )
-      deallocate( this%solver_bp )
-      deallocate( this%solver_bm )
     endif
+    call this%solver_bp%del()
+    call this%solver_bm%del()
+!     deallocate( this%solver_coef )
+    deallocate( this%solver_bp )
+    deallocate( this%solver_bm )
+!     endif
 
   case ( p_entity_beam )
     do i = 0, this%max_mode
@@ -917,6 +920,9 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   type( ufield ), pointer :: psi_re1 => null(), psi_im1 => null()
   type( ufield ), pointer :: q_re1 => null(), q_im1 => null()
   type( ufield ), pointer :: qn_re1 => null(), qn_im1 => null()
+  real, dimension(:,:), pointer :: f1_re => null()
+  real, dimension(:,:), pointer :: f2_re => null()
+  real, dimension(:,:), pointer :: f3_re => null()
   real :: qbm
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
@@ -934,26 +940,24 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   qn_re => qn%get_rf_re()
   qn_im => qn%get_rf_im()
 
-!   if ( this%max_mode == 0 ) then
-!     call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
-!     psi_re1 => psi_re(0)
-!     q_re1 => q_re(0)
-!     qn_re1 => qn_re(0)
-!     call this%solver_bplus(i)%solve( this%buf1_re, psi_re1, q_re1, qn_re1)
-!     call this%solver_bminus(i)%solve( this%buf2_re, psi_re1, q_re1, qn_re1)
-!     call this%get_solution_bt_iter(0)
-!   else
+  if ( this%max_mode == 0 ) then
+    f1_re => psi_re(0)%get_f1()
+    f2_re => q_re(0)%get_f1()
+    f3_re => qn_re(0)%get_f1()
+    this%buf3(this%max_mode,:,0)  = (f2_re(1,:)-f3_re(1,:))/(1+f3_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f3_re(1,:))
+  else
   !   solve ele coef
-  qbm = -1.0
-  write(2,*) 'this%solver_coef(0)%solve'
-  call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
-  !   solve ion coef
-  qbm = 1/1836.5
-  write(2,*) 'this%solver_coef(1)%solve'
-  call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
-  ! add coef
-  this%buf3 = this%buf3 + this%buf4
-  !   set source
+    qbm = -1.0
+    write(2,*) 'this%solver_coef(0)%solve'
+    call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
+    !   solve ion coef
+    qbm = 1/1836.5
+    write(2,*) 'this%solver_coef(1)%solve'
+    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
+    ! add coef
+    this%buf3 = this%buf3 + this%buf4
+  endif
+    !   set source
   do i = 0, this%max_mode
     if ( i == 0 ) then
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
