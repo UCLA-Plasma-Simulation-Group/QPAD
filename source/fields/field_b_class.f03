@@ -944,7 +944,8 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
     f1_re => psi_re(0)%get_f1()
     f2_re => q_re(0)%get_f1()
     f3_re => qn_re(0)%get_f1()
-    this%buf3(this%max_mode,:,0)  = (f2_re(1,:)-f3_re(1,:))/(1+f3_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f3_re(1,:))
+!     write(2,*) 'this%solver_coef%solve max_mode=0'
+    this%buf3(this%max_mode,:,0) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
   else
   !   solve ele coef
     qbm = -1.0

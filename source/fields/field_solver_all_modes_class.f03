@@ -404,7 +404,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
 
-  integer :: i, ierr, local_vol, noff, m, aa, bb, nn, kk
+  integer :: i, ierr, local_vol, noff, m, aa, bb, nn, kk, mm
   integer :: k, n, d, bb_offeset, aa_offeset,l, demode, Anumber
   integer :: comm, lidproc, lnvp
   real :: dr2, m2, j, jmax, dr
@@ -577,11 +577,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+          elseif (bb == aa - 6*this%mode - 1) then
+            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
             i = i + 1
           elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -619,6 +619,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             i = i + 1
           endif
         enddo
+      enddo
+      mm = ((4*this%mode + 1)*3) * (4*this%mode + 1) 
+      do aa = 0, 4*this%mode
+        i = mm + ((4*this%mode + 1)*3)*aa + 1
+        HYPRE_BUF(i) = 0.0
       enddo 
     else
       j = real(noff) 
@@ -675,11 +680,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+          elseif (bb == aa - 6*this%mode - 1) then
+            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1
           elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -749,11 +754,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa -  6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+          elseif (bb == aa -  6*this%mode - 1) then
+            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
             i = i + 1
           elseif (bb == aa +  6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -775,6 +780,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             i = i + 1
           endif
         enddo
+      enddo
+      mm = ((4*this%mode + 1)*3) * (4*this%mode + 1) 
+      do aa = 0, 4*this%mode
+        i = mm + ((4*this%mode + 1)*3)*aa + 1
+        HYPRE_BUF(i) = 0.0
       enddo 
     else
       j = real(noff) 
@@ -831,11 +841,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+          elseif (bb == aa - 6*this%mode - 1) then
+            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
             i = i + 1
           elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 - 1/(j*dr2)
+            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -854,17 +864,15 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
     case ( p_fk_all_B_minus, p_fk_all_B_plus )
       
-      i = local_vol - ((4*this%mode + 1)*3) * (4*this%mode + 1) + 1
+!       i = local_vol
       jmax = real(noff + nr)
-      do aa = 0, 4*this%mode
-        do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
-!           beta+ becomes 0.0
-          if ( bb == aa + 6*this%mode + 1 ) then
-            HYPRE_BUF(i) = 0.0
-            i = i + 1
-          endif
-        enddo
-      enddo 
+!       do aa = 0, 4*this%mode
+!         i = local_vol - aa * (12*this%mode+3)
+!         HYPRE_BUF(i) = 0.0
+!         i = i + 1
+!       enddo 
+      HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+      HYPRE_BUF(local_vol) = 0.0
 
     end select
 
