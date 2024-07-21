@@ -151,15 +151,17 @@ subroutine set_struct_solver( this )
 
 end subroutine set_struct_solver
 
-subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
+subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, u, qbm)
 
   implicit none
 
   class( field_solver_all_modes ), intent(inout) :: this
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: q_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qn_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
   type(ufield), intent(inout), dimension(:), optional, pointer :: q_im
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qn_im
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 !   real, intent(inout), dimension(:), optional, pointer :: src1
 !   real, intent(inout), dimension(:), optional, pointer :: src
@@ -196,13 +198,23 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
         if (im > 0 ) then
           f1_re => q_re(im)%get_f1()
           f1_im => q_im(im)%get_f1()
-!           write(2,*) f1_re(1,k),"f1_re(1,k) im>0"
-!           write(2,*) f1_im(1,k),"f1_im(1,k) im>0"
+          if ( present(q_im) .and. present(qn_im) ) then
+!             write(2,*) "present(qn_im)"
+            f2_re => qn_re(im)%get_f1()
+            f2_im => qn_im(im)%get_f1()
+            f1_re = f1_re - f2_re
+            f1_im = f1_im - f2_im
+          endif
           src_sol(a)  = -qbm*f1_re(1,k)
           src_sol(a + 1)  = -qbm*f1_im(1,k)
           a=a + 2
         elseif (im == 0) then
           f1_re => q_re(0)%get_f1()
+          if ( present(q_re) .and. present(qn_re) ) then
+!             write(2,*) "present(qn_re)"
+            f2_re => qn_re(0)%get_f1()
+            f1_re = f1_re - f2_re
+          endif
 !           write(2,*) f1_re(1,k),"f1_re(1,k) im=0"
           src_sol(a)  = -qbm*f1_re(1,k)
           a = a + 1
@@ -210,6 +222,13 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
           im = abs(im)
           f1_re => q_re(im)%get_f1()
           f1_im => q_im(im)%get_f1()
+          if ( present(q_im) .and. present(qn_im) ) then
+!             write(2,*) "present(qn_im)"
+            f2_re => qn_re(im)%get_f1()
+            f2_im => qn_im(im)%get_f1()
+            f1_re = f1_re - f2_re
+            f1_im = f1_im - f2_im
+          endif
           src_sol(a) = -qbm*f1_re(1,k)
           src_sol(a + 1)  = qbm*f1_im(1,k)
 !           write(2,*) qbm*f1_im(1,k),"src_sol(a+1) 0  im<0"
@@ -236,12 +255,12 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
 !         write(2,*) a,"a get"
           if (im == 0 ) then
 !             write(2,*) src_sol(a),"src_sol(a) im=0 0"
-            src(l,k,0) = src_sol(a)
+            src(1+l,k,1) = src_sol(a)
 !             write(2,*) src_sol(a),"src_sol(a) im=0 1"
             a=a+1
           else
-            src(l,k,0) = src_sol(a)
-            src(l,k,1) = src_sol(a + 1)
+            src(1+l,k,1) = src_sol(a)
+            src(1+l,k,2) = src_sol(a + 1)
             a=a+2          
         endif
       enddo 
@@ -254,15 +273,15 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
       do l = 0, 2*this%mode
           im = l - this%mode
           if (im > 0 ) then
-            src_sol(a)  = src(l,k,0)
-            src_sol(a+1)  = src(l,k,1)
+            src_sol(a)  = src(1+l,k,1)
+            src_sol(a+1)  = src(1+l,k,2)
             a=a+2
           elseif (im == 0) then
-            src_sol(a)  = src(l,k,0)
+            src_sol(a)  = src(1+l,k,1)
             a = a+1
           else
-            src_sol(a)  = src(l,k,0)
-            src_sol(a+1)  = -src(l,k,1)
+            src_sol(a)  = src(1+l,k,1)
+            src_sol(a+1)  = -src(1+l,k,2)
             a=a+2          
         endif
       enddo 
@@ -276,11 +295,11 @@ subroutine solve_equation( this, src, psi_re, q_re, psi_im, q_im, u, qbm)
       do l = 0, 2*this%mode
         im = l - this%mode
         if (im == 0 ) then
-          src(l,k,0) = src_sol(a)
+          src(1+l,k,1) = src_sol(a)
           a=a+1
         else
-          src(l,k,0) = src_sol(a)
-          src(l,k,1) = src_sol(a + 1)
+          src(1+l,k,1) = src_sol(a)
+          src(1+l,k,2) = src_sol(a + 1)
           a=a+2          
         endif
       enddo 
@@ -445,7 +464,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
     write(2,*) j,"j"
     i = 1
     do nn = 1, nr
-      kk = int(j)
+      kk = int(j) + 1
       do aa = 0, 4*this%mode
         if( aa - 2*this%mode > 0 ) then
           k = (aa + 1)/2 - this%mode
@@ -524,7 +543,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
     j = real(noff) 
      do nn = 2, nr
       j = j + 1.0
-      kk = int(j)
+      kk = int(j) + 1
       do aa = 0, 4*this%mode
         if( aa - 2*this%mode > 0 ) then
           k = (aa + 1)/2 - this%mode
@@ -540,7 +559,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,kk,0)
+              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -562,16 +581,16 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                     bb_offeset = bb - (n+this%mode)*2
                   endif
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = -u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   endif
                 endif
@@ -598,17 +617,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           if (aa == bb) then
 !             m=-1
             if (aa == 2*this%mode-1) then
-              HYPRE_BUF(i) = u(this%mode,1,0) - u(this%mode + 2,1,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(1 + this%mode,1,1) - u(this%mode + 3,1,1) - 4.0/dr2
               i = i + 1
             elseif(aa == 2*this%mode-2) then
-              HYPRE_BUF(i) = u(this%mode,1,0) + u(this%mode + 2,1,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(1+this%mode,1,1) + u(this%mode + 3,1,1) - 4.0/dr2
               i = i + 1
 !               m=1
             elseif(aa == 2*this%mode+1) then
-              HYPRE_BUF(i) = u(this%mode,1,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(1+this%mode,1,1) - 4.0/dr2
               i = i + 1
             elseif(aa == 2*this%mode+2) then
-              HYPRE_BUF(i) = u(this%mode,1,0) - 4.0/dr2
+              HYPRE_BUF(i) = u(1+this%mode,1,1) - 4.0/dr2
               i = i + 1
             else
               HYPRE_BUF(i) = 1.0
@@ -643,7 +662,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(this%mode,kk,0)
+              HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -665,16 +684,16 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                     bb_offeset = bb - (n+this%mode)*2
                   endif
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = -u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   endif
                 endif
@@ -717,7 +736,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,kk,0)
+              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -739,16 +758,16 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                     bb_offeset = bb - (n+this%mode)*2
                   endif
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = -u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   endif
                 endif
@@ -804,7 +823,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(this%mode,kk,0)
+              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -826,16 +845,16 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                     bb_offeset = bb - (n+this%mode)*2
                   endif
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
-                    HYPRE_BUF(i) = -u(this%mode+k-n,kk,1)
+                    HYPRE_BUF(i) = -u(1+this%mode+k-n,kk,2)
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
-                    HYPRE_BUF(i) = u(this%mode+k-n,kk,0)
+                    HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
                     i = i + 1
                   endif
                 endif
@@ -864,15 +883,41 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
     case ( p_fk_all_B_minus, p_fk_all_B_plus )
       
-!       i = local_vol
-      jmax = real(noff + nr)
-!       do aa = 0, 4*this%mode
-!         i = local_vol - aa * (12*this%mode+3)
-!         HYPRE_BUF(i) = 0.0
-!         i = i + 1
-!       enddo 
-      HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
-      HYPRE_BUF(local_vol) = 0.0
+      select case ( this%bnd )
+
+      case ( p_bnd_zero )
+
+        i = local_vol - (12*this%mode+3)*(4*this%mode + 1) + 1
+        do aa = 0, 4*this%mode
+          do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+            if ( bb > aa - 6*this%mode - 1) then
+              HYPRE_BUF(i) = 0.0
+              i = i + 1
+            else
+              i = i + 1
+            endif
+          enddo
+        enddo 
+      
+      case ( p_bnd_open )
+        i = local_vol - (12*this%mode+3)*(4*this%mode + 1) + 1
+        jmax = real(noff + nr)
+        do aa = 0, 4*this%mode
+          do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
+            if (aa == bb) then
+              HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(m+1)/jmax) * HYPRE_BUF(i + 4*this%mode + 1)
+              i = i + 1
+            elseif ( bb > aa - 6*this%mode - 1) then
+              HYPRE_BUF(i) = 0.0
+              i = i + 1
+            else
+              i = i + 1
+            endif
+          enddo
+        enddo 
+!         HYPRE_BUF(local_vol-1) = HYPRE_BUF(local_vol-1) + (1.0-(m+1)/jmax) * HYPRE_BUF(local_vol)
+!         HYPRE_BUF(local_vol) = 0.0
+      end select
 
     end select
 
