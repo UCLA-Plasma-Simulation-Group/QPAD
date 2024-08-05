@@ -923,6 +923,9 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   real, dimension(:,:), pointer :: f1_re => null()
   real, dimension(:,:), pointer :: f2_re => null()
   real, dimension(:,:), pointer :: f3_re => null()
+  real, dimension(3,250,2) :: a1
+  real, dimension(3,250,2) :: a2
+  real, dimension(3,250,2) :: a3
   real :: qbm
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
@@ -944,35 +947,43 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   this%buf4 = 0.0
   this%buf5 = 0.0
   this%buf6 = 0.0
-  if ( this%max_mode == 0 ) then
-    f1_re => psi_re(0)%get_f1()
-    f2_re => q_re(0)%get_f1()
-    f3_re => qn_re(0)%get_f1()
-!     write(2,*) 'this%solver_coef%solve max_mode=0'
-    this%buf3(1+this%max_mode,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
-  else
-  !   solve ele coef
-    qbm = -1.0
-    write(2,*) 'this%solver_coef(0)%solve'
+  a1 = 0.0
+  a2 = 0.0
+  a3 = 0.0
+!   if ( this%max_mode == 0 ) then
+  f1_re => psi_re(0)%get_f1()
+  f2_re => q_re(0)%get_f1()
+  f3_re => qn_re(0)%get_f1()
+  write(2,*) 'this%solver_coef%solve max_mode=0'
+!   this%buf3(1+this%max_mode,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
+  a1(2,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
+!   else
+!   solve ele coef
+  qbm = -1.0
+  write(2,*) 'this%solver_coef(0)%solve'
 !     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
-    call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im,&
-      qn_re = qn_re, qn_im = qn_im, qbm = qbm )
+  call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im,&
+    qn_re = qn_re, qn_im = qn_im, qbm = qbm )
 !     !   solve ion coef
-    qbm = 1/1836.5
-    write(2,*) 'this%solver_coef(1)%solve'
-    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
-    ! add coef
-    write(2,*) sum(this%buf3),'this%buf3'
-    write(2,*) sum(this%buf4),'this%buf4'
-    this%buf3 = this%buf3 + this%buf4
-  endif
+  qbm = 1/1836.5
+  write(2,*) 'this%solver_coef(1)%solve'
+  call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
+  ! add coef
+  write(2,*) sum(this%buf3),'this%buf3'
+  write(2,*) sum(this%buf4),'this%buf4'
+  this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
+!   endif 
+  a2(2,:,1) = this%buf3(2,:,1)
+  a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
   write(2,*) sum(this%buf3),'this%buf3 sum'
+  write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
+  write(2,*) a3(2,:,1),'a3'
     !   set source
   do i = 0, this%max_mode
     if ( i == 0 ) then
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
-      this%buf5(1+this%max_mode,:,1) = this%buf1_re
-      this%buf6(1+this%max_mode,:,1) = this%buf2_re
+      this%buf5(1+this%max_mode,:,1) = this%buf1_re(:)
+      this%buf6(1+this%max_mode,:,1) = this%buf2_re(:)
     else
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
       this%buf5(1+this%max_mode + i, :, 1) = this%buf1_re
@@ -989,14 +1000,14 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   call this%solver_bp%solve(src = this%buf6, u = this%buf3)
   do i = 0, this%max_mode
     if ( i == 0 ) then
-      this%buf1_re = this%buf5(1+this%max_mode,:,1)
-      this%buf2_re = this%buf6(1+this%max_mode,:,1)
+      this%buf1_re(:) = this%buf5(1+this%max_mode,:,1)
+      this%buf2_re(:) = this%buf6(1+this%max_mode,:,1)
       call this%get_solution_bt_iter(i)
     else
-      this%buf1_re = this%buf5(1+this%max_mode + i,:,1)
-      this%buf1_im = this%buf5(1+this%max_mode + i,:,2)
-      this%buf2_re = this%buf6(1+this%max_mode + i,:,1)
-      this%buf2_im = this%buf6(1+this%max_mode + i,:,2)
+      this%buf1_re(:) = this%buf5(1+this%max_mode + i,:,1)
+      this%buf1_im(:) = this%buf5(1+this%max_mode + i,:,2)
+      this%buf2_re(:) = this%buf6(1+this%max_mode + i,:,1)
+      this%buf2_im(:) = this%buf6(1+this%max_mode + i,:,2)
       call this%get_solution_bt_iter(i)
     endif
   enddo

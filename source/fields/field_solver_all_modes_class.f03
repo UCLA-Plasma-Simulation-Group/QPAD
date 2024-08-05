@@ -169,7 +169,7 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
   real, intent(inout), optional :: qbm
 
   integer :: ierr, a, im, k, l, kk
-  real :: jj
+  real :: jj, j
   integer :: size_sol
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
@@ -191,7 +191,9 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
     call this%set_struct_solver()
     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 0' 
     a = 1
+    j = real(nofff)
     do k = 1, nr
+      kk = int(j)
       do l = 0, 2*this%mode
         im = l - this%mode
 !         write(2,*) im,"im"
@@ -202,21 +204,24 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
 !             write(2,*) "present(qn_im)"
             f2_re => qn_re(im)%get_f1()
             f2_im => qn_im(im)%get_f1()
-            f1_re = f1_re - f2_re
-            f1_im = f1_im - f2_im
+            f1_re(1,kk) = f1_re (1,kk)- f2_re(1,kk)
+            f1_im(1,kk) = f1_im (1,kk)- f2_im(1,kk)
           endif
-          src_sol(a)  = -qbm*f1_re(1,k)
-          src_sol(a + 1)  = -qbm*f1_im(1,k)
+          src_sol(a)  = -qbm*f1_re(1,kk)
+          src_sol(a + 1)  = -qbm*f1_im(1,kk)
           a=a + 2
         elseif (im == 0) then
           f1_re => q_re(0)%get_f1()
           if ( present(q_re) .and. present(qn_re) ) then
 !             write(2,*) "present(qn_re)"
             f2_re => qn_re(0)%get_f1()
-            f1_re = f1_re - f2_re
+!             write(2,*) f2_re(1,kk),"f2_re(1,kk) im=0"
+            f1_re(1,kk) = f1_re(1,kk) - f2_re(1,kk)
+!             write(2,*) f1_re(1,kk),"f1_re(1,kk) im=0"
           endif
 !           write(2,*) f1_re(1,k),"f1_re(1,k) im=0"
-          src_sol(a)  = -qbm*f1_re(1,k)
+          src_sol(a)  = -qbm*f1_re(1,kk)
+!           src_sol(a)  = 0.0
           a = a + 1
         else
           im = abs(im)
@@ -226,17 +231,18 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
 !             write(2,*) "present(qn_im)"
             f2_re => qn_re(im)%get_f1()
             f2_im => qn_im(im)%get_f1()
-            f1_re = f1_re - f2_re
-            f1_im = f1_im - f2_im
+            f1_re(1,kk)= f1_re(1,kk) - f2_re(1,kk)
+            f1_im(1,kk) = f1_im(1,kk) - f2_im(1,kk)
           endif
-          src_sol(a) = -qbm*f1_re(1,k)
-          src_sol(a + 1)  = qbm*f1_im(1,k)
+          src_sol(a) = -qbm*f1_re(1,kk)
+          src_sol(a + 1)  = qbm*f1_im(1,kk)
 !           write(2,*) qbm*f1_im(1,k),"src_sol(a+1) 0  im<0"
 !           write(2,*) src_sol(a + 1),"src_sol(a+1) 1  im<0"
           a=a + 2 
 !           write(2,*) a,"a"         
         endif
       enddo
+      j = j + 1.0
     enddo
 !     write(2,*) a,"a"
 !     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 1'     
@@ -290,6 +296,7 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
     call HYPRE_StructVectorAssemble( this%b, ierr )
     call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
+    write(2,*) sum(src_sol),"src_sol" 
     a = 1
     do k = 1, nr
       do l = 0, 2*this%mode
@@ -423,7 +430,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   real, intent(inout), dimension(:,:,:), optional :: u
   real, intent(inout), optional :: qbm
 
-  integer :: i, ierr, local_vol, noff, m, aa, bb, nn, kk, mm
+  integer :: i, ierr, local_vol, noff, m, aa, bb, nn, kk, mm, g
   integer :: k, n, d, bb_offeset, aa_offeset,l, demode, Anumber
   integer :: comm, lidproc, lnvp
   real :: dr2, m2, j, jmax, dr
@@ -462,9 +469,10 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
     write(2,*) 'this%solver_coef%solve||set_struct_matrix' 
     j = real(noff)
     write(2,*) j,"j"
+    write(2,*) qbm,"qbm"
     i = 1
     do nn = 1, nr
-      kk = int(j) + 1
+      kk = int(j)  
       do aa = 0, 4*this%mode
         if( aa - 2*this%mode > 0 ) then
           k = (aa + 1)/2 - this%mode
@@ -480,7 +488,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
+!               write(2,*) aa,"aa"
+!               write(2,*) n,"n"
               f1_re => psi_re(0)%get_f1()
+!               write(2,*) f1_re(1,kk),"f1_re(1,kk)"
+!               write(2,*) kk,"kk"
               HYPRE_BUF(i)   = 1.0 - qbm * f1_re(1,kk)
               i = i + 1
             else
@@ -543,7 +555,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
     j = real(noff) 
      do nn = 2, nr
       j = j + 1.0
-      kk = int(j) + 1
+      kk = int(j) 
       do aa = 0, 4*this%mode
         if( aa - 2*this%mode > 0 ) then
           k = (aa + 1)/2 - this%mode
@@ -560,6 +572,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             demode = abs(k-n)
             if (aa == bb) then
               HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(1+this%mode,kk,1)
+!               write(2,*) i,"i u0"
               i = i + 1
             else
               if (demode > this%mode) then
@@ -582,9 +595,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                   endif
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
                     HYPRE_BUF(i) = u(1+this%mode+k-n,kk,1)
+!                     write(2,*) u(1+this%mode+k-n,kk,1),"u(1+this%mode+k-n,kk,1)"
                     i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
                     HYPRE_BUF(i) = u(1+this%mode+k-n,kk,2)
+!                     write(2,*) u(1+this%mode+k-n,kk,2),"u(1+this%mode+k-n,kk,2)"
                     i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
                     HYPRE_BUF(i) = -u(1+this%mode+k-n,kk,2)
@@ -596,11 +611,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode - 1) then
-            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
+          elseif (bb == aa - 4*this%mode - 1) then
+            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1
-          elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
+          elseif (bb == aa + 4*this%mode + 1) then
+            HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -617,34 +632,126 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           if (aa == bb) then
 !             m=-1
             if (aa == 2*this%mode-1) then
-              HYPRE_BUF(i) = u(1 + this%mode,1,1) - u(this%mode + 3,1,1) - 4.0/dr2
-              i = i + 1
+              if(this%mode > 1) then
+                HYPRE_BUF(i) = u(1 + this%mode,0,1) - u(this%mode + 3,0,1) + 4.0/dr2
+                i = i + 1
+              else
+                HYPRE_BUF(i) = u(1 + this%mode,0,1) + 4.0/dr2
+!                 HYPRE_BUF(i) = -4.0/dr2
+                i = i + 1
+              endif
             elseif(aa == 2*this%mode-2) then
-              HYPRE_BUF(i) = u(1+this%mode,1,1) + u(this%mode + 3,1,1) - 4.0/dr2
+              if(this%mode > 1) then
+                HYPRE_BUF(i) = u(1+this%mode,1,1) + u(this%mode + 3,1,1) - 4.0/dr2
+                i = i + 1
+              else
+                HYPRE_BUF(i) = u(1 + this%mode,0,1) - 4.0/dr2
+!                 HYPRE_BUF(i) = -4.0/dr2
+                i = i + 1
+              endif
+!           m=1
+!             elseif(aa == 2*this%mode+1) then
+            elseif(aa == 2*this%mode+1 .or. aa == 2*this%mode+2) then
+              HYPRE_BUF(i) = u(1 + this%mode,0,1) - 4.0/dr2
+!               HYPRE_BUF(i) = -4.0/dr2
               i = i + 1
-!               m=1
-            elseif(aa == 2*this%mode+1) then
-              HYPRE_BUF(i) = u(1+this%mode,1,1) - 4.0/dr2
-              i = i + 1
-            elseif(aa == 2*this%mode+2) then
-              HYPRE_BUF(i) = u(1+this%mode,1,1) - 4.0/dr2
-              i = i + 1
+!             elseif(aa == 2*this%mode+2) then
+!               HYPRE_BUF(i) = u(1+this%mode,1,1) - 4.0/dr2
+! !               HYPRE_BUF(i) = -4.0/dr2
+!               i = i + 1
             else
               HYPRE_BUF(i) = 1.0
               i = i + 1
             endif
           else
-            HYPRE_BUF(i) = 0.0
-            i = i + 1
+            if( this%mode > 1) then
+              if( bb == aa + 4*this%mode + 1 ) then
+                if (aa /= 2*this%mode - 1 .and. aa /= 2*this%mode - 2 .and. aa /= 2*this%mode + 1 .and. aa /= 2*this%mode + 2) then
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                elseif(aa == 2*this%mode - 1) then
+                  HYPRE_BUF(i) = -4.0/dr2
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 4.0/dr2
+                  i = i + 1
+                endif
+              elseif( bb == aa - 1) then
+                if(aa == 2*this%mode - 1) then
+                  HYPRE_BUF(i) = -u(this%mode + 3,0,2)
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                endif
+              elseif( bb == aa + 1) then
+                if(aa == 2*this%mode - 2) then
+                  HYPRE_BUF(i) = -u(this%mode + 3,0,2)
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                endif
+              elseif( bb == aa - 3) then
+                if(aa == 2*this%mode + 1) then
+                  HYPRE_BUF(i) = u(this%mode + 3,0,1)
+                  i = i + 1
+                elseif(aa == 2*this%mode + 2) then
+                  HYPRE_BUF(i) = u(this%mode + 3,0,2)
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                endif
+              elseif( bb == aa - 2) then
+                if(aa == 2*this%mode + 1) then
+                  HYPRE_BUF(i) = -u(this%mode + 3,0,2)
+                  i = i + 1
+                elseif(aa == 2*this%mode + 2) then
+                  HYPRE_BUF(i) = u(this%mode + 3,0,1)
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                endif
+              else
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif
+            elseif(this%mode == 1) then
+              if( bb == aa + 4*this%mode + 1 ) then
+                if (aa /= 2*this%mode - 1 .and. aa /= 2*this%mode - 2 .and. aa /= 2*this%mode + 1 .and. aa /= 2*this%mode + 2) then
+                  HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                elseif(aa == 2*this%mode - 1) then
+                  HYPRE_BUF(i) = -4.0/dr2
+!                   HYPRE_BUF(i) = 4.0/dr2
+                  i = i + 1
+                else
+                  HYPRE_BUF(i) = 4.0/dr2
+!                   HYPRE_BUF(i) = 0.0
+                  i = i + 1
+                endif
+              else
+                HYPRE_BUF(i) = 0.0
+                i = i + 1
+              endif
+            else
+              HYPRE_BUF(i) = 0.0
+              i = i + 1
+            endif
           endif
         enddo
       enddo
-      mm = ((4*this%mode + 1)*3) * (4*this%mode + 1) 
+      mm = 10*this%mode + 3
       do aa = 0, 4*this%mode
-        i = mm + ((4*this%mode + 1)*3)*aa + 1
-        HYPRE_BUF(i) = 0.0
+        if (aa /= 2*this%mode - 1 .and. aa /= 2*this%mode - 2 .and. aa /= 2*this%mode + 1 .and. aa /= 2*this%mode + 2) then
+          i = mm + ((4*this%mode + 1)*3)*aa 
+          HYPRE_BUF(i) = 0.0
+        endif
       enddo 
     else
+      i = 1
       j = real(noff) 
       kk = int(j)
       do aa = 0, 4*this%mode
@@ -699,11 +806,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode - 1) then
+          elseif (bb == aa - 4*this%mode - 1) then
             HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1
-          elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
+          elseif (bb == aa + 4*this%mode + 1) then
+            HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -773,11 +880,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa -  6*this%mode - 1) then
-            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
+          elseif (bb == aa -  4*this%mode - 1) then
+            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1
-          elseif (bb == aa +  6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
+          elseif (bb == aa +  4*this%mode + 1) then
+            HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -800,12 +907,13 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           endif
         enddo
       enddo
-      mm = ((4*this%mode + 1)*3) * (4*this%mode + 1) 
+      mm = 10*this%mode + 3
       do aa = 0, 4*this%mode
-        i = mm + ((4*this%mode + 1)*3)*aa + 1
+        i = mm + ((4*this%mode + 1)*3)*aa 
         HYPRE_BUF(i) = 0.0
       enddo 
     else
+      i = 1
       j = real(noff) 
       kk = int(j)
       do aa = 0, 4*this%mode
@@ -860,11 +968,11 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             endif
-          elseif (bb == aa - 6*this%mode - 1) then
-            HYPRE_BUF(i) = 1/dr2 - 0.5/(j*dr2)
+          elseif (bb == aa - 4*this%mode - 1) then
+            HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
             i = i + 1
-          elseif (bb == aa + 6*this%mode + 1) then
-            HYPRE_BUF(i) = 1/dr2 + 0.5/(j*dr2)
+          elseif (bb == aa + 4*this%mode + 1) then
+            HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
             i = i + 1  
           else               
             HYPRE_BUF(i) = 0.0
@@ -890,7 +998,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
         i = local_vol - (12*this%mode+3)*(4*this%mode + 1) + 1
         do aa = 0, 4*this%mode
           do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
-            if ( bb > aa - 6*this%mode - 1) then
+            if ( bb == aa + 4*this%mode + 1) then
               HYPRE_BUF(i) = 0.0
               i = i + 1
             else
@@ -905,9 +1013,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
         do aa = 0, 4*this%mode
           do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
             if (aa == bb) then
-              HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(m+1)/jmax) * HYPRE_BUF(i + 4*this%mode + 1)
+              if( aa - 2*this%mode > 0 ) then
+                g = (aa + 1)/2 - this%mode
+                write(2,*) m,"m"
+              else
+                g = aa/2 - this%mode
+                write(2,*) m,"m"
+              endif
+!               g = abs(g)
+              HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(g + 1)/jmax) * HYPRE_BUF(i + 4*this%mode + 1)
               i = i + 1
-            elseif ( bb > aa - 6*this%mode - 1) then
+            elseif ( bb == aa + 4*this%mode + 1) then
               HYPRE_BUF(i) = 0.0
               i = i + 1
             else
