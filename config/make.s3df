@@ -1,0 +1,41 @@
+
+DISABLE_POPAS = TRUE
+DISABLE_TEMPLATE = TRUE
+DISABLE_SUBCYC = TRUE
+# Fortran compiler configuration
+FC = mpifort
+FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form 
+# -fbacktrace -fbounds-check
+# -fbounds-check
+# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
+# -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
+# -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
+
+# C compiler configuration
+CC = mpicc
+CC_OPTS = -O -std=c99
+
+# Preprocessor configuration
+FPP = mpifort -C -P -E -cpp
+
+#FPP = gcc 
+
+# Python 2.x configuration. Used for automatically generate compile rules
+PYTHON = python 
+
+# Linker configuration
+LINKER = mpifort
+LINKER_OPTS = -fopenmp -O3
+LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
+
+
+# Library dependencies
+HDF5_LIB = /sdf/home/t/thamine/qpad_libs_openmpi/hdf5-1.10.5/lib
+HDF5_INC = /sdf/home/t/thamine/qpad_libs_openmpi/hdf5-1.10.5/include
+HYPRE_LIB = /sdf/home/t/thamine/qpad_libs_openmpi/hypre/src/lib
+JSON_LIB = /sdf/home/t/thamine/qpad_libs_openmpi/json-fortran/build/lib
+JSON_INC = /sdf/home/t/thamine/qpad_libs_openmpi/json-fortran/build/include
+
+
+#INCF = -I$(JSON_INC) 
+INCF = -I$(HDF5_INC) -I$(JSON_INC)
