@@ -168,7 +168,7 @@ def install_json_fortran():
     pathfile.write("JSON_LIB = " + buildpath + "/lib"+ "\n")
     pathfile.write("JSON_INC = " + buildpath + "/include"+ "\n")
     
-    if f"export LD_LIBRARY_PATH={buildpath}:$LD_LIBRARY_PATH" not in bashcontents:
+    if f"export LD_LIBRARY_PATH={buildpath}/lib:$LD_LIBRARY_PATH" not in bashcontents:
         with open(bashpath, "a+") as bashfile:
             bashfile.write(f"export LD_LIBRARY_PATH={buildpath}:$LD_LIBRARY_PATH \n")
         bashfile.close()
