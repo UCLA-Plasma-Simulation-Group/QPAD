@@ -451,11 +451,12 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
     do i = 2, nrp
       this%buf1_re(i) = -f1_re(2,i)  ! Re(Br)
+      write(2,*) f1_re(2,i),'f1_re'
 !       this%buf1_re(i) = -f1_re(2,i) - f3_re(1,i) ! Re(Br)
       this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) )! Re(Bphi)
 !       this%buf2_re(i) = f1_re(1,i) + idrh * ( f2_re(3,i+1) - f2_re(3,i-1) ) - f3_re(2,i) ! Re(Bphi)
     enddo
-
+    write(2,*) this%buf1_re,'this%buf1_re play'
     ! calculate the derivatives at the boundary and axis
     if ( idproc == 0 ) then
       this%buf1_re(1) = 0.0
@@ -477,6 +478,8 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) )
 !       this%buf2_re(nrp) =  f1_re(1,nrp) + idrh * ( 3.0 * f2_re(3,nrp) - 4.0 * f2_re(3,nrp-1) + f2_re(3,nrp-2) ) - f3_re(2,nrp)
     endif
+    write(2,*) sum(this%buf1_re),'this%buf1_re sum 1'
+    write(2,*) sum(this%buf2_re),'this%buf2_re sum 1'
 
   elseif ( mode > 0 .and. present( jay_im ) .and. present( djdxi_im ) ) then
 
@@ -950,52 +953,58 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   a1 = 0.0
   a2 = 0.0
   a3 = 0.0
-!   if ( this%max_mode == 0 ) then
-  f1_re => psi_re(0)%get_f1()
-  f2_re => q_re(0)%get_f1()
-  f3_re => qn_re(0)%get_f1()
-  write(2,*) 'this%solver_coef%solve max_mode=0'
-!   this%buf3(1+this%max_mode,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
-  a1(2,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
-!   else
+  if ( this%max_mode == 0 ) then
+    f1_re => psi_re(0)%get_f1()
+    f2_re => q_re(0)%get_f1()
+    f3_re => qn_re(0)%get_f1()
+    write(2,*) 'this%solver_coef%solve max_mode=0'
+    this%buf3(1+this%max_mode,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
+!   a1(2,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
+  else
 !   solve ele coef
-  qbm = -1.0
-  write(2,*) 'this%solver_coef(0)%solve'
-!     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
-  call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im,&
-    qn_re = qn_re, qn_im = qn_im, qbm = qbm )
-!     !   solve ion coef
-  qbm = 1/1836.5
-  write(2,*) 'this%solver_coef(1)%solve'
-  call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, q_re = qn_re, q_im = qn_im, qbm = qbm )
-  ! add coef
-  write(2,*) sum(this%buf3),'this%buf3'
-  write(2,*) sum(this%buf4),'this%buf4'
-  this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
-!   endif 
-  a2(2,:,1) = this%buf3(2,:,1)
-  a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
+    qbm = -1.0
+    write(2,*) 'this%solver_coef(0)%solve'
+  !     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
+    call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, qe_re = q_re, qe_im = q_im,&
+      qn1_re = qn_re, qn1_im = qn_im, qbm = qbm )
+  !     !   solve ion coef
+    qbm = 1/1836.5
+    write(2,*) 'this%solver_coef(1)%solve'
+    call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, qe_re = qn_re, qe_im = qn_im, qbm = qbm )
+    ! add coef
+    write(2,*) sum(this%buf3),'this%buf3'
+    write(2,*) sum(this%buf4),'this%buf4'
+    this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
+!     this%buf3(1,:,:) = 0.0
+!     this%buf3(3,:,:) = 0.0
+  endif 
+!   a2(2,:,1) = this%buf3(2,:,1)
+!   a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
   write(2,*) sum(this%buf3),'this%buf3 sum'
   write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
-  write(2,*) a3(2,:,1),'a3'
+!   write(2,*) a3(2,:,1),'a3'
     !   set source
   do i = 0, this%max_mode
     if ( i == 0 ) then
+      f1_re => djdxi_re(i)%get_f1()
+      write(2,*) sum(-f1_re(2,:)),'f1_re play'
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
       this%buf5(1+this%max_mode,:,1) = this%buf1_re(:)
       this%buf6(1+this%max_mode,:,1) = this%buf2_re(:)
     else
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
-      this%buf5(1+this%max_mode + i, :, 1) = this%buf1_re
-      this%buf5(1+this%max_mode + i, :, 2) = this%buf1_im
-      this%buf5(1+this%max_mode - i, :, 1) = this%buf1_re
-      this%buf5(1+this%max_mode - i, :, 2) = -this%buf1_im
-      this%buf6(1+this%max_mode + i, :, 1) = this%buf2_re
-      this%buf6(1+this%max_mode + i, :, 2) = this%buf2_im
-      this%buf6(1+this%max_mode - i, :, 1) = this%buf2_re
-      this%buf6(1+this%max_mode - i, :, 2) = -this%buf2_im
+      this%buf5(1+this%max_mode + i, :, 1) = this%buf1_re(:)
+      this%buf5(1+this%max_mode + i, :, 2) = this%buf1_im(:)
+      this%buf5(1+this%max_mode - i, :, 1) = this%buf1_re(:)
+      this%buf5(1+this%max_mode - i, :, 2) = -this%buf1_im(:)
+      this%buf6(1+this%max_mode + i, :, 1) = this%buf2_re(:)
+      this%buf6(1+this%max_mode + i, :, 2) = this%buf2_im(:)
+      this%buf6(1+this%max_mode - i, :, 1) = this%buf2_re(:)
+      this%buf6(1+this%max_mode - i, :, 2) = -this%buf2_im(:)
     endif
   enddo
+  write(2,*) sum(this%buf5(:,:,:)),'this%buf5 sum'
+  write(2,*) sum(this%buf6(:,:,:)),'this%buf6 sum'
   call this%solver_bm%solve(src = this%buf5, u = this%buf3)
   call this%solver_bp%solve(src = this%buf6, u = this%buf3)
   do i = 0, this%max_mode

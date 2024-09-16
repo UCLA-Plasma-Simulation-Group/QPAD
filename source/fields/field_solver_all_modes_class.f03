@@ -118,7 +118,7 @@ subroutine end_field_solver( this )
   call HYPRE_StructVectorDestroy( this%x, ierr )
   call HYPRE_StructMatrixDestroy( this%A, ierr )
 
-  call HYPRE_StructCycRedDestroy( this%solver, ierr )
+  call HYPRE_StructGMRESDestroy( this%solver, ierr )
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -139,29 +139,29 @@ subroutine set_struct_solver( this )
 
   write(2,*) 'solver Initializing 2'
   ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
-  call HYPRE_StructCycRedCreate( comm, this%solver, ierr )
+  call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
   write(2,*) 'solver Initializing 3'
   write(2,*) this%A,'A'
   write(2,*) this%b,'b'
   write(2,*) this%x,'x'
-  call HYPRE_StructCycRedSetup( this%solver, this%A, this%b, this%x, ierr )
+  call HYPRE_StructGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
   write(2,*) 'solver Initializing 4'
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
 end subroutine set_struct_solver
 
-subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, u, qbm)
+subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_im, u, qbm)
 
   implicit none
 
   class( field_solver_all_modes ), intent(inout) :: this
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
-  type(ufield), intent(inout), dimension(:), optional, pointer :: q_re
-  type(ufield), intent(inout), dimension(:), optional, pointer :: qn_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qe_re
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qn1_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
-  type(ufield), intent(inout), dimension(:), optional, pointer :: q_im
-  type(ufield), intent(inout), dimension(:), optional, pointer :: qn_im
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qe_im
+  type(ufield), intent(inout), dimension(:), optional, pointer :: qn1_im
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 !   real, intent(inout), dimension(:), optional, pointer :: src1
 !   real, intent(inout), dimension(:), optional, pointer :: src
@@ -178,11 +178,13 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  size_sol = nr * (4 * this%mode + 1)  
+  size_sol = (nr + 1) * (4 * this%mode + 1) + 2
+  write(2,*) size_sol, 'size_sol' 
 
   if (.not. associated( src_sol)) then
     allocate( src_sol(size_sol) )
   end if
+  src_sol(:) = 0.0
 
   write(2,*) this%kind, 'kind' 
   select case ( this%kind )
@@ -198,12 +200,12 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
         im = l - this%mode
 !         write(2,*) im,"im"
         if (im > 0 ) then
-          f1_re => q_re(im)%get_f1()
-          f1_im => q_im(im)%get_f1()
-          if ( present(q_im) .and. present(qn_im) ) then
+          f1_re => qe_re(im)%get_f1()
+          f1_im => qe_im(im)%get_f1()
+          if ( present(qe_im) .and. present(qn1_im) ) then
 !             write(2,*) "present(qn_im)"
-            f2_re => qn_re(im)%get_f1()
-            f2_im => qn_im(im)%get_f1()
+            f2_re => qn1_re(im)%get_f1()
+            f2_im => qn1_im(im)%get_f1()
             f1_re(1,kk) = f1_re (1,kk)- f2_re(1,kk)
             f1_im(1,kk) = f1_im (1,kk)- f2_im(1,kk)
           endif
@@ -211,10 +213,10 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
           src_sol(a + 1)  = -qbm*f1_im(1,kk)
           a=a + 2
         elseif (im == 0) then
-          f1_re => q_re(0)%get_f1()
-          if ( present(q_re) .and. present(qn_re) ) then
+          f1_re => qe_re(0)%get_f1()
+          if ( present(qe_re) .and. present(qn1_re) ) then
 !             write(2,*) "present(qn_re)"
-            f2_re => qn_re(0)%get_f1()
+            f2_re => qn1_re(0)%get_f1()
 !             write(2,*) f2_re(1,kk),"f2_re(1,kk) im=0"
             f1_re(1,kk) = f1_re(1,kk) - f2_re(1,kk)
 !             write(2,*) f1_re(1,kk),"f1_re(1,kk) im=0"
@@ -225,12 +227,12 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
           a = a + 1
         else
           im = abs(im)
-          f1_re => q_re(im)%get_f1()
-          f1_im => q_im(im)%get_f1()
-          if ( present(q_im) .and. present(qn_im) ) then
+          f1_re => qe_re(im)%get_f1()
+          f1_im => qe_im(im)%get_f1()
+          if ( present(qe_im) .and. present(qn1_im) ) then
 !             write(2,*) "present(qn_im)"
-            f2_re => qn_re(im)%get_f1()
-            f2_im => qn_im(im)%get_f1()
+            f2_re => qn1_re(im)%get_f1()
+            f2_im => qn1_im(im)%get_f1()
             f1_re(1,kk)= f1_re(1,kk) - f2_re(1,kk)
             f1_im(1,kk) = f1_im(1,kk) - f2_im(1,kk)
           endif
@@ -250,7 +252,7 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
 !     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
     call HYPRE_StructVectorAssemble( this%b, ierr )
 !     write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
-    call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
 !     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
     a = 1
@@ -273,30 +275,42 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
     enddo
   case ( p_fk_all_B_minus, p_fk_all_B_plus )
     call set_struct_matrix(this, u=u)
-    call this%set_struct_solver() 
+    call this%set_struct_solver()
+    write(2,*) HYPRE_BUF(:),"HYPRE_BUF"
+    write(2,*) src,"src"  
     a = 1
+    j = real(nofff) + 1.0
     do k = 1, nr
+      kk = int(j)
       do l = 0, 2*this%mode
           im = l - this%mode
           if (im > 0 ) then
-            src_sol(a)  = src(1+l,k,1)
-            src_sol(a+1)  = src(1+l,k,2)
+!             src_sol(a)  = src(1+l,kk,1)
+            src_sol(a)  = 0.0
+!             src_sol(a+1)  = src(1+l,kk,2)
+            src_sol(a+1)  = 0.0
             a=a+2
           elseif (im == 0) then
-            src_sol(a)  = src(1+l,k,1)
+            src_sol(a)  = src(1+l,kk,1)
+!             write(2,*) src_sol(a),"src"
             a = a+1
           else
-            src_sol(a)  = src(1+l,k,1)
-            src_sol(a+1)  = -src(1+l,k,2)
+!             src_sol(a)  = src(1+l,kk,1)
+            src_sol(a)  = 0.0
+!             src_sol(a+1)  = -src(1+l,kk,2)
+            src_sol(a+1)  = 0.0
             a=a+2          
         endif
-      enddo 
+      enddo
+      j = j + 1.0 
     enddo
+!     write(2,*) src_sol,"src_sol 1"
     call HYPRE_StructVectorSetBoxValues( this%b, this%ilower, this%iupper, src_sol, ierr )
+    write(2,*) src_sol,"src_sol 1"
     call HYPRE_StructVectorAssemble( this%b, ierr )
-    call HYPRE_StructCycRedSolve( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
     call HYPRE_StructVectorGetBoxValues( this%x, this%ilower, this%iupper, src_sol, ierr )
-    write(2,*) sum(src_sol),"src_sol" 
+    write(2,*) src_sol,"src_sol 3" 
     a = 1
     do k = 1, nr
       do l = 0, 2*this%mode
@@ -311,6 +325,7 @@ subroutine solve_equation( this, src, psi_re, q_re, qn_re, psi_im, q_im, qn_im, 
         endif
       enddo 
     enddo
+    write(2,*) src,"src end" 
   end select 
 
   select case ( this%kind )
@@ -572,7 +587,6 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             demode = abs(k-n)
             if (aa == bb) then
               HYPRE_BUF(i)   = (-2.0 - ((n-1)/j)**2)/dr2 + u(1+this%mode,kk,1)
-!               write(2,*) i,"i u0"
               i = i + 1
             else
               if (demode > this%mode) then
@@ -743,7 +757,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           endif
         enddo
       enddo
-      mm = 10*this%mode + 3
+      mm = ((4*this%mode + 1)*3)*(4*this%mode + 1) + 2*this%mode + 1
       do aa = 0, 4*this%mode
         if (aa /= 2*this%mode - 1 .and. aa /= 2*this%mode - 2 .and. aa /= 2*this%mode + 1 .and. aa /= 2*this%mode + 2) then
           i = mm + ((4*this%mode + 1)*3)*aa 
@@ -751,7 +765,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
         endif
       enddo 
     else
-      i = 1
+!       i = 1
       j = real(noff) 
       kk = int(j)
       do aa = 0, 4*this%mode
@@ -823,8 +837,9 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   case( p_fk_all_B_plus )
 
     ! set the first grid point of each partition
+    write(2,*) u(:,:,:),"u"
     i = ((4*this%mode + 1)*3) * (4*this%mode + 1) + 1
-    j = real(noff) 
+    j = real(nofff) 
      do nn = 2, nr
       j = j + 1.0
       kk = int(j)
@@ -843,7 +858,8 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(1+this%mode,kk,1)
+!               HYPRE_BUF(i) = (-2.0 - ((n-1)/j)**2)/dr2 + u(1+this%mode,kk,1)
+              HYPRE_BUF(i) = (-2.0 - ((n + 1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -907,13 +923,13 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
           endif
         enddo
       enddo
-      mm = 10*this%mode + 3
+      mm = ((4*this%mode + 1)*3)*(4*this%mode + 1) + 2*this%mode + 1
       do aa = 0, 4*this%mode
         i = mm + ((4*this%mode + 1)*3)*aa 
         HYPRE_BUF(i) = 0.0
       enddo 
     else
-      i = 1
+!       i = 1
       j = real(noff) 
       kk = int(j)
       do aa = 0, 4*this%mode
@@ -931,7 +947,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-              HYPRE_BUF(i)   = (-2.0 - ((n+1)/j)**2)/dr2 + u(1+this%mode,kk,1)
+              HYPRE_BUF(i) = (-2.0 - ((n + 1)/j)**2)/dr2 + u(1+this%mode,kk,1)
               i = i + 1
             else
               if (demode > this%mode) then
@@ -1024,6 +1040,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
               HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(g + 1)/jmax) * HYPRE_BUF(i + 4*this%mode + 1)
               i = i + 1
             elseif ( bb == aa + 4*this%mode + 1) then
+!             elseif ( bb > aa ) then
               HYPRE_BUF(i) = 0.0
               i = i + 1
             else

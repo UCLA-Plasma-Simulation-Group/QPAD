@@ -414,8 +414,14 @@ subroutine run_simulation( this )
 !............bperp.........................
 !       dcu = 0.0 
 !       cu =0.0
+      write(2,*) this%fields%dcu%getresum(),"dcu"
+      write(2,*) this%fields%cu%getresum(),"cu"
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q_spe"
+      write(2,*) this%fields%qn%getresum(),"qn"
       write(2,*) 'solve_bperp Initializing'
       call b_spe%solve( dcu, cu, psi, q_spe, qn )
+      write(2,*) this%fields%b%getresum(),"b"
       write(2,*) 'solve_bperp end_berp'
       write(2,*) this%fields%psi%getresum(),"psi"
       write(2,*) this%fields%q_spe%getresum(),"q"
