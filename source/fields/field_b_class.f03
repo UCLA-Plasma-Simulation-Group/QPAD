@@ -155,18 +155,18 @@ subroutine init_field_b( this, opts, max_mode, part_shape, boundary, entity )
     enddo 
 
     if (max_mode > 0) then
-      write(2,*) 'B Initializing 2'
+!       write(2,*) 'B Initializing 2'
       call this%solver_coef(0)%new( opts, max_mode, dr, kind=p_fk_coef, &
           bnd=boundary, stype=p_hypre_cycred )
       call this%solver_coef(1)%new( opts, max_mode, dr, kind=p_fk_coef, &
           bnd=boundary, stype=p_hypre_cycred )
     endif
 
-    write(2,*) 'B Initializing 3'
+!     write(2,*) 'B Initializing 3'
     call this%solver_bm%new( opts, max_mode, dr, kind=p_fk_all_B_minus, &
         bnd=boundary, stype=p_hypre_cycred )
 
-    write(2,*) 'B Initializing 4'
+!     write(2,*) 'B Initializing 4'
     call this%solver_bp%new( opts, max_mode, dr, kind=p_fk_all_B_plus, &
         bnd=boundary, stype=p_hypre_cycred )
 !     endif
@@ -535,10 +535,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 !       this%buf2_re(1) = 0.0  ! Re(B_minus)
       this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
 !       this%buf2_im(1) = 0.0  ! Im(B_minus)
-      write(2,*) this%buf1_re(1),'this%buf1_re(1)'
-      write(2,*) this%buf1_im(1),'this%buf1_im(1)'
-      write(2,*) this%buf2_re(1),'this%buf2_re(1)'
-      write(2,*) this%buf2_im(1),'this%buf2_im(1)'
+!       write(2,*) this%buf1_re(1),'this%buf1_re(1)'
+!       write(2,*) this%buf1_im(1),'this%buf1_im(1)'
+!       write(2,*) this%buf2_re(1),'this%buf2_re(1)'
+!       write(2,*) this%buf2_im(1),'this%buf2_im(1)'
 
     else
 
@@ -583,10 +583,10 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
 
   endif
 
-  write(2,*) sum(this%buf1_re),'this%buf1_re sum 1'
-  write(2,*) sum(this%buf1_im),'this%buf1_im sum 1'
-  write(2,*) sum(this%buf2_re),'this%buf2_re sum 1'
-  write(2,*) sum(this%buf2_im),'this%buf2_im sum 1'
+!   write(2,*) sum(this%buf1_re),'this%buf1_re sum 1'
+!   write(2,*) sum(this%buf1_im),'this%buf1_im sum 1'
+!   write(2,*) sum(this%buf2_re),'this%buf2_re sum 1'
+!   write(2,*) sum(this%buf2_im),'this%buf2_im sum 1'
 
   call stop_tprof( 'solve plasma bt' )
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -972,31 +972,31 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
     f1_re => psi_re(0)%get_f1()
     f2_re => q_re(0)%get_f1()
     f3_re => qn_re(0)%get_f1()
-    write(2,*) 'this%solver_coef%solve max_mode=0'
+!     write(2,*) 'this%solver_coef%solve max_mode=0'
     this%buf3(1+this%max_mode,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
 !   a1(2,:,1) = (f2_re(1,:)-f3_re(1,:))/(1+f1_re(1,:)) - 1/1836.5 * f3_re(1,:)/(1-1/1836.5*f1_re(1,:))
   else
 !   solve ele coef
     qbm = -1.0
-    write(2,*) 'this%solver_coef(0)%solve'
+!     write(2,*) 'this%solver_coef(0)%solve'
   !     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, qe_re = q_re, qe_im = q_im,&
       qn1_re = qn_re, qn1_im = qn_im, qbm = qbm )
   !     !   solve ion coef
     qbm = 1/1836.5
-    write(2,*) 'this%solver_coef(1)%solve'
+!     write(2,*) 'this%solver_coef(1)%solve'
     call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, qe_re = qn_re, qe_im = qn_im, qbm = qbm )
     ! add coef
-    write(2,*) sum(this%buf3),'this%buf3'
-    write(2,*) sum(this%buf4),'this%buf4'
+!     write(2,*) sum(this%buf3),'this%buf3'
+!     write(2,*) sum(this%buf4),'this%buf4'
     this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
 !     this%buf3(1,:,:) = 0.0
 !     this%buf3(3,:,:) = 0.0
   endif 
 !   a2(2,:,1) = this%buf3(2,:,1)
 !   a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
-  write(2,*) sum(this%buf3),'this%buf3 sum'
-  write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
+!   write(2,*) sum(this%buf3),'this%buf3 sum'
+!   write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
 !   write(2,*) a3(2,:,1),'a3'
     !   set source
   do i = 0, this%max_mode
@@ -1016,38 +1016,38 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
       this%buf6(1+this%max_mode + i, :, 2) = this%buf2_im(:)
       this%buf6(1+this%max_mode - i, :, 1) = this%buf2_re(:)
       this%buf6(1+this%max_mode - i, :, 2) = -this%buf2_im(:)
-      write(2,*) i,'mode'
-      write(2,*) this%buf1_im(:),'set_source this%buf1_im(:)'
-      write(2,*) sum(this%buf1_im(:)),'set_source this%buf1_im(:) sum'
-      write(2,*) sum(this%buf5(1+this%max_mode + i, :, 2)),'set_source this%buf5(1+this%max_mode + i, :, 2) sum'
-      write(2,*) this%buf2_im(:),'set_source this%buf2_im(:)'
-      write(2,*) sum(this%buf2_im(:)),'set_source this%buf2_im(:) sum'
-      write(2,*) sum(this%buf6(1+this%max_mode + i, :, 2)),'set_source this%buf6(1+this%max_mode + i, :, 2) sum'
+!       write(2,*) i,'mode'
+!       write(2,*) this%buf1_im(:),'set_source this%buf1_im(:)'
+!       write(2,*) sum(this%buf1_im(:)),'set_source this%buf1_im(:) sum'
+!       write(2,*) sum(this%buf5(1+this%max_mode + i, :, 2)),'set_source this%buf5(1+this%max_mode + i, :, 2) sum'
+!       write(2,*) this%buf2_im(:),'set_source this%buf2_im(:)'
+!       write(2,*) sum(this%buf2_im(:)),'set_source this%buf2_im(:) sum'
+!       write(2,*) sum(this%buf6(1+this%max_mode + i, :, 2)),'set_source this%buf6(1+this%max_mode + i, :, 2) sum'
     endif
   enddo
-  write(2,*) sum(this%buf5(:,:,:)),'this%buf5 sum'
-  write(2,*) sum(this%buf6(:,:,:)),'this%buf6 sum'
+!   write(2,*) sum(this%buf5(:,:,:)),'this%buf5 sum'
+!   write(2,*) sum(this%buf6(:,:,:)),'this%buf6 sum'
   call this%solver_bm%solve(src = this%buf5, u = this%buf3)
   call this%solver_bp%solve(src = this%buf6, u = this%buf3)
   do i = 0, this%max_mode
     if ( i == 0 ) then
       this%buf1_re(:) = this%buf5(1+this%max_mode,:,1)
-      write(2,*) sum(this%buf5(1+this%max_mode,:,:)),'this%buf5_m=0 sum'
-      write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
+!       write(2,*) sum(this%buf5(1+this%max_mode,:,:)),'this%buf5_m=0 sum'
+!       write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
       this%buf2_re(:) = this%buf6(1+this%max_mode,:,1)
-      write(2,*) sum(this%buf6(1+this%max_mode,:,:)),'this%buf6_m=0 sum'
-      write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
+!       write(2,*) sum(this%buf6(1+this%max_mode,:,:)),'this%buf6_m=0 sum'
+!       write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
       call this%get_solution_bt_iter(i)
     else
 !       this%buf5(:,:,:) = 0.0
       this%buf1_re(:) = this%buf5(1+this%max_mode + i,:,1)
-      write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
+!       write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
       this%buf1_im(:) = this%buf5(1+this%max_mode + i,:,2)
-      write(2,*) sum(this%buf1_im(:)),'this%buf1_im sum'
+!       write(2,*) sum(this%buf1_im(:)),'this%buf1_im sum'
       this%buf2_re(:) = this%buf6(1+this%max_mode + i,:,1)
-      write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
+!       write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
       this%buf2_im(:) = this%buf6(1+this%max_mode + i,:,2)
-      write(2,*) sum(this%buf2_im(:)),'this%buf2_im sum'
+!       write(2,*) sum(this%buf2_im(:)),'this%buf2_im sum'
       call this%get_solution_bt_iter(i)
     endif
   enddo

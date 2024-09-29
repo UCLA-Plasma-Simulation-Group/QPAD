@@ -459,8 +459,8 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
   dcu0 => dcu_re(0)%get_f1()
   amu0 => amu_re(0)%get_f1()
 
-  write(2,*) sum(dcu0(2,:)),'dcu0(2,:) 1'
-  write(2,*) sum(cu0(2,:)),'cu0(2,:) 1'
+!   write(2,*) sum(dcu0(2,:)),'dcu0(2,:) 1'
+!   write(2,*) sum(cu0(2,:)),'cu0(2,:) 1'
 
   do ptrcur = 1, this%npp, p_cache_size
 
@@ -659,8 +659,8 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
 
   endif
 
-  write(2,*) sum(dcu0(2,:)),'dcu0(2,:) 2'
-  write(2,*) sum(cu0(2,:)),'cu0(2,:) 2'
+!   write(2,*) sum(dcu0(2,:)),'dcu0(2,:) 2'
+!   write(2,*) sum(cu0(2,:)),'cu0(2,:) 2'
   call stop_tprof( 'deposit 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 

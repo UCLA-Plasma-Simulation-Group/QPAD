@@ -203,18 +203,18 @@ subroutine qdp_species2d(this,q, qn)
    call write_dbg(cls_name, sname, cls_level, 'starts')
 
    this%q = 0.0
-   write(2,*)  this%q%getresum(), "q 1"
+!    write(2,*)  this%q%getresum(), "q 1"
    call this%part%qdeposit(this%q)
-   write(2,*)  this%q%getresum(), "q 2"
+!    write(2,*)  this%q%getresum(), "q 2"
    call this%q%acopy_gc_f1( dir=p_mpi_forward )
    call this%q%smooth_f1()
    call this%q%copy_gc_f1()
    call add_f1( this%q, q )
-   write(2,*)  this%q%getresum(), "q"
-   write(2,*)  this%qn%getresum(), "qn"
+!    write(2,*)  this%q%getresum(), "q"
+!    write(2,*)  this%qn%getresum(), "qn"
    if ( this%pf%neutralized ) call add_f1( this%qn, q )
    if ( this%pf%neutralized ) call add_f1( this%qn, qn )
-   write(2,*)  q%getresum(), "q2"
+!    write(2,*)  q%getresum(), "q2"
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -284,9 +284,9 @@ subroutine edp_species2d( this, ef, bf, b_beam, cu, amu, dcu )
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-   write(2,*) cu%getresum(),"cu species2d"
+!    write(2,*) cu%getresum(),"cu species2d"
    call this%part%edeposit( ef, bf, b_beam, this%cu, this%amu, this%dcu )
-   write(2,*) this%cu%getresum(),"this%cu species2d"
+!    write(2,*) this%cu%getresum(),"this%cu species2d"
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -300,8 +300,8 @@ subroutine edp_species2d( this, ef, bf, b_beam, cu, amu, dcu )
    call add_f1( this%cu, cu )
    call add_f1( this%dcu, dcu )
    call add_f1( this%amu, amu )
-   write(2,*) cu%getresum(),"cu species2d end"
-   write(2,*) this%cu%getresum(),"this%cu species2d end"
+!    write(2,*) cu%getresum(),"cu species2d end"
+!    write(2,*) this%cu%getresum(),"this%cu species2d end"
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
