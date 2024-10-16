@@ -339,7 +339,7 @@ subroutine run_simulation( this )
       call q_beam%copy_slice( j, p_copy_2to1 ) 
       call q_beam%smooth_f1()
 !       write(2,*) 'solve q_beam'
-!       write(2,*) q_beam%getresum(), 'q_beam'
+      write(2,*) q_beam%getresum(), 'q_beam'
       call b_beam%solve( q_beam )
       q_spe = 0.0
       qn = 0.0
@@ -359,12 +359,12 @@ subroutine run_simulation( this )
       ! call q_spe%copy_slice( j, p_copy_1to2 )
 !..............psi.........................
       call psi%solve( q_spe )
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
 !       call b_spe%solve( cu ) 
 !.............cu...........................
       cu = 0.0 
@@ -376,20 +376,20 @@ subroutine run_simulation( this )
       enddo
 !............ez/bz.........................
       call e%solve( cu ) 
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
 !       cu = 0.0
       call b_spe%solve( cu )
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
       cu = 0.0 
       acu = 0.0 
       amu = 0.0
@@ -399,12 +399,12 @@ subroutine run_simulation( this )
       call e%solve( b, psi ) 
 ! !...........sum of bz .....................
 !       call add_f1( b_spe, b_beam, b )
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe' 
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe' 
 !............amu/dcu.......................
       do k = 1, this%nspecies
         call spe(k)%edp( e, b, b_beam, cu, amu, acu )
@@ -414,21 +414,21 @@ subroutine run_simulation( this )
 !............bperp.........................
 !       dcu = 0.0 
 !       cu =0.0
-!       write(2,*) this%fields%dcu%getresum(),"dcu"
-!       write(2,*) this%fields%cu%getresum(),"cu"
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q_spe"
-!       write(2,*) this%fields%qn%getresum(),"qn"
-!       write(2,*) 'solve_bperp Initializing'
+      write(2,*) this%fields%dcu%getresum(),"dcu"
+      write(2,*) this%fields%cu%getresum(),"cu"
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q_spe"
+      write(2,*) this%fields%qn%getresum(),"qn"
+      write(2,*) 'solve_bperp Initializing'
       call b_spe%solve( dcu, cu, psi, q_spe, qn )
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) 'solve_bperp end_berp'
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) 'solve_bperp end_berp'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
 !       call b_spe%solve( cu )
       do k = 1, this%nspecies
         call spe(k)%cbq(j)
@@ -439,27 +439,27 @@ subroutine run_simulation( this )
       call q_spe%copy_slice( j, p_copy_1to2 )
 !............sum of b.......................
       call add_f1( b_spe, b_beam, b ) 
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
 !..............eperp........................
       call e_spe%solve( b_spe, psi )
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
       call e%solve( b, psi ) 
-!       write(2,*) this%fields%psi%getresum(),"psi"
-!       write(2,*) this%fields%q_spe%getresum(),"q"
-!       write(2,*) this%fields%e%getresum(),"e"
-!       write(2,*) this%fields%e_spe%getresum(),'e_spe'
-!       write(2,*) this%fields%b%getresum(),"b"
-!       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      write(2,*) this%fields%psi%getresum(),"psi"
+      write(2,*) this%fields%q_spe%getresum(),"q"
+      write(2,*) this%fields%e%getresum(),"e"
+      write(2,*) this%fields%e_spe%getresum(),'e_spe'
+      write(2,*) this%fields%b%getresum(),"b"
+      write(2,*) this%fields%b_spe%getresum(),'b_spe'
 
       ! for vector potential diagnostics
       if ( this%diag%has_vpotz .or. this%diag%has_vpott ) then

@@ -941,9 +941,6 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   real, dimension(:,:), pointer :: f1_re => null()
   real, dimension(:,:), pointer :: f2_re => null()
   real, dimension(:,:), pointer :: f3_re => null()
-  real, dimension(3,250,2) :: a1
-  real, dimension(3,250,2) :: a2
-  real, dimension(3,250,2) :: a3
   real :: qbm
   integer :: i
   character(len=20), save :: sname = 'solve_field_bt_iter'
@@ -965,9 +962,6 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   this%buf4 = 0.0
   this%buf5 = 0.0
   this%buf6 = 0.0
-  a1 = 0.0
-  a2 = 0.0
-  a3 = 0.0
   if ( this%max_mode == 0 ) then
     f1_re => psi_re(0)%get_f1()
     f2_re => q_re(0)%get_f1()
@@ -995,7 +989,7 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   endif 
 !   a2(2,:,1) = this%buf3(2,:,1)
 !   a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
-!   write(2,*) sum(this%buf3),'this%buf3 sum'
+  write(2,*) sum(this%buf3),'this%buf3 sum'
 !   write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
 !   write(2,*) a3(2,:,1),'a3'
     !   set source
@@ -1004,8 +998,10 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
       f1_re => djdxi_re(i)%get_f1()
 !       write(2,*) sum(-f1_re(2,:)),'f1_re play'
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i) )
+      write(2,*) size(this%buf1_re),'size(this%buf1_re)'
       this%buf5(1+this%max_mode,:,1) = this%buf1_re(:)
       this%buf6(1+this%max_mode,:,1) = this%buf2_re(:)
+      write(2,*) size(this%buf1_re),'this%buf1_re'
     else
       call this%set_source_bt_iter( i, djdxi_re(i), jay_re(i), djdxi_im(i), jay_im(i) )
       this%buf5(1+this%max_mode + i, :, 1) = this%buf1_re(:)
@@ -1032,10 +1028,10 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   do i = 0, this%max_mode
     if ( i == 0 ) then
       this%buf1_re(:) = this%buf5(1+this%max_mode,:,1)
-!       write(2,*) sum(this%buf5(1+this%max_mode,:,:)),'this%buf5_m=0 sum'
+      write(2,*) sum(this%buf5(1+this%max_mode,:,:)),'this%buf5_m=0 sum'
 !       write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
       this%buf2_re(:) = this%buf6(1+this%max_mode,:,1)
-!       write(2,*) sum(this%buf6(1+this%max_mode,:,:)),'this%buf6_m=0 sum'
+      write(2,*) sum(this%buf6(1+this%max_mode,:,:)),'this%buf6_m=0 sum'
 !       write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
       call this%get_solution_bt_iter(i)
     else
