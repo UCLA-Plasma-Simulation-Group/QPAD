@@ -36,6 +36,14 @@ integer, parameter :: LG = selected_int_kind(12)
 real, parameter :: pi = 4*atan(1.0_DB)
 integer, parameter :: p_real = 0, p_imag = 1
 
+
+! electron charge, mass, speed of light, electric permittivity
+real, parameter :: q_e = 1.60217663e-19
+real, parameter :: m_e = 9.1093837e-31
+real, parameter :: c = 299792458 !
+real, parameter :: ep0 = 8.8541878188e-12
+
+
 ! ================================================================
 ! dimension related
 ! ================================================================

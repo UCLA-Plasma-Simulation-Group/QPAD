@@ -63,6 +63,9 @@ type sim_diag
   logical :: has_vpotz = .false.
   logical :: has_vpott = .false.
 
+  ! plasma density
+  real :: n0 = 1e17 ! units of cm^{-3}
+
   contains
 
   procedure :: alloc => alloc_sim_diag
@@ -237,7 +240,7 @@ subroutine init_diag_beams( this, input, beams )
               timeunit  = '1 / \omega_p', &
               dt        = dt, &
               units     = '', &
-              label     = 'Beam Raw' )
+              label     = 'Beam Raw')
           end select
         enddo ! end of k
       endif
@@ -764,6 +767,8 @@ subroutine init_sim_diag( this, input, opts, fields, beams, plasma, lasers )
 
   call input%get( 'simulation.dump_restart', rst )
 
+  call input%get( 'simulation.n0', this%n0 )
+
   ! initialize beam diagnostics
   call this%init_diag_beams( input, beams )
 
@@ -1027,7 +1032,8 @@ subroutine add_diag_cym( this, obj, dtype, max_mode, dump_freq, dim, type_label,
       filename  = trim(filename)//trim(cym_str)//'/', &
       dataname  = dataname, &
       units     = units, &
-      label     = label )
+      label     = label, &
+      n0 = this%n0)
 
   enddo
   this%num_diag = this%num_diag + 1
@@ -1177,7 +1183,8 @@ subroutine add_diag_raw( this, obj, dump_freq, psample, type_label, filename, &
     filename  = filename, &
     dataname  = dataname, &
     units     = units, &
-    label     = label )
+    label     = label, &
+    n0 = this%n0 )
 
   this%num_diag = this%num_diag + 1
 

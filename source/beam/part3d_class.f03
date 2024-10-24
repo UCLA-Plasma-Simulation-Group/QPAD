@@ -815,10 +815,10 @@ subroutine writehdf5_part3d(this,file,dspl,rtag,stag,id)
    call write_dbg(cls_name, sname, cls_level, 'starts')
    if ( this%has_spin ) then
       call pwpart_pipe(file,this%x, this%p, this%q, this%npp, dspl, &
-        this%z0, rtag, stag, id, ierr, this%s)
+        this%z0, rtag, stag, id, ierr, this%s, dr = this%dr, dz = this%dz)
    else
       call pwpart_pipe(file,this%x, this%p, this%q, this%npp, dspl, &
-        this%z0, rtag, stag, id, ierr)
+        this%z0, rtag, stag, id, ierr, dr =this%dr, dz = this%dz)
    endif
    call write_dbg(cls_name, sname, cls_level, 'ends')
 

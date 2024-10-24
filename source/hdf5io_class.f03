@@ -78,7 +78,7 @@ end interface
 contains
 
 subroutine init_hdf5file( this, filename, timeunit, ty, n, t, dt, axisname,&
-  axislabel, axisunits, axismax, axismin, dataname, units, label, rank )
+  axislabel, axisunits, axismax, axismin, dataname, units, label, rank, n0 )
 
   implicit none
 
@@ -86,6 +86,7 @@ subroutine init_hdf5file( this, filename, timeunit, ty, n, t, dt, axisname,&
   character(len=*), intent(in), optional :: filename, timeunit
   character(len=*), intent(in), optional :: ty, dataname, units, label
   integer, intent(in), optional :: n, rank
+  real, intent(in), optional :: n0
   real, intent(in), optional :: t, dt
   character(len=*), dimension(3), intent(in), optional :: axisname, &
   axislabel, axisunits
@@ -1216,13 +1217,14 @@ subroutine pwpart_2d_r(file,x,p,q,npp,dspl,ierr)
 
 end subroutine pwpart_2d_r
 !
-subroutine pwpart_3d_pipe(file,x,p,q,npp,dspl,z0,rtag,stag,id,ierr,s)
+subroutine pwpart_3d_pipe(file,x,p,q,npp,dspl,z0,rtag,stag,id,ierr,s,dr, dz)
 
  implicit none
 
  class(hdf5file), intent(in) :: file
  real, dimension(:,:), intent(in) :: x, p
  real, dimension(:,:), intent(in), optional :: s
+  real, intent(in), optional :: dr, dz
  real, dimension(:), intent(in) :: q
  real, intent(in) :: z0
  integer(kind=LG), intent(in) :: npp
