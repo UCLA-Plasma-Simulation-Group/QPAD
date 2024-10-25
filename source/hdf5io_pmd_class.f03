@@ -510,16 +510,21 @@
           call add_h5_atribute(rootID, 'DT', this%dt)
           call add_h5_atribute(rootID, 'TIME UNITS', trim(this%timeunit) )
 ! OpenPMD attributes
-          call add_h5_atribute(rootID, 'openPMD', trim(this%openpmd) )
-          call add_h5_atribute(rootID, 'openPMDextension',this%openpmdextension)
+
+          
           call add_h5_atribute(rootID, 'iterationEncoding',trim(this%iterationencoding) )
           call add_h5_atribute(rootID, 'basePath', trim(this%basepath))  
 
           if(mesh) then
             call add_h5_atribute(rootID, 'meshesPath', trim(this%meshespath))
+            call add_h5_atribute(rootID, 'openPMDextension',this%openpmdextension)
+            call add_h5_atribute(rootID, 'openPMD', trim(this%openpmd) )
           else
+            ! particles dumped using OpenPMD Beam Physics Ext
+            call add_h5_atribute(rootID, 'openPMD', '2.0.0' )
             call add_h5_atribute(rootID, 'particlesPath',trim(this%particlespath))
             call add_h5_atribute(rootID, 'speciesType',trim(this%spectype))
+            call add_h5_atribute(rootID, 'openPMDextension','BeamPhysics;SpeciesType')
          endif
           ! call add_h5_atribute(rootID, 'particlesPath',trim(this%particlespath)
           ! write(*,*) 'DATANAME: ',this%dataname
@@ -622,17 +627,17 @@
                call add_h5_atribute(dset_id,'unitSymbol','C')
             else if(name(1:1) == 't') then
                call add_h5_atribute(dset_id,'unitDimension',[ 0., 0., 1., 0., 0., 0., 0.])
-               call add_h5_atribute(dset_id,'weightingPower',1)
+               call add_h5_atribute(dset_id,'weightingPower',0)
                call add_h5_atribute(dset_id,'macroWeighted',0)
                call add_h5_atribute(dset_id,'unitSymbol','s')
                call add_h5_atribute(dset_id,'unitSI',1.0)
             else if(name(:) == 'weighting') then
                call add_h5_atribute(dset_id,'unitDimension',[ 0., 0., 0., 0., 0., 0., 0.])
-               call add_h5_atribute(dset_id,'weightingPower',1)
+               call add_h5_atribute(dset_id,'weightingPower',0)
                call add_h5_atribute(dset_id,'macroWeighted',0)
             else if(name(:) == 'mass') then
                call add_h5_atribute(dset_id,'unitDimension',[ 0., 1., 0., 0., 0., 0., 0.])
-               call add_h5_atribute(dset_id,'weightingPower',1)
+               call add_h5_atribute(dset_id,'weightingPower',0)
                call add_h5_atribute(dset_id,'macroWeighted',0)
                call add_h5_atribute(dset_id,'unitSymbol','kg')
             else

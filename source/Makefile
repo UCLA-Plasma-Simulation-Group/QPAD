@@ -1,8 +1,10 @@
 # system (must be one of the file suffix in config directory)
-sys = s3df
+sys = macosx_openmpi
+# sys = s3df (uncomment when compiling on s3df) 
+
 
 # IF_OPENPMD -- uncomment the line below if you wish to use the OpenPMD format
-# IF_OPENPMD = 1
+IF_OPENPMD = 1
 DISABLE_POPAS = TRUE
 
 # Set the flag defining that we are in the top level makefile
