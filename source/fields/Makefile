@@ -2,7 +2,7 @@
 
 src += ufield_class.f03
 src += field_solver_class.f03
-src += field_solver_all_modes_class.f03
+src += field_solver_all_modesv2_class.f03
 src += ufield_smooth_class.f03
 src += field_class.f03
 src += field_src_class.f03
