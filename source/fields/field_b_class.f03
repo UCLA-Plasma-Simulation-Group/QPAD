@@ -4,7 +4,7 @@ use field_class
 use field_psi_class
 use field_src_class
 use field_solver_class
-use field_solver_all_modesv2_class
+use field_solver_all_modesv3_class
 use ufield_class
 use param
 use sysutil_module
@@ -30,9 +30,9 @@ type, extends( field ) :: field_b
   class( field_solver ), dimension(:), pointer :: solver_bt      => null()
   class( field_solver ), dimension(:), pointer :: solver_bplus   => null()
   class( field_solver ), dimension(:), pointer :: solver_bminus  => null()
-  class( field_solver_all_modesv2 ), dimension(:), pointer :: solver_coef  => null()
-  class( field_solver_all_modesv2 ), pointer :: solver_bp => null()
-  class( field_solver_all_modesv2 ), pointer :: solver_bm => null()
+  class( field_solver_all_modesv3 ), dimension(:), pointer :: solver_coef  => null()
+  class( field_solver_all_modesv3 ), pointer :: solver_bp => null()
+  class( field_solver_all_modesv3 ), pointer :: solver_bm => null()
 
   real, dimension(:), pointer :: buf1_re => null(), buf1_im => null()
   real, dimension(:), pointer :: buf2_re => null(), buf2_im => null()
@@ -88,15 +88,15 @@ subroutine alloc_field_b( this, max_mode )
   endif
 
   if ( .not. associated( this%solver_coef ) ) then
-    allocate( field_solver_all_modesv2 :: this%solver_coef(0:1) )
+    allocate( field_solver_all_modesv3 :: this%solver_coef(0:1) )
   endif
 
   if ( .not. associated( this%solver_bp ) ) then
-    allocate( field_solver_all_modesv2 :: this%solver_bp)
+    allocate( field_solver_all_modesv3 :: this%solver_bp)
   endif
 
   if (.not. associated(this%solver_bm)) then
-    allocate(field_solver_all_modesv2 :: this%solver_bm)
+    allocate(field_solver_all_modesv3 :: this%solver_bm)
   endif
 
 end subroutine alloc_field_b
@@ -972,27 +972,14 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   else
 !   solve ele coef
     qbm = -1.0
-!     write(2,*) 'this%solver_coef(0)%solve'
-  !     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, q_re = q_re, q_im = q_im, qbm = qbm )
     call this%solver_coef(0)%solve(src = this%buf3, psi_re = psi_re, psi_im = psi_im, qe_re = q_re, qe_im = q_im,&
       qn1_re = qn_re, qn1_im = qn_im, qbm = qbm )
-  !     !   solve ion coef
     qbm = 1/1836.5
-!     write(2,*) 'this%solver_coef(1)%solve'
     call this%solver_coef(1)%solve(src = this%buf4, psi_re = psi_re, psi_im = psi_im, qe_re = qn_re, qe_im = qn_im, qbm = qbm )
-    ! add coef
-!     write(2,*) sum(this%buf3),'this%buf3'
-!     write(2,*) sum(this%buf4),'this%buf4'
     this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
-!     this%buf3(1,:,:) = 0.0
-!     this%buf3(3,:,:) = 0.0
   endif 
-!   a2(2,:,1) = this%buf3(2,:,1)
-!   a3(2,:,1) = a2(2,:,1) - a1(2,:,1)
   write(2,*) sum(this%buf3),'this%buf3 sum'
-!   write(2,*) sum(this%buf3(2,:,:)),'this%buf3 sumv1'
-!   write(2,*) a3(2,:,1),'a3'
-    !   set source
+
   do i = 0, this%max_mode
     if ( i == 0 ) then
       f1_re => djdxi_re(i)%get_f1()
@@ -1008,38 +995,25 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
       this%buf5(1 + i, :, 2) = this%buf1_im(:)
       this%buf6(1 + i, :, 1) = this%buf2_re(:)
       this%buf6(1 + i, :, 2) = this%buf2_im(:)
-!       write(2,*) i,'mode'
-!       write(2,*) this%buf1_im(:),'set_source this%buf1_im(:)'
-!       write(2,*) sum(this%buf1_im(:)),'set_source this%buf1_im(:) sum'
-!       write(2,*) sum(this%buf5(1+this%max_mode + i, :, 2)),'set_source this%buf5(1+this%max_mode + i, :, 2) sum'
-!       write(2,*) this%buf2_im(:),'set_source this%buf2_im(:)'
-!       write(2,*) sum(this%buf2_im(:)),'set_source this%buf2_im(:) sum'
-!       write(2,*) sum(this%buf6(1+this%max_mode + i, :, 2)),'set_source this%buf6(1+this%max_mode + i, :, 2) sum'
-    endif
+   endif
   enddo
-!   write(2,*) sum(this%buf5(:,:,:)),'this%buf5 sum'
-!   write(2,*) sum(this%buf6(:,:,:)),'this%buf6 sum'
+
   call this%solver_bm%solve(src = this%buf5, u = this%buf3)
   call this%solver_bp%solve(src = this%buf6, u = this%buf3)
+
   do i = 0, this%max_mode
     if ( i == 0 ) then
       this%buf1_re(:) = this%buf5(1,:,1)
-      write(2,*) sum(this%buf5(1+this%max_mode,:,:)),'this%buf5_m=0 sum'
-!       write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
+      write(2,*) sum(this%buf5(1,:,:)),'this%buf5_m=0 sum'
       this%buf2_re(:) = this%buf6(1,:,1)
       write(2,*) sum(this%buf6(1,:,:)),'this%buf6_m=0 sum'
-!       write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
       call this%get_solution_bt_iter(i)
     else
 !       this%buf5(:,:,:) = 0.0
       this%buf1_re(:) = this%buf5(1 + i,:,1)
-!       write(2,*) sum(this%buf1_re(:)),'this%buf1_re sum'
       this%buf1_im(:) = this%buf5(1 + i,:,2)
-!       write(2,*) sum(this%buf1_im(:)),'this%buf1_im sum'
       this%buf2_re(:) = this%buf6(1 + i,:,1)
-!       write(2,*) sum(this%buf2_re(:)),'this%buf2_re sum'
       this%buf2_im(:) = this%buf6(1 + i,:,2)
-!       write(2,*) sum(this%buf2_im(:)),'this%buf2_im sum'
       call this%get_solution_bt_iter(i)
     endif
   enddo
