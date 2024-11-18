@@ -11,3 +11,4 @@
 .depend
 bin
 source/build
+config/

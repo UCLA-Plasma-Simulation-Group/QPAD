@@ -1004,9 +1004,9 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
   do i = 0, this%max_mode
     if ( i == 0 ) then
       this%buf1_re(:) = this%buf5(1,:,1)
-      write(2,*) sum(this%buf5(1,:,:)),'this%buf5_m=0 sum'
+!       write(2,*) sum(this%buf5(1,:,:)),'this%buf5_m=0 sum'
       this%buf2_re(:) = this%buf6(1,:,1)
-      write(2,*) sum(this%buf6(1,:,:)),'this%buf6_m=0 sum'
+!       write(2,*) sum(this%buf6(1,:,:)),'this%buf6_m=0 sum'
       call this%get_solution_bt_iter(i)
     else
 !       this%buf5(:,:,:) = 0.0

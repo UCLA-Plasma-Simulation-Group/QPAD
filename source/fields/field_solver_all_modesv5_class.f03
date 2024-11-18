@@ -1,4 +1,4 @@
-module field_solver_all_modesv3_class
+module field_solver_all_modesv5_class
 
 use options_class 
 use parallel_module
@@ -12,7 +12,7 @@ implicit none
 
 private
 
-public :: field_solver_all_modesv3
+public :: field_solver_all_modesv5
 public :: HYPRE_BUF
 
 character(len=32), parameter :: cls_name = "field_solver_all_modesv2"
@@ -21,7 +21,7 @@ integer, parameter :: cls_level = 4
 real, dimension(:), pointer, save :: HYPRE_BUF => null()
 real, dimension(:), pointer :: src_sol => null()
 
-type :: field_solver_all_modesv3 ! class for HYPRE solver
+type :: field_solver_all_modesv5 ! class for HYPRE solver
 
   ! HYPRE parameters
   integer, dimension(:,:), pointer :: offsets => null()
@@ -50,7 +50,7 @@ type :: field_solver_all_modesv3 ! class for HYPRE solver
   procedure, private :: get_hypre_src_coef 
   procedure, private :: get_hypre_src_b 
  
-end type field_solver_all_modesv3
+end type field_solver_all_modesv5
 
 integer, save :: nofff
 real, save :: drr
@@ -66,7 +66,7 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   type( options ), intent(in) :: opts
   integer, intent(in) :: kind, stype, max_mode, bnd
   real, intent(in) :: dr
@@ -108,7 +108,7 @@ subroutine end_field_solver( this )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
 
   integer :: ierr
   character(len=32), save :: sname = "end_field_solver"
@@ -128,7 +128,7 @@ subroutine end_field_solver( this )
   case(p_fk_coef)
     call HYPRE_StructGMRESDestroy( this%solver, ierr )
   case(p_fk_all_B_plus,p_fk_all_B_minus)
-    call HYPRE_StructLGMRESDestroy( this%solver, ierr )
+    call HYPRE_StructGMRESDestroy( this%solver, ierr )
   end select  
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -139,7 +139,7 @@ subroutine set_struct_solver( this )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
 
   integer :: ierr, comm
   external HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup
@@ -156,24 +156,24 @@ subroutine set_struct_solver( this )
   case( p_fk_all_B_minus, p_fk_all_B_plus)
   !   write(2,*) 'solver Initializing 2'
     ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
-    call HYPRE_StructLGMRESCreate( comm, this%solver, ierr )
-!     call HYPRE_StructLGMRESSetTol(this%solver, 1.0e-15, ierr)
-! !     call HYPRE_StructGMRESSetMaxIter(this%solver, 100000, ierr)
-!   !  创建 BoomerAMG 预处理器
-!     call HYPRE_BoomerAMGCreate(this%precond, ierr)
-!     call HYPRE_BoomerAMGSetCycleType(this%precond, 2, ierr)  ! 2 W-cycle 1 V-cycle
-!     call HYPRE_BoomerAMGSetMaxLevels(this%precond, 50, ierr)  ! 设置最大网格层数
-!     call HYPRE_BoomerAMGSetRelaxType(this%precond, 6, ierr)  ! Schwarz 或 Symmetric Gauss-Seidel
-! !   !   设置 BoomerAMG 参数，例如最大迭代次数和容忍度
-!     call HYPRE_BoomerAMGSetMaxIter(this%precond, 10000, ierr)  ! 预处理器的最大迭代次数
-!     call HYPRE_BoomerAMGSetTol(this%precond, 1.0e-6, ierr)    ! 预处理器的容忍度（GMRES 控制收敛）
-!   !   设置 BoomerAMG 作为 GMRES 的预处理器
-!     call HYPRE_StructLGMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond, ierr)
+    call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
+    call HYPRE_StructGMRESSetTol(this%solver, 1.0e-15, ierr)
+!     call HYPRE_StructGMRESSetMaxIter(this%solver, 100000, ierr)
+  !  创建 BoomerAMG 预处理器
+    call HYPRE_BoomerAMGCreate(this%precond, ierr)
+    call HYPRE_BoomerAMGSetCycleType(this%precond, 2, ierr)  ! 2 W-cycle 1 V-cycle
+    call HYPRE_BoomerAMGSetMaxLevels(this%precond, 50, ierr)  ! 设置最大网格层数
+    call HYPRE_BoomerAMGSetRelaxType(this%precond, 6, ierr)  ! Schwarz 或 Symmetric Gauss-Seidel
+!   !   设置 BoomerAMG 参数，例如最大迭代次数和容忍度
+    call HYPRE_BoomerAMGSetMaxIter(this%precond, 10000, ierr)  ! 预处理器的最大迭代次数
+    call HYPRE_BoomerAMGSetTol(this%precond, 1.0e-6, ierr)    ! 预处理器的容忍度（GMRES 控制收敛）
+  !   设置 BoomerAMG 作为 GMRES 的预处理器
+    call HYPRE_StructGMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond, ierr)
   !   write(2,*) 'solver Initializing 3'
   !   write(2,*) this%A,'A'
   !   write(2,*) this%b,'b'
   !   write(2,*) this%x,'x'
-    call HYPRE_StructLGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
 !   write(2,*) 'solver Initializing 4'
   end select
 
@@ -185,7 +185,7 @@ subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: qe_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: qn1_re
@@ -241,7 +241,7 @@ subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_
 !     write(2,*) "src_sol 1"
     call HYPRE_StructVectorAssemble( this%b, ierr )
 !     write(2,*) "src_sol 2"
-    call HYPRE_StructLGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
 !     call HYPRE_HYPRE_StructBiCGSTABGetNumIterations(this%solver,this%numiterations)
 !     write(2,*) 'this%numiterations'
     call this%get_hypre_src_b(src)
@@ -267,7 +267,7 @@ subroutine set_struct_grid( this, opts )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   type( options ), intent(in) :: opts
 
   integer :: comm, ierr
@@ -276,8 +276,8 @@ subroutine set_struct_grid( this, opts )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   comm = comm_loc()
-  this%ilower = (/1,opts%get_noff(1) + 1/)
-  this%iupper = (/1 + 2*this%mode,opts%get_noff(1) + opts%get_ndp(1)/) 
+  this%ilower = (/opts%get_noff(1) + 1,1/)
+  this%iupper = (/opts%get_noff(1) + opts%get_ndp(1),1 + 2*this%mode/) 
 
   call HYPRE_StructGridCreate( comm, 2, this%grid, ierr )
   call HYPRE_StructGridSetExtents( this%grid, this%ilower, this%iupper, ierr )
@@ -291,7 +291,7 @@ subroutine set_struct_stencil( this )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
 
   integer :: i, j, k, l, ierr
   character(len=32), save :: sname = "set_struct_stencil"
@@ -316,7 +316,7 @@ subroutine set_struct_stencil( this )
 
     k = 1
     do j = 0, 4*this%mode
-      this%offsets(:,k) = (/j - 2*this%mode,0/)
+      this%offsets(:,k) = (/0,j - 2*this%mode/)
       k=k + 1
     enddo
 
@@ -340,10 +340,10 @@ subroutine set_struct_stencil( this )
     endif
 
     k = 3
-    this%offsets(:,1) = (/0,-1/)
-    this%offsets(:,2) = (/0,1/)
+    this%offsets(:,1) = (/-1,0/)
+    this%offsets(:,2) = (/1,0/)
     do j = 0, 4*this%mode
-      this%offsets(:,k) = (/j - 2*this%mode,0/)
+      this%offsets(:,k) = (/0,j - 2*this%mode/)
       k=k + 1
     enddo
 
@@ -362,7 +362,7 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: psi_im
   real, intent(inout), dimension(:,:,:), optional :: u
@@ -415,16 +415,16 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
       f1_re(:,:,i) = -qbm*psi_re(i)%get_f1()
       f1_im(:,:,i) = -qbm*psi_im(i)%get_f1()
     enddo
-    i = 1 
-    do nn = 1, nr   
-      do aa = 1, 2*m + 1
-        if( aa > 1 ) then
-          k = aa/2 
-          aa_offeset = aa - 2*k
-        else
-          k = 0
-          aa_offeset = 0
-        endif
+    i = 1   
+    do aa = 1, 2*m + 1
+      if( aa > 1 ) then
+        k = aa/2 
+        aa_offeset = aa - 2*k
+      else
+        k = 0
+        aa_offeset = 0
+      endif
+      do nn = 1, nr 
         do bb = aa - 2*m, aa + 2*m
           if(  (bb >= 1) .and. (bb <= 1 + 2*m ) ) then
             if( bb > 1 ) then
@@ -543,19 +543,19 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
   case( p_fk_all_B_minus )
 
     ! set the first grid point of each partition
-    i = (4*m + 3) * (2*m + 1) + 1
-    j = real(noff) 
-     do nn = 2, nr
-      j = j + 1.0
-      kk = int(j)
-      do aa = 1, 2*m + 1
-        if( aa > 1 ) then
-          k = aa/2 
-          aa_offeset = aa - 2*k
-        else
-          k = 0
-          aa_offeset = 0
-        endif
+    i = (4*m + 3) * (2*m + 1) + 1 
+    do aa = 1, 2*m + 1
+      if( aa > 1 ) then
+        k = aa/2 
+        aa_offeset = aa - 2*k
+      else
+        k = 0
+        aa_offeset = 0
+      endif
+      j = real(noff)
+      do nn = 2, nr
+        j = j + 1.0
+        kk = int(j)
         HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
         i = i + 1
         HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
@@ -898,19 +898,19 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
     ! set the first grid point of each partition
 !     write(2,*) u(:,:,:),"u"
-    i = (4*m + 3) * (2*m + 1) + 1
-    j = real(noff) 
-    do nn = 2, nr
-      j = j + 1.0
-      kk = int(j)
-      do aa = 1, 2*m + 1
-        if( aa > 1 ) then
-          k = aa/2 
-          aa_offeset = aa - 2*k
-        else
-          k = 0
-          aa_offeset = 0
-        endif
+    i = (4*m + 3) * (2*m + 1) + 1 
+    do aa = 1, 2*m + 1
+      if( aa > 1 ) then
+        k = aa/2 
+        aa_offeset = aa - 2*k
+      else
+        k = 0
+        aa_offeset = 0
+      endif
+      j = real(noff)
+      do nn = 2, nr
+        j = j + 1.0
+        kk = int(j)
         HYPRE_BUF(i) = 1.0/dr2 - 0.5/(j*dr2)
         i = i + 1
         HYPRE_BUF(i) = 1.0/dr2 + 0.5/(j*dr2)
@@ -1200,15 +1200,27 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 
       case ( p_bnd_zero )
 
-        i = local_vol - (12*this%mode+3)*(4*this%mode + 1) + 1
-        do aa = 0, 4*this%mode
-          do bb = aa - 6*this%mode - 1, aa + 6*this%mode + 1
-            if ( bb == aa + 4*this%mode + 1) then
-              HYPRE_BUF(i) = 0.0
-              i = i + 1
-            else
-              i = i + 1
-            endif
+        i = local_vol - (4*this%mode + 3)*(2*this%mode + 1) + 1
+        jmax = real(noff + nr)
+        do aa = 1, 2*this%mode + 1
+!           HYPRE_BUF(i) = 0.0
+          i = i + 1
+          HYPRE_BUF(i) = 0.0
+          i = i + 1
+          do bb = aa - 2*this%mode, aa + 2*this%mode
+!             if (bb>=1 .and. bb<=1 + 2*m) then
+!               if (aa == bb) then
+!                 if( aa == 1 ) then
+!                   g = 0x
+!                 else
+!                   g = aa/2
+!                 endif
+!                 HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(g + 1)/jmax) * HYPRE_BUF(i - 2*this%mode - 1)
+!                 HYPRE_BUF(i - 2*this%mode - 1) = 0.0
+!               endif
+!             endif
+            HYPRE_BUF(i) = 0.0
+            i = i + 1
           enddo
         enddo 
       
@@ -1227,8 +1239,6 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
                 HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(g + 1)/jmax) * HYPRE_BUF(i - 2*this%mode - 1)
                 HYPRE_BUF(i - 2*this%mode - 1) = 0.0
-!               else
-!                 HYPRE_BUF(i) = 0.0
               endif
             endif
             i = i + 1
@@ -1254,7 +1264,7 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   type(ufield), intent(inout), dimension(:), optional, pointer :: qe_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: qn1_re
   type(ufield), intent(inout), dimension(:), optional, pointer :: qe_im
@@ -1272,8 +1282,8 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
 
   a = 1
   m = this%mode
-  do k = 1, nr
-    do l = 0, m
+  do l = 0, m
+    do k = 1, nr
       if (l == 0) then
         f1_re => qe_re(0)%get_f1()
         if ( present(qe_re) .and. present(qn1_re) ) then
@@ -1332,7 +1342,7 @@ subroutine set_hypre_src_b(this, src)
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 
   integer :: ierr, a, m, k, l, kk, j
@@ -1340,9 +1350,9 @@ subroutine set_hypre_src_b(this, src)
 
   a = 1
   m = this%mode
-  do k = 1, nr
+  do l = 0, m
 !     kk = int(j)
-    do l = 0, m
+    do k = 1, nr
       if (l == 0) then
         src_sol(a)  = src(1+l,k,1)
         a = a + 1
@@ -1378,7 +1388,7 @@ subroutine get_hypre_src_coef(this, src)
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 
   integer :: ierr, a, m, k, l
@@ -1391,8 +1401,8 @@ subroutine get_hypre_src_coef(this, src)
 !   write(2,*) src_sol(:),'coef src_sol'
   a = 1
   m = this%mode
-  do k = 1, nr
-    do l = 0, m
+  do l = 0, m
+    do k = 1, nr
       if (l == 0 ) then
         src(1,k,1) = src_sol(a)
         a=a + 1
@@ -1423,7 +1433,7 @@ subroutine get_hypre_src_b(this, src)
 
   implicit none
 
-  class( field_solver_all_modesv3 ), intent(inout) :: this
+  class( field_solver_all_modesv5 ), intent(inout) :: this
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 
   integer :: ierr, a, m, k, l
@@ -1435,8 +1445,8 @@ subroutine get_hypre_src_b(this, src)
 !     write(2,*) src_sol,"src_sol 3" 
   a = 1
   m = this%mode
-  do k = 1, nr
-    do l = 0, m
+  do l = 0, m
+    do k = 1, nr
       if (l == 0 ) then
         src(1,k,1) = src_sol(a)
         a=a + 1
@@ -1464,4 +1474,4 @@ subroutine get_hypre_src_b(this, src)
 
 end subroutine get_hypre_src_b
 
-end module field_solver_all_modesv3_class
+end module field_solver_all_modesv5_class
