@@ -24,8 +24,8 @@ LDF = -L$(HYPRE_LIB) -L$(JSON_LIB) -L$(HDF5_LIB) -lHYPRE -ljsonfortran -lhdf5_fo
 
 # Library dependencies
 HYPRE_LIB = /usr/local/hypre/lib
-JSON_LIB = /usr/local/json-fortran/lib
-JSON_INC = /usr/local/json-fortran/include
+JSON_LIB = /Users/tangrong/json-fortran-8.2.0/build/lib
+JSON_INC = /Users/tangrong/json-fortran-8.2.0/build/include
 HDF5_INC = /usr/local/hdf5/include
 HDF5_LIB = /usr/local/hdf5/lib
 
