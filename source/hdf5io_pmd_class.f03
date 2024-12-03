@@ -631,7 +631,7 @@
                call add_h5_atribute(dset_id,'macroWeighted',0)
                call add_h5_atribute(dset_id,'unitSymbol','s')
                call add_h5_atribute(dset_id,'unitSI',1.0)
-            else if(name(:) == 'weighting') then
+            else if(name(:) == 'weight') then
                call add_h5_atribute(dset_id,'unitDimension',[ 0., 0., 0., 0., 0., 0., 0.])
                call add_h5_atribute(dset_id,'weightingPower',0)
                call add_h5_atribute(dset_id,'macroWeighted',0)
@@ -2340,7 +2340,7 @@ logical gexist
     call MPI_WAIT(mid,istat,ierr)
  endif
 
-   qsum = SUM(q(1:((tnpp-1)*dspl+1):dspl))
+ qsum = SUM(q(1:((tnpp-1)*dspl+1):dspl))
  call MPI_ALLREDUCE(tnpp,tp,1,MPI_INTEGER,MPI_SUM,comm_loc(),ierr)
  call MPI_ALLREDUCE(qsum,total_charge,1,p_dtype_real,MPI_SUM,comm_loc(),ierr)
  ! print *,total_charge
@@ -2356,6 +2356,35 @@ logical gexist
        &access_prp=flplID)
        call wrattr_file(file,file_id,xferID, type=.false.)
        call h5gopen_f(file_id, '/', rootID, ierr)
+
+       ! added code
+       call h5gcreate_f(rootID,'data',dataID,ierr)
+       call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
+       call h5gcreate_f(iterID,trim(file%particlespath),partID,ierr)
+       specID = partID
+       call add_h5_atribute(partID, 'speciesType',trim(file%spectype))
+       call add_h5_atribute(partID, 'numParticles',tp)
+       call add_h5_atribute(partID, 'chargeUnitSI',1.0)
+       call add_h5_atribute(partID, 'totalCharge',total_charge)
+
+       call h5gcreate_f(specID,'momentum',momID,ierr)
+       call h5gcreate_f(specID,'position',posID,ierr)
+
+       call wrattr_dataset(file,momID,unit='m_ec',&
+          &name='p', type=.false.)
+
+       call wrattr_dataset(file,posID,unit='c/\omega_p',&
+          &name='x', type=.false.)
+       call add_h5_atribute(iterID,'dt',file%dt)
+       call add_h5_atribute(iterID,'time',file%t)
+       call add_h5_atribute(iterID,'timeUnitSI',file%timeunitsi)
+       call h5gclose_f(momID, ierr)
+       call h5gclose_f(posID, ierr)
+       call h5gclose_f(partID, ierr)
+       call h5gclose_f(iterID, ierr)
+       call h5gclose_f(dataID, ierr)
+       !end added
+
 
        call h5screate_simple_f(1, ldim, aspace_id, ierr)
        call h5acreate_f(rootID, 'tp', H5T_NATIVE_INTEGER, aspace_id,&
@@ -2409,7 +2438,6 @@ logical gexist
           &access_prp=flplID)
           call wrattr_file(file,file_id,xferID, type = .false.)
           call h5gopen_f(file_id, '/', rootID, ierr)
-
           call h5gcreate_f(rootID,'data',dataID,ierr)
           call h5gcreate_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
           call h5gcreate_f(iterID,trim(file%particlespath),partID,ierr)
@@ -2444,7 +2472,6 @@ logical gexist
           call h5fopen_f(filename,H5F_ACC_RDWR_F, file_id, ierr,&
           &access_prp=flplID)
           call h5gopen_f(file_id, '/', rootID, ierr)
-
           call h5gopen_f(rootID,'data',dataID,ierr)
           call h5gopen_f(dataID,adjustl(trim(iter_str)),iterID,ierr)
           call h5gopen_f(iterID,trim(file%particlespath),partID,ierr)
@@ -2466,15 +2493,8 @@ logical gexist
           call h5aopen_f(partID, 'totalCharge', aid, ierr)
           call h5aread_f(aid, treal, q0, ldim, ierr)
           total_charge = total_charge + q0
-          ! print *, total_charge
           call h5awrite_f(aid, treal, total_charge, ldim, ierr)
           call h5aclose_f(aid, ierr)
-
-          ! call h5aopen_f(rootID, 'tp', aid, ierr)
-          ! call h5aread_f(aid, H5T_NATIVE_INTEGER, tpo, ldim, ierr)
-          ! tp = tp + tpo
-          ! call h5awrite_f(aid, H5T_NATIVE_INTEGER, tp, ldim, ierr)
-          ! call h5aclose_f(aid, ierr)
        endif
 
 
@@ -2647,7 +2667,7 @@ logical gexist
        endif
 
 
-       buff(1:tnpp) = (x(3,1:((tnpp-1)*dspl+1):dspl)+z0)* file%timeunitsi
+       buff(1:tnpp) = (file%t + (x(3,1:((tnpp-1)*dspl+1):dspl)+z0))* file%timeunitsi
        if (ori >= 0 .and. tpo /= 0) then
           call h5dopen_f(specID, 'time', dset_id, ierr)
           ldim(1) = tp
@@ -2724,7 +2744,7 @@ logical gexist
           call h5dwrite_f(dset_id, treal, buff, ldim, ierr, memspaceID,&
           &dspace_id, xfer_prp=xferID)
           call wrattr_dataset(file,dset_id,unit='a.u.',&
-          &name='q', type=.false.)
+          &name='weight', type=.false.)
           call h5pclose_f(dcplID, ierr)
        endif
 
@@ -2776,6 +2796,10 @@ logical gexist
 
 
 
+       
+
+
+
        ! if (ori >= 0 .and. tpo /= 0) then
        !    call h5dopen_f(specID, 'weight', dset_id, ierr)
        !    ldim(1) = tp
@@ -2809,31 +2833,30 @@ logical gexist
        !    call h5dwrite_f(dset_id, treal, buff/(-q_e), ldim, ierr, memspaceID,&
        !    &dspace_id, xfer_prp=xferID)
        !    call wrattr_dataset(file,dset_id,unit='a.u.',&
-       !    &name='weighting', type=.false.)
+       !    &name='weight', type=.false.)
        !    call h5pclose_f(dcplID, ierr)
        ! endif
-
 
        ! call h5sclose_f(memspaceID, ierr)
        ! call h5sclose_f(dspace_id, ierr)
        ! call h5dclose_f(dset_id, ierr)
-       call h5pclose_f(xferID, ierr)
-       call h5pclose_f(flplID, ierr)
 
-       call h5gclose_f(momID, ierr)
+       
+
+       
+
+       
+       
+
        call h5gclose_f(posID, ierr)
-       if(specID == partID) then
-         call h5gclose_f(specID, ierr)
-      else
-         call h5gclose_f(specID, ierr)
-         call h5gclose_f(partID, ierr)
-       endif
+       call h5gclose_f(momID, ierr)
+       call h5gclose_f(partID, ierr)
        call h5gclose_f(iterID, ierr)
+
        call h5gclose_f(dataID, ierr)
        call h5gclose_f(rootID, ierr)
-       ! call h5gclose_f(dataID, ierr)
-       ! call h5gclose_f(iterID, ierr)
-
+       call h5pclose_f(xferID, ierr)
+       call h5pclose_f(flplID, ierr)
        call h5fclose_f(file_id, ierr)
        deallocate(np,dims,buff)
     endif

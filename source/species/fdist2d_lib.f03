@@ -54,13 +54,13 @@ subroutine set_prof_perp_para_chl( input, sect_name, prof_pars )
   ! this should never be called
   if ( associated(prof_pars) ) deallocate( prof_pars )
 
-  allocate( prof_pars(4) )
+  allocate( prof_pars(5) )
 
   call input%get( trim(sect_name) // '.channel_n0', prof_pars(1) )
   call input%get( trim(sect_name) // '.channel_depth', prof_pars(2) )
   call input%get( trim(sect_name) // '.channel_r0', prof_pars(3) )
   call input%get( trim(sect_name) // '.channel_width', prof_pars(4) )
-
+  call input%get( trim(sect_name) // '.channel_rmax', prof_pars(5) )
 end subroutine set_prof_perp_para_chl
 
 subroutine get_den_perp_para_chl( x, s, prof_pars_perp, prof_pars_lon, den_value , math_func )
@@ -74,13 +74,18 @@ subroutine get_den_perp_para_chl( x, s, prof_pars_perp, prof_pars_lon, den_value
 
   real :: r2, n0, n_depth, r02, r2_max
 
+  real :: rlim
   n0      = prof_pars_perp(1)
   n_depth = prof_pars_perp(2)
   r02     = prof_pars_perp(3)**2
   r2_max  = prof_pars_perp(4)**2
   r2      = x(1)**2 + x(2)**2
 
-  if ( r2 < r2_max ) then
+  rlim = prof_pars_perp(5)
+
+  if(r2 > rlim **2) then 
+    den_value = 0
+  else if ( r2 < r2_max ) then
     den_value = n0 + n_depth * r2 / r02
   else
     den_value = n0 + n_depth * r2_max / r02
