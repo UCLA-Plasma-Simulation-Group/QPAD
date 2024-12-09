@@ -24,15 +24,12 @@ real, dimension(:), pointer :: src_sol => null()
 type :: field_solver_all_modesv1 ! class for HYPRE solver
 
   ! HYPRE parameters
-  integer, dimension(:), pointer :: offsets => null()
-  integer, dimension(:), pointer :: stencil_idx => null()
-  integer, dimension(:), pointer :: indices => null()
-  integer :: num_stencil
   integer :: stype ! currently there's only grmes reduction
   integer :: kind
   integer :: mode
   integer :: num_rows
   integer :: bnd
+  integer, dimension(:),allocatable :: indices
 
 !   integer(HYPRE_TYPE) :: A, b, x, grid, stencil, solver
   integer(HYPRE_TYPE) :: A, A_internal, b, b_internal, x, x_internal, solver, precond
@@ -88,18 +85,19 @@ subroutine init_field_solver( this, opts, max_mode, dr, kind, bnd, stype )
   this%ilower = opts%get_noff(1) + 1
   this%iupper = opts%get_noff(1) + opts%get_ndp(1)*(4*this%mode+1)
   this%num_rows = this%iupper - this%ilower + 1
+  write(2,*) this%num_rows,'this%num_rows'
   ! 分配并初始化 indices 数组
   allocate(this%indices(this%num_rows))
   do i = 1, this%num_rows
-      this%indices(i) = this%ilower + i - 1
+      this%indices(i) = i
   end do
 
   call HYPRE_IJVectorCreate(comm, this%ilower, this%iupper, this%b, ierr)
-  call HYPRE_IJVectorSetObjectType(this%b, HYPRE_PARCSR, ierr)
+!   call HYPRE_IJVectorSetObjectType(this%b, HYPRE_PARCSR, ierr)
   call HYPRE_IJVectorInitialize(this%b, ierr)
 
   call HYPRE_IJVectorCreate( comm, this%ilower, this%iupper, this%x, ierr)
-  call HYPRE_IJVectorSetObjectType(this%x, HYPRE_PARCSR, ierr)
+!   call HYPRE_IJVectorSetObjectType(this%x, HYPRE_PARCSR, ierr)
   call HYPRE_IJVectorInitialize(this%x, ierr)
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -117,11 +115,10 @@ subroutine end_field_solver( this )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call HYPRE_IJMatrixDestroy(this%A)
-  call HYPRE_IJVectorDestroy(this%b)
-  call HYPRE_IJVectorDestroy(this%x)
-  call HYPRE_ParCSRGMRESDestroy(this%solver)
-  call HYPRE_BoomerAMGDestroy(this%precond) 
+  call HYPRE_IJMatrixDestroy(this%A, ierr)
+  call HYPRE_IJVectorDestroy(this%b, ierr)
+  call HYPRE_IJVectorDestroy(this%x, ierr)
+  call HYPRE_GMRESDestroy(this%solver, ierr) 
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -136,7 +133,7 @@ subroutine set_IJ_solver( this )
   integer :: ierr, comm, max_iter
   real :: tol
   external HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup
-  character(len=32), save :: sname = "set_struct_solver"
+  character(len=32), save :: sname = "set_ij_solver"
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -144,16 +141,25 @@ subroutine set_IJ_solver( this )
 
   tol = 1.0e-7
   max_iter = 100
-  call HYPRE_ParCSRGMRESCreate(comm, this%solver)
-!   call HYPRE_GMRESSetTol(this%solver, tol)
-!   call HYPRE_GMRESSetMaxIter(this%solver, max_iter)
+  ! 创建 GMRES 求解器
+!   call HYPRE_GMRESCreate(comm, this%solver, ierr)
 
-  ! 设置预处理器（BoomerAMG 作为示例）
-  call HYPRE_BoomerAMGCreate(this%precond)
-  call HYPRE_BoomerAMGSetCoarsenType(this%precond, 6)
-  call HYPRE_BoomerAMGSetRelaxType(this%precond, 3)
-!   call HYPRE_GMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond)
-!   call HYPRE_ParCSRGMRESSetup(this%solver, this%A, this%b, this%x)
+  ! 设置 GMRES 的容许误差和最大迭代次数（可选）
+!   call HYPRE_GMRESSetTol(this%solver, tol, ierr)
+!   call HYPRE_GMRESSetMaxIter(this%solver, max_iter, ierr)
+
+  ! 创建并设置预处理器
+!   write(2,*) '1'
+!   call HYPRE_BoomerAMGCreate(this%precond, ierr)
+!   call HYPRE_BoomerAMGSetCoarsenType(this%precond, 6, ierr)  ! Falgout 粗化
+!   call HYPRE_BoomerAMGSetRelaxType(this%precond, 3, ierr)     ! 加权 Jacobi 松弛
+
+!   ! 将预处理器与 GMRES 关联
+!   call  HYPRE_ParCSRGMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond, ierr)
+
+  ! 设置 GMRES 求解系统
+!   call HYPRE_ParCSRGMRESSetup(this%solver, this%A_internal, this%b_internal, this%x_internal)
+!   call HYPRE_GMRESSetup(this%solver, this%A, this%b, this%x)
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
 
@@ -210,29 +216,29 @@ subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_
     call this%set_hypre_src_coef( qe_re, qn1_re, qe_im, qn1_im, qbm )
     call HYPRE_IJVectorAssemble(this%b)
     write(2,*) 'HYPRE_IJVectorSetValues'
-    call HYPRE_IJVectorSetValues(this%x, this%num_rows, this%indices, value)
+!     call HYPRE_IJVectorSetValues(this%x, this%num_rows, this%indices, value,ierr)
     call HYPRE_IJVectorAssemble(this%x)
     ! 获取 HYPRE 内部的 ParCSR 向量对象
-    call HYPRE_IJVectorGetObject(this%x, this%x_internal)
-    call HYPRE_IJVectorGetObject(this%b, this%b_internal)
+!     call HYPRE_IJVectorGetObject(this%x, this%x_internal)
+!     call HYPRE_IJVectorGetObject(this%b, this%b_internal)
     write(2,*) 'ParCSRGMRESSolve' 
-    call HYPRE_ParCSRGMRESSetup(this%solver, this%A, this%b_internal, this%x_internal)
-    call HYPRE_ParCSRGMRESSolve(this%solver, this%A, this%b_internal, this%x_internal)
+!     call HYPRE_ParCSRGMRESSetup(this%solver, this%A_internal, this%b_internal, this%x_internal)
+    call HYPRE_GMRESSolve(this%solver, this%A, this%b, this%x)
     call this%get_hypre_src_coef( src )
  
   case ( p_fk_all_B_minus, p_fk_all_B_plus )
     call set_IJ_matrix(this, u=u)
     call this%set_IJ_solver() 
     call this%set_hypre_src_b(src)
-    call HYPRE_IJVectorAssemble(this%b)
     ! 设置初始解向量 x 的值为 0.0
-    call HYPRE_IJVectorSetValues(this%x, this%num_rows, this%indices, value)
+!     call HYPRE_IJSetConstantValues(this%x, 0.0d0, ierr)
+!     write(2,*) 'this%x' 
     call HYPRE_IJVectorAssemble(this%x)
     ! 获取 HYPRE 内部的 ParCSR 向量对象
-    call HYPRE_IJVectorGetObject(this%x, this%x_internal)
-    call HYPRE_IJVectorGetObject(this%b, this%b_internal)
-    call HYPRE_ParCSRGMRESSetup(this%solver, this%A, this%b_internal, this%x_internal)
-    call HYPRE_ParCSRGMRESSolve(this%solver, this%A, this%b_internal, this%x_internal)
+!     call HYPRE_IJVectorGetObject(this%x, this%x_internal)
+    write(2,*) 'ParCSRGMRESSolve' 
+!     call HYPRE_ParCSRGMRESSetup(this%solver, this%A_internal, this%b_internal, this%x_internal)
+    call HYPRE_GMRESSolve(this%solver, this%A, this%b, this%x)
     call this%get_hypre_src_b(src)
  
   end select 
@@ -290,7 +296,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
   write(2,*) 'set_IJ_matrix 1'
   call HYPRE_IJMatrixCreate(comm, this%ilower, this%iupper, this%ilower, this%iupper, this%A, ierr)
   write(2,*) 'set_IJ_matrix 2'
-  call HYPRE_IJMatrixSetObjectType(this%A, HYPRE_PARCSR,ierr)
+!   call HYPRE_IJMatrixSetObjectType(this%A, HYPRE_PARCSR,ierr)
   write(2,*) 'set_IJ_matrix 3'
   call HYPRE_IJMatrixInitialize(this%A,ierr)
 
@@ -325,6 +331,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
           k = aa/2 - m
         endif
         rows(ii) = (nn - 1) *(4*m +1) + aa + 1
+        ncols(ii) = 1 + 4*m
         do bb = 0, 4*m
           cols(jj) = (nn - 1) *(4*m +1) + aa + bb + 1
           if( bb - 2*m > 0 ) then
@@ -390,9 +397,9 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
       allocate( HYPRE_BUF( local_vol*(12*m +3) ) )
     elseif ( size(HYPRE_BUF) < local_vol ) then
       deallocate( HYPRE_BUF )
-      allocate( HYPRE_BUF( local_vol ) )
+      allocate( HYPRE_BUF( local_vol*(12*m +3) ) )
     endif
-
+    write(2,*) 'set_IJ_matrix 5'
     allocate(rows(local_vol))
     allocate(cols(local_vol*(12*m +3)))
     allocate(ncols(local_vol))
@@ -411,6 +418,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
           k = aa/2 - m
         endif
         rows(ii) = (nn - 1) *(4*m +1) + aa + 1
+        ncols(ii) = 12*m + 3
         do bb = - 4*m - 1, 8*m + 1
           cols(jj) = (nn - 1) *(4*m +1) + aa + bb + 1
           if(  (bb >= 0) .and. (bb <= 4*m) ) then
@@ -482,6 +490,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
     if (lidproc == 0) then
       do aa = 0, 4*m
         rows(ii) = (nn - 1) *(4*m +1) + aa + 1
+        ncols(ii) = 12*m +3
         do bb = 0, 12*m +3
           cols(jj) = (nn - 1) *(4*m +1) + aa + bb + 1
           if (aa == bb) then
@@ -623,6 +632,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
           k = aa/2 - m
         endif
         rows(ii) = (nn - 1)*(4*m + 1)+aa +1
+        ncols(ii) = 12*m +3
         do bb = 0, 12*this%mode + 3
           cols(jj) = (nn - 1)*(4*m + 1)+aa+bb +1
           if(  (bb >= 0) .and. (bb <= 4*m) ) then
@@ -704,6 +714,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
           k = aa/2 - m
         endif
         rows(ii) = (nn - 1)*(4*m + 1)+aa +1
+        ncols(ii) = 12*m +3
         do bb = - 4*m - 1, 8*this%mode + 1
           cols(jj) = (nn - 1)*(4*m + 1)+aa+bb +1
           if(  (bb >= 0) .and. (bb <= 4*m) ) then
@@ -774,6 +785,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
     if (lidproc == 0) then
       do aa = 0, 4*m
         rows(ii) = (nn - 1) *(4*m +1) + aa + 1
+        ncols(ii) = 12*m +3
         do bb = 0, 12*m + 3
           cols(jj) = (nn - 1) *(4*m +1) + aa + bb + 1
           if (aa == bb) then
@@ -809,6 +821,7 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
           k = aa/2 - this%mode
         endif
         rows(ii) = (nn - 1) *(4*m +1) + aa + 1
+        ncols(ii) = 12*m +3
         do bb = 0, 12*this%mode + 3
           cols(jj) = (nn - 1) *(4*m +1) + aa + bb + 1
           if(  (bb >= 0) .and. (bb <= 4*this%mode) ) then
@@ -903,7 +916,8 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
         jj = nr*(4*m +1)*(12*m +3) - (12*m +3)*(4*m + 1) + 1
         jmax = real(noff + nr)
         do aa = 0, 4*m
-          rows(ii + aa) = ii + aa 
+          rows(ii + aa) = ii + aa
+          ncols(ii + aa) = 12*m +3 
           do bb = -4*m - 1, 8*this%mode + 1
             cols(jj) = ii + aa + bb + 1
             if (aa == bb) then
@@ -934,8 +948,8 @@ subroutine set_IJ_matrix( this, psi_re, psi_im, u, qbm)
   endif
         
   call HYPRE_IJMatrixSetValues(this%A, local_vol, ncols, rows, cols, HYPRE_BUF, ierr)      
-  call HYPRE_IJMatrixAssemble(this%A)
-  call HYPRE_IJMatrixGetObject(this%A, this%A_internal)  ! 获取内部 ParCSR 矩阵对象
+  call HYPRE_IJMatrixAssemble(this%A, ierr)
+!   call HYPRE_IJMatrixGetObject(this%A, this%A_internal,ierr)  ! 获取内部 ParCSR 矩阵对象
 
   deallocate(rows, cols, ncols)
 
@@ -954,7 +968,7 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
   type(ufield), intent(inout), dimension(:), optional, pointer :: qn1_im
   real, intent(inout), optional :: qbm
 
-  integer :: ierr, a, im, k, l, kk
+  integer :: ierr, a, im, k, l, kk 
   real :: jj, j
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
@@ -964,70 +978,48 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
   a = 1
-!   j = real(nofff) + 1.0
-!   write(2,*) j,'j'
+  write(2,*) '01'
   do k = 1, nr
-!     kk = int(j)
     do l = 0, 2*this%mode
       im = l - this%mode
-!         write(2,*) im,"im"
       if (im > 0 ) then
         f1_re => qe_re(im)%get_f1()
         f1_im => qe_im(im)%get_f1()
         if ( present(qe_im) .and. present(qn1_im) ) then
-!             write(2,*) "present(qn_im)"
           f2_re => qn1_re(im)%get_f1()
           f2_im => qn1_im(im)%get_f1()
           f1_re(1,k) = f1_re (1,k)- f2_re(1,k)
           f1_im(1,k) = f1_im (1,k)- f2_im(1,k)
-!           write(2,*) f1_im(1,k),'f1_im(1,k) im>0'
         endif
         src_sol(a)  = -qbm*f1_re(1,k)
         src_sol(a + 1)  = -qbm*f1_im(1,k)
-!         write(2,*) src_sol(a),'f1_re(1,k) im>0'
-!         write(2,*) src_sol(a + 1),'f1_im(1,k) im>0'
         a=a + 2
-!         write(2,*) a,'a'
       elseif (im == 0) then
         f1_re => qe_re(0)%get_f1()
-!         write(2,*) qe_re(0)%get_f1(),'size(qe_re(0)%get_f1())'
         if ( present(qe_re) .and. present(qn1_re) ) then
-!             write(2,*) "present(qn_re)"
           f2_re => qn1_re(0)%get_f1()
-!             write(2,*) f2_re(1,k),"f2_re(1,k) im=0"
           f1_re(1,k) = f1_re(1,k) - f2_re(1,k)
-!             write(2,*) f1_re(1,kk),"f1_re(1,kk) im=0"
-!           write(2,*) f1_im(1,k),'f1_im(1,k) im=0'
         endif
         src_sol(a)  = -qbm*f1_re(1,k)
-!         write(2,*) src_sol(a),"f1_re(1,k) im=0"
         a = a + 1
-!         write(2,*) a,'a'
       else
         im = abs(im)
         f1_re => qe_re(im)%get_f1()
         f1_im => qe_im(im)%get_f1()
         if ( present(qe_im) .and. present(qn1_im) ) then
-!             write(2,*) "present(qn_im)"
           f2_re => qn1_re(im)%get_f1()
           f2_im => qn1_im(im)%get_f1()
           f1_re(1,k)= f1_re(1,k) - f2_re(1,k)
           f1_im(1,k) = f1_im(1,k) - f2_im(1,k)
-!           write(2,*) f1_im(1,k),'f1_im(1,k) im<0'
         endif
         src_sol(a) = -qbm*f1_re(1,k)
         src_sol(a + 1)  = qbm*f1_im(1,k)
-!         write(2,*) src_sol(a),'f1_re(1,k) im<0'
-!         write(2,*) src_sol(a + 1),'f1_im(1,k) im<0'
-        a=a + 2 
-!         write(2,*) a,"a"         
+        a=a + 2         
       endif
     enddo
-!     j = j + 1.0
   enddo
-!     write(2,*) a,"a"
-!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorSetBoxValues 1'    
-  call HYPRE_IJVectorSetValues(this%b, this%num_rows, this%indices, src_sol)
+    
+  call HYPRE_IJVectorSetValues(this%b, this%num_rows, this%indices, src_sol, ierr)
   write(2,*) size(src_sol),'size(src_sol)'
 !   write(2,*) src_sol,'src_sol'
 
@@ -1041,6 +1033,7 @@ subroutine set_hypre_src_b(this, src)
   real, intent(inout), dimension(:,:,:), optional, pointer :: src
 
   integer :: ierr, a, im, k, l, kk, j
+!   real(8), dimension(this%num_rows) :: value
   character(len=32), save :: sname = "set_hypre_src_b"
 
   a = 1
@@ -1071,9 +1064,19 @@ subroutine set_hypre_src_b(this, src)
     j = j + 1.0 
   enddo
   
-  call HYPRE_IJVectorSetValues(this%b, this%num_rows, this%indices, src_sol)
+  call HYPRE_IJVectorSetValues(this%b, this%num_rows, this%indices, src_sol,ierr)
+!   value(:) = 0.0
+!   call HYPRE_IJVectorSetValues(this%b, this%num_rows, this%indices, value,ierr)
   write(2,*) size(src_sol),'size(src_sol)'
-  write(2,*) src_sol,'src_sol'
+!   if (size(src_sol) /= this%num_rows) then
+!     print*, 'Mismatch in size of src_sol and num_rows'
+!   else
+!     print*, 'size is right'
+!   end if
+!   write(2,*) src_sol,'src_sol' 
+  call HYPRE_IJVectorAssemble(this%b)
+!   call HYPRE_IJVectorGetObject(this%b, this%b_internal)
+  write(2,*) 'this%b'
 
 end subroutine set_hypre_src_b
 
@@ -1087,7 +1090,7 @@ subroutine get_hypre_src_coef(this, src)
   integer :: ierr, a, im, k, l
   character(len=32), save :: sname = "get_hypre_src_coef"
 
-  call HYPRE_IJVectorGetValues(this%x, this%num_rows, this%indices, src_sol)
+  call HYPRE_IJVectorGetValues(this%x, this%num_rows, this%indices, src_sol,ierr)
 !   call HYPRE_IJVectorPrint( this%x,"struct_x_output.out")
 !   call HYPRE_StructVectorPrint( "struct_x_output.out", this%x)
   write(2,*) size(src_sol),'size(src_sol)'
@@ -1110,7 +1113,7 @@ subroutine get_hypre_src_coef(this, src)
         endif
       enddo 
     enddo
-  write(2,*) src(:,:,:),'coef src'
+!   write(2,*) src(:,:,:),'coef src'
 
 end subroutine get_hypre_src_coef
 
@@ -1124,7 +1127,7 @@ subroutine get_hypre_src_b(this, src)
   integer :: ierr, a, im, k, l
   character(len=32), save :: sname = "get_hypre_src_b"
 
-  call HYPRE_IJVectorGetValues(this%x, this%num_rows, this%indices, src_sol)
+  call HYPRE_IJVectorGetValues(this%x, this%num_rows, this%indices, src_sol,ierr)
 !   call HYPRE_IJVectorPrint( this%x,"vector_x.out")
   write(2,*) size(src_sol),'size(src_sol)'
 !     write(2,*) src_sol,"src_sol 3" 

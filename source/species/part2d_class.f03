@@ -362,6 +362,7 @@ subroutine qdeposit_part2d( this, q )
 
     q0(1,0) = 0.0 ! guard cell is useless on axis
     q0(1,1) = 8.0 * q0(1,1)
+!     q0(1,1) = 12.0 * q0(1,1)
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       q0(1,j) = q0(1,j) * ir
@@ -477,8 +478,8 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
 
 
     ! interpolate fields to particles
-    call interp_emf_part2d( ef1_re, ef1_im, bfbeam_re, bfbeam_im, max_mode, this%x, this%dr, &
-      bpbeam, ep1, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
+    call interp_ef_part2d( bfbeam_re, bfbeam_im, max_mode, this%x, this%dr, &
+      bpbeam, np, ptrcur, p_cylindrical, weight = wt, ix = ix, pcos = cc, psin = ss )
 
     ! calculate wake field
     do i = 1, np
@@ -659,8 +660,6 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
 
   endif
 
-!   write(2,*) sum(dcu0(2,:)),'dcu0(2,:) 2'
-!   write(2,*) sum(cu0(2,:)),'cu0(2,:) 2'
   call stop_tprof( 'deposit 2D particles' )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -2262,29 +2261,10 @@ subroutine expush_part2d( this, ef, bf )
     call interp_emf_part2d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
       bp, ep, np, ptrcur, p_cartesian )
 
-!     ! advance particle position
-!     pp = ptrcur
-!     do i = 1, np
-!       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-!       dtc = this%dt / ( gam - this%p(3,pp) )
-! !       x_l = this%x(1,pp)
-!       this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dtc
-!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
-! !       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
-! !       this%x_l(1,pp) = this%x_l(1,pp)*0.42 + this%x(1,pp)*0.58
-! !       x_l = this%x(2,pp)
-!       this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dtc 
-!       this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
-! !       this%x_l(2,pp) = this%x_l(2,pp)*0.42  + this%x(2,pp)*0.58
-!       pp = pp + 1
-!     enddo
-
 
     pp = ptrcur
     do i = 1, np
       gam = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-      ! qtmh1 = qtmh / this%psi(pp)
-      ! qtmh2 = qtmh1 * this%gamma(pp)
       qtmh1 = qtmh / ( gam - this%p(3,pp) )
       qtmh2 = qtmh1 * gam
       ep(:,i) = ep(:,i) * qtmh2 
@@ -2296,9 +2276,8 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np
       utmp(:,i) = this%p_l(:,pp) + ep(:,i)
-!       p_l = this%p(1,pp)
-!       this%p_l(:,pp) = p_l
-      this%p_l(:,pp) = this%p(:,pp)
+      ! -----------1st method-------------
+!       this%p_l(:,pp) = this%p(:,pp)
       pp = pp + 1
     enddo
 
@@ -2330,8 +2309,12 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np 
       this%p(:,pp) = utmp(:,i) + ep(:,i)
-!       this%p_l(:,pp) = (this%p_l(:,pp)+this%p(:,pp))*0.5
-!       this%p_l(:,pp) = this%p_l(:,pp)*0.2+this%p(:,pp)*0.8
+      pp = pp + 1
+    enddo
+! ------------2nd method------------
+    pp = ptrcur
+    do i = 1, np 
+      this%p_l(:,pp) = 0.5*(this%p_l(:,pp) + this%p(:,pp))
       pp = pp + 1
     enddo
 
@@ -2339,15 +2322,21 @@ subroutine expush_part2d( this, ef, bf )
     pp = ptrcur
     do i = 1, np
       gam = sqrt( 1.0 + this%p_l(1,pp)**2 + this%p_l(2,pp)**2 + this%p_l(3,pp)**2 )
-      dtc = 2*this%dt / ( gam - this%p(3,pp) )
+! -----------1st method-------------
+!       dtc = 2*this%dt / ( gam - this%p_l(3,pp) )
+!       x_l = this%x(1,pp)
+!       this%x(1,pp) = this%x_l(1,pp) + this%p_l(1,pp) * dtc
+!       this%x_l(1,pp) = x_l
+!       x_l = this%x(2,pp)
+!       this%x(2,pp) = this%x_l(2,pp) + this%p_l(2,pp) * dtc 
+!       this%x_l(2,pp) = x_l
+! ------------2nd method------------
+      dtc = this%dt / ( gam - this%p_l(3,pp) )
       x_l = this%x(1,pp)
-      this%x(1,pp) = this%x_l(1,pp) + this%p_l(1,pp) * dtc
-!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
-!       this%x_l(1,pp) = (this%x_l(1,pp) + this%x(1,pp))*0.5
+      this%x(1,pp) = this%x(1,pp) + 0.5*(this%p_l(1,pp) + this%p(1,pp)) * dtc
       this%x_l(1,pp) = x_l
       x_l = this%x(2,pp)
-      this%x(2,pp) = this%x_l(2,pp) + this%p_l(2,pp) * dtc 
-!       this%x_l(2,pp) = (this%x_l(2,pp) + this%x(2,pp))*0.5
+      this%x(2,pp) = this%x(2,pp) + 0.5*(this%p_l(2,pp) + this%p(2,pp)) * dtc 
       this%x_l(2,pp) = x_l
       pp = pp + 1
     enddo
@@ -2812,7 +2801,9 @@ subroutine update_bound_part2d( this )
       ! check if particle goes out of the physical edge
       if ( pos >= this%edge ) then
          this%x(:,i)   = this%x(:, this%npp)
+         this%x_l(:,i) = this%x_l(:, this%npp)
          this%p(:,i)   = this%p(:, this%npp)
+         this%p_l(:,i) = this%p_l(:, this%npp)
          this%gamma(i) = this%gamma(this%npp)
          this%psi(i)   = this%psi(this%npp)
          this%q(i)     = this%q(this%npp)
@@ -2894,6 +2885,13 @@ subroutine pipesend_part2d(this, tag, id)
     this%pbuf( 6 + stride ) = this%gamma(i)
     this%pbuf( 7 + stride ) = this%psi(i)
     this%pbuf( 8 + stride ) = this%q(i)
+    this%pbuf( 9 + stride ) = this%w(i)
+    this%pbuf( 10 + stride ) = this%w0(i)
+    this%pbuf( 11 + stride ) = this%x_l(1,i)
+    this%pbuf( 12 + stride ) = this%x_l(2,i)
+    this%pbuf( 13 + stride ) = this%p_l(1,i)
+    this%pbuf( 14 + stride ) = this%p_l(2,i)
+    this%pbuf( 15 + stride ) = this%p_l(3,i)
 
   enddo
 
@@ -2975,6 +2973,13 @@ subroutine piperecv_part2d(this, tag)
     this%gamma(i) = recv_buf( 6 + stride )
     this%psi(i)   = recv_buf( 7 + stride )
     this%q(i)     = recv_buf( 8 + stride )
+    this%w(i)     = recv_buf( 9 + stride )
+    this%w0(i)    = recv_buf( 10 + stride )
+    this%x_l(1,i) = recv_buf( 11 + stride )
+    this%x_l(2,i) = recv_buf( 12 + stride )
+    this%p_l(1,i) = recv_buf( 13 + stride )
+    this%p_l(2,i) = recv_buf( 14 + stride )
+    this%p_l(3,i) = recv_buf( 15 + stride )
 
   enddo
 
@@ -3047,6 +3052,16 @@ subroutine sort_part2d( this, nrp, noff )
     this%x( 2, sort_idx(i) ) = this%pbuf(i)
   enddo
 
+  ! rearrange the particle position
+  this%pbuf(1:this%npp) = this%x_l( 1, 1:this%npp )
+  do i = 1, this%npp
+    this%x_l( 1, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%x_l( 2, 1:this%npp )
+  do i = 1, this%npp
+    this%x_l( 2, sort_idx(i) ) = this%pbuf(i)
+  enddo
+
   ! rearrange the particle momentum
   this%pbuf(1:this%npp) = this%p( 1, 1:this%npp )
   do i = 1, this%npp
@@ -3059,6 +3074,20 @@ subroutine sort_part2d( this, nrp, noff )
   this%pbuf(1:this%npp) = this%p( 3, 1:this%npp )
   do i = 1, this%npp
     this%p( 3, sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle momentum
+  this%pbuf(1:this%npp) = this%p_l( 1, 1:this%npp )
+  do i = 1, this%npp
+    this%p_l( 1, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%p_l( 2, 1:this%npp )
+  do i = 1, this%npp
+    this%p_l( 2, sort_idx(i) ) = this%pbuf(i)
+  enddo
+  this%pbuf(1:this%npp) = this%p_l( 3, 1:this%npp )
+  do i = 1, this%npp
+    this%p_l( 3, sort_idx(i) ) = this%pbuf(i)
   enddo
 
   ! rearrange the particle gamma
@@ -3077,6 +3106,18 @@ subroutine sort_part2d( this, nrp, noff )
   this%pbuf(1:this%npp) = this%psi( 1:this%npp )
   do i = 1, this%npp
     this%psi( sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle 1 + psi
+  this%pbuf(1:this%npp) = this%w( 1:this%npp )
+  do i = 1, this%npp
+    this%w( sort_idx(i) ) = this%pbuf(i)
+  enddo
+
+  ! rearrange the particle 1 + psi
+  this%pbuf(1:this%npp) = this%w0( 1:this%npp )
+  do i = 1, this%npp
+    this%w0( sort_idx(i) ) = this%pbuf(i)
   enddo
 
   deallocate( ix )

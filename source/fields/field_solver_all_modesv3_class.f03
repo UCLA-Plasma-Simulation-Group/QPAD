@@ -128,7 +128,7 @@ subroutine end_field_solver( this )
   case(p_fk_coef)
     call HYPRE_StructGMRESDestroy( this%solver, ierr )
   case(p_fk_all_B_plus,p_fk_all_B_minus)
-    call HYPRE_StructLGMRESDestroy( this%solver, ierr )
+    call HYPRE_StructGMRESDestroy( this%solver, ierr )
   end select  
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -156,24 +156,24 @@ subroutine set_struct_solver( this )
   case( p_fk_all_B_minus, p_fk_all_B_plus)
   !   write(2,*) 'solver Initializing 2'
     ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
-    call HYPRE_StructLGMRESCreate( comm, this%solver, ierr )
-!     call HYPRE_StructLGMRESSetTol(this%solver, 1.0e-15, ierr)
-! !     call HYPRE_StructGMRESSetMaxIter(this%solver, 100000, ierr)
-!   !  创建 BoomerAMG 预处理器
+    call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
+!     call HYPRE_StructGMRESSetTol(this%solver, 1.0e-9, ierr)
+!     call HYPRE_StructGMRESSetMaxIter(this%solver, 100000, ierr)
+  !  创建 BoomerAMG 预处理器
 !     call HYPRE_BoomerAMGCreate(this%precond, ierr)
 !     call HYPRE_BoomerAMGSetCycleType(this%precond, 2, ierr)  ! 2 W-cycle 1 V-cycle
 !     call HYPRE_BoomerAMGSetMaxLevels(this%precond, 50, ierr)  ! 设置最大网格层数
 !     call HYPRE_BoomerAMGSetRelaxType(this%precond, 6, ierr)  ! Schwarz 或 Symmetric Gauss-Seidel
-! !   !   设置 BoomerAMG 参数，例如最大迭代次数和容忍度
-!     call HYPRE_BoomerAMGSetMaxIter(this%precond, 10000, ierr)  ! 预处理器的最大迭代次数
-!     call HYPRE_BoomerAMGSetTol(this%precond, 1.0e-6, ierr)    ! 预处理器的容忍度（GMRES 控制收敛）
+!   !   设置 BoomerAMG 参数，例如最大迭代次数和容忍度
+!     call HYPRE_BoomerAMGSetMaxIter(this%precond, 1000, ierr)  ! 预处理器的最大迭代次数
+!     call HYPRE_BoomerAMGSetTol(this%precond, 1.0e-12, ierr)    ! 预处理器的容忍度（GMRES 控制收敛）
 !   !   设置 BoomerAMG 作为 GMRES 的预处理器
-!     call HYPRE_StructLGMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond, ierr)
+!     call HYPRE_StructGMRESSetPrecond(this%solver, HYPRE_BoomerAMGSolve, HYPRE_BoomerAMGSetup, this%precond, ierr)
   !   write(2,*) 'solver Initializing 3'
   !   write(2,*) this%A,'A'
   !   write(2,*) this%b,'b'
   !   write(2,*) this%x,'x'
-    call HYPRE_StructLGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
 !   write(2,*) 'solver Initializing 4'
   end select
 
@@ -241,7 +241,7 @@ subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_
 !     write(2,*) "src_sol 1"
     call HYPRE_StructVectorAssemble( this%b, ierr )
 !     write(2,*) "src_sol 2"
-    call HYPRE_StructLGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
 !     call HYPRE_HYPRE_StructBiCGSTABGetNumIterations(this%solver,this%numiterations)
 !     write(2,*) 'this%numiterations'
     call this%get_hypre_src_b(src)
@@ -438,28 +438,24 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             select case (10 * bb_offeset + aa_offeset)
 
             case (10)!"Case: (1, 0)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
+              if(k-n == 0) then
+                if(k+n <= m) then
+                  HYPRE_BUF(i) = f1_im(1,nn,k+n)
+                else
+                  HYPRE_BUF(i) = 0.0
+                endif
               else
-                if(k-n == 0) then
-                  if(k+n <= m) then
-                    HYPRE_BUF(i) = f1_im(1,nn,k+n)
+                if(k+n <= m) then
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = f1_im(1,nn,k+n)-sign(1,k-n)*f1_im(1,nn,abs(k-n))
                   else
-                    HYPRE_BUF(i) = 0.0
+                    HYPRE_BUF(i) = f1_im(1,nn,k+n)
                   endif
                 else
-                  if(k+n <= m) then
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = f1_im(1,nn,k+n)-sign(1,k-n)*f1_im(1,nn,abs(k-n))
-                    else
-                      HYPRE_BUF(i) = f1_im(1,nn,k+n)
-                    endif
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = -sign(1,k-n)*f1_im(1,nn,abs(k-n))
                   else
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = -sign(1,k-n)*f1_im(1,nn,abs(k-n))
-                    else
-                      HYPRE_BUF(i) = 0.0
-                    endif
+                    HYPRE_BUF(i) = 0.0
                   endif
                 endif
               endif
@@ -482,21 +478,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             case (11)!"Case: (1, 1)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
-              else
-                if(k+n <= m) then
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = -f1_re(1,nn,k+n) + f1_re(1,nn,abs(k-n))
-                  else
-                    HYPRE_BUF(i) = -f1_re(1,nn,k+n)
-                  endif
+              if(k+n <= m) then
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = -f1_re(1,nn,k+n) + f1_re(1,nn,abs(k-n))
                 else
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = f1_re(1,nn,abs(k-n))
-                  else
-                    HYPRE_BUF(i) = 0.0
-                  endif
+                  HYPRE_BUF(i) = -f1_re(1,nn,k+n)
+                endif
+              else
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = f1_re(1,nn,abs(k-n))
+                else
+                  HYPRE_BUF(i) = 0.0
                 endif
               endif
             case (1)!"Case: (0, 1)"
@@ -573,28 +565,24 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             select case (10 * bb_offeset + aa_offeset)
 
             case (10)!"Case: (1, 0)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
+              if(k-n == 0) then
+                if(k+n <= m) then
+                  HYPRE_BUF(i) = u(1+k+n,nn,2)
+                else
+                  HYPRE_BUF(i) = 0.0
+                endif
               else
-                if(k-n == 0) then
-                  if(k+n <= m) then
-                    HYPRE_BUF(i) = u(1+k+n,nn,2)
+                if(k+n <= m) then
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = u(1+k+n,nn,2)-sign(1,k-n)*u(1+abs(k-n),nn,2)
                   else
-                    HYPRE_BUF(i) = 0.0
+                    HYPRE_BUF(i) = u(1+k+n,nn,2)
                   endif
                 else
-                  if(k+n <= m) then
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = u(1+k+n,nn,2)-sign(1,k-n)*u(1+abs(k-n),nn,2)
-                    else
-                      HYPRE_BUF(i) = u(1+k+n,nn,2)
-                    endif
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),nn,2)
                   else
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),nn,2)
-                    else
-                      HYPRE_BUF(i) = 0.0
-                    endif
+                    HYPRE_BUF(i) = 0.0
                   endif
                 endif
               endif
@@ -617,21 +605,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             case (11)!"Case: (1, 1)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
-              else
-                if(k+n <= m) then
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = -u(1+k+n,nn,1) + u(1+abs(k-n),nn,1)
-                  else
-                    HYPRE_BUF(i) = -u(1+k+n,nn,1)
-                  endif
+              if(k+n <= m) then
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = -u(1+k+n,nn,1) + u(1+abs(k-n),nn,1)
                 else
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = u(1+abs(k-n),nn,1)
-                  else
-                    HYPRE_BUF(i) = 0.0
-                  endif
+                  HYPRE_BUF(i) = -u(1+k+n,nn,1)
+                endif
+              else
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = u(1+abs(k-n),nn,1)
+                else
+                  HYPRE_BUF(i) = 0.0
                 endif
               endif
             case (1)!"Case: (0, 1)"
@@ -791,28 +775,24 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             select case (10 * bb_offeset + aa_offeset)
 
             case (10)!"Case: (1, 0)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
+              if(k-n == 0) then
+                if(k+n <= m) then
+                  HYPRE_BUF(i) = u(1+k+n,1,2)
+                else
+                  HYPRE_BUF(i) = 0.0
+                endif
               else
-                if(k-n == 0) then
-                  if(k+n <= m) then
-                    HYPRE_BUF(i) = u(1+k+n,1,2)
+                if(k+n <= m) then
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = u(1+k+n,1,2)-sign(1,k-n)*u(1+abs(k-n),1,2)
                   else
-                    HYPRE_BUF(i) = 0.0
+                    HYPRE_BUF(i) = u(1+k+n,1,2)
                   endif
                 else
-                  if(k+n <= m) then
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = u(1+k+n,1,2)-sign(1,k-n)*u(1+abs(k-n),1,2)
-                    else
-                      HYPRE_BUF(i) = u(1+k+n,1,2)
-                    endif
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),1,2)
                   else
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),1,2)
-                    else
-                      HYPRE_BUF(i) = 0.0
-                    endif
+                    HYPRE_BUF(i) = 0.0
                   endif
                 endif
               endif
@@ -835,21 +815,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             case (11)!"Case: (1, 1)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
-              else
-                if(k+n <= m) then
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = -u(1+k+n,1,1) + u(1+abs(k-n),1,1)
-                  else
-                    HYPRE_BUF(i) = -u(1+k+n,1,1)
-                  endif
+              if(k+n <= m) then
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = -u(1+k+n,1,1) + u(1+abs(k-n),1,1)
                 else
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = u(1+abs(k-n),1,1)
-                  else
-                    HYPRE_BUF(i) = 0.0
-                  endif
+                  HYPRE_BUF(i) = -u(1+k+n,1,1)
+                endif
+              else
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = u(1+abs(k-n),1,1)
+                else
+                  HYPRE_BUF(i) = 0.0
                 endif
               endif
             case (1)!"Case: (0, 1)"
@@ -927,28 +903,24 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             select case (10 * bb_offeset + aa_offeset)
 
             case (10)!"Case: (1, 0)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
+              if(k-n == 0) then
+                if(k+n <= m) then
+                  HYPRE_BUF(i) = u(1+k+n,nn,2)
+                else
+                  HYPRE_BUF(i) = 0.0
+                endif
               else
-                if(k-n == 0) then
-                  if(k+n <= m) then
-                    HYPRE_BUF(i) = u(1+k+n,nn,2)
+                if(k+n <= m) then
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = u(1+k+n,nn,2)-sign(1,k-n)*u(1+abs(k-n),nn,2)
                   else
-                    HYPRE_BUF(i) = 0.0
+                    HYPRE_BUF(i) = u(1+k+n,nn,2)
                   endif
                 else
-                  if(k+n <= m) then
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = u(1+k+n,nn,2)-sign(1,k-n)*u(1+abs(k-n),nn,2)
-                    else
-                      HYPRE_BUF(i) = u(1+k+n,nn,2)
-                    endif
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),nn,2)
                   else
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),nn,2)
-                    else
-                      HYPRE_BUF(i) = 0.0
-                    endif
+                    HYPRE_BUF(i) = 0.0
                   endif
                 endif
               endif
@@ -971,21 +943,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             case (11)!"Case: (1, 1)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
-              else
-                if(k+n <= m) then
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = -u(1+k+n,nn,1) + u(1+abs(k-n),nn,1)
-                  else
-                    HYPRE_BUF(i) = -u(1+k+n,nn,1)
-                  endif
+              if(k+n <= m) then
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = -u(1+k+n,nn,1) + u(1+abs(k-n),nn,1)
                 else
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = u(1+abs(k-n),nn,1)
-                  else
-                    HYPRE_BUF(i) = 0.0
-                  endif
+                  HYPRE_BUF(i) = -u(1+k+n,nn,1)
+                endif
+              else
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = u(1+abs(k-n),nn,1)
+                else
+                  HYPRE_BUF(i) = 0.0
                 endif
               endif
             case (1)!"Case: (0, 1)"
@@ -1052,10 +1020,10 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
         enddo
       enddo
       do aa = 1, 2*m + 1
-        if (aa /= 2 .and. aa /= 3) then
+!         if (aa /= 2 .and. aa /= 3) then
           i = mm + (4*m + 3)*(aa -1)  
           HYPRE_BUF(i) = 0.0
-        endif
+!         endif
       enddo
     else
       i = 1
@@ -1085,28 +1053,24 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             select case (10 * bb_offeset + aa_offeset)
 
             case (10)!"Case: (1, 0)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
+              if(k-n == 0) then
+                if(k+n <= m) then
+                  HYPRE_BUF(i) = u(1+k+n,1,2)
+                else
+                  HYPRE_BUF(i) = 0.0
+                endif
               else
-                if(k-n == 0) then
-                  if(k+n <= m) then
-                    HYPRE_BUF(i) = u(1+k+n,1,2)
+                if(k+n <= m) then
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = u(1+k+n,1,2)-sign(1,k-n)*u(1+abs(k-n),1,2)
                   else
-                    HYPRE_BUF(i) = 0.0
+                    HYPRE_BUF(i) = u(1+k+n,1,2)
                   endif
                 else
-                  if(k+n <= m) then
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = u(1+k+n,1,2)-sign(1,k-n)*u(1+abs(k-n),1,2)
-                    else
-                      HYPRE_BUF(i) = u(1+k+n,1,2)
-                    endif
+                  if(abs(k-n) <= m) then
+                    HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),1,2)
                   else
-                    if(abs(k-n) <= m) then
-                      HYPRE_BUF(i) = -sign(1,k-n)*u(1+abs(k-n),1,2)
-                    else
-                      HYPRE_BUF(i) = 0.0
-                    endif
+                    HYPRE_BUF(i) = 0.0
                   endif
                 endif
               endif
@@ -1129,21 +1093,17 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
               endif
             case (11)!"Case: (1, 1)"
-              if (n== 0) then
-                HYPRE_BUF(i) = 0.0
-              else
-                if(k+n <= m) then
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = -u(1+k+n,1,1) + u(1+abs(k-n),1,1)
-                  else
-                    HYPRE_BUF(i) = -u(1+k+n,1,1)
-                  endif
+              if(k+n <= m) then
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = -u(1+k+n,1,1) + u(1+abs(k-n),1,1)
                 else
-                  if(abs(k-n)<=m) then
-                    HYPRE_BUF(i) = u(1+abs(k-n),1,1)
-                  else
-                    HYPRE_BUF(i) = 0.0
-                  endif
+                  HYPRE_BUF(i) = -u(1+k+n,1,1)
+                endif
+              else
+                if(abs(k-n)<=m) then
+                  HYPRE_BUF(i) = u(1+abs(k-n),1,1)
+                else
+                  HYPRE_BUF(i) = 0.0
                 endif
               endif
             case (1)!"Case: (0, 1)"
@@ -1227,8 +1187,6 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 endif
                 HYPRE_BUF(i) = HYPRE_BUF(i) + (1.0-(g + 1)/jmax) * HYPRE_BUF(i - 2*this%mode - 1)
                 HYPRE_BUF(i - 2*this%mode - 1) = 0.0
-!               else
-!                 HYPRE_BUF(i) = 0.0
               endif
             endif
             i = i + 1

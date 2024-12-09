@@ -3,6 +3,7 @@
 src += ufield_class.f03
 src += field_solver_class.f03
 src += field_solver_all_modesv3_class.f03
+# src += petsc_solver_calss.f03
 src += ufield_smooth_class.f03
 src += field_class.f03
 src += field_src_class.f03

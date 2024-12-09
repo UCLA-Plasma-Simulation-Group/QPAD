@@ -42,10 +42,10 @@ type part3d
   real, dimension(:), allocatable :: pbuff
 
   ! array for particle position
-  real, dimension(:,:), allocatable :: x,x_l
+  real, dimension(:,:), allocatable :: x
 
   ! array for particle momenta
-  real, dimension(:,:), allocatable :: p,p_l
+  real, dimension(:,:), allocatable :: p
 
   ! array for particle charge
   real, dimension(:), allocatable :: q
@@ -73,7 +73,6 @@ type part3d
   procedure :: qdeposit     => qdeposit_part3d
   procedure :: push_boris   => push_boris_part3d
   procedure :: push_reduced => push_reduced_part3d
-  procedure :: push_explicit=> push_explicit_part3d
   procedure :: update_bound => update_bound_part3d
   procedure :: push_spin    => push_spin_part3d
   procedure :: realloc      => realloc_part3d
@@ -129,9 +128,7 @@ subroutine init_part3d( this, opts, npmax, dt, z0, qbm, amm )
   this%npp = 0
   
   allocate( this%x( p_x_dim, this%npmax ) )
-  allocate( this%x_l( p_x_dim, this%npmax ) )
   allocate( this%p( p_p_dim, this%npmax ) )
-  allocate( this%p_l( p_p_dim, this%npmax ) )
   allocate( this%q( this%npmax ) )
   if ( this%has_spin ) then
     allocate( this%s( p_s_dim, this%npmax ) )
@@ -156,7 +153,7 @@ subroutine end_part3d(this)
   character(len=18), save :: sname = 'end_part3d'
 
   call write_dbg(cls_name, sname, cls_level, 'starts')
-  deallocate( this%x, this%x_l, this%p, this%p_l, this%q, this%pbuff )
+  deallocate( this%x, this%p, this%q, this%pbuff )
   if ( this%has_spin ) deallocate( this%s )
   call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -188,20 +185,10 @@ subroutine realloc_part3d( this, ratio, buf_type )
     this%tmp2( 1:p_x_dim, 1:this%npp ) = this%x( 1:p_x_dim, 1:this%npp )
     call move_alloc( this%tmp2, this%x )
 
-    allocate( this%tmp2( p_x_dim, this%npmax ) )
-    this%tmp2 = 0.0
-    this%tmp2( 1:p_x_dim, 1:this%npp ) = this%x_l( 1:p_x_dim, 1:this%npp )
-    call move_alloc( this%tmp2, this%x_l )
-
     allocate( this%tmp2( p_p_dim, this%npmax ) )
     this%tmp2 = 0.0
     this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p( 1:p_p_dim, 1:this%npp )
     call move_alloc( this%tmp2, this%p )
-
-    allocate( this%tmp2( p_p_dim, this%npmax ) )
-    this%tmp2 = 0.0
-    this%tmp2( 1:p_p_dim, 1:this%npp ) = this%p_l( 1:p_p_dim, 1:this%npp )
-    call move_alloc( this%tmp2, this%p_l )
 
     allocate( this%tmp1( this%npmax ) )
     this%tmp1 = 0.0
@@ -587,117 +574,6 @@ subroutine push_reduced_part3d( this, ef, bf )
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
 end subroutine push_reduced_part3d
-
-subroutine push_explicit_part3d( this, ef, bf )
-
-   implicit none
-
-   class(part3d), intent(inout) :: this
-   class(field), intent(in) :: ef, bf
-   ! local
-   type(ufield), dimension(:), pointer :: ef_re, ef_im, bf_re, bf_im
-   
-   integer :: i, np, max_mode
-   real :: qtmh, dt_gam, igam, x_l
-   real, dimension(p_p_dim, p_cache_size) :: bp, ep, p_old, wp, p_l_old,p_l
-   real, dimension(p_cache_size) :: gam
-   integer(kind=LG) :: ptrcur, pp
-   character(len=32), save :: sname = "push_explicit_part3d"
-
-   call write_dbg(cls_name, sname, cls_level, 'starts')
-   call start_tprof( 'push 3D particles' )
-
-   qtmh = this%qbm * this%dt 
-   max_mode = ef%get_max_mode()
-
-   ef_re => ef%get_rf_re()
-   ef_im => ef%get_rf_im()
-   bf_re => bf%get_rf_re()
-   bf_im => bf%get_rf_im()
-
-   do ptrcur = 1, this%npp, p_cache_size
-
-      ! check if last copy of table and set np
-      if( ptrcur + p_cache_size > this%npp ) then
-        np = this%npp - ptrcur + 1
-      else
-        np = p_cache_size
-      endif
-
-      ! interpolate fields to particles
-      call interp_emf_part3d( ef_re, ef_im, bf_re, bf_im, max_mode, this%x, this%dr, &
-         this%dz, bp, ep, np, ptrcur )
-
-      ! store old momenta for spin push
-      if ( this%has_spin ) then
-         pp = ptrcur
-         do i = 1, np
-            p_old(:,i) = this%p(:,pp)
-            pp = pp + 1
-         enddo
-      endif
-
-      ! advance the particle positions
-      ! note the x(3) is xi instead of z
-      pp = ptrcur
-      do i = 1, np
-         dt_gam = this%dt / &
-            sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-         x_l = this%x(1,pp)
-         this%x(1,pp) = this%x_l(1,pp) + this%p(1,pp) * dt_gam
-         this%x_l(1,pp) = x_l
-         x_l = this%x(2,pp)
-         this%x(2,pp) = this%x_l(2,pp) + this%p(2,pp) * dt_gam
-         this%x_l(2,pp) = x_l
-         x_l = this%x(3,pp)
-         this%x(3,pp) = this%x_l(3,pp) - this%p(3,pp) * dt_gam + this%dt
-         this%x_l(3,pp) = x_l
-         pp = pp + 1
-      enddo
-
-      do i = 1, np
-         ep(:,i) = ep(:,i) * qtmh
-         bp(:,i) = bp(:,i) * qtmh
-         ! calculate transverse force
-         wp(1,i) = ep(1,i) - bp(2,i)
-         wp(2,i) = ep(2,i) + bp(1,i)
-         wp(3,i) = ep(3,i)
-      enddo
-
-      pp = ptrcur
-      do i = 1, np
-         ! half advance momenta
-         p_l(:,i) = this%p(:,pp)
-         this%p(:,pp) = this%p_l(:,pp) + wp(:,i)
-         gam(i) = sqrt( 1.0 + this%p(1,pp)**2 + this%p(2,pp)**2 + this%p(3,pp)**2 )
-         ! half advance momenta
-         this%p(:,pp) = this%p(:,pp) + wp(:,i)
-         this%p_l(:,pp) = p_l(:,i)
-         pp = pp + 1
-      enddo
-
-!       pp = ptrcur
-!       do i = 1, np
-!          ! half advance momenta
-!          this%p(:,pp) = this%p(:,pp) + wp(:,i)
-!          pp = pp + 1
-!       enddo
-
-      ! push spin
-      if ( this%has_spin ) then
-         do i = 1, np
-            igam = 1.0 / gam(i)
-            bp(:,i) = bp(:,i) * igam
-         enddo
-         call this%push_spin( ep, bp, p_old, gam, ptrcur, np )
-      endif
-
-   enddo
-
-   call stop_tprof( 'push 3D particles' )
-   call write_dbg(cls_name, sname, cls_level, 'ends')
-
-end subroutine push_explicit_part3d
 
 subroutine push_spin_part3d( this, ep, bp, p_old, gam, ptrcur, np )
 

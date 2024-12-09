@@ -126,9 +126,9 @@ subroutine end_field_solver( this )
 
   select case(this%kind)
   case(p_fk_coef)
-    call HYPRE_StructGMRESDestroy( this%solver, ierr )
+    call HYPRE_StructBiCGSTABDestroy( this%solver, ierr )
   case(p_fk_all_B_plus,p_fk_all_B_minus)
-    call HYPRE_StructGMRESDestroy( this%solver, ierr )
+    call HYPRE_StructBiCGSTABDestroy( this%solver, ierr )
   end select  
 
   call write_dbg( cls_name, sname, cls_level, 'ends' )
@@ -151,12 +151,12 @@ subroutine set_struct_solver( this )
 
   select case(this%kind)
   case( p_fk_coef )
-    call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
-    call HYPRE_StructGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructBiCGSTABCreate( comm, this%solver, ierr )
+    call HYPRE_StructBiCGSTABSetup( this%solver, this%A, this%b, this%x, ierr )
   case( p_fk_all_B_minus, p_fk_all_B_plus)
   !   write(2,*) 'solver Initializing 2'
     ! call write_stdout( 'mode '//num2str(this%mode)//': Using Cyclic Reduction solver' )
-    call HYPRE_StructGMRESCreate( comm, this%solver, ierr )
+    call HYPRE_StructBiCGSTABCreate( comm, this%solver, ierr )
 !     call HYPRE_StructGMRESSetTol(this%solver, 1.0e-15, ierr)
 ! !     call HYPRE_StructGMRESSetMaxIter(this%solver, 100000, ierr)
 !   !  创建 BoomerAMG 预处理器
@@ -173,7 +173,7 @@ subroutine set_struct_solver( this )
   !   write(2,*) this%A,'A'
   !   write(2,*) this%b,'b'
   !   write(2,*) this%x,'x'
-    call HYPRE_StructGMRESSetup( this%solver, this%A, this%b, this%x, ierr )
+    call HYPRE_StructBiCGSTABSetup( this%solver, this%A, this%b, this%x, ierr )
 !   write(2,*) 'solver Initializing 4'
   end select
 
@@ -220,32 +220,32 @@ subroutine solve_equation( this, src, psi_re, qe_re, qn1_re, psi_im, qe_im, qn1_
     call set_struct_matrix(this, psi_re = psi_re, psi_im = psi_im, qbm=qbm)
     call this%set_struct_solver()
     call this%set_hypre_src_coef( qe_re, qn1_re, qe_im, qn1_im, qbm )
-    write(2,*) src_sol,"src coef"
-    write(2,*) HYPRE_BUF(:),"HYPRE_BUF"
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
+!     write(2,*) src_sol,"src coef"
+!     write(2,*) HYPRE_BUF(:),"HYPRE_BUF"
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorAssembl'   
     call HYPRE_StructVectorAssemble( this%b, ierr )
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
-    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructCycRedSolve'  
+    call HYPRE_StructBiCGSTABSolve( this%solver, this%A, this%b, this%x, ierr )
 !     call HYPRE_HYPRE_StructBiCGSTABGetNumIterations(this%solver,this%numiterations)
 !     write(2,*) 'this%numiterations'
-    write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
+!     write(2,*) 'this%solver_coef%solve||HYPRE_StructVectorGetBoxValues 0' 
     call this%get_hypre_src_coef( src )
-    write(2,*) sum(src),"src sum(src)"
+!     write(2,*) sum(src),"src sum(src)"
 !     write(2,*) src,"src sum(src) coef end"
   case ( p_fk_all_B_minus, p_fk_all_B_plus )
     call set_struct_matrix(this, u=u)
     call this%set_struct_solver()
-    write(2,*) HYPRE_BUF(:),"HYPRE_BUF"
-    write(2,*) "src"  
+! !     write(2,*) HYPRE_BUF(:),"HYPRE_BUF"
+!     write(2,*) "src"  
     call this%set_hypre_src_b(src)
-    write(2,*) "src_sol 1"
+!     write(2,*) "src_sol 1"
     call HYPRE_StructVectorAssemble( this%b, ierr )
-    write(2,*) "src_sol 2"
-    call HYPRE_StructGMRESSolve( this%solver, this%A, this%b, this%x, ierr )
+!     write(2,*) "src_sol 2"
+    call HYPRE_StructBiCGSTABSolve( this%solver, this%A, this%b, this%x, ierr )
 !     call HYPRE_HYPRE_StructBiCGSTABGetNumIterations(this%solver,this%numiterations)
-    write(2,*) 'this%numiterations'
+!     write(2,*) 'this%numiterations'
     call this%get_hypre_src_b(src)
-    write(2,*) sum(src),"src sum(src)" 
+!     write(2,*) sum(src),"src sum(src)" 
 !     write(2,*) src,"src end" 
   end select 
 
@@ -378,13 +378,13 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
 !   write(2,*) '-1'
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  write(2,*) '0'
+!   write(2,*) '0'
   comm    = comm_loc()
   lidproc = id_proc_loc()
   lnvp    = num_procs_loc()
   noff   = nofff
   dr     = drr
-  write(2,*) '1'
+!   write(2,*) '1'
   dr2 = drr*drr
   m = this%mode
   m2 = real(m*m)
@@ -422,22 +422,14 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
             endif
             demode = abs(k-n)
             if (aa == bb) then
-!               write(2,*) aa,"aa"
-!               write(2,*) n,"n"
               f1_re => psi_re(0)%get_f1()
-!               write(2,*) f1_re(1,nn),"f1_re(1,nn)"
-!               write(2,*) f1_re(1,:),"f1_re(1,:)"
-!               write(2,*) kk,"kk"
-              HYPRE_BUF(i)   = 1.0 - qbm * f1_re(1,nn)
-              i = i + 1
+              HYPRE_BUF(i) = 1.0 - qbm * f1_re(1,nn)
             else
               if (demode > this%mode) then
                 HYPRE_BUF(i) = 0.0
-                i = i + 1
               else
                 if (demode == 0) then
                   HYPRE_BUF(i) = 0.0
-                  i = i + 1
                 else
                   if (aa - 2*this%mode > 0) then
                     aa_offeset = aa + 1 - (k+this%mode)*2
@@ -452,35 +444,26 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                   if ( aa_offeset == 1  .and. bb_offeset == 1) then
                     f1_re => psi_re(demode)%get_f1()
                     HYPRE_BUF(i) = -qbm * f1_re(1,nn)
-                    i = i + 1
                   elseif ( aa_offeset == 1  .and. bb_offeset == 0) then
                     f1_im => psi_im(demode)%get_f1()
                     HYPRE_BUF(i) = -sign(1,k-n)*qbm * f1_im(1,nn)
-                    i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 1) then
                     f1_im => psi_im(demode)%get_f1()
                     HYPRE_BUF(i) = sign(1,k-n)*qbm * f1_im(1,nn)
-                    i = i + 1
                   elseif ( aa_offeset == 0  .and. bb_offeset == 0) then
                     f1_re => psi_re(demode)%get_f1()
                     HYPRE_BUF(i) = -qbm * f1_re(1,nn)
-                    i = i + 1
                   endif
                 endif
               endif
             endif
           else            
             HYPRE_BUF(i) = 0.0
-            i = i + 1
           endif
+          i = i + 1
         enddo
       enddo
     enddo
-
-    call HYPRE_StructMatrixSetBoxValues( this%A, this%ilower, this%iupper, this%num_stencil, &
-      this%stencil_idx, HYPRE_BUF, ierr )
-
-    call HYPRE_StructMatrixAssemble( this%A, ierr )
 
   case( p_fk_all_B_minus )
 
@@ -648,9 +631,6 @@ subroutine set_struct_matrix( this, psi_re, psi_im, u, qbm)
                 HYPRE_BUF(i) = 0.0
                 i = i + 1
               endif
-!             elseif(this%mode == 1) then
-!               HYPRE_BUF(i) = 0.0
-!               i = i + 1
             else
               HYPRE_BUF(i) = 0.0
               i = i + 1

@@ -149,8 +149,6 @@ subroutine init_beam3d( this, input, opts, max_mode, part_shape, dt, &
       this%push_type = p_push3_reduced
     case ( 'boris' )
       this%push_type = p_push3_boris
-    case ('explicit')
-      this%push_type = p_push3_explicit
     case default
       call write_err( 'Invalid pusher type! Only "reduced" and "boris" are supported currently.' )
     end select
@@ -246,8 +244,6 @@ subroutine push_beam3d( this, ef, bf, tag, sid )
     call this%part%push_reduced( ef, bf )
   case ( p_push3_boris )
     call this%part%push_boris( ef, bf )
-  case ( p_push3_explicit)
-    call this%part%push_explicit( ef, bf)
   end select
 
   call this%part%update_bound()
