@@ -515,14 +515,14 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
         endif
       endif
 
-!       this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
-      this%buf1_re(1) = 0.0 ! Re(B_plus)
-!       this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
-      this%buf1_im(1) = 0.0 ! Im(B_plus)
-!       this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
-      this%buf2_re(1) = 0.0  ! Re(B_minus)
-!       this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
-      this%buf2_im(1) = 0.0  ! Im(B_minus)
+      this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
+!       this%buf1_re(1) = 0.0 ! Re(B_plus)
+      this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
+!       this%buf1_im(1) = 0.0 ! Im(B_plus)
+      this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
+!       this%buf2_re(1) = 0.0  ! Re(B_minus)
+      this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
+!       this%buf2_im(1) = 0.0  ! Im(B_minus)
 !       write(2,*) this%buf1_re(1),'this%buf1_re(1)'
 !       write(2,*) this%buf1_im(1),'this%buf1_im(1)'
 !       write(2,*) this%buf2_re(1),'this%buf2_re(1)'

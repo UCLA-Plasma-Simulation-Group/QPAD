@@ -523,8 +523,8 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
       !wp(1)andwp(2) is - laplace_perp psi_perp
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
-      du(1) = du(1) * ipsi + this%qbm* bpbeam(2,i) + u0(1,i) * dpsi * ipsi
-      du(2) = du(2) * ipsi - this%qbm* bpbeam(1,i) + u0(2,i) * dpsi * ipsi 
+      du(1) = du(1) * ipsi + this%qbm* bp(2,i) + u0(1,i) * dpsi * ipsi
+      du(2) = du(2) * ipsi - this%qbm* bp(1,i) + u0(2,i) * dpsi * ipsi 
 
       u2(1) = u0(1,i) * u0(1,i) * ipsi
       u2(2) = u0(1,i) * u0(2,i) * ipsi
