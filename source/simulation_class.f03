@@ -456,6 +456,7 @@ subroutine run_simulation( this )
       write(2,*) this%fields%e_spe%getresum(),'e_spe'
       write(2,*) this%fields%b%getresum(),"b"
       write(2,*) this%fields%b_spe%getresum(),'b_spe'
+      call e%solve( cu )
       call e%solve( b, psi ) 
       write(2,*) this%fields%psi%getresum(),"psi"
       write(2,*) this%fields%q_spe%getresum(),"q"
