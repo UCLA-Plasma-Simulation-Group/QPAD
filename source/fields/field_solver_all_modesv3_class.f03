@@ -1221,6 +1221,7 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
 
   integer :: ierr, a, im, k, l, kk, m
   real :: jj, j
+  real :: value_re, value_im
   real, dimension(:,:), pointer :: f1_re => null(), f1_im => null()
   real, dimension(:,:), pointer :: f2_re => null(), f2_im => null()
   real, dimension(:,:), pointer :: f3_re => null(), f3_im => null()
@@ -1236,9 +1237,11 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
         f1_re => qe_re(0)%get_f1()
         if ( present(qe_re) .and. present(qn1_re) ) then
           f2_re => qn1_re(0)%get_f1()
-          f1_re(1,k) = f1_re(1,k) - f2_re(1,k)
+          value_re = f1_re(1,k) - f2_re(1,k)
+        else
+          value_re = f1_re(1,k)
         endif
-        src_sol(a)  = -qbm*f1_re(1,k)
+        src_sol(a)  = -qbm*value_re
         a = a + 1
       else
         f1_re => qe_re(l)%get_f1()
@@ -1246,11 +1249,14 @@ subroutine set_hypre_src_coef(this, qe_re, qn1_re, qe_im, qn1_im, qbm )
         if ( present(qe_im) .and. present(qn1_im) ) then
           f2_re => qn1_re(l)%get_f1()
           f2_im => qn1_im(l)%get_f1()
-          f1_re(1,k) = f1_re (1,k)- f2_re(1,k)
-          f1_im(1,k) = f1_im (1,k)- f2_im(1,k)
+          value_re = f1_re (1,k)- f2_re(1,k)
+          value_im = f1_im (1,k)- f2_im(1,k)
+        else
+          value_re = f1_re (1,k)
+          value_im = f1_im (1,k)
         endif
-        src_sol(a)  = -qbm*f1_re(1,k)
-        src_sol(a + 1)  = -qbm*f1_im(1,k)
+        src_sol(a)  = -qbm*value_re
+        src_sol(a + 1)  = -qbm*value_im
         a=a + 2      
       endif
     enddo

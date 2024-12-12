@@ -37,7 +37,7 @@ type part2d
    integer :: part_dim
 
    ! array for particle position
-   real, dimension(:,:), allocatable :: x,x_l,x_r
+   real, dimension(:,:), allocatable :: x,x_l
    ! array for particle momenta
    real, dimension(:,:), allocatable :: p,p_l
    ! array for time-centered gamma
@@ -362,7 +362,7 @@ subroutine qdeposit_part2d( this, q )
 
     q0(1,0) = 0.0 ! guard cell is useless on axis
     q0(1,1) = 8.0 * q0(1,1)
-!     q0(1,1) = 12.0 * q0(1,1)
+!     q0(1,1) = 0.0
     do j = 2, nrp + 1
       ir = 1.0 / ( j + noff - 1 )
       q0(1,j) = q0(1,j) * ir
@@ -523,8 +523,8 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
       !wp(1)andwp(2) is - laplace_perp psi_perp
       dpsi = this%qbm * ( wp(3,i) - ( wp(1,i) * u0(1,i) + wp(2,i) * u0(2,i) ) * ipsi )
 
-      du(1) = du(1) * ipsi + this%qbm* bp(2,i) + u0(1,i) * dpsi * ipsi
-      du(2) = du(2) * ipsi - this%qbm* bp(1,i) + u0(2,i) * dpsi * ipsi 
+      du(1) = du(1) * ipsi + this%qbm* bpbeam(2,i) + u0(1,i) * dpsi * ipsi
+      du(2) = du(2) * ipsi - this%qbm* bpbeam(1,i) + u0(2,i) * dpsi * ipsi
 
       u2(1) = u0(1,i) * u0(1,i) * ipsi
       u2(2) = u0(1,i) * u0(2,i) * ipsi
@@ -577,6 +577,7 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
     amu0(1:3,0) = 0.0
 
     cu0(1:2,1)  = 0.0; cu0(3,1) = 8.0 * cu0(3,1)
+!     cu0(1:2,1)  = 0.0; cu0(3,1) = 0.0
     dcu0(1:2,1) = 0.0
     amu0(1:3,1) = 0.0
 
@@ -596,15 +597,19 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
         dcur(1:2,1) = 8.0 * dcur(1:2,1)
         amur(1:3,1) = 0.0
         cui(1:2,1)  = 8.0 * cui(1:2,1); cui(3,1) = 0.0
+!         cui(1:2,1)  = 0.0; cui(3,1) = 0.0
         dcui(1:2,1) = 8.0 * dcui(1:2,1)
+!         dcui(1:2,1) = 0.0
         amui(1:3,1) = 0.0
       elseif ( mode == 2 ) then
         cur(1:3,1)  = 0.0
         dcur(1:2,1) = 0.0
         amur(1:3,1) = 8.0 * amur(1:3,1)
+        amur(1:3,1) = 0.0
         cui(1:3,1)  = 0.0
         dcui(1:2,1) = 0.0
         amui(1:3,1) = 8.0 * amui(1:3,1)
+!         amui(1:3,1) = 0.0
       else
         cur(1:3,1)  = 0.0
         dcur(1:2,1) = 0.0
@@ -628,12 +633,22 @@ subroutine edeposit_part2d( this, ef, bf, b_beam, cu, amu, dcu )
       dcur => dcu_re(mode)%get_f1(); dcui => dcu_im(mode)%get_f1()
       amur => amu_re(mode)%get_f1(); amui => amu_im(mode)%get_f1()
 
-      do j = 2, nrp + 1
+      if (mode == 2) then
+        do j = 2, nrp + 1
+          ir = 1.0 / ( j + noff - 1 )
+          cur(1:2,j)  = cur(1:2,j)  * ir; cui(1:2,j)  = cui(1:2,j)  * ir
+          cur(3,j)  = 0.0; cui(3,j)  = 0.0
+          dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
+          amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
+        enddo
+      else
+        do j = 2, nrp + 1
         ir = 1.0 / ( j + noff - 1 )
         cur(1:3,j)  = cur(1:3,j)  * ir; cui(1:3,j)  = cui(1:3,j)  * ir
         dcur(1:2,j) = dcur(1:2,j) * ir; dcui(1:2,j) = dcui(1:2,j) * ir
         amur(1:3,j) = amur(1:3,j) * ir; amui(1:3,j) = amui(1:3,j) * ir
       enddo
+    endif
     enddo
 
   else

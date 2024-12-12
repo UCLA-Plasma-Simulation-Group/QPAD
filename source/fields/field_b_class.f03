@@ -464,6 +464,7 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
       ! since Jz(m=0) is multiplied by factor 8 on axis, the derivative on index=2 is
       ! calculated using forward difference
       this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) 
+!       this%buf2_re(2) =  0.0
 !       this%buf2_re(2) =  f1_re(1,2) + idr * ( f2_re(3,3) - f2_re(3,2) ) - f3_re(2,2)
     else
       this%buf1_re(1) = -f1_re(2,1) 
@@ -515,14 +516,14 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
         endif
       endif
 
-      this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
-!       this%buf1_re(1) = 0.0 ! Re(B_plus)
-      this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
-!       this%buf1_im(1) = 0.0 ! Im(B_plus)
-      this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
-!       this%buf2_re(1) = 0.0  ! Re(B_minus)
-      this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
-!       this%buf2_im(1) = 0.0  ! Im(B_minus)
+!       this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
+      this%buf1_re(1) = 0.0 ! Re(B_plus)
+!       this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
+      this%buf1_im(1) = 0.0 ! Im(B_plus)
+!       this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
+      this%buf2_re(1) = 0.0  ! Re(B_minus)
+!       this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
+      this%buf2_im(1) = 0.0  ! Im(B_minus)
 !       write(2,*) this%buf1_re(1),'this%buf1_re(1)'
 !       write(2,*) this%buf1_im(1),'this%buf1_im(1)'
 !       write(2,*) this%buf2_re(1),'this%buf2_re(1)'
@@ -957,6 +958,8 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
     this%buf3(:,:,:) = this%buf3(:,:,:) + this%buf4(:,:,:)
   endif 
   write(2,*) sum(this%buf3),'this%buf3 sum'
+  write(2,*) sum(this%buf3(4,:,:)),'this%buf3 sum 2_re'
+  write(2,*) sum(this%buf3(5,:,:)),'this%buf3 sum 2_im'
 
   do i = 0, this%max_mode
     if ( i == 0 ) then
