@@ -506,10 +506,14 @@ subroutine set_source_bt_iter( this, mode, djdxi_re, jay_re, djdxi_im, jay_im )
         endif
       endif
 
-      this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
-      this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
-      this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
-      this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
+!       this%buf1_re(1) = s1_re - s2_im  ! Re(B_plus)
+      this%buf1_re(1) = 0.0  ! Re(B_plus)
+!       this%buf1_im(1) = s1_im + s2_re  ! Im(B_plus)
+      this%buf1_im(1) = 0.0  ! Im(B_plus)
+!       this%buf2_re(1) = s1_re + s2_im  ! Re(B_minus)
+      this%buf2_re(1) = 0.0  ! Re(B_minus)
+!       this%buf2_im(1) = s1_im - s2_re  ! Im(B_minus)
+      this%buf2_im(1) = 0.0  ! Im(B_minus)
 
     else
 
@@ -950,8 +954,8 @@ subroutine solve_field_bt_iter( this, djdxi, jay, psi, q, qn)
    endif
   enddo
 
-  call this%solver_bm%solve(src = this%buf5, u = this%buf3)
-  call this%solver_bp%solve(src = this%buf6, u = this%buf3)
+  call this%solver_bp%solve(src = this%buf5, u = this%buf3)
+  call this%solver_bm%solve(src = this%buf6, u = this%buf3)
 
   do i = 0, this%max_mode
     if ( i == 0 ) then
