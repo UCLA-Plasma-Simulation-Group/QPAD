@@ -284,9 +284,7 @@ subroutine edp_species2d( this, ef, bf, b_beam, cu, amu, dcu )
    this%cu = 0.0
    this%dcu = 0.0
    this%amu = 0.0
-!    write(2,*) cu%getresum(),"cu species2d"
    call this%part%edeposit( ef, bf, b_beam, this%cu, this%amu, this%dcu )
-!    write(2,*) this%cu%getresum(),"this%cu species2d"
    call this%cu%acopy_gc_f1( dir=p_mpi_forward )
    call this%dcu%acopy_gc_f1( dir=p_mpi_forward )
    call this%amu%acopy_gc_f1( dir=p_mpi_forward )
@@ -300,8 +298,6 @@ subroutine edp_species2d( this, ef, bf, b_beam, cu, amu, dcu )
    call add_f1( this%cu, cu )
    call add_f1( this%dcu, dcu )
    call add_f1( this%amu, amu )
-!    write(2,*) cu%getresum(),"cu species2d end"
-!    write(2,*) this%cu%getresum(),"this%cu species2d end"
 
    call write_dbg(cls_name, sname, cls_level, 'ends')
 
@@ -442,8 +438,6 @@ subroutine cbq_species2d(this,pos)
    character(len=18), save :: sname = 'cpq_species2d'
 
    call write_dbg(cls_name, sname, cls_level, 'starts')
-   write(2,*) this%cu%getresum(),"this%cu species2d"
-   write(2,*) this%q%getresum(),"this%q species2d"
    call add_f1( this%cu, this%q, (/3/), (/1/) )
    call this%q%copy_slice(pos,p_copy_1to2)
    call write_dbg(cls_name, sname, cls_level, 'ends')
