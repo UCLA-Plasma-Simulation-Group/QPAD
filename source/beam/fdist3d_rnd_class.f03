@@ -442,8 +442,8 @@ subroutine inject_fdist3d_rnd( this, part )
 
     do i = 1, ip
 
-      part%x(1, ip+i) = -part%x(1,i)
-      part%x(2, ip+i) = -part%x(2,i)
+      part%x(1, ip+i) = 2*this%prof_pars1(1)-part%x(1,i)
+      part%x(2, ip+i) = 2*this%prof_pars2(1)-part%x(2,i)
       part%x(3, ip+i) =  part%x(3,i)
 
       part%p(1, ip+i) = -part%p(1,i)
