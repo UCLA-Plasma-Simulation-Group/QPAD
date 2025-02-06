@@ -53,10 +53,10 @@ subroutine set_prof_perp_gaussian( input, sect_name, prof_pars )
 
 end subroutine set_prof_perp_gaussian
 
-subroutine get_prof_perp_gaussian( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_gaussian( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
-  real, intent(in) :: r, z, k, k0
+  real, intent(in) :: r, z, t, k, k0
   type(kw_list), intent(in) :: prof_pars
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -76,7 +76,7 @@ subroutine get_prof_perp_gaussian( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
     curv = z_shift / ( z2 + zr2 )
     w = w0 * sqrt( 1.0 + z2 / zr2 )
     gouy_shift = atan2( z_shift, zr )
-    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t
     amp = w0 / w * exp(-r2 / (w*w))
 
     ar_re = amp * cos(phase)
@@ -119,10 +119,10 @@ subroutine set_prof_perp_laguerre( input, sect_name, prof_pars )
 
 end subroutine set_prof_perp_laguerre
 
-subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+subroutine get_prof_perp_laguerre( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
 
   implicit none
-  real, intent(in) :: r, z, k, k0
+  real, intent(in) :: r, z, t, k, k0
   type(kw_list), intent(in) :: prof_pars
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -147,7 +147,7 @@ subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
     w2 = w0 * w0 * ( 1.0 + z2 / zr2 )
     r2_iw2 = r2 / w2
     gouy_shift = real( 1 + 2 * p + abs(l) ) * atan2( z_shift, zr )
-    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * z
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t
 
     ! This is the definition from Wikipedia
     ! amp = w0 / sqrt(w2) * exp(-r2_iw2) * ( sqrt2 * sqrt(r2_iw2) ) ** abs(l) &

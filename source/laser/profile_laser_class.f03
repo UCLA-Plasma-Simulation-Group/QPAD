@@ -76,10 +76,10 @@ type, public :: profile_laser
 end type profile_laser
 
 interface
-  subroutine get_prof_perp_intf( r, z, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
+  subroutine get_prof_perp_intf( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im, ai_re, ai_im )
     import kw_list
     implicit none
-    real, intent(in) :: r, z, k, k0
+    real, intent(in) :: r, z, t, k, k0
     type(kw_list), intent(in) :: prof_pars
     integer, intent(in) :: mode
     real, intent(out) :: ar_re, ar_im, ai_re, ai_im
@@ -352,7 +352,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
            call this%get_prof_perp_astrl( r, z, t, k, this%k0, &
                 this%prof_perp_pars, this%math_funcs, m, arr, ari, air, aii )           
         else
-           call this%get_prof_perp( r, z, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
+           call this%get_prof_perp( r, z, t, k, this%k0, this%prof_perp_pars, m, arr, ari, air, aii )
         endif
 
         if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
