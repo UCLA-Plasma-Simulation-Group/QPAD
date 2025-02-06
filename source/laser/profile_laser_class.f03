@@ -328,19 +328,19 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
   
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  ! launch occurs at t=0 
-  t = 0.0 
+  ! launch occurs at z=0 
+  z = 0
 
   max_mode = size(ar_im)
   do m = 0, max_mode
     do j = 1, this%nzp
-      ! note that here "z" refers to xi = t - z
-      z = ( this%noff_z + j - 1 ) * this%dz + this%z0 - this%lon_center
+      ! note that here "t" refers to xi = t - z
+      t = ( this%noff_z + j - 1 ) * this%dz + this%z0 - this%lon_center
 
       ! longitudinal frequency chirp
       k = this%k0
       do l = 1, size(this%chirp_coefs)
-        k = k + this%chirp_coefs(l) * z ** (l - 1)
+        k = k + this%chirp_coefs(l) * t ** (l - 1)
       enddo
 
       do i = 1, this%nrp
@@ -356,11 +356,11 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
         endif
 
         if ( this%prof_type(2) == p_prof_laser_pw_linear ) then
-          call this%get_prof_lon_lin( z, this%prof_lon_pars_lin, env )
+          call this%get_prof_lon_lin( t, this%prof_lon_pars_lin, env )
         else if ( this%prof_type(2) ==  p_prof_laser_cubic_spline ) then 
-          call this%get_prof_lon_cub( z, this%prof_lon_pars_cub, env )
+          call this%get_prof_lon_cub( t, this%prof_lon_pars_cub, env )
         else 
-          call this%get_prof_lon( z, this%prof_lon_pars, env )
+          call this%get_prof_lon( t, this%prof_lon_pars, env )
        endif
         
         env = env * this%a0
