@@ -168,14 +168,15 @@ subroutine get_prof_perp_laguerre( r, z, k, k0, prof_pars, mode, ar_re, ar_im, a
 
     if ( mode == 0 ) then
       ar_re = amp * cos(phase)
-      ar_im = amp * sin(phase)
-      ai_re = 0.0
+      ar_im = 0.0
+      ai_re = -amp * sin(phase)
       ai_im = 0.0
     else
+      ! Notice the different order here for convenience
       ar_re =  0.5 * amp * cos(phase)
-      ar_im =  0.5 * amp * sin(phase)
-      ai_re = -ar_im
-      ai_im =  ar_re
+      ai_re = -0.5 * amp * sin(phase)
+      ar_im = -ai_re
+      ai_im = ar_re
     endif
 
   else
