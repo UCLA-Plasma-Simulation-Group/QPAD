@@ -80,10 +80,10 @@ type :: field
   procedure, private :: pipe_send_f1, pipe_recv_f1
   procedure, private :: pipe_send_f2, pipe_recv_f2
 
-  generic :: assignment(=) => assign_f1
-  generic :: as            => assign_f2
+  generic :: assignment(=) => assign_f1_real, assign_f1_field
+  generic :: as            => assign_f2_real, assign_f2_field
 
-  procedure, private :: assign_f1, assign_f2
+  procedure, private :: assign_f1_real, assign_f1_field, assign_f2_real, assign_f2_field
 
 end type field
 
@@ -914,75 +914,73 @@ function get_rf_im_mode( this, mode )
 
 end function get_rf_im_mode
 
-subroutine assign_f1( this, that )
+subroutine assign_f1_real( this, that )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  class(*), intent(in) :: that
+  real, intent(in) :: that
 
   integer :: i
 
-  select type (that)
+  do i = 0, this%max_mode
+    this%rf_re(i) = that
+    if (i == 0) cycle
+    this%rf_im(i) = that
+  enddo
 
-  type is (real)
+end subroutine assign_f1_real
 
-    do i = 0, this%max_mode
-      this%rf_re(i) = that
-      if (i == 0) cycle
-      this%rf_im(i) = that
-    enddo
-
-  class is (field)
-
-    do i = 0, this%max_mode
-      this%rf_re(i) = that%rf_re(i)
-      if (i == 0) cycle
-      this%rf_im(i) = that%rf_im(i)
-    enddo
-
-  class default
-
-    call write_err( "invalid assignment type!" )
-
-  end select
-
-end subroutine assign_f1
-
-subroutine assign_f2( this, that )
+subroutine assign_f1_field( this, that )
 
   implicit none
 
   class( field ), intent(inout) :: this
-  class(*), intent(in) :: that
+  class( field ), intent(in) :: that
 
   integer :: i
 
-  select type (that)
+  do i = 0, this%max_mode
+    this%rf_re(i) = that%rf_re(i)
+    if (i == 0) cycle
+    this%rf_im(i) = that%rf_im(i)
+  enddo
 
-  type is (real)
+end subroutine assign_f1_field
 
-    do i = 0, this%max_mode
-      call this%rf_re(i)%as( that )
-      if (i == 0) cycle
-      call this%rf_im(i)%as( that )
-    enddo
+subroutine assign_f2_real( this, that )
 
-  class is (field)
+  implicit none
 
-    do i = 0, this%max_mode
-      call this%rf_re(i)%as( that%get_rf_re(i) )
-      if (i == 0) cycle
-      call this%rf_im(i)%as( that%get_rf_im(i) )
-    enddo
+  class( field ), intent(inout) :: this
+  real, intent(in) :: that
 
-  class default
+  integer :: i
 
-    call write_err( "invalid assignment type!" )
+  do i = 0, this%max_mode
+    call this%rf_re(i)%as( that )
+    if (i == 0) cycle
+    call this%rf_im(i)%as( that )
+  enddo
 
-  end select
+end subroutine assign_f2_real
 
-end subroutine assign_f2
+subroutine assign_f2_field( this, that )
+
+  implicit none
+
+  class( field ), intent(inout) :: this
+  class( field ), intent(in) :: that
+
+  integer :: i
+
+  do i = 0, this%max_mode
+    call this%rf_re(i)%as( that%get_rf_re(i) )
+    if (i == 0) cycle
+    call this%rf_im(i)%as( that%get_rf_im(i) )
+  enddo
+
+end subroutine assign_f2_field
 
 subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
