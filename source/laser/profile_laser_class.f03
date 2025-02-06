@@ -340,7 +340,7 @@ subroutine launch_profile_laser( this, ar_re, ar_im, ai_re, ai_im )
       ! longitudinal frequency chirp
       k = this%k0
       do l = 1, size(this%chirp_coefs)
-        k = k + this%chirp_coefs(l) * z ** l
+        k = k + this%chirp_coefs(l) * z ** (l - 1)
       enddo
 
       do i = 1, this%nrp

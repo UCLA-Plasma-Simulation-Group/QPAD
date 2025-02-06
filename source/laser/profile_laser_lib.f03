@@ -338,7 +338,7 @@ subroutine normalize_a0_astrl_discrete( r_norm, xi_norm, z_norm, &
   ! longitudinal frequency chirp
   k = k0
   do l = 1, size(chirp_coefs)
-     k = k + chirp_coefs(l) * xi_norm ** l
+     k = k + chirp_coefs(l) * xi_norm ** (l - 1)
   enddo
   
   call get_prof_perp_astrl_discrete( r_norm, xi_norm, z_norm, k, k0, prof_pars, math_funcs, &
