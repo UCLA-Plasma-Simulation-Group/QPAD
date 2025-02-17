@@ -278,7 +278,7 @@ subroutine init_profile_laser( this, input, opts, sect_id )
   endif
 
   call input%get( trim(sect_name) // '.k0', this%k0 )
-  call input%get( 'simulation.box.z(1)', this%z0 )
+  call input%get( 'simulation.box.xi(1)', this%z0 )
 
   this%chirp_coefs = [0.0]
   if ( input%found( trim(sect_name) // '.chirp_coefs' ) ) then

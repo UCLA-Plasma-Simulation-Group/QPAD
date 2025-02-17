@@ -188,9 +188,9 @@ subroutine init_diag_beams( this, input, beams )
 
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
-  call input%get( 'simulation.box.z(1)', zmin )
-  call input%get( 'simulation.box.z(2)', zmax )
-  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.box.xi(1)', zmin )
+  call input%get( 'simulation.box.xi(2)', zmax )
+  call input%get( 'simulation.dz', dt )
 
   ! add beam diagnostics
   do i = 1, nbeams
@@ -264,9 +264,9 @@ subroutine init_diag_plasma( this, input, plasma )
   call input%get( 'simulation.nneutrals', nneutrals )
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
-  call input%get( 'simulation.box.z(1)', zmin )
-  call input%get( 'simulation.box.z(2)', zmax )
-  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.box.xi(1)', zmin )
+  call input%get( 'simulation.box.xi(2)', zmax )
+  call input%get( 'simulation.dz', dt )
 
   ! add species diagnostics
   do i = 1, nspecies
@@ -409,9 +409,9 @@ subroutine init_diag_fields( this, input, opts, fields )
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
-  call input%get( 'simulation.box.z(1)', zmin )
-  call input%get( 'simulation.box.z(2)', zmax )
-  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.box.xi(1)', zmin )
+  call input%get( 'simulation.box.xi(2)', zmax )
+  call input%get( 'simulation.dz', dt )
 
   call input%info( 'field.diag', n_children=m )
   do j = 1, m
@@ -621,9 +621,9 @@ subroutine init_diag_lasers( this, input, opts, lasers )
   call input%get( 'simulation.max_mode', max_mode )
   call input%get( 'simulation.box.r(1)', rmin )
   call input%get( 'simulation.box.r(2)', rmax )
-  call input%get( 'simulation.box.z(1)', zmin )
-  call input%get( 'simulation.box.z(2)', zmax )
-  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.box.xi(1)', zmin )
+  call input%get( 'simulation.box.xi(2)', zmax )
+  call input%get( 'simulation.dz', dt )
   call input%get( 'simulation.nlasers', nlasers )
 
   do i = 1, nlasers

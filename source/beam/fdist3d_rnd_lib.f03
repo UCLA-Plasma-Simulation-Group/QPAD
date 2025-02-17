@@ -37,7 +37,7 @@ subroutine set_prof_uniform( input, sect_name, dim, prof_pars )
   call input%get( trim(sect_name) // '.range' // num2str(dim) // '(1)', prof_pars(1) )
   call input%get( trim(sect_name) // '.range' // num2str(dim) // '(2)', prof_pars(2) )
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
     prof_pars(2) = prof_pars(2) - z0
   endif
@@ -79,7 +79,7 @@ subroutine set_prof_gaussian( input, sect_name, dim, prof_pars )
   call input%get( trim(sect_name) // '.gauss_center(' // num2str(dim) // ')', prof_pars(1) )
   call input%get( trim(sect_name) // '.gauss_sigma(' // num2str(dim) // ')', prof_pars(2) )
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -123,7 +123,7 @@ subroutine set_prof_super_gauss( input, sect_name, dim, prof_pars )
     call write_err("The order of super-Gaussian profile must be >= 1.")
   endif
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -164,7 +164,7 @@ subroutine set_prof_parabolic( input, sect_name, dim, prof_pars )
   call input%get( trim(sect_name) // '.parabolic_center(' // num2str(dim) // ')', prof_pars(1) )
   call input%get( trim(sect_name) // '.parabolic_radius(' // num2str(dim) // ')', prof_pars(2) )
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -235,7 +235,7 @@ subroutine set_prof_pw_linear( input, sect_name, dim, prof_pars )
   enddo
 
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1:len_x) = prof_pars(1:len_x) - z0
   endif
 

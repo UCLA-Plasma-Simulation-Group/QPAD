@@ -61,7 +61,7 @@ subroutine set_prof_analytic( input, sect_name, prof_pars, math_func )
 
   allocate( prof_pars(1) )
 
-  call input%get( 'simulation.box.z(1)', z0 )
+  call input%get( 'simulation.box.xi(1)', z0 )
   prof_pars(1) = - z0
 
   call input%get( trim(sect_name) // '.math_func', read_str )
@@ -105,7 +105,7 @@ subroutine set_prof_gaussian( input, sect_name, dim, prof_pars )
   call input%get( trim(sect_name) // '.gauss_center(' // num2str(dim) // ')', prof_pars(1) )
   call input%get( trim(sect_name) // '.gauss_sigma(' // num2str(dim) // ')', prof_pars(2) )
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -151,7 +151,7 @@ subroutine set_prof_super_gauss( input, sect_name, dim, prof_pars )
     call write_err("The order of super-Gaussian profile must be >= 1.")
   endif
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -194,7 +194,7 @@ subroutine set_prof_parabolic( input, sect_name, dim, prof_pars )
   call input%get( trim(sect_name) // '.parabolic_center(' // num2str(dim) // ')', prof_pars(1) )
   call input%get( trim(sect_name) // '.parabolic_radius(' // num2str(dim) // ')', prof_pars(2) )
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -249,7 +249,7 @@ subroutine set_prof_rational( input, sect_name, dim, prof_pars )
   prof_pars(4:len_pn+3) = pn
   prof_pars(len_pn+4:len_pn+len_pd+3) = pd
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1) = prof_pars(1) - z0
   endif
 
@@ -321,7 +321,7 @@ subroutine set_prof_pw_linear( input, sect_name, dim, prof_pars )
     prof_pars(len_x+i) = fx(i)
   enddo
   if ( dim == 3 ) then
-    call input%get( 'simulation.box.z(1)', z0 )
+    call input%get( 'simulation.box.xi(1)', z0 )
     prof_pars(1:len_x) = prof_pars(1:len_x) - z0
   endif
 

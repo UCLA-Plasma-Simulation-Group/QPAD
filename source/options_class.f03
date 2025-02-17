@@ -88,11 +88,17 @@ subroutine init_options( this, input_file )
   call input_file%get( 'simulation.box.r(2)', max_val )
   this%dr = ( max_val - min_val ) / nr
 
-  call input_file%get( 'simulation.box.z(1)', min_val )
-  call input_file%get( 'simulation.box.z(2)', max_val )
+  if (.not. input_file%found( 'simulation.box.xi' )) then
+    call write_err( 'The "box.z" parameter in the simulation section of the input &
+                     &deck has now been changed to "box.xi". Additionally, &
+                     &the "time" and "dt" parameters have been changed to &
+                     &"length" and "dz".' )
+  endif
+  call input_file%get( 'simulation.box.xi(1)', min_val )
+  call input_file%get( 'simulation.box.xi(2)', max_val )
   this%dxi = ( max_val - min_val ) / nz
 
-  call input_file%get( 'simulation.dt', this%dt )
+  call input_file%get( 'simulation.dz', this%dt )
 
   ! the un-evenly distributed grid points among processors are accounted for
   local_size   = nr / num_procs_loc()
