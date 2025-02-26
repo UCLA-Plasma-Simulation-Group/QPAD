@@ -18,6 +18,8 @@ The "lasers" is an array and each component is a session defines the parameters 
         Radius (:math:`1/e^2`) of laser pulse.
     * ``focal_distance``, real
         Distance of focal plane from the laser pulse. If negative, the focal plane is behind the laser pulse.
+    * ``phase``, real, optional
+        Constant phase offset (in degrees) to apply to the pulse. Defaults to zero, and has the same sign as the curvature term, i.e., exp(-i * phase) under the current convention.
 
     The ``"laguerre"`` defines a Laguerre-Gaussian laser pulse, and the following characteristic parameters need to be provided
 

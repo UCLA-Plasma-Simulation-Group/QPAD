@@ -50,6 +50,12 @@ subroutine set_prof_perp_gaussian( input, sect_name, prof_pars )
   call prof_pars%append( 'w0', val )
   call input%get( trim(sect_name) // '.focal_distance', val )
   call prof_pars%append( 'f_dist', val )
+  if ( input%found( trim(sect_name) // '.phase' ) ) then
+    call input%get( trim(sect_name) // '.phase', val )
+  else
+    val = 0.0
+  endif
+  call prof_pars%append( 'phi0', val )
 
 end subroutine set_prof_perp_gaussian
 
@@ -61,10 +67,11 @@ subroutine get_prof_perp_gaussian( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
 
-  real :: w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
+  real :: w0, zr, curv, f_dist, phi0, gouy_shift, z_shift, z2, zr2, w, phase, r2, amp
 
   call prof_pars%get( 'w0', w0 )
   call prof_pars%get( 'f_dist', f_dist )
+  call prof_pars%get( 'phi0', phi0 )
 
   if ( mode == 0 ) then
 
@@ -76,7 +83,7 @@ subroutine get_prof_perp_gaussian( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im
     curv = z_shift / ( z2 + zr2 )
     w = w0 * sqrt( 1.0 + z2 / zr2 )
     gouy_shift = atan2( z_shift, zr )
-    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t + phi0 * pi / 180
     amp = w0 / w * exp(-r2 / (w*w))
 
     ar_re = amp * cos(phase)
@@ -112,6 +119,12 @@ subroutine set_prof_perp_laguerre( input, sect_name, prof_pars )
   call prof_pars%append( 'w0', rval )
   call input%get( trim(sect_name) // '.focal_distance', rval )
   call prof_pars%append( 'f_dist', rval )
+  if ( input%found( trim(sect_name) // '.phase' ) ) then
+    call input%get( trim(sect_name) // '.phase', rval )
+  else
+    rval = 0.0
+  endif
+  call prof_pars%append( 'phi0', rval )
   call input%get( trim(sect_name) // '.radial_index', ival )
   call prof_pars%append( 'radial_index', ival )
   call input%get( trim(sect_name) // '.phi_index', ival )
@@ -127,12 +140,14 @@ subroutine get_prof_perp_laguerre( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im
   integer, intent(in) :: mode
   real, intent(out) :: ar_re, ar_im, ai_re, ai_im
 
-  real :: w0, zr, curv, f_dist, gouy_shift, z_shift, z2, zr2, phase, w2, r2, r2_iw2, amp
+  real :: w0, zr, curv, f_dist, phi0, gouy_shift, z_shift, z2, zr2, phase, w2, r2, r2_iw2
+  real :: amp
   integer :: p, l
   real, parameter :: sqrt2 = 1.414213562373095
 
   call prof_pars%get( 'w0', w0 )
   call prof_pars%get( 'f_dist', f_dist )
+  call prof_pars%get( 'phi0', phi0 )
   call prof_pars%get( 'radial_index', p )
   call prof_pars%get( 'phi_index', l )
 
@@ -147,7 +162,7 @@ subroutine get_prof_perp_laguerre( r, z, t, k, k0, prof_pars, mode, ar_re, ar_im
     w2 = w0 * w0 * ( 1.0 + z2 / zr2 )
     r2_iw2 = r2 / w2
     gouy_shift = real( 1 + 2 * p + abs(l) ) * atan2( z_shift, zr )
-    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t
+    phase = 0.5 * k * r2 * curv - gouy_shift - (k - k0) * t + phi0 * pi / 180
 
     ! This is the definition from Wikipedia
     ! amp = w0 / sqrt(w2) * exp(-r2_iw2) * ( sqrt2 * sqrt(r2_iw2) ) ** abs(l) &
