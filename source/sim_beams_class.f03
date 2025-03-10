@@ -85,7 +85,7 @@ subroutine init_sim_beams( this, input, opts )
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
-  call input%get( 'simulation.dt', dt )
+  call input%get( 'simulation.dz', dt )
   call input%get( 'simulation.read_restart', read_rst )
   ! call input%get( 'simulation.nbeams', n )
   call input%get( 'simulation.max_mode', max_mode )

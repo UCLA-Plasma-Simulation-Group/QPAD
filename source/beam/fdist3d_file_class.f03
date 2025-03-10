@@ -79,7 +79,7 @@ subroutine init_fdist3d_file( this, input, opts, sect_id )
   sect_name = 'beam(' // num2str(sect_id) // ')'
 
   call input%get( trim(sect_name) // '.filename', this%filename )
-  call input%get( 'simulation.box.z(1)', this%z0 )
+  call input%get( 'simulation.box.xi(1)', this%z0 )
   call input%get( trim(sect_name) // '.beam_center(1)', this%beam_ctr(1) )
   call input%get( trim(sect_name) // '.beam_center(2)', this%beam_ctr(2) )
   call input%get( trim(sect_name) // '.beam_center(3)', this%beam_ctr(3) )

@@ -231,7 +231,7 @@ subroutine init_fdist3d_rnd( this, input, opts, sect_id )
   call this%set_prof2( input, trim(sect_name), 2, this%prof_pars2 )
   call this%set_prof3( input, trim(sect_name), 3, this%prof_pars3 )
 
-  call input%get( 'simulation.box.z(1)', this%z0 )
+  call input%get( 'simulation.box.xi(1)', this%z0 )
   call input%get( trim(sect_name) // '.total_num', this%tot_num )
   call input%get( trim(sect_name) // '.total_charge', this%tot_charge )
   call input%get( trim(sect_name) // '.q', this%qm )

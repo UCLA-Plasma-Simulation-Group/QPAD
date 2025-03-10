@@ -304,7 +304,7 @@ subroutine init_fdist3d_std( this, input, opts, sect_id )
     call this%set_prof3( input, trim(sect_name), 3, this%prof_pars3 )
   endif
 
-  call input%get( 'simulation.box.z(1)', this%z0 )
+  call input%get( 'simulation.box.xi(1)', this%z0 )
   call input%get( trim(sect_name) // '.ppc(1)', this%ppc(1) )
   call input%get( trim(sect_name) // '.ppc(2)', this%ppc(2) )
   call input%get( trim(sect_name) // '.ppc(3)', this%ppc(3) )

@@ -82,8 +82,8 @@ call input%get('simulation.grid(2)',nz)
 call input%get('simulation.box.r(1)',rmin)
 call input%get('simulation.box.r(2)',rmax)
 dr = (rmax-rmin)/nr
-call input%get('simulation.box.z(1)',zmin)
-call input%get('simulation.box.z(2)',zmax)
+call input%get('simulation.box.xi(1)',zmin)
+call input%get('simulation.box.xi(2)',zmax)
 dxi = (zmax-zmin)/nz
 
 call gp%new( pp, nr, nz, dr, dxi )
@@ -152,8 +152,8 @@ case (1)
    call pf3d%p%new(input,1)
 end select
 
-call input%get('simulation.dt',dt)
-call input%get('simulation.time',tt)
+call input%get('simulation.dz',dt)
+call input%get('simulation.length',tt)
 nt = tt/dt
 call beam%new(pp,gp,num_modes,part_shape,pf3d%p,-1.0,dt,7,st,so)
 

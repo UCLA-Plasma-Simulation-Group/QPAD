@@ -142,8 +142,13 @@ subroutine init_simulation(this, input, opts)
   this%start2d = opts%get_noff(2) + 1
 
   call input%get( 'simulation.n0', n0 )
-  call input%get( 'simulation.time', time )
-  call input%get( 'simulation.dt', dt )
+  if ((.not. input%found( 'simulation.length' )) .or. &
+      (.not. input%found( 'simulation.dz' ))) then
+    call write_err( 'The "time" and "dt" parameters in the simulation section &
+                     &of the input deck have now been changed to "length" and "dz".' )
+  endif
+  call input%get( 'simulation.length', time )
+  call input%get( 'simulation.dz', dt )
   this%nstep3d = time/dt
   this%dt = dt
 

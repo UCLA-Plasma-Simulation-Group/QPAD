@@ -84,8 +84,8 @@ type :: ufield
   procedure :: read_hdf5
   procedure :: smooth_f1
 
-  generic :: assignment(=)   => assign_f1
-  generic :: as              => assign_f2
+  generic :: assignment(=)   => assign_f1_real, assign_f1_ufield
+  generic :: as              => assign_f2_real, assign_f2_ufield
 
   procedure, private :: init_ufield, init_ufield_cp, end_ufield
   procedure, private :: get_nd_all, get_nd_dim
@@ -93,7 +93,7 @@ type :: ufield
   procedure, private :: get_gc_num_all, get_gc_num_dim
   procedure, private :: get_noff_all, get_noff_dim
   procedure, private :: write_hdf5_single, write_hdf5_pipe
-  procedure, private :: assign_f1, assign_f2
+  procedure, private :: assign_f1_real, assign_f1_ufield, assign_f2_real, assign_f2_ufield
 
 end type ufield
 
@@ -728,63 +728,57 @@ subroutine acopy_gc_f2( this )
 
 end subroutine acopy_gc_f2
 
-subroutine assign_f1( this, that )
+subroutine assign_f1_real( this, that )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
-  class(*), intent(in) :: that
+  real, intent(in) :: that
 
-  select type (that)
+  this%f1 = that
 
-    type is (real)
+end subroutine assign_f1_real
 
-      this%f1 = that
-
-    class is (ufield)
-
-      if ( all( this%gc_num(:,1)==that%gc_num(:,1) ) ) then
-        this%f1 = that%f1
-      else
-        call write_err( "guard cells not matched!" )
-      endif
-
-    class default
-
-      call write_err( "invalid assignment type!" )
-
-  end select
-
-end subroutine assign_f1
-
-subroutine assign_f2( this, that )
+subroutine assign_f1_ufield( this, that )
 
   implicit none
 
   class( ufield ), intent(inout) :: this
-  class(*), intent(in) :: that
+  class( ufield ), intent(in) :: that
 
-  select type (that)
+  if ( all( this%gc_num(:,1)==that%gc_num(:,1) ) ) then
+    this%f1 = that%f1
+  else
+    call write_err( "guard cells not matched!" )
+  endif
 
-    type is (real)
+end subroutine assign_f1_ufield
 
-      this%f2 = that
+subroutine assign_f2_real( this, that )
 
-    class is (ufield)
+  implicit none
 
-      if ( all( this%gc_num==that%gc_num ) ) then
-        this%f2 = that%f2
-      else
-        call write_err( "guard cells not matched!" )
-      endif
+  class( ufield ), intent(inout) :: this
+  real, intent(in) :: that
 
-    class default
+  this%f2 = that
 
-      call write_err( "invalid assignment type!" )
+end subroutine assign_f2_real
 
-  end select
+subroutine assign_f2_ufield( this, that )
 
-end subroutine assign_f2
+  implicit none
+
+  class( ufield ), intent(inout) :: this
+  class( ufield ), intent(in) :: that
+
+  if ( all( this%gc_num==that%gc_num ) ) then
+    this%f2 = that%f2
+  else
+    call write_err( "guard cells not matched!" )
+  endif
+
+end subroutine assign_f2_ufield
 
 subroutine add_f1_binary_dim( a1, a2, a3, dim1, dim2, dim3 )
 
