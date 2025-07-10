@@ -1,5 +1,5 @@
 # system (must be one of the file suffix in config directory)
-sys = macosx_openmpi
+sys = conda
 # sys = s3df (uncomment when compiling on s3df) 
 
 
