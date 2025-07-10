@@ -5,11 +5,6 @@ DISABLE_SUBCYC = TRUE
 # Fortran compiler configuration
 FC = mpifort
 FC_OPTS = -g -O3 -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form -march=native
-# -fbacktrace -fbounds-check
-# -fbounds-check
-# FC_OPTS = -g -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace \
-# -ffree-line-length-0 -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan \
-# -fdefault-real-8 -fdefault-double-8 -fopenmp -ffree-form
 
 # C compiler configuration
 CC = mpicc
@@ -32,11 +27,5 @@ LDF = -L$(PREFIX)/lib -lHYPRE -ljsonfortran -lhdf5_fortran -lhdf5 -lz
 # Library dependencies
 LIBS = -L$(PREFIX)/lib
 INCLUDES = -I$(PREFIX)/include
-#JSON_LIB = /Users/thamine/qpad_libs_openmpi/json-fortran/build/lib
-#JSON_INC = /Users/thamine/qpad_libs_openmpi/json-fortran/build/include
-#HYPRE_LIB = /Users/thamine/qpad_libs_openmpi/hypre/src/build/lib
-#HDF5_LIB = /Users/thamine/qpad_libs_openmpi/hdf5-1.13.0/build/lib
-#HDF5_INC = /Users/thamine/qpad_libs_openmpi/hdf5-1.13.0/build/include
 
-#INCF = -I$(JSON_INC) 
 INCF = -I$(PREFIX)/include
