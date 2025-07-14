@@ -16,8 +16,6 @@ implicit none
 
 private
 
-public :: sim_lasers
-
 type, public :: sim_lasers
   
   class( field_laser ), dimension(:), pointer :: laser => null()

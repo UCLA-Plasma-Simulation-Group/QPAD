@@ -11,11 +11,11 @@ Simulation Session
     The first and second components define the number of cells used along r- and :math:`\xi`-direction respectively.
 
 * ``box``, session
-    Define the size of simulation box in r- and :math:`\xi`-direction. This session includes two parameters
+    Define the size of simulation box in `r`- and :math:`\xi`-direction. This session includes two parameters
 
     * ``r``, real array(2)
-        Starting and end coordinates in r-direction. The lower limit should be always 0.
-    * ``z``, real array(2)
+        Starting and end coordinates in `r`-direction. The lower limit should be always 0.
+    * ``xi``, real array(2)
         Starting and end coordinates in :math:`\xi`-direction.
 
 * ``field_boundary``, string
@@ -30,11 +30,11 @@ Simulation Session
 * ``n0``, real
     Reference plasma density (in the unit of :math:`\text{cm}^{-3}`). **This parameter is required when the ionization is turned on**.
 
-* ``time``, real
-    Total duration of the simulation. The initial moment defaults to 0.
+* ``length``, real
+    Total length of the simulation (in `z`). The initial value defaults to 0.
 
-* ``dt``, real
-    Time step of pushing relativistic particle beams.
+* ``dz``, real
+    Spatial step of pushing relativistic particle beams.
 
 * ``nbeams``, integer
     Total number of particle beams.

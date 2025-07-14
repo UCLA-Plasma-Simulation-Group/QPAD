@@ -18,6 +18,8 @@ The "lasers" is an array and each component is a session defines the parameters 
         Radius (:math:`1/e^2`) of laser pulse.
     * ``focal_distance``, real
         Distance of focal plane from the laser pulse. If negative, the focal plane is behind the laser pulse.
+    * ``phase``, real, optional
+        Constant phase offset (in degrees) to apply to the pulse. Defaults to zero, and has the same sign as the curvature term, i.e., exp(-i * phase) under the current convention.
 
     The ``"laguerre"`` defines a Laguerre-Gaussian laser pulse, and the following characteristic parameters need to be provided
 
@@ -97,7 +99,7 @@ The "lasers" is an array and each component is a session defines the parameters 
     Center of laser pulse in :math:`\xi`-direction. 
 
 *  ``chirp_coefs``, real array (*), optional
-    Frequency chirp coefficients :math:`C` of laser pulse. The frequency chirp distribution is described by :math:`k(\xi)=k_0+C(1)(\xi-\xi_0)+C(2)(\xi-\xi_0)^2+...` where :math:`k_0` and :math:`\xi_0` are the central wavenumber and longitudinal center defined by ``k0`` and ``lon_center`` respectively. The default is [0.0].
+    Frequency chirp coefficients :math:`C` of laser pulse. The frequency chirp distribution is described by :math:`k(\xi)=k_0+C(1)+C(2)(\xi-\xi_0)+C(3)(\xi-\xi_0)^2+...` where :math:`k_0` and :math:`\xi_0` are the central wavenumber and longitudinal center defined by ``k0`` and ``lon_center`` respectively. The default is [0.0]. Note that the first coefficient allows for a uniform offset in wavenumber from ``k0``.
 
 * ``diag``, session array(\*), optional
     For lasers, every type of diagnostics must be provided as a session. The parameters of each session include
