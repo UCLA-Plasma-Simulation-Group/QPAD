@@ -66,3 +66,10 @@ make html
 The output documentation is located at `/docs/build/html` and you can visit it via `index.html`. To generate documentation with other output formats, please check with `make help`.
 
 In case that you have difficulty to install Sphinx or the above the method does not work for you, we have put a precompiled html documentation and you can visit it via `/docs/html/index.html`.
+
+
+Release Note:
+
+July 2025:  Demoted "master" and now make "main" the default version.  This was the "dev" branch but with OpenPMD I/O for both fields & particles available and can be switched on/off in the makefile.  The "dev" branch now uses the variable "xi" instead of "z" for the spatial coordinate and is also based from the "dev" branch from 2024.  The "master" branch has not been updated for 4 years and is demoted.
+
+
