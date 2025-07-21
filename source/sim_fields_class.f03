@@ -100,7 +100,7 @@ subroutine init_sim_fields( this, input, opts )
   character(len=18), save :: sname = 'init_sim_fields'
   character(len=:), allocatable :: str
   integer :: entity, max_mode, ps, bnd
-  real :: relax_fac
+  real :: relax_fac, dr
 
   call write_dbg( cls_name, sname, cls_level, 'starts' )
 
@@ -132,7 +132,9 @@ subroutine init_sim_fields( this, input, opts )
     call write_err( 'Invalid interpolation type! Only "linear" are supported currently.' )
   end select
 
-  relax_fac = 1.0d-3
+  dr  = opts%get_dr()
+
+  relax_fac = 1.0d-3 * (dr/0.02)**2
   if (input%found("simulation.relax_fac")) then
     call input%get("simulation.relax_fac", relax_fac)
   endif

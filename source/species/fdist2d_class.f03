@@ -242,7 +242,7 @@ subroutine init_fdist2d( this, input, opts, sect, sect_id )
     call input%get( trim(sect_name) // '.uth(3)', this%uth(3) )
   endif
 
-  this%random_theta = .true.
+  this%random_theta = .false.
   if ( input%found( trim(sect_name) // '.random_theta' ) ) then
     call input%get( trim(sect_name) // '.random_theta', this%random_theta )
   endif
