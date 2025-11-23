@@ -102,7 +102,7 @@ Before compiling QPAD, you need to create your own configuration file in the fol
 
     make sys=<sys_name>
 
-or you can also modify the first line in ``source/Makefile`` to be ``sys ?= <sys_name>``, and simply run ``make``. After the building finishes, an executable with a name like ``qpad-[time_tag].e`` and a symbolic link ``qpad.e`` will show up in the ``bin`` folder. Every time you compile a new executable, the symbolic link ``qpad.e`` will automatically connect to the newest executable.
+or you can also modify the first line in ``source/Makefile`` to be ``sys ?= <sys_name>``, and simply run ``make``. To compile with openPMD data output format, run ``make IF_OPENPMD=1`` or uncomment the corresponding line in ``source/Makefile``. After the building finishes, an executable with a name like ``qpad-[time_tag].e`` and a symbolic link ``qpad.e`` will show up in the ``bin`` folder. Every time you compile a new executable, the symbolic link ``qpad.e`` will automatically connect to the newest executable.
 
 Run ``make clean`` to clean the intermediate auxiliary files during the compiling.
 
