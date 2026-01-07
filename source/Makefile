@@ -25,7 +25,7 @@ include $(configfile)
 # ------------------------------------------------------------------------------
 # QPAD source files
 # ------------------------------------------------------------------------------
-src = dtimer.c param.f03 math_module.f03 parallel_module.f03 debug_tool.f03
+src = param.f03 math_module.f03 parallel_module.f03 debug_tool.f03
 src += kwargs_class.f03
 src += sysutil_module.f03
 src += ppmsg_class.f03

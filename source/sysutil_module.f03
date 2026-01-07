@@ -17,7 +17,7 @@ public :: is_blank, is_alpha, strtodouble, parsenumber
 integer, save :: class_monitor = 0
 integer, save :: fid_err
 integer, dimension(4), save :: itime
-double precision, save :: dtime
+double precision, save :: dtime, t0
 logical, save :: is_root
 character, parameter :: p_tab = achar(9)
 character, parameter ::p_space = ' '
@@ -149,7 +149,8 @@ subroutine init_errors( eunit, idproc, monitor )
   write( filename, '(A,I0.6,A)') './ELOG/elog-', idproc, '.log'
   open( unit=fid_err, file=trim(filename), form='formatted', status='replace' )
 
-  call dtimer( dtime, itime, -1 )
+  t0 = MPI_Wtime()
+  dtime = 0.0d0
 
 end subroutine init_errors
 
@@ -170,7 +171,7 @@ subroutine write_err( estr )
   integer :: ierr
   logical :: flag
 
-  call dtimer( dtime, itime, 1 )
+  dtime = MPI_Wtime() - t0
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [ERROR] ', trim(adjustl(estr))
   write( *, * ) 'Fatal error occurs! Please enter the "ELOG" folder and type the &
             &command "tail --lines=1 *" to check the last line of each log file.'
@@ -197,7 +198,7 @@ subroutine write_wrn( wstr )
 
   character(len=*), intent(in) :: wstr
 
-  call dtimer( dtime, itime, 1 )
+  dtime = MPI_Wtime() - t0
   write( fid_err, '(A, F12.3, A12, A)' ) 't = ', dtime, ', [WARNING] ', trim(adjustl(wstr))
 
 end subroutine write_wrn
@@ -214,7 +215,7 @@ subroutine write_dbg( clsname, sname, level, msg )
   character(len=128), save :: str
   integer :: i
 
-  call dtimer( dtime, itime, 1 )
+  dtime = MPI_Wtime() - t0
 
   if ( level <= class_monitor ) then
 
@@ -355,7 +356,7 @@ subroutine start_tprof( event )
 
   do i = 1, num_event
     if ( trim( name_event(i) ) == trim(event) ) then
-      call dtimer( dtime, itime, 1 )
+      dtime = MPI_Wtime() - t0
       t_event(i) = t_event(i) - dtime
       return
     endif
@@ -375,7 +376,7 @@ subroutine stop_tprof( event )
 
   do i = 1, num_event
     if ( trim( name_event(i) ) == trim(event) ) then
-      call dtimer( dtime, itime, 1 )
+      dtime = MPI_Wtime() - t0
       t_event(i) = t_event(i) + dtime
       return
     endif
