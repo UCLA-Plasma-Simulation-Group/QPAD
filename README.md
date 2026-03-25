@@ -25,7 +25,7 @@ More simulation features and hardware supports are being developed, including
 
 QPAD is being actively developed and maintained. In order to obatin the latest features of the program at the first time, we recommend that you subscribe to this website.
 
-If you install QPAD, we ask that you __please contact__ Fei Li (lifei11@ucla.edu) or Weiming An (anweiming@ucla.edu). The development of QPAD relies on grant funding for which we are required to report code usage, and we would greatly appreciate being able to maintain accurate user-number tallies. We are pleased to see QPAD can help your researches. For scientific publications, please consider to cite the original paper of QPAD:
+If you install QPAD, we ask that you __please contact__ Fei Li (lifei11@ucla.edu) or Weiming An (anweiming@bnu.edu.cn). The development of QPAD relies on grant funding for which we are required to report code usage, and we would greatly appreciate being able to maintain accurate user-number tallies. We are pleased to see QPAD can help your researches. For scientific publications, please consider to cite the original paper of QPAD:
 
 - F. Li et al., Comput. Phys. Commun. (2021), 261, 107784. [(Link)](https://doi.org/10.1016/J.CPC.2020.107784)
 
